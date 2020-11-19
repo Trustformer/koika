@@ -177,6 +177,16 @@ Extraction \"save_restore.ml\" save_restore.prog."))
   (theories Koika examples)
   (flags "-w" "-overriding-logical-loadpath")))
 
+(subdir "_objects/producer_consumer.v"
+ (rule (write-file "producer_consumer_extr.v"
+                   "Require Coq.extraction.Extraction examples.producer_consumer.
+Extraction \"producer_consumer.ml\" producer_consumer.prog."))
+ (coq.extraction
+  (prelude producer_consumer_extr)
+  (extracted_modules producer_consumer)
+  (theories Koika examples)
+  (flags "-w" "-overriding-logical-loadpath")))
+
 
 ;; -*- dune -*-
 (subdir "_objects/uart.v"
