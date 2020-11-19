@@ -17,7 +17,7 @@ Our system will have two rules: ``doF`` and ``doG``, each corresponding to one s
 All that follows is parameterized on a register size ``sz``, set to 32 bits by default.
 |*)
 
-Definition sz := pow2 5.
+Definition sz := 32.
 
 (*|
 Setup

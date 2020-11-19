@@ -1,0 +1,130 @@
+Require Import Koika.Frontend.
+
+Module ProducerConsumer.
+  (* Setup *)
+  Definition r_sz := pow2 2. (** The size of a register *)
+
+  (* Registers *)
+  Inductive reg_t :=
+  | producer_counter (** State of the producer *)
+  | queue_empty (** The queue used for synchronization *)
+  | queue_data (** The number of items stored in the queue *)
+  | output. (** The data sink (into which consumer write outputs) *)
+
+  (** Size of each register *)
+  Definition R r :=
+    match r with
+    | producer_counter => bits_t r_sz
+    | queue_empty => bits_t 1
+    | queue_data => bits_t r_sz
+    | output_buffer => bits_t r_sz
+    end.
+
+  (** Initial value of each register *)
+  Definition r (reg: reg_t): R reg :=
+    match reg with
+    | producer_counter => Bits.zero
+    | queue_empty => Bits.one
+    | queue_data => Bits.zero
+    | output_buffer => Bits.zero
+    end.
+
+  (* Rules *)
+  Definition _produce : uaction reg_t empty_ext_fn_t :=
+    {{
+      let q := read0(queue_empty) in
+      if q then
+        let v := read0(producer_counter) in
+        write0(queue_data, v);
+        write0(producer_counter, v+Ob~0~0~0~1);
+        write0(queue_empty, Ob~1)
+      else
+        fail
+    }}.
+
+  Definition _consume : uaction reg_t empty_ext_fn_t :=
+    {{
+      let q := read1(queue_empty) in
+      if !q then
+        let v := read1(queue_data) in
+        write1(queue_empty, Ob~0);
+        write1(output, v)
+      else
+        fail
+    }}.
+
+  (* Scheduler *)
+  (** A scheduler needs three things: *)
+  (** 1. A rule name type *)
+  Inductive rule_name_t :=
+  | produce
+  | consume.
+  (** 2. A mapping from rule names to rules *)
+  Definition cr := ContextEnv.(create) r.
+  Definition rules :=
+    tc_rules R empty_Sigma
+      (fun r =>
+        match r with
+        | produce => _produce
+        | consume => _consume
+        end
+      ).
+  (** 3. A scheduler definition *)
+  Definition pc_scheduler : scheduler :=
+    produce |> consume |> done.
+
+  (* Formal semantics *)
+
+  (** Way to inject Verilog code, disabled here *)
+  Definition cycle_log :=
+    tc_compute (interp_scheduler cr empty_sigma rules pc_scheduler).
+
+  Definition produce_result :=
+    tc_compute (
+      interp_action cr empty_sigma CtxEmpty log_empty log_empty (rules produce)
+    ).
+
+  Definition consume_result :=
+    tc_compute (
+      interp_action cr empty_sigma CtxEmpty log_empty log_empty (rules consume)
+    ).
+
+  Definition result := tc_compute(commit_update cr cycle_log).
+
+  Definition external (r : rule_name_t) := false.
+
+  Definition circuits := compile_scheduler rules external pc_scheduler.
+
+  Definition circuits_result :=
+    tc_compute (
+      interp_circuits empty_sigma circuits (lower_r (ContextEnv.(create) r))
+    ).
+
+  Example test: circuits_result = Environments.map _ (fun _ => bits_of_value) result :=
+    eq_refl.
+
+  Definition package :=
+    {|
+      ip_koika := {|
+        koika_reg_types := R;
+        koika_reg_init reg := r reg;
+        koika_ext_fn_types := empty_Sigma;
+        koika_rules := rules;
+        koika_rule_external := external;
+        koika_scheduler := pc_scheduler;
+        koika_module_name := "vector"
+      |};
+
+      ip_sim := {|
+        sp_ext_fn_specs := empty_ext_fn_props;
+        sp_prelude := None
+      |};
+
+      ip_verilog := {|
+        vp_ext_fn_specs := empty_ext_fn_props
+      |}
+    |}.
+End ProducerConsumer.
+
+Definition prog := Interop.Backends.register ProducerConsumer.package.
+Extraction "producer_consumer.ml" prog.
