@@ -2,14 +2,15 @@ Require Import Koika.Frontend.
 
 Module ProducerConsumer.
   (* Setup *)
-  Definition r_sz := pow2 2. (** The size of a register *)
+  Definition r_sz := pow2 2. (** Size of a register *)
+  Definition q_cap := pow2 0. (** Capacity of the queue *)
 
   (* Registers *)
   Inductive reg_t :=
   | producer_counter (** State of the producer *)
-  | queue_empty (** The queue used for synchronization *)
-  | queue_data (** The number of items stored in the queue *)
-  | output. (** The data sink (into which consumer writes outputs) *)
+  | queue_empty (** State of the queue *)
+  | queue_datum (** Contents of the queue *)
+  | output. (** Data sink (into which consumer writes outputs) *)
 
   (** Size of each register *)
   Definition R r :=
