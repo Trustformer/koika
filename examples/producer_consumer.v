@@ -9,7 +9,7 @@ Module ProducerConsumer.
   | producer_counter (** State of the producer *)
   | queue_empty (** The queue used for synchronization *)
   | queue_data (** The number of items stored in the queue *)
-  | output. (** The data sink (into which consumer write outputs) *)
+  | output. (** The data sink (into which consumer writes outputs) *)
 
   (** Size of each register *)
   Definition R r :=
