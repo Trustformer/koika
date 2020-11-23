@@ -6,7 +6,7 @@ Require Import Koika.Std.
 
 Module Type Scoreboard_sig.
   Parameter idx_sz:nat.
-  Parameter maxScore:nat. (* Usually  maxScore ~= 3/4 *)
+  Parameter maxScore:nat. (* Usually maxScore ~= 3/4 *)
 End Scoreboard_sig.
 
 (* Definition read_style tau := SequentialSwitch tau "tmp". *)
