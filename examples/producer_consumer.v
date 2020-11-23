@@ -19,8 +19,6 @@ Module ProducerConsumer.
    *)
 
   (* 2. Registers description *)
-  (* TODO For the time being, only uses the first element of the queue *)
-
   (* 2.1. Names *)
   Inductive reg_t :=
   | producer_counter (** State of the producer, used to get varied outputs *)
