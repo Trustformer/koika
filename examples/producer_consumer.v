@@ -3,22 +3,39 @@ Require Import Koika.Frontend.
 Module ProducerConsumer.
   (* 1. Parameterization *)
   Definition r_sz := pow2 2. (** Size of a standard register *)
-  Definition q_cap := pow2 0. (** Capacity of the queue *)
+  Definition q_id_sz := 4. (** Bits required to hold a queue index *)
+  Definition q_cap := pow2 q_id_sz. (** Capacity of the queue *)
+
+  (* Further down the line, the number of elements present in the queue will
+   * have to be tracked. Note that a queue with capacity q with
+   * q := pow2 q_id_sz could hold anywhere from [0, q] elements. This set
+   * contains q + 1 elements, which means, given the way q and q_id_sz are
+   * related, that the number of bits required to represent this information is
+   * q_id_sz + 1. This would be a bit unwieldy, so the last element of the
+   * queue is left unused. This way, the fill level of the queue can be
+   * represented with the same type as the index type.
+   * It should be possible to define a non pow2 q_cap directly but doing so led
+   * me to other issues TODO.
+   *)
 
   (* 2. Registers description *)
+  (* TODO For the time being, only uses the first element of the queue *)
+
   (* 2.1. Names *)
   Inductive reg_t :=
-  | producer_counter (** State of the producer *)
-  | queue_empty (** State of the queue *)
-  | queue_datum (** Contents of the queue *)
+  | producer_counter (** State of the producer, used to get varied outputs *)
+  | queue_size (** Number of elements in the queue *)
+  | queue_head (** Index of the head of the queue *)
+  | queue_data (n : Vect.index q_cap) (** Contents of the queue (vector) *)
   | data_sink. (** Where consumer writes outputs *)
 
   (* 2.2. Memory requirements *)
   Definition R r :=
     match r with
     | producer_counter => bits_t r_sz
-    | queue_empty => bits_t 1
-    | queue_datum => bits_t r_sz
+    | queue_head => bits_t q_id_sz
+    | queue_size => bits_t q_id_sz
+    | queue_data _ => bits_t r_sz
     | data_sink => bits_t r_sz
     end.
 
@@ -26,8 +43,9 @@ Module ProducerConsumer.
   Definition r (reg: reg_t): R reg :=
     match reg with
     | producer_counter => Bits.zero
-    | queue_empty => Bits.one
-    | queue_datum => Bits.zero
+    | queue_size => Bits.zero
+    | queue_head => Bits.zero
+    | queue_data _ => Bits.zero
     | data_sink => Bits.zero
     end.
 
@@ -39,24 +57,47 @@ Module ProducerConsumer.
   | consume.
 
   (* 3.2. Definitions *)
+  Definition write0_queue : UInternalFunction reg_t empty_ext_fn_t :=
+    {{ fun write0_queue (idx : bits_t q_id_sz) (val: bits_t r_sz) : unit_t =>
+         `UCompleteSwitch (SequentialSwitchTt) q_id_sz "idx"
+              (fun idx => {{ write0(queue_data idx, val) }})` }}.
+
+  Definition read1_queue idx : uaction reg_t empty_ext_fn_t :=
+    {{ `UCompleteSwitch (SequentialSwitch (bits_t r_sz) "tmp") q_id_sz idx
+           (fun idx => {{ read1(queue_data idx) }})` }}.
+
+  Check Bits.of_nat.
+  Check (index q_cap).
+
   Definition _produce : uaction reg_t empty_ext_fn_t :=
     {{
-      let q := read0(queue_empty) in
-      if q then
+      let qs := read0(queue_size) in
+      let qh := read0(queue_head) in
+      if (qs + #(Bits.of_nat q_id_sz 1)) != #(Bits.of_nat q_id_sz q_cap) then
         let v := read0(producer_counter) in
-        write0(queue_datum, v);
-        write0(producer_counter, v+Ob~0~0~0~1);
-        write0(queue_empty, Ob~1)
+        (* TODO Causes apparent looping in interp_circuits *)
+        write0_queue(qh, qs);
+        write0(producer_counter, v + |r_sz`d1|);
+        write0(queue_size, qs + |q_id_sz`d1|)
       else
         fail
     }}.
 
   Definition _consume : uaction reg_t empty_ext_fn_t :=
     {{
-      let q := read1(queue_empty) in
-      if !q then
-        let v := read1(queue_datum) in
-        write1(queue_empty, Ob~0);
+      let qs := read1(queue_size) in
+      let qh := read1(queue_head) in
+      if qs != |q_id_sz`d0| then
+        (* TODO Causes apparent looping in interp_circuits *)
+        let v := `read1_queue("qh")` in
+        write1(queue_size, qs - |q_id_sz`d1|);
+        let next_qh :=
+          if ((qh + |q_id_sz`d1|) == #(Bits.of_nat q_id_sz q_cap)) then
+            |q_id_sz`d0|
+          else
+            qs + |q_id_sz`d1|
+        in
+        write1(queue_head, next_qh);
         write1(data_sink, v)
       else
         fail
@@ -79,7 +120,7 @@ Module ProducerConsumer.
   (* 5. Misc. *)
   Definition cr := ContextEnv.(create) r.
 
-  (** Way to inject Verilog code, disabled here *)
+  (** Way of injecting Verilog code, disabled here *)
   Definition cycle_log :=
     tc_compute (interp_scheduler cr empty_sigma rules pc_scheduler).
 
