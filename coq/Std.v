@@ -73,7 +73,7 @@ End Fifo1.
 
 Module Fifo1Bypass (f: Fifo).
   Import f.
-  Inductive reg_t := data0 |  valid0.
+  Inductive reg_t := data0 | valid0.
 
   Definition R r :=
     match r with

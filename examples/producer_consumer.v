@@ -17,8 +17,8 @@ Module ProducerConsumer.
     match r with
     | producer_counter => bits_t r_sz
     | queue_empty => bits_t 1
-    | queue_data => bits_t r_sz
-    | output_buffer => bits_t r_sz
+    | queue_datum => bits_t r_sz
+    | output => bits_t r_sz
     end.
 
   (** Initial value of each register *)
@@ -26,8 +26,8 @@ Module ProducerConsumer.
     match reg with
     | producer_counter => Bits.zero
     | queue_empty => Bits.one
-    | queue_data => Bits.zero
-    | output_buffer => Bits.zero
+    | queue_datum => Bits.zero
+    | output => Bits.zero
     end.
 
   (* Rules *)
@@ -36,7 +36,7 @@ Module ProducerConsumer.
       let q := read0(queue_empty) in
       if q then
         let v := read0(producer_counter) in
-        write0(queue_data, v);
+        write0(queue_datum, v);
         write0(producer_counter, v+Ob~0~0~0~1);
         write0(queue_empty, Ob~1)
       else
@@ -47,7 +47,7 @@ Module ProducerConsumer.
     {{
       let q := read1(queue_empty) in
       if !q then
-        let v := read1(queue_data) in
+        let v := read1(queue_datum) in
         write1(queue_empty, Ob~0);
         write1(output, v)
       else
