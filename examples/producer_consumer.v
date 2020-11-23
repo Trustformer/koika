@@ -1,18 +1,19 @@
 Require Import Koika.Frontend.
 
 Module ProducerConsumer.
-  (* Setup *)
+  (* 1. Parameterization *)
   Definition r_sz := pow2 2. (** Size of a register *)
   Definition q_cap := pow2 0. (** Capacity of the queue *)
 
-  (* Registers *)
+  (* 2. Registers description *)
+  (* 2.1. Names *)
   Inductive reg_t :=
   | producer_counter (** State of the producer *)
   | queue_empty (** State of the queue *)
   | queue_datum (** Contents of the queue *)
   | output. (** Data sink (into which consumer writes outputs) *)
 
-  (** Size of each register *)
+  (* 2.2. Memory requirements *)
   Definition R r :=
     match r with
     | producer_counter => bits_t r_sz
@@ -21,7 +22,7 @@ Module ProducerConsumer.
     | output => bits_t r_sz
     end.
 
-  (** Initial value of each register *)
+  (* 2.3. Initial values *)
   Definition r (reg: reg_t): R reg :=
     match reg with
     | producer_counter => Bits.zero
@@ -31,6 +32,13 @@ Module ProducerConsumer.
     end.
 
   (* Rules *)
+  (* 3. Rules description *)
+  (* 3.1. Names *)
+  Inductive rule_name_t :=
+  | produce
+  | consume.
+
+  (* 3.2. Definitions *)
   Definition _produce : uaction reg_t empty_ext_fn_t :=
     {{
       let q := read0(queue_empty) in
@@ -54,14 +62,7 @@ Module ProducerConsumer.
         fail
     }}.
 
-  (* Scheduler *)
-  (** A scheduler needs three things: *)
-  (** 1. A rule name type *)
-  Inductive rule_name_t :=
-  | produce
-  | consume.
-  (** 2. A mapping from rule names to rules *)
-  Definition cr := ContextEnv.(create) r.
+  (* 3.3. Rule name to definition mapping *)
   Definition rules :=
     tc_rules R empty_Sigma
       (fun r =>
@@ -70,11 +71,13 @@ Module ProducerConsumer.
         | consume => _consume
         end
       ).
-  (** 3. A scheduler definition *)
+
+  (* 4. Scheduler definition *)
   Definition pc_scheduler : scheduler :=
     produce |> consume |> done.
 
-  (* Formal semantics *)
+  (* 5. Misc. *)
+  Definition cr := ContextEnv.(create) r.
 
   (** Way to inject Verilog code, disabled here *)
   Definition cycle_log :=
