@@ -2,7 +2,7 @@ Require Import Koika.Frontend.
 
 Module ProducerConsumer.
   (* 1. Parameterization *)
-  Definition r_sz := pow2 2. (** Size of a register *)
+  Definition r_sz := pow2 2. (** Size of a standard register *)
   Definition q_cap := pow2 0. (** Capacity of the queue *)
 
   (* 2. Registers description *)
@@ -11,7 +11,7 @@ Module ProducerConsumer.
   | producer_counter (** State of the producer *)
   | queue_empty (** State of the queue *)
   | queue_datum (** Contents of the queue *)
-  | output. (** Data sink (into which consumer writes outputs) *)
+  | data_sink. (** Where consumer writes outputs *)
 
   (* 2.2. Memory requirements *)
   Definition R r :=
@@ -19,7 +19,7 @@ Module ProducerConsumer.
     | producer_counter => bits_t r_sz
     | queue_empty => bits_t 1
     | queue_datum => bits_t r_sz
-    | output => bits_t r_sz
+    | data_sink => bits_t r_sz
     end.
 
   (* 2.3. Initial values *)
@@ -28,7 +28,7 @@ Module ProducerConsumer.
     | producer_counter => Bits.zero
     | queue_empty => Bits.one
     | queue_datum => Bits.zero
-    | output => Bits.zero
+    | data_sink => Bits.zero
     end.
 
   (* Rules *)
@@ -57,7 +57,7 @@ Module ProducerConsumer.
       if !q then
         let v := read1(queue_datum) in
         write1(queue_empty, Ob~0);
-        write1(output, v)
+        write1(data_sink, v)
       else
         fail
     }}.
