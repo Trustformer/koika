@@ -21,14 +21,14 @@ Section RVHelpers.
   |}%vect.
 
   Definition decoded_sig := {|
-    struct_name := "decodedInst";
+    struct_name   := "decodedInst";
     struct_fields := ("valid_rs1", bits_t 1) :: ("valid_rs2", bits_t 1)
       :: ("valid_rd", bits_t 1) :: ("legal", bits_t 1) :: ("inst", bits_t 32)
       :: ("immediateType", maybe (enum_t imm_type)) :: nil
   |}.
 
   Definition inst_field := {|
-    struct_name := "instFields";
+    struct_name   := "instFields";
     struct_fields := ("opcode", bits_t 7) :: ("funct3", bits_t 3)
       :: ("funct7", bits_t 7) :: ("funct5", bits_t 5) :: ("funct2", bits_t 2)
       :: ("rd", bits_t 5) :: ("rs1", bits_t 5) :: ("rs2", bits_t 5)
@@ -302,7 +302,7 @@ Section RVHelpers.
   }}.
 
   Definition control_result := {|
-    struct_name := "control_result";
+    struct_name   := "control_result";
     struct_fields := ("nextPC", bits_t 32) :: ("taken", bits_t 1) :: nil
   |}.
 
@@ -359,28 +359,28 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   Import RVP.
 
   Definition mem_req := {|
-    struct_name := "mem_req";
+    struct_name   := "mem_req";
     struct_fields := [
       ("byte_en", bits_t 4); ("addr", bits_t 32); ("data", bits_t 32)
     ]
   |}.
 
   Definition mem_resp := {|
-    struct_name := "mem_resp";
+    struct_name   := "mem_resp";
     struct_fields := [
       ("byte_en", bits_t 4); ("addr", bits_t 32); ("data", bits_t 32)
     ]
   |}.
 
   Definition fetch_bookkeeping := {|
-    struct_name := "fetch_bookkeeping";
+    struct_name   := "fetch_bookkeeping";
     struct_fields := [
       ("pc", bits_t 32); ("ppc", bits_t 32); ("epoch", bits_t 1)
     ]
   |}.
 
   Definition decode_bookkeeping := {|
-    struct_name := "decode_bookkeeping";
+    struct_name   := "decode_bookkeeping";
     struct_fields := [
       ("pc", bits_t 32); ("ppc", bits_t 32); ("epoch", bits_t 1);
       ("dInst", struct_t decoded_sig); ("rval1", bits_t 32);
@@ -389,7 +389,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   |}.
 
   Definition execute_bookkeeping := {|
-    struct_name := "execute_bookkeeping";
+    struct_name   := "execute_bookkeeping";
     struct_fields := [
       ("isUnsigned", bits_t 1); ("size", bits_t 2); ("offset", bits_t 2);
       ("newrd", bits_t 32); ("dInst", struct_t decoded_sig)
@@ -410,13 +410,13 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   Module FifoUART <: Fifo.
     Definition T:= bits_t 8.
   End FifoUART.
-  Module UARTReq := Fifo1Bypass FifoUART.
+  Module UARTReq  := Fifo1Bypass FifoUART.
   Module UARTResp := Fifo1 FifoUART.
 
   Module FifoFetch <: Fifo.
     Definition T:= struct_t fetch_bookkeeping.
   End FifoFetch.
-  Module fromFetch := Fifo1 FifoFetch.
+  Module fromFetch     := Fifo1 FifoFetch.
   Module waitFromFetch := Fifo1 FifoFetch.
 
   Module FifoDecode <: Fifo.
@@ -430,16 +430,16 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   Module fromExecute := Fifo1 FifoExecute.
 
   Module RfParams <: RfPow2_sig.
-    Definition idx_sz := log2 NREGS.
-    Definition T := bits_t 32.
-    Definition init := Bits.zeroes 32.
-    Definition read_style := Scoreboard.read_style 32.
+    Definition idx_sz      := log2 NREGS.
+    Definition T           := bits_t 32.
+    Definition init        := Bits.zeroes 32.
+    Definition read_style  := Scoreboard.read_style 32.
     Definition write_style := Scoreboard.write_style.
   End RfParams.
   Module Rf := RfPow2 RfParams.
 
   Module ScoreboardParams <: Scoreboard_sig.
-    Definition idx_sz := log2 NREGS.
+    Definition idx_sz   := log2 NREGS.
     Definition maxScore := 3.
   End ScoreboardParams.
   Module Scoreboard := Scoreboard ScoreboardParams.
@@ -520,7 +520,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   | ext_finish.
 
   Definition mem_input := {|
-    struct_name := "mem_input";
+    struct_name   := "mem_input";
     struct_fields := [
       ("get_ready", bits_t 1); ("put_valid", bits_t 1);
       ("put_request", struct_t mem_req)
@@ -528,16 +528,16 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   |}.
 
   Definition mem_output := {|
-    struct_name := "mem_output";
+    struct_name   := "mem_output";
     struct_fields := [
       ("get_valid", bits_t 1); ("put_ready", bits_t 1);
       ("get_response", struct_t mem_resp)
     ]
   |}.
 
-  Definition uart_input := maybe (bits_t 8).
-  Definition uart_output := maybe (bits_t 8).
-  Definition led_input := maybe (bits_t 1).
+  Definition uart_input   := maybe (bits_t 8).
+  Definition uart_output  := maybe (bits_t 8).
+  Definition led_input    := maybe (bits_t 1).
   Definition finish_input := maybe (bits_t 8).
 
   Definition host_id :=
@@ -991,15 +991,15 @@ Inductive rv_rules_t :=
 Definition rv_external (rl: rv_rules_t) := false.
 
 Module Type Core.
-  Parameter _reg_t : Type.
-  Parameter _ext_fn_t : Type.
-  Parameter R : _reg_t -> type.
-  Parameter Sigma : _ext_fn_t -> ExternalSignature.
-  Parameter r : forall reg, R reg.
-  Parameter rv_rules : rv_rules_t -> rule R Sigma.
-  Parameter FiniteType_reg_t : FiniteType _reg_t.
-  Parameter Show_reg_t : Show _reg_t.
-  Parameter Show_ext_fn_t : Show _ext_fn_t.
+  Parameter _reg_t              : Type.
+  Parameter _ext_fn_t           : Type.
+  Parameter R                   : _reg_t -> type.
+  Parameter Sigma               : _ext_fn_t -> ExternalSignature.
+  Parameter r                   : forall reg, R reg.
+  Parameter rv_rules            : rv_rules_t -> rule R Sigma.
+  Parameter FiniteType_reg_t    : FiniteType _reg_t.
+  Parameter Show_reg_t          : Show _reg_t.
+  Parameter Show_ext_fn_t       : Show _ext_fn_t.
   Parameter rv_ext_fn_sim_specs : _ext_fn_t -> ext_fn_sim_spec.
   Parameter rv_ext_fn_rtl_specs : _ext_fn_t -> ext_fn_rtl_spec.
 End Core.
