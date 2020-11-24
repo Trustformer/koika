@@ -9,7 +9,7 @@ Require Import rv.Multiplier.
 Require Import rv.RVEncoding.
 Require Import rv.Scoreboard.
 
-Section RV32Helpers.
+Section RVHelpers.
   Context {reg_t: Type}.
 
   Import ListNotations.
@@ -89,7 +89,7 @@ Section RV32Helpers.
         | #funct3_SLL =>
           (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0)
           && (get(fields, funct7)[|3`d0|] == Ob~0)
-        (* All the funct3_SR* are the same *)
+        (* All SR* instructions share the same funct3 *)
         | #funct3_SRL =>
           ((get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0)
           || (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~1~0~0~0~0))
@@ -347,13 +347,14 @@ Section RV32Helpers.
               set nextPC := incPC);
     struct control_result {taken := taken; nextPC := nextPC}
   }}.
-End RV32Helpers.
+End RVHelpers.
 
 Module Type RVParams.
   Parameter NREGS : nat.
+  Parameter WIDTH : nat.
 End RVParams.
 
-Module RV32Core (RVP: RVParams) (Multiplier: MultiplierInterface).
+Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   Import ListNotations.
   Import RVP.
 
@@ -583,9 +584,9 @@ Module RV32Core (RVP: RVParams) (Multiplier: MultiplierInterface).
   }}.
 
   (* This rule is interesting because maybe we want to write it differently than
-   * Bluespec if we care about simulation performance. Moreover, we could read
-   * unconditionally to avoid potential muxing on the input, TODO check if it
-   * changes anything. *)
+     Bluespec if we care about simulation performance. Moreover, we could read
+     unconditionally to avoid potential muxing on the input, TODO check if it
+     changes anything. *)
   Definition decode : uaction reg_t ext_fn_t := {{
     let instr := fromIMem.(MemResp.deq)() in
     let instr := get(instr,data) in
@@ -972,7 +973,7 @@ Module RV32Core (RVP: RVParams) (Multiplier: MultiplierInterface).
       | _ => false
       end
   |}.
-End RV32Core.
+End RVCore.
 
 Inductive rv_rules_t :=
 | Fetch
@@ -1000,94 +1001,6 @@ Module Type Core.
   Parameter rv_ext_fn_sim_specs : _ext_fn_t -> ext_fn_sim_spec.
   Parameter rv_ext_fn_rtl_specs : _ext_fn_t -> ext_fn_rtl_spec.
 End Core.
-
-Module RV32IParams <: RVParams.
-  Definition NREGS := 32.
-End RV32IParams.
-
-(* TC_native adds overhead but makes typechecking large rules faster *)
-Ltac _tc_strategy ::= exact TC_native.
-
-Module Mul32Params <: Multiplier_sig.
-  Definition n := 32.
-End Mul32Params.
-
-Module RV32I <: Core.
-  Module Multiplier := ShiftAddMultiplier Mul32Params.
-  Include (RV32Core RV32IParams Multiplier).
-
-  Definition _reg_t := reg_t.
-  Definition _ext_fn_t := ext_fn_t.
-
-  Definition tc_fetch := tc_rule R Sigma fetch.
-  Definition tc_wait_imem := tc_rule R Sigma wait_imem.
-  Definition tc_decode := tc_rule R Sigma decode.
-  Definition tc_execute := tc_rule R Sigma execute.
-  Definition tc_writeback := tc_rule R Sigma writeback.
-  Definition tc_step_multiplier := tc_rule R Sigma step_multiplier.
-  Definition tc_imem := tc_rule R Sigma (mem imem).
-  Definition tc_dmem := tc_rule R Sigma (mem dmem).
-  Definition tc_tick := tc_rule R Sigma tick.
-
-  Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
-    match rl with
-    | Fetch => tc_fetch
-    | Decode => tc_decode
-    | Execute => tc_execute
-    | Writeback => tc_writeback
-    | WaitImem => tc_wait_imem
-    | Imem => tc_imem
-    | Dmem => tc_dmem
-    | StepMultiplier => tc_step_multiplier
-    | Tick => tc_tick
-    end.
-
-  Instance FiniteType_rf : FiniteType Rf.reg_t := _.
-  Instance FiniteType_scoreboard_rf : FiniteType Scoreboard.Rf.reg_t := _.
-  Instance FiniteType_scoreboard : FiniteType Scoreboard.reg_t := _.
-  Instance FiniteType_reg_t : FiniteType reg_t := _.
-End RV32I.
-
-Module RV32EParams <: RVParams.
-  Definition NREGS := 16.
-End RV32EParams.
-
-Module RV32E <: Core.
-  Module Multiplier := DummyMultiplier Mul32Params.
-  Include (RV32Core RV32EParams Multiplier).
-
-  Definition _reg_t := reg_t.
-  Definition _ext_fn_t := ext_fn_t.
-
-  Definition tc_fetch := tc_rule R Sigma fetch <: rule R Sigma.
-  Definition tc_wait_imem := tc_rule R Sigma wait_imem <: rule R Sigma.
-  Definition tc_decode := tc_rule R Sigma decode <: rule R Sigma.
-  Definition tc_execute := tc_rule R Sigma execute <: rule R Sigma.
-  Definition tc_writeback := tc_rule R Sigma writeback <: rule R Sigma.
-  Definition tc_step_multiplier :=
-    tc_rule R Sigma step_multiplier <: rule R Sigma.
-  Definition tc_imem := tc_rule R Sigma (mem imem) <: rule R Sigma.
-  Definition tc_dmem := tc_rule R Sigma (mem dmem) <: rule R Sigma.
-  Definition tc_tick := tc_rule R Sigma tick.
-
-  Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
-    match rl with
-    | Fetch => tc_fetch
-    | Decode => tc_decode
-    | Execute => tc_execute
-    | Writeback => tc_writeback
-    | WaitImem => tc_wait_imem
-    | Imem => tc_imem
-    | Dmem => tc_dmem
-    | StepMultiplier => tc_step_multiplier
-    | Tick => tc_tick
-    end.
-
-  Instance FiniteType_rf : FiniteType Rf.reg_t := _.
-  Instance FiniteType_scoreboard_rf : FiniteType Scoreboard.Rf.reg_t := _.
-  Instance FiniteType_scoreboard : FiniteType Scoreboard.reg_t := _.
-  Instance FiniteType_reg_t : FiniteType reg_t := _.
-End RV32E.
 
 (** A quick way to measure term sizes:
 
