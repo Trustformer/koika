@@ -73,7 +73,6 @@ Module ProducerConsumer.
       let qh := read0(queue_head) in
       if (qs + #(Bits.of_nat q_id_sz 1)) != #(Bits.of_nat q_id_sz q_cap) then
         let v := read0(producer_counter) in
-        (* TODO Causes apparent looping in interp_circuits *)
         write0_queue(qh, qs);
         write0(producer_counter, v + |r_sz`d1|);
         write0(queue_size, qs + |q_id_sz`d1|)
@@ -86,7 +85,6 @@ Module ProducerConsumer.
       let qs := read1(queue_size) in
       let qh := read1(queue_head) in
       if qs != |q_id_sz`d0| then
-        (* TODO Causes apparent looping in interp_circuits *)
         let v := `read1_queue("qh")` in
         write1(queue_size, qs - |q_id_sz`d1|);
         let next_qh :=
@@ -137,14 +135,6 @@ Module ProducerConsumer.
   Definition external (r : rule_name_t) := false.
 
   Definition circuits := compile_scheduler rules external pc_scheduler.
-
-  Definition circuits_result :=
-    tc_compute (
-      interp_circuits empty_sigma circuits (lower_r (ContextEnv.(create) r))
-    ).
-
-  Example test: circuits_result = Environments.map _ (fun _ => bits_of_value) result :=
-    eq_refl.
 
   Definition package :=
     {|
