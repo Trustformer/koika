@@ -822,6 +822,29 @@ Inductive instruction_field_name : Type :=
 | immU
 | immJ.
 
+Inductive instruction_field_type : Type :=
+| identification_field
+| data_field.
+
+Definition classify_instruction_field (f : instruction_field_name) :=
+  match f with
+  | opcode   => identification_field
+  | rd       => data_field
+  | rs1      => data_field
+  | rs2      => data_field
+  | rs3      => data_field
+  | funct2   => identification_field
+  | funct3   => identification_field
+  | funct7   => identification_field
+  | immI     => data_field
+  | immS_beg => data_field
+  | immS_end => data_field
+  | immB_beg => data_field
+  | immB_end => data_field
+  | immU     => data_field
+  | immJ     => data_field
+  end.
+
 Definition field_range (f : instruction_field_name) :=
   match f with
   | opcode   => (0, 6)
@@ -841,18 +864,256 @@ Definition field_range (f : instruction_field_name) :=
   | immJ     => (12, 31)
   end.
 
-Scheme Equality for instruction_field_name.
+Inductive opcode_name : Type :=
+| opcode_OP
+| opcode_JALR
+| opcode_LOAD
+| opcode_OP_IMM
+| opcode_MISC_MEM
+| opcode_STORE
+| opcode_BRANCH
+| opcode_LUI
+| opcode_AUIPC
+| opcode_JAL
+| opcode_SYSTEM
+| opcode_OP_32
+| opcode_OP_IMM_32
+| opcode_AMO
+| opcode_OP_FP
+| opcode_MADD
+| opcode_MSUB
+| opcode_NMSUB
+| opcode_NMADD
+| opcode_LOAD_FP
+| opcode_STORE_FP.
 
-Module DecidableInstructionField <: DecidableType.
-  Definition t := instruction_field_name.
-  Definition eq := @eq instruction_field_name. 
-  Instance eq_equiv : @Equivalence instruction_field_name eq := eq_equivalence.
-  Definition eq_dec := instruction_field_name_eq_dec.
-End DecidableInstructionField.
+(* Definition opcode_OP        := Ob~0~1~1~0~0~1~1. *)
+(* Definition opcode_JALR      := Ob~1~1~0~0~1~1~1. *)
+(* Definition opcode_LOAD      := Ob~0~0~0~0~0~1~1. *)
+(* Definition opcode_OP_IMM    := Ob~0~0~1~0~0~1~1. *)
+(* Definition opcode_MISC_MEM  := Ob~0~0~0~1~1~1~1. *)
+(* Definition opcode_STORE     := Ob~0~1~0~0~0~1~1. *)
+(* Definition opcode_BRANCH    := Ob~1~1~0~0~0~1~1. *)
+(* Definition opcode_LUI       := Ob~0~1~1~0~1~1~1. *)
+(* Definition opcode_AUIPC     := Ob~0~0~1~0~1~1~1. *)
+(* Definition opcode_JAL       := Ob~1~1~0~1~1~1~1. *)
+(* Definition opcode_SYSTEM    := Ob~1~1~1~0~0~1~1. *)
+(* Definition opcode_OP_32     := Ob~0~1~1~1~0~1~1. *)
+(* Definition opcode_OP_IMM_32 := Ob~0~0~1~1~0~1~1. *)
+(* Definition opcode_AMO       := Ob~0~1~0~1~1~1~1. *)
+(* Definition opcode_OP_FP     := Ob~1~0~1~0~0~1~1. *)
+(* Definition opcode_MADD      := Ob~1~0~0~0~0~1~1. *)
+(* Definition opcode_MSUB      := Ob~1~0~0~0~1~1~1. *)
+(* Definition opcode_NMSUB     := Ob~1~0~0~1~0~1~1. *)
+(* Definition opcode_NMADD     := Ob~1~0~0~1~1~1~1. *)
+(* Definition opcode_LOAD_FP   := Ob~0~0~0~0~1~1~1. *)
+(* Definition opcode_STORE_FP  := Ob~0~1~0~0~1~1~1. *)
 
-Module FieldsSet <: WSetsOn DecidableInstructionField.
+(* Definition funct3_ADD      := Ob~0~0~0. *)
+(* Definition funct3_SUB      := Ob~0~0~0. *)
+(* Definition funct3_SLL      := Ob~0~0~1. *)
+(* Definition funct3_SLT      := Ob~0~1~0. *)
+(* Definition funct3_SLTU     := Ob~0~1~1. *)
+(* Definition funct3_XOR      := Ob~1~0~0. *)
+(* Definition funct3_SRL      := Ob~1~0~1. *)
+(* Definition funct3_SRA      := Ob~1~0~1. *)
+(* Definition funct3_OR       := Ob~1~1~0. *)
+(* Definition funct3_AND      := Ob~1~1~1. *)
+(* Definition funct3_LB       := Ob~0~0~0. *)
+(* Definition funct3_LH       := Ob~0~0~1. *)
+(* Definition funct3_LW       := Ob~0~1~0. *)
+(* Definition funct3_LBU      := Ob~1~0~0. *)
+(* Definition funct3_LHU      := Ob~1~0~1. *)
+(* Definition funct3_SLTI     := Ob~0~1~0. *)
+(* Definition funct3_SLTIU    := Ob~0~1~1. *)
+(* Definition funct3_ADDI     := Ob~0~0~0. *)
+(* Definition funct3_XORI     := Ob~1~0~0. *)
+(* Definition funct3_ORI      := Ob~1~1~0. *)
+(* Definition funct3_ANDI     := Ob~1~1~1. *)
+(* Definition funct3_SLLI     := Ob~0~0~1. *)
+(* Definition funct3_SRLI     := Ob~1~0~1. *)
+(* Definition funct3_SRAI     := Ob~1~0~1. *)
+(* Definition funct3_FENCE    := Ob~0~0~0. *)
+(* Definition funct3_SB       := Ob~0~0~0. *)
+(* Definition funct3_SH       := Ob~0~0~1. *)
+(* Definition funct3_SW       := Ob~0~1~0. *)
+(* Definition funct3_BEQ      := Ob~0~0~0. *)
+(* Definition funct3_BNE      := Ob~0~0~1. *)
+(* Definition funct3_BLT      := Ob~1~0~0. *)
+(* Definition funct3_BGE      := Ob~1~0~1. *)
+(* Definition funct3_BLTU     := Ob~1~1~0. *)
+(* Definition funct3_BGEU     := Ob~1~1~1. *)
+(* Definition funct3_PRIV     := Ob~0~0~0. *)
+(* Definition funct3_ADDW     := Ob~0~0~0. *)
+(* Definition funct3_SUBW     := Ob~0~0~0. *)
+(* Definition funct3_SLLW     := Ob~0~0~1. *)
+(* Definition funct3_SRLW     := Ob~1~0~1. *)
+(* Definition funct3_SRAW     := Ob~1~0~1. *)
+(* Definition funct3_LWU      := Ob~1~1~0. *)
+(* Definition funct3_LD       := Ob~0~1~1. *)
+(* Definition funct3_ADDIW    := Ob~0~0~0. *)
+(* Definition funct3_SLLIW    := Ob~0~0~1. *)
+(* Definition funct3_SRLIW    := Ob~1~0~1. *)
+(* Definition funct3_SRAIW    := Ob~1~0~1. *)
+(* Definition funct3_SD       := Ob~0~1~1. *)
+(* Definition funct3_FENCE_I  := Ob~0~0~1. *)
+(* Definition funct3_CSRRW    := Ob~0~0~1. *)
+(* Definition funct3_CSRRS    := Ob~0~1~0. *)
+(* Definition funct3_CSRRC    := Ob~0~1~1. *)
+(* Definition funct3_CSRRWI   := Ob~1~0~1. *)
+(* Definition funct3_CSRRSI   := Ob~1~1~0. *)
+(* Definition funct3_CSRRCI   := Ob~1~1~1. *)
+(* Definition funct3_MUL      := Ob~0~0~0. *)
+(* Definition funct3_MULH     := Ob~0~0~1. *)
+(* Definition funct3_MULHSU   := Ob~0~1~0. *)
+(* Definition funct3_MULHU    := Ob~0~1~1. *)
+(* Definition funct3_DIV      := Ob~1~0~0. *)
+(* Definition funct3_DIVU     := Ob~1~0~1. *)
+(* Definition funct3_REM      := Ob~1~1~0. *)
+(* Definition funct3_REMU     := Ob~1~1~1. *)
+(* Definition funct3_MULW     := Ob~0~0~0. *)
+(* Definition funct3_DIVW     := Ob~1~0~0. *)
+(* Definition funct3_DIVUW    := Ob~1~0~1. *)
+(* Definition funct3_REMW     := Ob~1~1~0. *)
+(* Definition funct3_REMUW    := Ob~1~1~1. *)
+(* Definition funct3_AMOW     := Ob~0~1~0. *)
+(* Definition funct3_AMOD     := Ob~0~1~1. *)
+(* Definition funct3_FSGNJ_S  := Ob~0~0~0. *)
+(* Definition funct3_FSGNJN_S := Ob~0~0~1. *)
+(* Definition funct3_FSGNJX_S := Ob~0~1~0. *)
+(* Definition funct3_FMIN_S   := Ob~0~0~0. *)
+(* Definition funct3_FMAX_S   := Ob~0~0~1. *)
+(* Definition funct3_FMV_X_W  := Ob~0~0~0. *)
+(* Definition funct3_FEQ_S    := Ob~0~1~0. *)
+(* Definition funct3_FLT_S    := Ob~0~0~1. *)
+(* Definition funct3_FLE_S    := Ob~0~0~0. *)
+(* Definition funct3_FCLASS_S := Ob~0~0~1. *)
+(* Definition funct3_FLW      := Ob~0~1~0. *)
+(* Definition funct3_FSW      := Ob~0~1~0. *)
+
+(* Definition funct7_ADD        := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SUB        := Ob~0~1~0~0~0~0~0. *)
+(* Definition funct7_SLL        := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SLT        := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SLTU       := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_XOR        := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SRL        := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SRA        := Ob~0~1~0~0~0~0~0. *)
+(* Definition funct7_OR         := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_AND        := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_ADDW       := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SUBW       := Ob~0~1~0~0~0~0~0. *)
+(* Definition funct7_SLLW       := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SRLW       := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SRAW       := Ob~0~1~0~0~0~0~0. *)
+(* Definition funct7_SLLIW      := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SRLIW      := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_SRAIW      := Ob~0~1~0~0~0~0~0. *)
+(* Definition funct7_MUL        := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_MULH       := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_MULHSU     := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_MULHU      := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_DIV        := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_DIVU       := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_REM        := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_REMU       := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_MULW       := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_DIVW       := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_DIVUW      := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_REMW       := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_REMUW      := Ob~0~0~0~0~0~0~1. *)
+(* Definition funct7_FADD_S     := Ob~0~0~0~0~0~0~0. *)
+(* Definition funct7_FSUB_S     := Ob~0~0~0~0~1~0~0. *)
+(* Definition funct7_FMUL_S     := Ob~0~0~0~1~0~0~0. *)
+(* Definition funct7_FDIV_S     := Ob~0~0~0~1~1~0~0. *)
+(* Definition funct7_FSQRT_S    := Ob~0~1~0~1~1~0~0. *)
+(* Definition funct7_FSGNJ_S    := Ob~0~0~1~0~0~0~0. *)
+(* Definition funct7_FMIN_S     := Ob~0~0~1~0~1~0~0. *)
+(* Definition funct7_FCVT_W_S   := Ob~1~1~0~0~0~0~0. *)
+(* Definition funct7_FMV_X_W    := Ob~1~1~1~0~0~0~0. *)
+(* Definition funct7_FEQ_S      := Ob~1~0~1~0~0~0~0. *)
+(* Definition funct7_FCLASS_S   := Ob~1~1~1~0~0~0~0. *)
+(* Definition funct7_FCVT_S_W   := Ob~1~1~0~1~0~0~0. *)
+(* Definition funct7_FMV_W_X    := Ob~1~1~1~1~0~0~0. *)
+(* Definition funct7_SFENCE_VMA := Ob~0~0~0~1~0~0~1. *)
+
+(* Scheme Equality for instruction_field_name. *)
+
+(* Module DecidableInstructionField <: DecidableType. *)
+(*   Definition t := instruction_field_name. *)
+(*   Definition eq := @eq instruction_field_name. *)
+(*   Instance eq_equiv : @Equivalence instruction_field_name eq := eq_equivalence. *)
+(*   Definition eq_dec := instruction_field_name_eq_dec. *)
+(* End DecidableInstructionField. *)
+
+(* Module FieldsSet <: WSetsOn DecidableInstructionField. *)
   Include WSetsOn DecidableInstructionField.
 End FieldsSet.
+
+Definition instruction_type_fields (t : instruction_type_name) :=
+  match t with
+  | RType =>
+    (FieldsSet.add opcode
+    (FieldsSet.add rd
+    (FieldsSet.add funct3
+    (FieldsSet.add rs1
+    (FieldsSet.add rs2
+    (FieldsSet.add funct7
+    FieldsSet.empty
+    ))))))
+  | R4Type =>
+    (FieldsSet.add opcode
+    (FieldsSet.add rd
+    (FieldsSet.add funct3
+    (FieldsSet.add rs1
+    (FieldsSet.add rs2
+    (FieldsSet.add funct2
+    (FieldsSet.add rs3
+    FieldsSet.empty
+    )))))))
+  | IType =>
+    (FieldsSet.add opcode
+    (FieldsSet.add rd
+    (FieldsSet.add funct3
+    (FieldsSet.add rs1
+    (FieldsSet.add immI
+    FieldsSet.empty
+    )))))
+  | SType =>
+    (FieldsSet.add opcode
+    (FieldsSet.add immS_beg
+    (FieldsSet.add funct3
+    (FieldsSet.add rs1
+    (FieldsSet.add rs2
+    (FieldsSet.add immS_end
+    FieldsSet.empty
+    ))))))
+  | BType =>
+    (FieldsSet.add opcode
+    (FieldsSet.add immB_beg
+    (FieldsSet.add funct3
+    (FieldsSet.add rs1
+    (FieldsSet.add rs2
+    (FieldsSet.add immB_end
+    FieldsSet.empty
+    ))))))
+  | UType =>
+    (FieldsSet.add opcode
+    (FieldsSet.add rd
+    (FieldsSet.add immU
+    FieldsSet.empty
+    )))
+  | JType =>
+    (FieldsSet.add opcode
+    (FieldsSet.add rd
+    (FieldsSet.add immJ
+    FieldsSet.empty
+    )))
+  end.
+
+Definition opcode := bits_t 7.
+
+Definition bin_instruction := bits_t 32.
 
 Definition instruction_type (i : instruction_internal_name) :=
   match i with
@@ -1208,16 +1469,356 @@ Definition instruction_type (i : instruction_internal_name) :=
   | FCVT_Q_LU_64Q => RType
   end.
 
-Definition instruction := list instruction_field_name.
-
-Definition encoding : Type;
-
-Record R_encoding : encoding := {
-  R_encoding_opcode: opcode;
-}.
-
-Record Instruction
-
-Record instruction := {
-  opcode : bits_t 7.
-}.
+Definition instruction_name (i : instruction_internal_name) :=
+  match i with
+  (* RV32I *)
+  | LUI_32I    => "LUI"
+  | AUIPC_32I  => "AUIPC"
+  | JAL_32I    => "JAL"
+  | JALR_32I   => "JALR"
+  | BEQ_32I    => "BEQ"
+  | BNE_32I    => "BNE"
+  | BLT_32I    => "BLT"
+  | BGE_32I    => "BGE"
+  | BLTU_32I   => "BLTU"
+  | BGEU_32I   => "BGEU"
+  | LB_32I     => "LB"
+  | LH_32I     => "LH"
+  | LW_32I     => "LW"
+  | LBU_32I    => "LBU"
+  | LHU_32I    => "LHU"
+  | SB_32I     => "SB"
+  | SH_32I     => "SH"
+  | SW_32I     => "SW"
+  | ADDI_32I   => "ADDI"
+  | SLTI_32I   => "SLTI"
+  | SLTIU_32I  => "SLTIU"
+  | XORI_32I   => "XORI"
+  | ORI_32I    => "ORI"
+  | ANDI_32I   => "ANDI"
+  | SLLI_32I   => "SLLI"
+  | SRLI_32I   => "SRLI"
+  | SRAI_32I   => "SRAI"
+  | ADD_32I    => "ADD"
+  | SUB_32I    => "SUB"
+  | SLL_32I    => "SLL"
+  | SLT_32I    => "SLT"
+  | SLTU_32I   => "SLTU"
+  | XOR_32I    => "XOR"
+  | SRL_32I    => "SRL"
+  | SRA_32I    => "SRA"
+  | OR_32I     => "OR"
+  | AND_32I    => "AND"
+  | FENCE_32I  => "FENCE"
+  | ECALL_32I  => "ECALL"
+  | EBREAK_32I => "EBREAK"
+  (* RV64I *)
+  | LUI_64I    => "LUI"
+  | AUIPC_64I  => "AUIPC"
+  | JAL_64I    => "JAL"
+  | JALR_64I   => "JALR"
+  | BEQ_64I    => "BEQ"
+  | BNE_64I    => "BNE"
+  | BLT_64I    => "BLT"
+  | BGE_64I    => "BGE"
+  | BLTU_64I   => "BLTU"
+  | BGEU_64I   => "BGEU"
+  | LB_64I     => "LB"
+  | LH_64I     => "LH"
+  | LW_64I     => "LW"
+  | LBU_64I    => "LBU"
+  | LHU_64I    => "LHU"
+  | SB_64I     => "SB"
+  | SH_64I     => "SH"
+  | SW_64I     => "SW"
+  | ADDI_64I   => "ADDI"
+  | SLTI_64I   => "SLTI"
+  | SLTIU_64I  => "SLTIU"
+  | XORI_64I   => "XORI"
+  | ORI_64I    => "ORI"
+  | ANDI_64I   => "ANDI"
+  | SLLI_64I   => "SLLI"
+  | SRLI_64I   => "SRLI"
+  | SRAI_64I   => "SRAI"
+  | ADD_64I    => "ADD"
+  | SUB_64I    => "SUB"
+  | SLL_64I    => "SLL"
+  | SLT_64I    => "SLT"
+  | SLTU_64I   => "SLTU"
+  | XOR_64I    => "XOR"
+  | SRL_64I    => "SRL"
+  | SRA_64I    => "SRA"
+  | OR_64I     => "OR"
+  | AND_64I    => "AND"
+  | FENCE_64I  => "FENCE"
+  | ECALL_64I  => "ECALL"
+  | EBREAK_64I => "EBREAK"
+  | LWU_64I    => "LWU"
+  | LD_64I     => "LD"
+  | SD_64I     => "SD"
+  | ADDIW_64I  => "ADDIW"
+  | SLLIW_64I  => "SLLIW"
+  | SRLIW_64I  => "SRLIW"
+  | SRAIW_64I  => "SRAIW"
+  | ADDW_64I   => "ADDW"
+  | SUBW_64I   => "SUBW"
+  | SLLW_64I   => "SLLW"
+  | SRLW_64I   => "SRLW"
+  | SRAW_64I   => "SRAW"
+  (* RV32Zifencei *)
+  | FENCE_I_32Zifencei => "FENCE.I"
+  (* RV64Zifencei *)
+  | FENCE_I_64Zifencei => "FENCE.I"
+  (* RV32Zicsr *)
+  | CSRRW_32Zicsr  => "CSRRW"
+  | CSRRS_32Zicsr  => "CSRRS"
+  | CSRRC_32Zicsr  => "CSRRC"
+  | CSRRWI_32Zicsr => "CSRRWI"
+  | CSRRSI_32Zicsr => "CSRRSI"
+  | CSRRCI_32Zicsr => "CSRRCI"
+  (* RV64Zicsr *)
+  | CSRRW_64Zicsr  => "CSRRW"
+  | CSRRS_64Zicsr  => "CSRRS"
+  | CSRRC_64Zicsr  => "CSRRC"
+  | CSRRWI_64Zicsr => "CSRRWI"
+  | CSRRSI_64Zicsr => "CSRRSI"
+  | CSRRCI_64Zicsr => "CSRRCI"
+  (* RV32M *)
+  | MUL_32M    => "MUL"
+  | MULH_32M   => "MULH"
+  | MULHSU_32M => "MULHSU"
+  | MULHU_32M  => "MULHU"
+  | DIV_32M    => "DIV"
+  | DIVU_32M   => "DIVU"
+  | REM_32M    => "REM"
+  | REMU_32M   => "REMU"
+  (* RV64M *)
+  | MUL_64M    => "MUL"
+  | MULH_64M   => "MULH"
+  | MULHSU_64M => "MULHSU"
+  | MULHU_64M  => "MULHU"
+  | DIV_64M    => "DIV"
+  | DIVU_64M   => "DIVU"
+  | REM_64M    => "REM"
+  | REMU_64M   => "REMU"
+  | MULW_64M   => "MULW"
+  | DIVW_64M   => "DIVW"
+  | DIVUW_64M  => "DIVUW"
+  | REMW_64M   => "REMW"
+  | REMUW_64M  => "REMUW"
+  (* RV32A *)
+  | LR_W_32A      => "LR.W"
+  | SC_W_32A      => "SC.W"
+  | AMOSWAP_W_32A => "AMOSWAP.W"
+  | AMOADD_W_32A  => "AMOADD.W"
+  | AMOXOR_W_32A  => "AMOXOR.W"
+  | AMOAND_W_32A  => "AMOAND.W"
+  | AMOOR_W_32A   => "AMOOR.W"
+  | AMOMIN_W_32A  => "AMOMIN.W"
+  | AMOMAX_W_32A  => "AMOMAX.W"
+  | AMOMINU_W_32A => "AMOMINU.W"
+  | AMOMAXU_W_32A => "AMOMAXU.W"
+  (* RV64A *)
+  | LR_W_64A      => "LR.W"
+  | SC_W_64A      => "SC.W"
+  | AMOSWAP_W_64A => "AMOSWAP.W"
+  | AMOADD_W_64A  => "AMOADD.W"
+  | AMOXOR_W_64A  => "AMOXOR.W"
+  | AMOAND_W_64A  => "AMOAND.W"
+  | AMOOR_W_64A   => "AMOOR.W"
+  | AMOMIN_W_64A  => "AMOMIN.W"
+  | AMOMAX_W_64A  => "AMOMAX.W"
+  | AMOMINU_W_64A => "AMOMINU.W"
+  | AMOMAXU_W_64A => "AMOMAXU.W"
+  | LR_D_64A      => "LR.D"
+  | SC_D_64A      => "SC.D"
+  | AMOSWAP_D_64A => "AMOSWAP.D"
+  | AMOADD_D_64A  => "AMOADD.D"
+  | AMOXOR_D_64A  => "AMOXOR.D"
+  | AMOAND_D_64A  => "AMOAND.D"
+  | AMOOR_D_64A   => "AMOOR.D"
+  | AMOMIN_D_64A  => "AMOMIN.D"
+  | AMOMAX_D_64A  => "AMOMAX.D"
+  | AMOMINU_D_64A => "AMOMINU.D"
+  | AMOMAXU_D_64A => "AMOMAXU.D"
+  (* RV32F *)
+  | FLW_32F       => "FLW"
+  | FSW_32F       => "FSW"
+  | FMADD_S_32F   => "FMADD.S"
+  | FMSUB_S_32F   => "FMSUB.S"
+  | FNMSUB_S_32F  => "FNMSUB.S"
+  | FNMADD_S_32F  => "FNMADD.S"
+  | FADD_S_32F    => "FADD.S"
+  | FSUB_S_32F    => "FSUB.S"
+  | FMUL_S_32F    => "FMUL.S"
+  | FDIV_S_32F    => "FDIV.S"
+  | FSQRT_S_32F   => "FSQRT.S"
+  | FSGNJ_S_32F   => "FSGNJ.S"
+  | FSGNJN_S_32F  => "FSGNJN.S"
+  | FSGNJX_S_32F  => "FSGNJX.S"
+  | FMIN_S_32F    => "FMIN.S"
+  | FMAX_S_32F    => "FMAX.S"
+  | FCVT_W_S_32F  => "FCVT.W.S"
+  | FCVT_WU_S_32F => "FCVT.WU.S"
+  | FMV_X_W_32F   => "FMV.X.W"
+  | FEQ_S_32F     => "FEQ.S"
+  | FLT_S_32F     => "FLT.S"
+  | FLE_S_32F     => "FLE.S"
+  | FCLASS_S_32F  => "FCLASS.S"
+  | FCVT_S_W_32F  => "FCVT.S.W"
+  | FCVT_S_WU_32F => "FCVT.S.WU"
+  | FMV_W_X_32F   => "FMV.W.X"
+  (* RV64F *)
+  | FLW_64F       => "FLW"
+  | FSW_64F       => "FSW"
+  | FMADD_S_64F   => "FMADD.S"
+  | FMSUB_S_64F   => "FMSUB.S"
+  | FNMSUB_S_64F  => "FNMSUB.S"
+  | FNMADD_S_64F  => "FNMADD.S"
+  | FADD_S_64F    => "FADD.S"
+  | FSUB_S_64F    => "FSUB.S"
+  | FMUL_S_64F    => "FMUL.S"
+  | FDIV_S_64F    => "FDIV.S"
+  | FSQRT_S_64F   => "FSQRT.S"
+  | FSGNJ_S_64F   => "FSGNJ.S"
+  | FSGNJN_S_64F  => "FSGNJN.S"
+  | FSGNJX_S_64F  => "FSGNJX.S"
+  | FMIN_S_64F    => "FMIN.S"
+  | FMAX_S_64F    => "FMAX.S"
+  | FCVT_W_S_64F  => "FCVT.W.S"
+  | FCVT_WU_S_64F => "FCVT.WU.S"
+  | FMV_X_W_64F   => "FMV.X.W"
+  | FEQ_S_64F     => "FEQ.S"
+  | FLT_S_64F     => "FLT.S"
+  | FLE_S_64F     => "FLE.S"
+  | FCLASS_S_64F  => "FCLASS.S"
+  | FCVT_S_W_64F  => "FCVT.S.W"
+  | FCVT_S_WU_64F => "FCVT.S.WU"
+  | FMV_W_X_64F   => "FMV.W.X"
+  | FCVT_L_S_64F  => "FCVT.L.S"
+  | FCVT_LU_S_64F => "FCVT.LU.S"
+  | FCVT_S_L_64F  => "FCVT.S.L"
+  | FCVT_S_LU_64F => "FCVT.S.LU"
+  (* RV32D *)
+  | FLD_32D       => "FLD"
+  | FSD_32D       => "FSD"
+  | FMADD_D_32D   => "FMADD.D"
+  | FMSUB_D_32D   => "FMSUB.D"
+  | FNMSUB_D_32D  => "FNMSUB.D"
+  | FNMADD_D_32D  => "FNMADD.D"
+  | FADD_D_32D    => "FADD.D"
+  | FSUB_D_32D    => "FSUB.D"
+  | FMUL_D_32D    => "FMUL.D"
+  | FDIV_D_32D    => "FDIV.D"
+  | FSQRT_D_32D   => "FSQRT.D"
+  | FSGNJ_D_32D   => "FSGNJ.D"
+  | FSGNJN_D_32D  => "FSGNJN.D"
+  | FSGNJX_D_32D  => "FSGNJX.D"
+  | FMIN_D_32D    => "FMIN.D"
+  | FMAX_D_32D    => "FMAX.D"
+  | FCVT_S_D_32D  => "FCVT.S.D"
+  | FCVT_D_S_32D  => "FCVT.D.S"
+  | FEQ_D_32D     => "FEQ.D"
+  | FLT_D_32D     => "FLT.D"
+  | FLE_D_32D     => "FLE.D"
+  | FCLASS_D_32D  => "FCLASS.D"
+  | FCVT_W_D_32D  => "FCVT.W.D"
+  | FCVT_WU_D_32D => "FCVT.WU.D"
+  | FCVT_D_W_32D  => "FCVT.D.W"
+  | FCVT_D_WU_32D => "FCVT.D.WU"
+  (* RV64D *)
+  | FLD_64D       => "FLD"
+  | FSD_64D       => "FSD"
+  | FMADD_D_64D   => "FMADD.D"
+  | FMSUB_D_64D   => "FMSUB.D"
+  | FNMSUB_D_64D  => "FNMSUB.D"
+  | FNMADD_D_64D  => "FNMADD.D"
+  | FADD_D_64D    => "FADD.D"
+  | FSUB_D_64D    => "FSUB.D"
+  | FMUL_D_64D    => "FMUL.D"
+  | FDIV_D_64D    => "FDIV.D"
+  | FSQRT_D_64D   => "FSQRT.D"
+  | FSGNJ_D_64D   => "FSGNJ.D"
+  | FSGNJN_D_64D  => "FSGNJN.D"
+  | FSGNJX_D_64D  => "FSGNJX.D"
+  | FMIN_D_64D    => "FMIN.D"
+  | FMAX_D_64D    => "FMAX.D"
+  | FCVT_S_D_64D  => "FCVT.S.D"
+  | FCVT_D_S_64D  => "FCVT.D.S"
+  | FEQ_D_64D     => "FEQ.D"
+  | FLT_D_64D     => "FLT.D"
+  | FLE_D_64D     => "FLE.D"
+  | FCLASS_D_64D  => "FCLASS.D"
+  | FCVT_W_D_64D  => "FCVT.W.D"
+  | FCVT_WU_D_64D => "FCVT.WU.D"
+  | FCVT_D_W_64D  => "FCVT.D.W"
+  | FCVT_D_WU_64D => "FCVT.D.WU"
+  | FCVT_L_D_64D  => "FCVT.L.D"
+  | FCVT_LU_D_64D => "FCVT.LU.D"
+  | FMV_X_D_64D   => "FMV.X.D"
+  | FCVT_D_L_64D  => "FCVT.D.L"
+  | FCVT_D_LU_64D => "FCVT.D.LU"
+  | FMV_D_X_64D   => "FMV.D.X"
+  (* RV32Q *)
+  | FLQ_32Q       => "FLQ"
+  | FSQ_32Q       => "FSQ"
+  | FMADD_Q_32Q   => "FMADD.Q"
+  | FMSUB_Q_32Q   => "FMSUB.Q"
+  | FNMSUB_Q_32Q  => "FNMSUB.Q"
+  | FNMADD_Q_32Q  => "FNMADD.Q"
+  | FADD_Q_32Q    => "FADD.Q"
+  | FSUB_Q_32Q    => "FSUB.Q"
+  | FMUL_Q_32Q    => "FMUL.Q"
+  | FDIV_Q_32Q    => "FDIV.Q"
+  | FSQRT_Q_32Q   => "FSQRT.Q"
+  | FSGNJ_Q_32Q   => "FSGNJ.Q"
+  | FSGNJN_Q_32Q  => "FSGNJN.Q"
+  | FSGNJX_Q_32Q  => "FSGNJX.Q"
+  | FMIN_Q_32Q    => "FMIN.Q"
+  | FMAX_Q_32Q    => "FMAX.Q"
+  | FCVT_S_Q_32Q  => "FCVT.S.Q"
+  | FCVT_Q_S_32Q  => "FCVT.Q.S"
+  | FCVT_D_Q_32Q  => "FCVT.D.Q"
+  | FCVT_Q_D_32Q  => "FCVT.Q.D"
+  | FEQ_Q_32Q     => "FEQ.Q"
+  | FLT_Q_32Q     => "FLT.Q"
+  | FLE_Q_32Q     => "FLE.Q"
+  | FCLASS_Q_32Q  => "FCLASS.Q"
+  | FCVT_W_Q_32Q  => "FCVT.W.Q"
+  | FCVT_WU_Q_32Q => "FCVT.WU.Q"
+  | FCVT_Q_W_32Q  => "FCVT.Q.W"
+  | FCVT_Q_WU_32Q => "FCVT.Q.WU"
+  (* RV64Q *)
+  | FLQ_64Q       => "FLQ"
+  | FSQ_64Q       => "FSQ"
+  | FMADD_Q_64Q   => "FMADD.Q"
+  | FMSUB_Q_64Q   => "FMSUB.Q"
+  | FNMSUB_Q_64Q  => "FNMSUB.Q"
+  | FNMADD_Q_64Q  => "FNMADD.Q"
+  | FADD_Q_64Q    => "FADD.Q"
+  | FSUB_Q_64Q    => "FSUB.Q"
+  | FMUL_Q_64Q    => "FMUL.Q"
+  | FDIV_Q_64Q    => "FDIV.Q"
+  | FSQRT_Q_64Q   => "FSQRT.Q"
+  | FSGNJ_Q_64Q   => "FSGNJ.Q"
+  | FSGNJN_Q_64Q  => "FSGNJN.Q"
+  | FSGNJX_Q_64Q  => "FSGNJX.Q"
+  | FMIN_Q_64Q    => "FMIN.Q"
+  | FMAX_Q_64Q    => "FMAX.Q"
+  | FCVT_S_Q_64Q  => "FCVT.S.Q"
+  | FCVT_Q_S_64Q  => "FCVT.Q.S"
+  | FCVT_D_Q_64Q  => "FCVT.D.Q"
+  | FCVT_Q_D_64Q  => "FCVT.Q.D"
+  | FEQ_Q_64Q     => "FEQ.Q"
+  | FLT_Q_64Q     => "FLT.Q"
+  | FLE_Q_64Q     => "FLE.Q"
+  | FCLASS_Q_64Q  => "FCLASS.Q"
+  | FCVT_W_Q_64Q  => "FCVT.W.Q"
+  | FCVT_WU_Q_64Q => "FCVT.WU.Q"
+  | FCVT_Q_W_64Q  => "FCVT.Q.W"
+  | FCVT_Q_WU_64Q => "FCVT.Q.WU"
+  | FCVT_L_Q_64Q  => "FCVT.L.Q"
+  | FCVT_LU_Q_64Q => "FCVT.LU.Q"
+  | FCVT_Q_L_64Q  => "FCVT.Q.L"
+  | FCVT_Q_LU_64Q => "FCVT.Q.LU"
+  end.
