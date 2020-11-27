@@ -433,14 +433,18 @@ Inductive instruction_internal_name : Type :=
   instruction_internal_name_RV32Zifencei -> instruction_internal_name
 | RV64Zifencei_instruction :
   instruction_internal_name_RV64Zifencei -> instruction_internal_name
-| RV32Ziscr_instruction :
+| RV32Zicsr_instruction :
   instruction_internal_name_RV32Zicsr -> instruction_internal_name
-| RV64Ziscr_instruction :
+| RV64Zicsr_instruction :
   instruction_internal_name_RV64Zicsr -> instruction_internal_name
 | RV32M_instruction :
   instruction_internal_name_RV32M -> instruction_internal_name
 | RV64M_instruction :
   instruction_internal_name_RV64M -> instruction_internal_name
+| RV32A_instruction :
+  instruction_internal_name_RV32A -> instruction_internal_name
+| RV64A_instruction :
+  instruction_internal_name_RV64A -> instruction_internal_name
 | RV32F_instruction :
   instruction_internal_name_RV32F -> instruction_internal_name
 | RV64F_instruction :
@@ -472,390 +476,390 @@ Module InstructionsInternalNamesSet
 End InstructionsInternalNamesSet.
 
 Definition RV32I_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add LUI_32I
-  (InstructionsInternalNamesSet.add AUIPC_32I
-  (InstructionsInternalNamesSet.add JAL_32I
-  (InstructionsInternalNamesSet.add JALR_32I
-  (InstructionsInternalNamesSet.add BEQ_32I
-  (InstructionsInternalNamesSet.add BNE_32I
-  (InstructionsInternalNamesSet.add BLT_32I
-  (InstructionsInternalNamesSet.add BGE_32I
-  (InstructionsInternalNamesSet.add BLTU_32I
-  (InstructionsInternalNamesSet.add BGEU_32I
-  (InstructionsInternalNamesSet.add LB_32I
-  (InstructionsInternalNamesSet.add LH_32I
-  (InstructionsInternalNamesSet.add LW_32I
-  (InstructionsInternalNamesSet.add LBU_32I
-  (InstructionsInternalNamesSet.add LHU_32I
-  (InstructionsInternalNamesSet.add SB_32I
-  (InstructionsInternalNamesSet.add SH_32I
-  (InstructionsInternalNamesSet.add SW_32I
-  (InstructionsInternalNamesSet.add ADDI_32I
-  (InstructionsInternalNamesSet.add SLTI_32I
-  (InstructionsInternalNamesSet.add SLTIU_32I
-  (InstructionsInternalNamesSet.add XORI_32I
-  (InstructionsInternalNamesSet.add ORI_32I
-  (InstructionsInternalNamesSet.add ANDI_32I
-  (InstructionsInternalNamesSet.add SLLI_32I
-  (InstructionsInternalNamesSet.add SRLI_32I
-  (InstructionsInternalNamesSet.add SRAI_32I
-  (InstructionsInternalNamesSet.add ADD_32I
-  (InstructionsInternalNamesSet.add SUB_32I
-  (InstructionsInternalNamesSet.add SLL_32I
-  (InstructionsInternalNamesSet.add SLT_32I
-  (InstructionsInternalNamesSet.add SLTU_32I
-  (InstructionsInternalNamesSet.add XOR_32I
-  (InstructionsInternalNamesSet.add SRL_32I
-  (InstructionsInternalNamesSet.add SRA_32I
-  (InstructionsInternalNamesSet.add OR_32I
-  (InstructionsInternalNamesSet.add AND_32I
-  (InstructionsInternalNamesSet.add FENCE_32I
-  (InstructionsInternalNamesSet.add ECALL_32I
-  (InstructionsInternalNamesSet.add EBREAK_32I
+  (InstructionsInternalNamesSet.add (RV32I_instruction LUI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction AUIPC_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction JAL_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction JALR_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction BEQ_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction BNE_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction BLT_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction BGE_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction BLTU_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction BGEU_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction LB_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction LH_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction LW_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction LBU_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction LHU_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SB_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SH_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SW_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction ADDI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SLTI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SLTIU_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction XORI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction ORI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction ANDI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SLLI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SRLI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SRAI_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction ADD_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SUB_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SLL_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SLT_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SLTU_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction XOR_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SRL_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction SRA_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction OR_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction AND_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction FENCE_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction ECALL_32I)
+  (InstructionsInternalNamesSet.add (RV32I_instruction EBREAK_32I)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))))))))))))))))))))).
 
 Definition RV64I_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add LUI_64I
-  (InstructionsInternalNamesSet.add AUIPC_64I
-  (InstructionsInternalNamesSet.add JAL_64I
-  (InstructionsInternalNamesSet.add JALR_64I
-  (InstructionsInternalNamesSet.add BEQ_64I
-  (InstructionsInternalNamesSet.add BNE_64I
-  (InstructionsInternalNamesSet.add BLT_64I
-  (InstructionsInternalNamesSet.add BGE_64I
-  (InstructionsInternalNamesSet.add BLTU_64I
-  (InstructionsInternalNamesSet.add BGEU_64I
-  (InstructionsInternalNamesSet.add LB_64I
-  (InstructionsInternalNamesSet.add LH_64I
-  (InstructionsInternalNamesSet.add LW_64I
-  (InstructionsInternalNamesSet.add LBU_64I
-  (InstructionsInternalNamesSet.add LHU_64I
-  (InstructionsInternalNamesSet.add SB_64I
-  (InstructionsInternalNamesSet.add SH_64I
-  (InstructionsInternalNamesSet.add SW_64I
-  (InstructionsInternalNamesSet.add ADDI_64I
-  (InstructionsInternalNamesSet.add SLTI_64I
-  (InstructionsInternalNamesSet.add SLTIU_64I
-  (InstructionsInternalNamesSet.add XORI_64I
-  (InstructionsInternalNamesSet.add ORI_64I
-  (InstructionsInternalNamesSet.add ANDI_64I
-  (InstructionsInternalNamesSet.add SLLI_64I
-  (InstructionsInternalNamesSet.add SRLI_64I
-  (InstructionsInternalNamesSet.add SRAI_64I
-  (InstructionsInternalNamesSet.add ADD_64I
-  (InstructionsInternalNamesSet.add SUB_64I
-  (InstructionsInternalNamesSet.add SLL_64I
-  (InstructionsInternalNamesSet.add SLT_64I
-  (InstructionsInternalNamesSet.add SLTU_64I
-  (InstructionsInternalNamesSet.add XOR_64I
-  (InstructionsInternalNamesSet.add SRL_64I
-  (InstructionsInternalNamesSet.add SRA_64I
-  (InstructionsInternalNamesSet.add OR_64I
-  (InstructionsInternalNamesSet.add AND_64I
-  (InstructionsInternalNamesSet.add FENCE_64I
-  (InstructionsInternalNamesSet.add ECALL_64I
-  (InstructionsInternalNamesSet.add EBREAK_64I
-  (InstructionsInternalNamesSet.add LWU_64I
-  (InstructionsInternalNamesSet.add LD_64I
-  (InstructionsInternalNamesSet.add SD_64I
-  (InstructionsInternalNamesSet.add ADDIW_64I
-  (InstructionsInternalNamesSet.add SLLIW_64I
-  (InstructionsInternalNamesSet.add SRLIW_64I
-  (InstructionsInternalNamesSet.add SRAIW_64I
-  (InstructionsInternalNamesSet.add ADDW_64I
-  (InstructionsInternalNamesSet.add SUBW_64I
-  (InstructionsInternalNamesSet.add SLLW_64I
-  (InstructionsInternalNamesSet.add SRLW_64I
-  (InstructionsInternalNamesSet.add SRAW_64I
+  (InstructionsInternalNamesSet.add (RV64I_instruction LUI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction AUIPC_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction JAL_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction JALR_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction BEQ_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction BNE_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction BLT_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction BGE_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction BLTU_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction BGEU_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction LB_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction LH_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction LW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction LBU_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction LHU_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SB_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SH_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction ADDI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLTI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLTIU_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction XORI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction ORI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction ANDI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLLI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRLI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRAI_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction ADD_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SUB_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLL_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLT_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLTU_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction XOR_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRL_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRA_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction OR_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction AND_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction FENCE_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction ECALL_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction EBREAK_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction LWU_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction LD_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SD_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction ADDIW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLLIW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRLIW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRAIW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction ADDW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SUBW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SLLW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRLW_64I)
+  (InstructionsInternalNamesSet.add (RV64I_instruction SRAW_64I)
   InstructionsInternalNamesSet.empty
   )))))))))))))))))))))))))))))))))))))))))))))))))))).
 
 Definition RV32Zifencei_instruction_internal_names
   : InstructionsInternalNamesSet.t :=
-  InstructionsInternalNamesSet.add
-    FENCE_I_32Zifencei (InstructionsInternalNamesSet.empty).
+  InstructionsInternalNamesSet.add (RV32Zifencei_instruction FENCE_I_32Zifencei)
+  (InstructionsInternalNamesSet.empty).
 
 Definition RV64Zifencei_instruction_internal_names
   : InstructionsInternalNamesSet.t :=
-  InstructionsInternalNamesSet.add
-    FENCE_I_64Zifencei (InstructionsInternalNamesSet.empty).
+  InstructionsInternalNamesSet.add (RV64Zifencei_instruction FENCE_I_64Zifencei)
+    (InstructionsInternalNamesSet.empty).
 
 Definition RV32Zicsr_instruction_internal_names
   : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add CSRRW_32Zicsr
-  (InstructionsInternalNamesSet.add CSRRS_32Zicsr
-  (InstructionsInternalNamesSet.add CSRRC_32Zicsr
-  (InstructionsInternalNamesSet.add CSRRWI_32Zicsr
-  (InstructionsInternalNamesSet.add CSRRSI_32Zicsr
-  (InstructionsInternalNamesSet.add CSRRCI_32Zicsr
+  (InstructionsInternalNamesSet.add (RV32Zicsr_instruction CSRRW_32Zicsr)
+  (InstructionsInternalNamesSet.add (RV32Zicsr_instruction CSRRS_32Zicsr)
+  (InstructionsInternalNamesSet.add (RV32Zicsr_instruction CSRRC_32Zicsr)
+  (InstructionsInternalNamesSet.add (RV32Zicsr_instruction CSRRWI_32Zicsr)
+  (InstructionsInternalNamesSet.add (RV32Zicsr_instruction CSRRSI_32Zicsr)
+  (InstructionsInternalNamesSet.add (RV32Zicsr_instruction CSRRCI_32Zicsr)
   InstructionsInternalNamesSet.empty)))))).
 
 Definition RV64Zicsr_instruction_internal_names
   : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add CSRRW_64Zicsr
-  (InstructionsInternalNamesSet.add CSRRS_64Zicsr
-  (InstructionsInternalNamesSet.add CSRRC_64Zicsr
-  (InstructionsInternalNamesSet.add CSRRWI_64Zicsr
-  (InstructionsInternalNamesSet.add CSRRSI_64Zicsr
-  (InstructionsInternalNamesSet.add CSRRCI_64Zicsr
+  (InstructionsInternalNamesSet.add (RV64Zicsr_instruction CSRRW_64Zicsr)
+  (InstructionsInternalNamesSet.add (RV64Zicsr_instruction CSRRS_64Zicsr)
+  (InstructionsInternalNamesSet.add (RV64Zicsr_instruction CSRRC_64Zicsr)
+  (InstructionsInternalNamesSet.add (RV64Zicsr_instruction CSRRWI_64Zicsr)
+  (InstructionsInternalNamesSet.add (RV64Zicsr_instruction CSRRSI_64Zicsr)
+  (InstructionsInternalNamesSet.add (RV64Zicsr_instruction CSRRCI_64Zicsr)
   InstructionsInternalNamesSet.empty)))))).
 
 Definition RV32M_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add MUL_32M
-  (InstructionsInternalNamesSet.add MULH_32M
-  (InstructionsInternalNamesSet.add MULHSU_32M
-  (InstructionsInternalNamesSet.add MULHU_32M
-  (InstructionsInternalNamesSet.add DIV_32M
-  (InstructionsInternalNamesSet.add DIVU_32M
-  (InstructionsInternalNamesSet.add REM_32M
-  (InstructionsInternalNamesSet.add REMU_32M
+  (InstructionsInternalNamesSet.add (RV32M_instruction MUL_32M)
+  (InstructionsInternalNamesSet.add (RV32M_instruction MULH_32M)
+  (InstructionsInternalNamesSet.add (RV32M_instruction MULHSU_32M)
+  (InstructionsInternalNamesSet.add (RV32M_instruction MULHU_32M)
+  (InstructionsInternalNamesSet.add (RV32M_instruction DIV_32M)
+  (InstructionsInternalNamesSet.add (RV32M_instruction DIVU_32M)
+  (InstructionsInternalNamesSet.add (RV32M_instruction REM_32M)
+  (InstructionsInternalNamesSet.add (RV32M_instruction REMU_32M)
   InstructionsInternalNamesSet.empty)))))))).
 
 Definition RV64M_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add MUL_64M
-  (InstructionsInternalNamesSet.add MULH_64M
-  (InstructionsInternalNamesSet.add MULHSU_64M
-  (InstructionsInternalNamesSet.add MULHU_64M
-  (InstructionsInternalNamesSet.add DIV_64M
-  (InstructionsInternalNamesSet.add DIVU_64M
-  (InstructionsInternalNamesSet.add REM_64M
-  (InstructionsInternalNamesSet.add REMU_64M
-  (InstructionsInternalNamesSet.add MULW_64M
-  (InstructionsInternalNamesSet.add DIVW_64M
-  (InstructionsInternalNamesSet.add DIVUW_64M
-  (InstructionsInternalNamesSet.add REMW_64M
-  (InstructionsInternalNamesSet.add REMUW_64M
+  (InstructionsInternalNamesSet.add (RV64M_instruction MUL_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction MULH_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction MULHSU_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction MULHU_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction DIV_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction DIVU_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction REM_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction REMU_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction MULW_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction DIVW_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction DIVUW_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction REMW_64M)
+  (InstructionsInternalNamesSet.add (RV64M_instruction REMUW_64M)
   InstructionsInternalNamesSet.empty))))))))))))).
 
 Definition RV32A_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add LR_W_32A
-  (InstructionsInternalNamesSet.add SC_W_32A
-  (InstructionsInternalNamesSet.add AMOSWAP_W_32A
-  (InstructionsInternalNamesSet.add AMOADD_W_32A
-  (InstructionsInternalNamesSet.add AMOXOR_W_32A
-  (InstructionsInternalNamesSet.add AMOAND_W_32A
-  (InstructionsInternalNamesSet.add AMOOR_W_32A
-  (InstructionsInternalNamesSet.add AMOMIN_W_32A
-  (InstructionsInternalNamesSet.add AMOMAX_W_32A
-  (InstructionsInternalNamesSet.add AMOMINU_W_32A
-  (InstructionsInternalNamesSet.add AMOMAXU_W_32A
+  (InstructionsInternalNamesSet.add (RV32A_instruction LR_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction SC_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOSWAP_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOADD_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOXOR_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOAND_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOOR_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOMIN_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOMAX_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOMINU_W_32A)
+  (InstructionsInternalNamesSet.add (RV32A_instruction AMOMAXU_W_32A)
   InstructionsInternalNamesSet.empty))))))))))).
 
 Definition RV64A_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add LR_W_64A
-  (InstructionsInternalNamesSet.add SC_W_64A
-  (InstructionsInternalNamesSet.add AMOSWAP_W_64A
-  (InstructionsInternalNamesSet.add AMOADD_W_64A
-  (InstructionsInternalNamesSet.add AMOXOR_W_64A
-  (InstructionsInternalNamesSet.add AMOAND_W_64A
-  (InstructionsInternalNamesSet.add AMOOR_W_64A
-  (InstructionsInternalNamesSet.add AMOMIN_W_64A
-  (InstructionsInternalNamesSet.add AMOMAX_W_64A
-  (InstructionsInternalNamesSet.add AMOMINU_W_64A
-  (InstructionsInternalNamesSet.add AMOMAXU_W_64A
-  (InstructionsInternalNamesSet.add LR_D_64A
-  (InstructionsInternalNamesSet.add SC_D_64A
-  (InstructionsInternalNamesSet.add AMOSWAP_D_64A
-  (InstructionsInternalNamesSet.add AMOADD_D_64A
-  (InstructionsInternalNamesSet.add AMOXOR_D_64A
-  (InstructionsInternalNamesSet.add AMOAND_D_64A
-  (InstructionsInternalNamesSet.add AMOOR_D_64A
-  (InstructionsInternalNamesSet.add AMOMIN_D_64A
-  (InstructionsInternalNamesSet.add AMOMAX_D_64A
-  (InstructionsInternalNamesSet.add AMOMINU_D_64A
-  (InstructionsInternalNamesSet.add AMOMAXU_D_64A
+  (InstructionsInternalNamesSet.add (RV64A_instruction LR_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction SC_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOSWAP_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOADD_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOXOR_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOAND_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOOR_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMIN_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMAX_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMINU_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMAXU_W_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction LR_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction SC_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOSWAP_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOADD_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOXOR_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOAND_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOOR_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMIN_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMAX_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMINU_D_64A)
+  (InstructionsInternalNamesSet.add (RV64A_instruction AMOMAXU_D_64A)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))).
 
 Definition RV32F_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add FLW_32F
-  (InstructionsInternalNamesSet.add FSW_32F
-  (InstructionsInternalNamesSet.add FMADD_S_32F
-  (InstructionsInternalNamesSet.add FMSUB_S_32F
-  (InstructionsInternalNamesSet.add FNMSUB_S_32F
-  (InstructionsInternalNamesSet.add FNMADD_S_32F
-  (InstructionsInternalNamesSet.add FADD_S_32F
-  (InstructionsInternalNamesSet.add FSUB_S_32F
-  (InstructionsInternalNamesSet.add FMUL_S_32F
-  (InstructionsInternalNamesSet.add FDIV_S_32F
-  (InstructionsInternalNamesSet.add FSQRT_S_32F
-  (InstructionsInternalNamesSet.add FSGNJ_S_32F
-  (InstructionsInternalNamesSet.add FSGNJN_S_32F
-  (InstructionsInternalNamesSet.add FSGNJX_S_32F
-  (InstructionsInternalNamesSet.add FMIN_S_32F
-  (InstructionsInternalNamesSet.add FMAX_S_32F
-  (InstructionsInternalNamesSet.add FCVT_W_S_32F
-  (InstructionsInternalNamesSet.add FCVT_WU_S_32F
-  (InstructionsInternalNamesSet.add FMV_X_W_32F
-  (InstructionsInternalNamesSet.add FEQ_S_32F
-  (InstructionsInternalNamesSet.add FLT_S_32F
-  (InstructionsInternalNamesSet.add FLE_S_32F
-  (InstructionsInternalNamesSet.add FCLASS_S_32F
-  (InstructionsInternalNamesSet.add FCVT_S_W_32F
-  (InstructionsInternalNamesSet.add FCVT_S_WU_32F
-  (InstructionsInternalNamesSet.add FMV_W_X_32F
+  (InstructionsInternalNamesSet.add (RV32F_instruction FLW_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FSW_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FMADD_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FMSUB_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FNMSUB_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FNMADD_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FADD_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FSUB_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FMUL_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FDIV_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FSQRT_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FSGNJ_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FSGNJN_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FSGNJX_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FMIN_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FMAX_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FCVT_W_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FCVT_WU_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FMV_X_W_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FEQ_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FLT_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FLE_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FCLASS_S_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FCVT_S_W_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FCVT_S_WU_32F)
+  (InstructionsInternalNamesSet.add (RV32F_instruction FMV_W_X_32F)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))))))).
 
 Definition RV64F_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add FLW_64F
-  (InstructionsInternalNamesSet.add FSW_64F
-  (InstructionsInternalNamesSet.add FMADD_S_64F
-  (InstructionsInternalNamesSet.add FMSUB_S_64F
-  (InstructionsInternalNamesSet.add FNMSUB_S_64F
-  (InstructionsInternalNamesSet.add FNMADD_S_64F
-  (InstructionsInternalNamesSet.add FADD_S_64F
-  (InstructionsInternalNamesSet.add FSUB_S_64F
-  (InstructionsInternalNamesSet.add FMUL_S_64F
-  (InstructionsInternalNamesSet.add FDIV_S_64F
-  (InstructionsInternalNamesSet.add FSQRT_S_64F
-  (InstructionsInternalNamesSet.add FSGNJ_S_64F
-  (InstructionsInternalNamesSet.add FSGNJN_S_64F
-  (InstructionsInternalNamesSet.add FSGNJX_S_64F
-  (InstructionsInternalNamesSet.add FMIN_S_64F
-  (InstructionsInternalNamesSet.add FMAX_S_64F
-  (InstructionsInternalNamesSet.add FCVT_W_S_64F
-  (InstructionsInternalNamesSet.add FCVT_WU_S_64F
-  (InstructionsInternalNamesSet.add FMV_X_W_64F
-  (InstructionsInternalNamesSet.add FEQ_S_64F
-  (InstructionsInternalNamesSet.add FLT_S_64F
-  (InstructionsInternalNamesSet.add FLE_S_64F
-  (InstructionsInternalNamesSet.add FCLASS_S_64F
-  (InstructionsInternalNamesSet.add FCVT_S_W_64F
-  (InstructionsInternalNamesSet.add FCVT_S_WU_64F
-  (InstructionsInternalNamesSet.add FMV_W_X_64F
-  (InstructionsInternalNamesSet.add FCVT_L_S_64F
-  (InstructionsInternalNamesSet.add FCVT_LU_S_64F
-  (InstructionsInternalNamesSet.add FCVT_S_L_64F
-  (InstructionsInternalNamesSet.add FCVT_S_LU_64F
+  (InstructionsInternalNamesSet.add (RV64F_instruction FLW_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FSW_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FMADD_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FMSUB_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FNMSUB_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FNMADD_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FADD_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FSUB_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FMUL_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FDIV_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FSQRT_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FSGNJ_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FSGNJN_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FSGNJX_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FMIN_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FMAX_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_W_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_WU_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FMV_X_W_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FEQ_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FLT_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FLE_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCLASS_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_S_W_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_S_WU_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FMV_W_X_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_L_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_LU_S_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_S_L_64F)
+  (InstructionsInternalNamesSet.add (RV64F_instruction FCVT_S_LU_64F)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))))))))))).
 
 Definition RV32D_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add FLD_32D
-  (InstructionsInternalNamesSet.add FSD_32D
-  (InstructionsInternalNamesSet.add FMADD_D_32D
-  (InstructionsInternalNamesSet.add FMSUB_D_32D
-  (InstructionsInternalNamesSet.add FNMSUB_D_32D
-  (InstructionsInternalNamesSet.add FNMADD_D_32D
-  (InstructionsInternalNamesSet.add FADD_D_32D
-  (InstructionsInternalNamesSet.add FSUB_D_32D
-  (InstructionsInternalNamesSet.add FMUL_D_32D
-  (InstructionsInternalNamesSet.add FDIV_D_32D
-  (InstructionsInternalNamesSet.add FSQRT_D_32D
-  (InstructionsInternalNamesSet.add FSGNJ_D_32D
-  (InstructionsInternalNamesSet.add FSGNJN_D_32D
-  (InstructionsInternalNamesSet.add FSGNJX_D_32D
-  (InstructionsInternalNamesSet.add FMIN_D_32D
-  (InstructionsInternalNamesSet.add FMAX_D_32D
-  (InstructionsInternalNamesSet.add FCVT_S_D_32D
-  (InstructionsInternalNamesSet.add FCVT_D_S_32D
-  (InstructionsInternalNamesSet.add FEQ_D_32D
-  (InstructionsInternalNamesSet.add FLT_D_32D
-  (InstructionsInternalNamesSet.add FLE_D_32D
-  (InstructionsInternalNamesSet.add FCLASS_D_32D
-  (InstructionsInternalNamesSet.add FCVT_W_D_32D
-  (InstructionsInternalNamesSet.add FCVT_WU_D_32D
-  (InstructionsInternalNamesSet.add FCVT_D_W_32D
-  (InstructionsInternalNamesSet.add FCVT_D_WU_32D
+  (InstructionsInternalNamesSet.add (RV32D_instruction FLD_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FSD_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FMADD_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FMSUB_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FNMSUB_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FNMADD_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FADD_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FSUB_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FMUL_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FDIV_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FSQRT_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FSGNJ_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FSGNJN_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FSGNJX_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FMIN_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FMAX_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FCVT_S_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FCVT_D_S_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FEQ_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FLT_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FLE_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FCLASS_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FCVT_W_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FCVT_WU_D_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FCVT_D_W_32D)
+  (InstructionsInternalNamesSet.add (RV32D_instruction FCVT_D_WU_32D)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))))))).
 
 Definition RV64D_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add FLD_64D
-  (InstructionsInternalNamesSet.add FSD_64D
-  (InstructionsInternalNamesSet.add FMADD_D_64D
-  (InstructionsInternalNamesSet.add FMSUB_D_64D
-  (InstructionsInternalNamesSet.add FNMSUB_D_64D
-  (InstructionsInternalNamesSet.add FNMADD_D_64D
-  (InstructionsInternalNamesSet.add FADD_D_64D
-  (InstructionsInternalNamesSet.add FSUB_D_64D
-  (InstructionsInternalNamesSet.add FMUL_D_64D
-  (InstructionsInternalNamesSet.add FDIV_D_64D
-  (InstructionsInternalNamesSet.add FSQRT_D_64D
-  (InstructionsInternalNamesSet.add FSGNJ_D_64D
-  (InstructionsInternalNamesSet.add FSGNJN_D_64D
-  (InstructionsInternalNamesSet.add FSGNJX_D_64D
-  (InstructionsInternalNamesSet.add FMIN_D_64D
-  (InstructionsInternalNamesSet.add FMAX_D_64D
-  (InstructionsInternalNamesSet.add FCVT_S_D_64D
-  (InstructionsInternalNamesSet.add FCVT_D_S_64D
-  (InstructionsInternalNamesSet.add FEQ_D_64D
-  (InstructionsInternalNamesSet.add FLT_D_64D
-  (InstructionsInternalNamesSet.add FLE_D_64D
-  (InstructionsInternalNamesSet.add FCLASS_D_64D
-  (InstructionsInternalNamesSet.add FCVT_W_D_64D
-  (InstructionsInternalNamesSet.add FCVT_WU_D_64D
-  (InstructionsInternalNamesSet.add FCVT_D_W_64D
-  (InstructionsInternalNamesSet.add FCVT_D_WU_64D
-  (InstructionsInternalNamesSet.add FCVT_L_D_64D
-  (InstructionsInternalNamesSet.add FCVT_LU_D_64D
-  (InstructionsInternalNamesSet.add FMV_X_D_64D
-  (InstructionsInternalNamesSet.add FCVT_D_L_64D
-  (InstructionsInternalNamesSet.add FCVT_D_LU_64D
-  (InstructionsInternalNamesSet.add FMV_D_X_64D
+  (InstructionsInternalNamesSet.add (RV64D_instruction FLD_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FSD_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FMADD_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FMSUB_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FNMSUB_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FNMADD_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FADD_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FSUB_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FMUL_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FDIV_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FSQRT_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FSGNJ_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FSGNJN_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FSGNJX_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FMIN_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FMAX_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_S_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_D_S_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FEQ_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FLT_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FLE_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCLASS_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_W_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_WU_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_D_W_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_D_WU_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_L_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_LU_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FMV_X_D_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_D_L_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FCVT_D_LU_64D)
+  (InstructionsInternalNamesSet.add (RV64D_instruction FMV_D_X_64D)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))))))))))))).
 
 Definition RV32Q_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add FLQ_32Q
-  (InstructionsInternalNamesSet.add FSQ_32Q
-  (InstructionsInternalNamesSet.add FMADD_Q_32Q
-  (InstructionsInternalNamesSet.add FMSUB_Q_32Q
-  (InstructionsInternalNamesSet.add FNMSUB_Q_32Q
-  (InstructionsInternalNamesSet.add FNMADD_Q_32Q
-  (InstructionsInternalNamesSet.add FADD_Q_32Q
-  (InstructionsInternalNamesSet.add FSUB_Q_32Q
-  (InstructionsInternalNamesSet.add FMUL_Q_32Q
-  (InstructionsInternalNamesSet.add FDIV_Q_32Q
-  (InstructionsInternalNamesSet.add FSQRT_Q_32Q
-  (InstructionsInternalNamesSet.add FSGNJ_Q_32Q
-  (InstructionsInternalNamesSet.add FSGNJN_Q_32Q
-  (InstructionsInternalNamesSet.add FSGNJX_Q_32Q
-  (InstructionsInternalNamesSet.add FMIN_Q_32Q
-  (InstructionsInternalNamesSet.add FMAX_Q_32Q
-  (InstructionsInternalNamesSet.add FCVT_S_Q_32Q
-  (InstructionsInternalNamesSet.add FCVT_Q_S_32Q
-  (InstructionsInternalNamesSet.add FCVT_D_Q_32Q
-  (InstructionsInternalNamesSet.add FCVT_Q_D_32Q
-  (InstructionsInternalNamesSet.add FEQ_Q_32Q
-  (InstructionsInternalNamesSet.add FLT_Q_32Q
-  (InstructionsInternalNamesSet.add FLE_Q_32Q
-  (InstructionsInternalNamesSet.add FCLASS_Q_32Q
-  (InstructionsInternalNamesSet.add FCVT_W_Q_32Q
-  (InstructionsInternalNamesSet.add FCVT_WU_Q_32Q
-  (InstructionsInternalNamesSet.add FCVT_Q_W_32Q
-  (InstructionsInternalNamesSet.add FCVT_Q_WU_32Q
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FLQ_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FSQ_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FMADD_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FMSUB_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FNMSUB_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FNMADD_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FADD_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FSUB_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FMUL_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FDIV_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FSQRT_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FSGNJ_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FSGNJN_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FSGNJX_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FMIN_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FMAX_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_S_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_Q_S_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_D_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_Q_D_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FEQ_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FLT_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FLE_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCLASS_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_W_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_WU_Q_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_Q_W_32Q)
+  (InstructionsInternalNamesSet.add (RV32Q_instruction FCVT_Q_WU_32Q)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))))))))).
 
 Definition RV64Q_instruction_internal_names : InstructionsInternalNamesSet.t :=
-  (InstructionsInternalNamesSet.add FLQ_64Q
-  (InstructionsInternalNamesSet.add FSQ_64Q
-  (InstructionsInternalNamesSet.add FMADD_Q_64Q
-  (InstructionsInternalNamesSet.add FMSUB_Q_64Q
-  (InstructionsInternalNamesSet.add FNMSUB_Q_64Q
-  (InstructionsInternalNamesSet.add FNMADD_Q_64Q
-  (InstructionsInternalNamesSet.add FADD_Q_64Q
-  (InstructionsInternalNamesSet.add FSUB_Q_64Q
-  (InstructionsInternalNamesSet.add FMUL_Q_64Q
-  (InstructionsInternalNamesSet.add FDIV_Q_64Q
-  (InstructionsInternalNamesSet.add FSQRT_Q_64Q
-  (InstructionsInternalNamesSet.add FSGNJ_Q_64Q
-  (InstructionsInternalNamesSet.add FSGNJN_Q_64Q
-  (InstructionsInternalNamesSet.add FSGNJX_Q_64Q
-  (InstructionsInternalNamesSet.add FMIN_Q_64Q
-  (InstructionsInternalNamesSet.add FMAX_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_S_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_Q_S_64Q
-  (InstructionsInternalNamesSet.add FCVT_D_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_Q_D_64Q
-  (InstructionsInternalNamesSet.add FEQ_Q_64Q
-  (InstructionsInternalNamesSet.add FLT_Q_64Q
-  (InstructionsInternalNamesSet.add FLE_Q_64Q
-  (InstructionsInternalNamesSet.add FCLASS_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_W_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_WU_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_Q_W_64Q
-  (InstructionsInternalNamesSet.add FCVT_Q_WU_64Q
-  (InstructionsInternalNamesSet.add FCVT_L_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_LU_Q_64Q
-  (InstructionsInternalNamesSet.add FCVT_Q_L_64Q
-  (InstructionsInternalNamesSet.add FCVT_Q_LU_64Q
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FLQ_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FSQ_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FMADD_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FMSUB_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FNMSUB_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FNMADD_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FADD_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FSUB_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FMUL_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FDIV_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FSQRT_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FSGNJ_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FSGNJN_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FSGNJX_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FMIN_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FMAX_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_S_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_Q_S_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_D_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_Q_D_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FEQ_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FLT_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FLE_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCLASS_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_W_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_WU_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_Q_W_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_Q_WU_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_L_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_LU_Q_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_Q_L_64Q)
+  (InstructionsInternalNamesSet.add (RV64Q_instruction FCVT_Q_LU_64Q)
   InstructionsInternalNamesSet.empty)))))))))))))))))))))))))))))))).
 
 Inductive instruction_type_name : Type :=
@@ -949,166 +953,305 @@ Inductive opcode_name : Type :=
 | opcode_LOAD_FP
 | opcode_STORE_FP.
 
-(* Definition opcode_OP        := Ob~0~1~1~0~0~1~1. *)
-(* Definition opcode_JALR      := Ob~1~1~0~0~1~1~1. *)
-(* Definition opcode_LOAD      := Ob~0~0~0~0~0~1~1. *)
-(* Definition opcode_OP_IMM    := Ob~0~0~1~0~0~1~1. *)
-(* Definition opcode_MISC_MEM  := Ob~0~0~0~1~1~1~1. *)
-(* Definition opcode_STORE     := Ob~0~1~0~0~0~1~1. *)
-(* Definition opcode_BRANCH    := Ob~1~1~0~0~0~1~1. *)
-(* Definition opcode_LUI       := Ob~0~1~1~0~1~1~1. *)
-(* Definition opcode_AUIPC     := Ob~0~0~1~0~1~1~1. *)
-(* Definition opcode_JAL       := Ob~1~1~0~1~1~1~1. *)
-(* Definition opcode_SYSTEM    := Ob~1~1~1~0~0~1~1. *)
-(* Definition opcode_OP_32     := Ob~0~1~1~1~0~1~1. *)
-(* Definition opcode_OP_IMM_32 := Ob~0~0~1~1~0~1~1. *)
-(* Definition opcode_AMO       := Ob~0~1~0~1~1~1~1. *)
-(* Definition opcode_OP_FP     := Ob~1~0~1~0~0~1~1. *)
-(* Definition opcode_MADD      := Ob~1~0~0~0~0~1~1. *)
-(* Definition opcode_MSUB      := Ob~1~0~0~0~1~1~1. *)
-(* Definition opcode_NMSUB     := Ob~1~0~0~1~0~1~1. *)
-(* Definition opcode_NMADD     := Ob~1~0~0~1~1~1~1. *)
-(* Definition opcode_LOAD_FP   := Ob~0~0~0~0~1~1~1. *)
-(* Definition opcode_STORE_FP  := Ob~0~1~0~0~1~1~1. *)
+Definition opcode_bin (o : opcode_name) :=
+match o with
+| opcode_OP        => Ob~0~1~1~0~0~1~1
+| opcode_JALR      => Ob~1~1~0~0~1~1~1
+| opcode_LOAD      => Ob~0~0~0~0~0~1~1
+| opcode_OP_IMM    => Ob~0~0~1~0~0~1~1
+| opcode_MISC_MEM  => Ob~0~0~0~1~1~1~1
+| opcode_STORE     => Ob~0~1~0~0~0~1~1
+| opcode_BRANCH    => Ob~1~1~0~0~0~1~1
+| opcode_LUI       => Ob~0~1~1~0~1~1~1
+| opcode_AUIPC     => Ob~0~0~1~0~1~1~1
+| opcode_JAL       => Ob~1~1~0~1~1~1~1
+| opcode_SYSTEM    => Ob~1~1~1~0~0~1~1
+| opcode_OP_32     => Ob~0~1~1~1~0~1~1
+| opcode_OP_IMM_32 => Ob~0~0~1~1~0~1~1
+| opcode_AMO       => Ob~0~1~0~1~1~1~1
+| opcode_OP_FP     => Ob~1~0~1~0~0~1~1
+| opcode_MADD      => Ob~1~0~0~0~0~1~1
+| opcode_MSUB      => Ob~1~0~0~0~1~1~1
+| opcode_NMSUB     => Ob~1~0~0~1~0~1~1
+| opcode_NMADD     => Ob~1~0~0~1~1~1~1
+| opcode_LOAD_FP   => Ob~0~0~0~0~1~1~1
+| opcode_STORE_FP  => Ob~0~1~0~0~1~1~1
+end.
 
-(* Definition funct3_ADD      := Ob~0~0~0. *)
-(* Definition funct3_SUB      := Ob~0~0~0. *)
-(* Definition funct3_SLL      := Ob~0~0~1. *)
-(* Definition funct3_SLT      := Ob~0~1~0. *)
-(* Definition funct3_SLTU     := Ob~0~1~1. *)
-(* Definition funct3_XOR      := Ob~1~0~0. *)
-(* Definition funct3_SRL      := Ob~1~0~1. *)
-(* Definition funct3_SRA      := Ob~1~0~1. *)
-(* Definition funct3_OR       := Ob~1~1~0. *)
-(* Definition funct3_AND      := Ob~1~1~1. *)
-(* Definition funct3_LB       := Ob~0~0~0. *)
-(* Definition funct3_LH       := Ob~0~0~1. *)
-(* Definition funct3_LW       := Ob~0~1~0. *)
-(* Definition funct3_LBU      := Ob~1~0~0. *)
-(* Definition funct3_LHU      := Ob~1~0~1. *)
-(* Definition funct3_SLTI     := Ob~0~1~0. *)
-(* Definition funct3_SLTIU    := Ob~0~1~1. *)
-(* Definition funct3_ADDI     := Ob~0~0~0. *)
-(* Definition funct3_XORI     := Ob~1~0~0. *)
-(* Definition funct3_ORI      := Ob~1~1~0. *)
-(* Definition funct3_ANDI     := Ob~1~1~1. *)
-(* Definition funct3_SLLI     := Ob~0~0~1. *)
-(* Definition funct3_SRLI     := Ob~1~0~1. *)
-(* Definition funct3_SRAI     := Ob~1~0~1. *)
-(* Definition funct3_FENCE    := Ob~0~0~0. *)
-(* Definition funct3_SB       := Ob~0~0~0. *)
-(* Definition funct3_SH       := Ob~0~0~1. *)
-(* Definition funct3_SW       := Ob~0~1~0. *)
-(* Definition funct3_BEQ      := Ob~0~0~0. *)
-(* Definition funct3_BNE      := Ob~0~0~1. *)
-(* Definition funct3_BLT      := Ob~1~0~0. *)
-(* Definition funct3_BGE      := Ob~1~0~1. *)
-(* Definition funct3_BLTU     := Ob~1~1~0. *)
-(* Definition funct3_BGEU     := Ob~1~1~1. *)
-(* Definition funct3_PRIV     := Ob~0~0~0. *)
-(* Definition funct3_ADDW     := Ob~0~0~0. *)
-(* Definition funct3_SUBW     := Ob~0~0~0. *)
-(* Definition funct3_SLLW     := Ob~0~0~1. *)
-(* Definition funct3_SRLW     := Ob~1~0~1. *)
-(* Definition funct3_SRAW     := Ob~1~0~1. *)
-(* Definition funct3_LWU      := Ob~1~1~0. *)
-(* Definition funct3_LD       := Ob~0~1~1. *)
-(* Definition funct3_ADDIW    := Ob~0~0~0. *)
-(* Definition funct3_SLLIW    := Ob~0~0~1. *)
-(* Definition funct3_SRLIW    := Ob~1~0~1. *)
-(* Definition funct3_SRAIW    := Ob~1~0~1. *)
-(* Definition funct3_SD       := Ob~0~1~1. *)
-(* Definition funct3_FENCE_I  := Ob~0~0~1. *)
-(* Definition funct3_CSRRW    := Ob~0~0~1. *)
-(* Definition funct3_CSRRS    := Ob~0~1~0. *)
-(* Definition funct3_CSRRC    := Ob~0~1~1. *)
-(* Definition funct3_CSRRWI   := Ob~1~0~1. *)
-(* Definition funct3_CSRRSI   := Ob~1~1~0. *)
-(* Definition funct3_CSRRCI   := Ob~1~1~1. *)
-(* Definition funct3_MUL      := Ob~0~0~0. *)
-(* Definition funct3_MULH     := Ob~0~0~1. *)
-(* Definition funct3_MULHSU   := Ob~0~1~0. *)
-(* Definition funct3_MULHU    := Ob~0~1~1. *)
-(* Definition funct3_DIV      := Ob~1~0~0. *)
-(* Definition funct3_DIVU     := Ob~1~0~1. *)
-(* Definition funct3_REM      := Ob~1~1~0. *)
-(* Definition funct3_REMU     := Ob~1~1~1. *)
-(* Definition funct3_MULW     := Ob~0~0~0. *)
-(* Definition funct3_DIVW     := Ob~1~0~0. *)
-(* Definition funct3_DIVUW    := Ob~1~0~1. *)
-(* Definition funct3_REMW     := Ob~1~1~0. *)
-(* Definition funct3_REMUW    := Ob~1~1~1. *)
-(* Definition funct3_AMOW     := Ob~0~1~0. *)
-(* Definition funct3_AMOD     := Ob~0~1~1. *)
-(* Definition funct3_FSGNJ_S  := Ob~0~0~0. *)
-(* Definition funct3_FSGNJN_S := Ob~0~0~1. *)
-(* Definition funct3_FSGNJX_S := Ob~0~1~0. *)
-(* Definition funct3_FMIN_S   := Ob~0~0~0. *)
-(* Definition funct3_FMAX_S   := Ob~0~0~1. *)
-(* Definition funct3_FMV_X_W  := Ob~0~0~0. *)
-(* Definition funct3_FEQ_S    := Ob~0~1~0. *)
-(* Definition funct3_FLT_S    := Ob~0~0~1. *)
-(* Definition funct3_FLE_S    := Ob~0~0~0. *)
-(* Definition funct3_FCLASS_S := Ob~0~0~1. *)
-(* Definition funct3_FLW      := Ob~0~1~0. *)
-(* Definition funct3_FSW      := Ob~0~1~0. *)
+Inductive funct3_name : Type :=
+| funct3_ADD
+| funct3_SUB
+| funct3_SLL
+| funct3_SLT
+| funct3_SLTU
+| funct3_XOR
+| funct3_SRL
+| funct3_SRA
+| funct3_OR
+| funct3_AND
+| funct3_LB
+| funct3_LH
+| funct3_LW
+| funct3_LBU
+| funct3_LHU
+| funct3_SLTI
+| funct3_SLTIU
+| funct3_ADDI
+| funct3_XORI
+| funct3_ORI
+| funct3_ANDI
+| funct3_SLLI
+| funct3_SRLI
+| funct3_SRAI
+| funct3_FENCE
+| funct3_SB
+| funct3_SH
+| funct3_SW
+| funct3_BEQ
+| funct3_BNE
+| funct3_BLT
+| funct3_BGE
+| funct3_BLTU
+| funct3_BGEU
+| funct3_PRIV
+| funct3_ADDW
+| funct3_SUBW
+| funct3_SLLW
+| funct3_SRLW
+| funct3_SRAW
+| funct3_LWU
+| funct3_LD
+| funct3_ADDIW
+| funct3_SLLIW
+| funct3_SRLIW
+| funct3_SRAIW
+| funct3_SD
+| funct3_FENCE_I
+| funct3_CSRRW
+| funct3_CSRRS
+| funct3_CSRRC
+| funct3_CSRRWI
+| funct3_CSRRSI
+| funct3_CSRRCI
+| funct3_MUL
+| funct3_MULH
+| funct3_MULHSU
+| funct3_MULHU
+| funct3_DIV
+| funct3_DIVU
+| funct3_REM
+| funct3_REMU
+| funct3_MULW
+| funct3_DIVW
+| funct3_DIVUW
+| funct3_REMW
+| funct3_REMUW
+| funct3_AMOW
+| funct3_AMOD
+| funct3_FSGNJ_S
+| funct3_FSGNJN_S
+| funct3_FSGNJX_S
+| funct3_FMIN_S
+| funct3_FMAX_S
+| funct3_FMV_X_W
+| funct3_FEQ_S
+| funct3_FLT_S
+| funct3_FLE_S
+| funct3_FCLASS_S
+| funct3_FLW
+| funct3_FSW.
 
-(* Definition funct7_ADD        := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SUB        := Ob~0~1~0~0~0~0~0. *)
-(* Definition funct7_SLL        := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SLT        := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SLTU       := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_XOR        := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SRL        := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SRA        := Ob~0~1~0~0~0~0~0. *)
-(* Definition funct7_OR         := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_AND        := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_ADDW       := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SUBW       := Ob~0~1~0~0~0~0~0. *)
-(* Definition funct7_SLLW       := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SRLW       := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SRAW       := Ob~0~1~0~0~0~0~0. *)
-(* Definition funct7_SLLIW      := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SRLIW      := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_SRAIW      := Ob~0~1~0~0~0~0~0. *)
-(* Definition funct7_MUL        := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_MULH       := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_MULHSU     := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_MULHU      := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_DIV        := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_DIVU       := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_REM        := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_REMU       := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_MULW       := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_DIVW       := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_DIVUW      := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_REMW       := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_REMUW      := Ob~0~0~0~0~0~0~1. *)
-(* Definition funct7_FADD_S     := Ob~0~0~0~0~0~0~0. *)
-(* Definition funct7_FSUB_S     := Ob~0~0~0~0~1~0~0. *)
-(* Definition funct7_FMUL_S     := Ob~0~0~0~1~0~0~0. *)
-(* Definition funct7_FDIV_S     := Ob~0~0~0~1~1~0~0. *)
-(* Definition funct7_FSQRT_S    := Ob~0~1~0~1~1~0~0. *)
-(* Definition funct7_FSGNJ_S    := Ob~0~0~1~0~0~0~0. *)
-(* Definition funct7_FMIN_S     := Ob~0~0~1~0~1~0~0. *)
-(* Definition funct7_FCVT_W_S   := Ob~1~1~0~0~0~0~0. *)
-(* Definition funct7_FMV_X_W    := Ob~1~1~1~0~0~0~0. *)
-(* Definition funct7_FEQ_S      := Ob~1~0~1~0~0~0~0. *)
-(* Definition funct7_FCLASS_S   := Ob~1~1~1~0~0~0~0. *)
-(* Definition funct7_FCVT_S_W   := Ob~1~1~0~1~0~0~0. *)
-(* Definition funct7_FMV_W_X    := Ob~1~1~1~1~0~0~0. *)
-(* Definition funct7_SFENCE_VMA := Ob~0~0~0~1~0~0~1. *)
+Definition funct3_bin (f : funct3_name) :=
+match f with
+| funct3_ADD      => Ob~0~0~0
+| funct3_SUB      => Ob~0~0~0
+| funct3_SLL      => Ob~0~0~1
+| funct3_SLT      => Ob~0~1~0
+| funct3_SLTU     => Ob~0~1~1
+| funct3_XOR      => Ob~1~0~0
+| funct3_SRL      => Ob~1~0~1
+| funct3_SRA      => Ob~1~0~1
+| funct3_OR       => Ob~1~1~0
+| funct3_AND      => Ob~1~1~1
+| funct3_LB       => Ob~0~0~0
+| funct3_LH       => Ob~0~0~1
+| funct3_LW       => Ob~0~1~0
+| funct3_LBU      => Ob~1~0~0
+| funct3_LHU      => Ob~1~0~1
+| funct3_SLTI     => Ob~0~1~0
+| funct3_SLTIU    => Ob~0~1~1
+| funct3_ADDI     => Ob~0~0~0
+| funct3_XORI     => Ob~1~0~0
+| funct3_ORI      => Ob~1~1~0
+| funct3_ANDI     => Ob~1~1~1
+| funct3_SLLI     => Ob~0~0~1
+| funct3_SRLI     => Ob~1~0~1
+| funct3_SRAI     => Ob~1~0~1
+| funct3_FENCE    => Ob~0~0~0
+| funct3_SB       => Ob~0~0~0
+| funct3_SH       => Ob~0~0~1
+| funct3_SW       => Ob~0~1~0
+| funct3_BEQ      => Ob~0~0~0
+| funct3_BNE      => Ob~0~0~1
+| funct3_BLT      => Ob~1~0~0
+| funct3_BGE      => Ob~1~0~1
+| funct3_BLTU     => Ob~1~1~0
+| funct3_BGEU     => Ob~1~1~1
+| funct3_PRIV     => Ob~0~0~0
+| funct3_ADDW     => Ob~0~0~0
+| funct3_SUBW     => Ob~0~0~0
+| funct3_SLLW     => Ob~0~0~1
+| funct3_SRLW     => Ob~1~0~1
+| funct3_SRAW     => Ob~1~0~1
+| funct3_LWU      => Ob~1~1~0
+| funct3_LD       => Ob~0~1~1
+| funct3_ADDIW    => Ob~0~0~0
+| funct3_SLLIW    => Ob~0~0~1
+| funct3_SRLIW    => Ob~1~0~1
+| funct3_SRAIW    => Ob~1~0~1
+| funct3_SD       => Ob~0~1~1
+| funct3_FENCE_I  => Ob~0~0~1
+| funct3_CSRRW    => Ob~0~0~1
+| funct3_CSRRS    => Ob~0~1~0
+| funct3_CSRRC    => Ob~0~1~1
+| funct3_CSRRWI   => Ob~1~0~1
+| funct3_CSRRSI   => Ob~1~1~0
+| funct3_CSRRCI   => Ob~1~1~1
+| funct3_MUL      => Ob~0~0~0
+| funct3_MULH     => Ob~0~0~1
+| funct3_MULHSU   => Ob~0~1~0
+| funct3_MULHU    => Ob~0~1~1
+| funct3_DIV      => Ob~1~0~0
+| funct3_DIVU     => Ob~1~0~1
+| funct3_REM      => Ob~1~1~0
+| funct3_REMU     => Ob~1~1~1
+| funct3_MULW     => Ob~0~0~0
+| funct3_DIVW     => Ob~1~0~0
+| funct3_DIVUW    => Ob~1~0~1
+| funct3_REMW     => Ob~1~1~0
+| funct3_REMUW    => Ob~1~1~1
+| funct3_AMOW     => Ob~0~1~0
+| funct3_AMOD     => Ob~0~1~1
+| funct3_FSGNJ_S  => Ob~0~0~0
+| funct3_FSGNJN_S => Ob~0~0~1
+| funct3_FSGNJX_S => Ob~0~1~0
+| funct3_FMIN_S   => Ob~0~0~0
+| funct3_FMAX_S   => Ob~0~0~1
+| funct3_FMV_X_W  => Ob~0~0~0
+| funct3_FEQ_S    => Ob~0~1~0
+| funct3_FLT_S    => Ob~0~0~1
+| funct3_FLE_S    => Ob~0~0~0
+| funct3_FCLASS_S => Ob~0~0~1
+| funct3_FLW      => Ob~0~1~0
+| funct3_FSW      => Ob~0~1~0
+end.
 
-(* Scheme Equality for instruction_field_name. *)
+Inductive funct7_name : Type :=
+| funct7_ADD
+| funct7_SUB
+| funct7_SLL
+| funct7_SLT
+| funct7_SLTU
+| funct7_XOR
+| funct7_SRL
+| funct7_SRA
+| funct7_OR
+| funct7_AND
+| funct7_ADDW
+| funct7_SUBW
+| funct7_SLLW
+| funct7_SRLW
+| funct7_SRAW
+| funct7_SLLIW
+| funct7_SRLIW
+| funct7_SRAIW
+| funct7_MUL
+| funct7_MULH
+| funct7_MULHSU
+| funct7_MULHU
+| funct7_DIV
+| funct7_DIVU
+| funct7_REM
+| funct7_REMU
+| funct7_MULW
+| funct7_DIVW
+| funct7_DIVUW
+| funct7_REMW
+| funct7_REMUW
+| funct7_FADD_S
+| funct7_FSUB_S
+| funct7_FMUL_S
+| funct7_FDIV_S
+| funct7_FSQRT_S
+| funct7_FSGNJ_S
+| funct7_FMIN_S
+| funct7_FCVT_W_S
+| funct7_FMV_X_W
+| funct7_FEQ_S
+| funct7_FCLASS_S
+| funct7_FCVT_S_W
+| funct7_FMV_W_X
+| funct7_SFENCE_VMA.
 
-(* Module DecidableInstructionField <: DecidableType. *)
-(*   Definition t := instruction_field_name. *)
-(*   Definition eq := @eq instruction_field_name. *)
-(*   Instance eq_equiv : @Equivalence instruction_field_name eq := eq_equivalence. *)
-(*   Definition eq_dec := instruction_field_name_eq_dec. *)
-(* End DecidableInstructionField. *)
+Definition funct7_bin (f : funct7_name) :=
+match f with
+| funct7_ADD        => Ob~0~0~0~0~0~0~0
+| funct7_SUB        => Ob~0~1~0~0~0~0~0
+| funct7_SLL        => Ob~0~0~0~0~0~0~0
+| funct7_SLT        => Ob~0~0~0~0~0~0~0
+| funct7_SLTU       => Ob~0~0~0~0~0~0~0
+| funct7_XOR        => Ob~0~0~0~0~0~0~0
+| funct7_SRL        => Ob~0~0~0~0~0~0~0
+| funct7_SRA        => Ob~0~1~0~0~0~0~0
+| funct7_OR         => Ob~0~0~0~0~0~0~0
+| funct7_AND        => Ob~0~0~0~0~0~0~0
+| funct7_ADDW       => Ob~0~0~0~0~0~0~0
+| funct7_SUBW       => Ob~0~1~0~0~0~0~0
+| funct7_SLLW       => Ob~0~0~0~0~0~0~0
+| funct7_SRLW       => Ob~0~0~0~0~0~0~0
+| funct7_SRAW       => Ob~0~1~0~0~0~0~0
+| funct7_SLLIW      => Ob~0~0~0~0~0~0~0
+| funct7_SRLIW      => Ob~0~0~0~0~0~0~0
+| funct7_SRAIW      => Ob~0~1~0~0~0~0~0
+| funct7_MUL        => Ob~0~0~0~0~0~0~1
+| funct7_MULH       => Ob~0~0~0~0~0~0~1
+| funct7_MULHSU     => Ob~0~0~0~0~0~0~1
+| funct7_MULHU      => Ob~0~0~0~0~0~0~1
+| funct7_DIV        => Ob~0~0~0~0~0~0~1
+| funct7_DIVU       => Ob~0~0~0~0~0~0~1
+| funct7_REM        => Ob~0~0~0~0~0~0~1
+| funct7_REMU       => Ob~0~0~0~0~0~0~1
+| funct7_MULW       => Ob~0~0~0~0~0~0~1
+| funct7_DIVW       => Ob~0~0~0~0~0~0~1
+| funct7_DIVUW      => Ob~0~0~0~0~0~0~1
+| funct7_REMW       => Ob~0~0~0~0~0~0~1
+| funct7_REMUW      => Ob~0~0~0~0~0~0~1
+| funct7_FADD_S     => Ob~0~0~0~0~0~0~0
+| funct7_FSUB_S     => Ob~0~0~0~0~1~0~0
+| funct7_FMUL_S     => Ob~0~0~0~1~0~0~0
+| funct7_FDIV_S     => Ob~0~0~0~1~1~0~0
+| funct7_FSQRT_S    => Ob~0~1~0~1~1~0~0
+| funct7_FSGNJ_S    => Ob~0~0~1~0~0~0~0
+| funct7_FMIN_S     => Ob~0~0~1~0~1~0~0
+| funct7_FCVT_W_S   => Ob~1~1~0~0~0~0~0
+| funct7_FMV_X_W    => Ob~1~1~1~0~0~0~0
+| funct7_FEQ_S      => Ob~1~0~1~0~0~0~0
+| funct7_FCLASS_S   => Ob~1~1~1~0~0~0~0
+| funct7_FCVT_S_W   => Ob~1~1~0~1~0~0~0
+| funct7_FMV_W_X    => Ob~1~1~1~1~0~0~0
+| funct7_SFENCE_VMA => Ob~0~0~0~1~0~0~1
+end.
 
-(* Module FieldsSet <: WSetsOn DecidableInstructionField. *)
+Scheme Equality for instruction_field_name.
+
+Module DecidableInstructionField <: DecidableType.
+  Definition t := instruction_field_name.
+  Definition eq := @eq instruction_field_name.
+  Instance eq_equiv : @Equivalence instruction_field_name eq := eq_equivalence.
+  Definition eq_dec := instruction_field_name_eq_dec.
+End DecidableInstructionField.
+
+Module FieldsSet <: WSetsOn DecidableInstructionField.
   Include WSetsOn DecidableInstructionField.
 End FieldsSet.
 
@@ -1173,362 +1316,390 @@ Definition instruction_type_fields (t : instruction_type_name) :=
     )))
   end.
 
-Definition opcode := bits_t 7.
-
-Definition bin_instruction := bits_t 32.
-
 Definition instruction_type (i : instruction_internal_name) :=
   match i with
-  (* RV32I *)
-  | LUI_32I    => UType
-  | AUIPC_32I  => UType
-  | JAL_32I    => JType
-  | JALR_32I   => IType
-  | BEQ_32I    => BType
-  | BNE_32I    => BType
-  | BLT_32I    => BType
-  | BGE_32I    => BType
-  | BLTU_32I   => BType
-  | BGEU_32I   => BType
-  | LB_32I     => IType
-  | LH_32I     => IType
-  | LW_32I     => IType
-  | LBU_32I    => IType
-  | LHU_32I    => IType
-  | SB_32I     => SType
-  | SH_32I     => SType
-  | SW_32I     => SType
-  | ADDI_32I   => IType
-  | SLTI_32I   => IType
-  | SLTIU_32I  => IType
-  | XORI_32I   => IType
-  | ORI_32I    => IType
-  | ANDI_32I   => IType
-  | SLLI_32I   => IType
-  | SRLI_32I   => IType
-  | SRAI_32I   => IType
-  | ADD_32I    => RType
-  | SUB_32I    => RType
-  | SLL_32I    => RType
-  | SLT_32I    => RType
-  | SLTU_32I   => RType
-  | XOR_32I    => RType
-  | SRL_32I    => RType
-  | SRA_32I    => RType
-  | OR_32I     => RType
-  | AND_32I    => RType
-  | FENCE_32I  => IType
-  | ECALL_32I  => IType
-  | EBREAK_32I => IType
-  (* RV64I *)
-  | LUI_64I    => UType
-  | AUIPC_64I  => UType
-  | JAL_64I    => JType
-  | JALR_64I   => IType
-  | BEQ_64I    => BType
-  | BNE_64I    => BType
-  | BLT_64I    => BType
-  | BGE_64I    => BType
-  | BLTU_64I   => BType
-  | BGEU_64I   => BType
-  | LB_64I     => IType
-  | LH_64I     => IType
-  | LW_64I     => IType
-  | LBU_64I    => IType
-  | LHU_64I    => IType
-  | SB_64I     => SType
-  | SH_64I     => SType
-  | SW_64I     => SType
-  | ADDI_64I   => IType
-  | SLTI_64I   => IType
-  | SLTIU_64I  => IType
-  | XORI_64I   => IType
-  | ORI_64I    => IType
-  | ANDI_64I   => IType
-  | SLLI_64I   => IType
-  | SRLI_64I   => IType
-  | SRAI_64I   => IType
-  | ADD_64I    => RType
-  | SUB_64I    => RType
-  | SLL_64I    => RType
-  | SLT_64I    => RType
-  | SLTU_64I   => RType
-  | XOR_64I    => RType
-  | SRL_64I    => RType
-  | SRA_64I    => RType
-  | OR_64I     => RType
-  | AND_64I    => RType
-  | FENCE_64I  => IType
-  | ECALL_64I  => IType
-  | EBREAK_64I => IType
-  | LWU_64I    => IType
-  | LD_64I     => IType
-  | SD_64I     => SType
-  | ADDIW_64I  => IType
-  | SLLIW_64I  => IType
-  | SRLIW_64I  => IType
-  | SRAIW_64I  => IType
-  | ADDW_64I   => RType
-  | SUBW_64I   => RType
-  | SLLW_64I   => RType
-  | SRLW_64I   => RType
-  | SRAW_64I   => RType
-  (* RV32Zifencei *)
-  | FENCE_I_32Zifencei => IType
-  (* RV64Zifencei *)
-  | FENCE_I_64Zifencei => IType
-  (* RV32Zicsr *)
-  | CSRRW_32Zicsr  => IType
-  | CSRRS_32Zicsr  => IType
-  | CSRRC_32Zicsr  => IType
-  | CSRRWI_32Zicsr => IType
-  | CSRRSI_32Zicsr => IType
-  | CSRRCI_32Zicsr => IType
-  (* RV64Zicsr *)
-  | CSRRW_64Zicsr  => IType
-  | CSRRS_64Zicsr  => IType
-  | CSRRC_64Zicsr  => IType
-  | CSRRWI_64Zicsr => IType
-  | CSRRSI_64Zicsr => IType
-  | CSRRCI_64Zicsr => IType
-  (* RV32M *)
-  | MUL_32M    => RType
-  | MULH_32M   => RType
-  | MULHSU_32M => RType
-  | MULHU_32M  => RType
-  | DIV_32M    => RType
-  | DIVU_32M   => RType
-  | REM_32M    => RType
-  | REMU_32M   => RType
-  (* RV64M *)
-  | MUL_64M    => RType
-  | MULH_64M   => RType
-  | MULHSU_64M => RType
-  | MULHU_64M  => RType
-  | DIV_64M    => RType
-  | DIVU_64M   => RType
-  | REM_64M    => RType
-  | REMU_64M   => RType
-  | MULW_64M   => RType
-  | DIVW_64M   => RType
-  | DIVUW_64M  => RType
-  | REMW_64M   => RType
-  | REMUW_64M  => RType
-  (* RV32A *)
-  | LR_W_32A      => RType
-  | SC_W_32A      => RType
-  | AMOSWAP_W_32A => RType
-  | AMOADD_W_32A  => RType
-  | AMOXOR_W_32A  => RType
-  | AMOAND_W_32A  => RType
-  | AMOOR_W_32A   => RType
-  | AMOMIN_W_32A  => RType
-  | AMOMAX_W_32A  => RType
-  | AMOMINU_W_32A => RType
-  | AMOMAXU_W_32A => RType
-  (* RV64A *)
-  | LR_W_64A      => RType
-  | SC_W_64A      => RType
-  | AMOSWAP_W_64A => RType
-  | AMOADD_W_64A  => RType
-  | AMOXOR_W_64A  => RType
-  | AMOAND_W_64A  => RType
-  | AMOOR_W_64A   => RType
-  | AMOMIN_W_64A  => RType
-  | AMOMAX_W_64A  => RType
-  | AMOMINU_W_64A => RType
-  | AMOMAXU_W_64A => RType
-  | LR_D_64A      => RType
-  | SC_D_64A      => RType
-  | AMOSWAP_D_64A => RType
-  | AMOADD_D_64A  => RType
-  | AMOXOR_D_64A  => RType
-  | AMOAND_D_64A  => RType
-  | AMOOR_D_64A   => RType
-  | AMOMIN_D_64A  => RType
-  | AMOMAX_D_64A  => RType
-  | AMOMINU_D_64A => RType
-  | AMOMAXU_D_64A => RType
-  (* RV32F *)
-  | FLW_32F       => IType
-  | FSW_32F       => SType
-  | FMADD_S_32F   => R4Type
-  | FMSUB_S_32F   => R4Type
-  | FNMSUB_S_32F  => R4Type
-  | FNMADD_S_32F  => R4Type
-  | FADD_S_32F    => RType
-  | FSUB_S_32F    => RType
-  | FMUL_S_32F    => RType
-  | FDIV_S_32F    => RType
-  | FSQRT_S_32F   => RType
-  | FSGNJ_S_32F   => RType
-  | FSGNJN_S_32F  => RType
-  | FSGNJX_S_32F  => RType
-  | FMIN_S_32F    => RType
-  | FMAX_S_32F    => RType
-  | FCVT_W_S_32F  => RType
-  | FCVT_WU_S_32F => RType
-  | FMV_X_W_32F   => RType
-  | FEQ_S_32F     => RType
-  | FLT_S_32F     => RType
-  | FLE_S_32F     => RType
-  | FCLASS_S_32F  => RType
-  | FCVT_S_W_32F  => RType
-  | FCVT_S_WU_32F => RType
-  | FMV_W_X_32F   => RType
-  (* RV64F *)
-  | FLW_64F       => IType
-  | FSW_64F       => SType
-  | FMADD_S_64F   => R4Type
-  | FMSUB_S_64F   => R4Type
-  | FNMSUB_S_64F  => R4Type
-  | FNMADD_S_64F  => R4Type
-  | FADD_S_64F    => RType
-  | FSUB_S_64F    => RType
-  | FMUL_S_64F    => RType
-  | FDIV_S_64F    => RType
-  | FSQRT_S_64F   => RType
-  | FSGNJ_S_64F   => RType
-  | FSGNJN_S_64F  => RType
-  | FSGNJX_S_64F  => RType
-  | FMIN_S_64F    => RType
-  | FMAX_S_64F    => RType
-  | FCVT_W_S_64F  => RType
-  | FCVT_WU_S_64F => RType
-  | FMV_X_W_64F   => RType
-  | FEQ_S_64F     => RType
-  | FLT_S_64F     => RType
-  | FLE_S_64F     => RType
-  | FCLASS_S_64F  => RType
-  | FCVT_S_W_64F  => RType
-  | FCVT_S_WU_64F => RType
-  | FMV_W_X_64F   => RType
-  | FCVT_L_S_64F  => RType
-  | FCVT_LU_S_64F => RType
-  | FCVT_S_L_64F  => RType
-  | FCVT_S_LU_64F => RType
-  (* RV32D *)
-  | FLD_32D       => IType
-  | FSD_32D       => SType
-  | FMADD_D_32D   => R4Type
-  | FMSUB_D_32D   => R4Type
-  | FNMSUB_D_32D  => R4Type
-  | FNMADD_D_32D  => R4Type
-  | FADD_D_32D    => RType
-  | FSUB_D_32D    => RType
-  | FMUL_D_32D    => RType
-  | FDIV_D_32D    => RType
-  | FSQRT_D_32D   => RType
-  | FSGNJ_D_32D   => RType
-  | FSGNJN_D_32D  => RType
-  | FSGNJX_D_32D  => RType
-  | FMIN_D_32D    => RType
-  | FMAX_D_32D    => RType
-  | FCVT_S_D_32D  => RType
-  | FCVT_D_S_32D  => RType
-  | FEQ_D_32D     => RType
-  | FLT_D_32D     => RType
-  | FLE_D_32D     => RType
-  | FCLASS_D_32D  => RType
-  | FCVT_W_D_32D  => RType
-  | FCVT_WU_D_32D => RType
-  | FCVT_D_W_32D  => RType
-  | FCVT_D_WU_32D => RType
-  (* RV64D *)
-  | FLD_64D       => IType
-  | FSD_64D       => SType
-  | FMADD_D_64D   => R4Type
-  | FMSUB_D_64D   => R4Type
-  | FNMSUB_D_64D  => R4Type
-  | FNMADD_D_64D  => R4Type
-  | FADD_D_64D    => RType
-  | FSUB_D_64D    => RType
-  | FMUL_D_64D    => RType
-  | FDIV_D_64D    => RType
-  | FSQRT_D_64D   => RType
-  | FSGNJ_D_64D   => RType
-  | FSGNJN_D_64D  => RType
-  | FSGNJX_D_64D  => RType
-  | FMIN_D_64D    => RType
-  | FMAX_D_64D    => RType
-  | FCVT_S_D_64D  => RType
-  | FCVT_D_S_64D  => RType
-  | FEQ_D_64D     => RType
-  | FLT_D_64D     => RType
-  | FLE_D_64D     => RType
-  | FCLASS_D_64D  => RType
-  | FCVT_W_D_64D  => RType
-  | FCVT_WU_D_64D => RType
-  | FCVT_D_W_64D  => RType
-  | FCVT_D_WU_64D => RType
-  | FCVT_L_D_64D  => RType
-  | FCVT_LU_D_64D => RType
-  | FMV_X_D_64D   => RType
-  | FCVT_D_L_64D  => RType
-  | FCVT_D_LU_64D => RType
-  | FMV_D_X_64D   => RType
-  (* RV32Q *)
-  | FLQ_32Q       => IType
-  | FSQ_32Q       => SType
-  | FMADD_Q_32Q   => R4Type
-  | FMSUB_Q_32Q   => R4Type
-  | FNMSUB_Q_32Q  => R4Type
-  | FNMADD_Q_32Q  => R4Type
-  | FADD_Q_32Q    => RType
-  | FSUB_Q_32Q    => RType
-  | FMUL_Q_32Q    => RType
-  | FDIV_Q_32Q    => RType
-  | FSQRT_Q_32Q   => RType
-  | FSGNJ_Q_32Q   => RType
-  | FSGNJN_Q_32Q  => RType
-  | FSGNJX_Q_32Q  => RType
-  | FMIN_Q_32Q    => RType
-  | FMAX_Q_32Q    => RType
-  | FCVT_S_Q_32Q  => RType
-  | FCVT_Q_S_32Q  => RType
-  | FCVT_D_Q_32Q  => RType
-  | FCVT_Q_D_32Q  => RType
-  | FEQ_Q_32Q     => RType
-  | FLT_Q_32Q     => RType
-  | FLE_Q_32Q     => RType
-  | FCLASS_Q_32Q  => RType
-  | FCVT_W_Q_32Q  => RType
-  | FCVT_WU_Q_32Q => RType
-  | FCVT_Q_W_32Q  => RType
-  | FCVT_Q_WU_32Q => RType
-  (* RV64Q *)
-  | FLQ_64Q       => IType
-  | FSQ_64Q       => SType
-  | FMADD_Q_64Q   => R4Type
-  | FMSUB_Q_64Q   => R4Type
-  | FNMSUB_Q_64Q  => R4Type
-  | FNMADD_Q_64Q  => R4Type
-  | FADD_Q_64Q    => RType
-  | FSUB_Q_64Q    => RType
-  | FMUL_Q_64Q    => RType
-  | FDIV_Q_64Q    => RType
-  | FSQRT_Q_64Q   => RType
-  | FSGNJ_Q_64Q   => RType
-  | FSGNJN_Q_64Q  => RType
-  | FSGNJX_Q_64Q  => RType
-  | FMIN_Q_64Q    => RType
-  | FMAX_Q_64Q    => RType
-  | FCVT_S_Q_64Q  => RType
-  | FCVT_Q_S_64Q  => RType
-  | FCVT_D_Q_64Q  => RType
-  | FCVT_Q_D_64Q  => RType
-  | FEQ_Q_64Q     => RType
-  | FLT_Q_64Q     => RType
-  | FLE_Q_64Q     => RType
-  | FCLASS_Q_64Q  => RType
-  | FCVT_W_Q_64Q  => RType
-  | FCVT_WU_Q_64Q => RType
-  | FCVT_Q_W_64Q  => RType
-  | FCVT_Q_WU_64Q => RType
-  | FCVT_L_Q_64Q  => RType
-  | FCVT_LU_Q_64Q => RType
-  | FCVT_Q_L_64Q  => RType
-  | FCVT_Q_LU_64Q => RType
+  | RV32I_instruction x =>
+    match x with
+    | LUI_32I    => UType
+    | AUIPC_32I  => UType
+    | JAL_32I    => JType
+    | JALR_32I   => IType
+    | BEQ_32I    => BType
+    | BNE_32I    => BType
+    | BLT_32I    => BType
+    | BGE_32I    => BType
+    | BLTU_32I   => BType
+    | BGEU_32I   => BType
+    | LB_32I     => IType
+    | LH_32I     => IType
+    | LW_32I     => IType
+    | LBU_32I    => IType
+    | LHU_32I    => IType
+    | SB_32I     => SType
+    | SH_32I     => SType
+    | SW_32I     => SType
+    | ADDI_32I   => IType
+    | SLTI_32I   => IType
+    | SLTIU_32I  => IType
+    | XORI_32I   => IType
+    | ORI_32I    => IType
+    | ANDI_32I   => IType
+    | SLLI_32I   => IType
+    | SRLI_32I   => IType
+    | SRAI_32I   => IType
+    | ADD_32I    => RType
+    | SUB_32I    => RType
+    | SLL_32I    => RType
+    | SLT_32I    => RType
+    | SLTU_32I   => RType
+    | XOR_32I    => RType
+    | SRL_32I    => RType
+    | SRA_32I    => RType
+    | OR_32I     => RType
+    | AND_32I    => RType
+    | FENCE_32I  => IType
+    | ECALL_32I  => IType
+    | EBREAK_32I => IType
+    end
+  | RV64I_instruction x =>
+    match x with
+    | LUI_64I    => UType
+    | AUIPC_64I  => UType
+    | JAL_64I    => JType
+    | JALR_64I   => IType
+    | BEQ_64I    => BType
+    | BNE_64I    => BType
+    | BLT_64I    => BType
+    | BGE_64I    => BType
+    | BLTU_64I   => BType
+    | BGEU_64I   => BType
+    | LB_64I     => IType
+    | LH_64I     => IType
+    | LW_64I     => IType
+    | LBU_64I    => IType
+    | LHU_64I    => IType
+    | SB_64I     => SType
+    | SH_64I     => SType
+    | SW_64I     => SType
+    | ADDI_64I   => IType
+    | SLTI_64I   => IType
+    | SLTIU_64I  => IType
+    | XORI_64I   => IType
+    | ORI_64I    => IType
+    | ANDI_64I   => IType
+    | SLLI_64I   => IType
+    | SRLI_64I   => IType
+    | SRAI_64I   => IType
+    | ADD_64I    => RType
+    | SUB_64I    => RType
+    | SLL_64I    => RType
+    | SLT_64I    => RType
+    | SLTU_64I   => RType
+    | XOR_64I    => RType
+    | SRL_64I    => RType
+    | SRA_64I    => RType
+    | OR_64I     => RType
+    | AND_64I    => RType
+    | FENCE_64I  => IType
+    | ECALL_64I  => IType
+    | EBREAK_64I => IType
+    | LWU_64I    => IType
+    | LD_64I     => IType
+    | SD_64I     => SType
+    | ADDIW_64I  => IType
+    | SLLIW_64I  => IType
+    | SRLIW_64I  => IType
+    | SRAIW_64I  => IType
+    | ADDW_64I   => RType
+    | SUBW_64I   => RType
+    | SLLW_64I   => RType
+    | SRLW_64I   => RType
+    | SRAW_64I   => RType
+    end
+  | RV32Zifencei_instruction x =>
+    match x with
+    | FENCE_I_32Zifencei => IType
+    end
+  | RV64Zifencei_instruction x =>
+    match x with
+    | FENCE_I_64Zifencei => IType
+    end
+  | RV32Zicsr_instruction x =>
+    match x with
+    | CSRRW_32Zicsr  => IType
+    | CSRRS_32Zicsr  => IType
+    | CSRRC_32Zicsr  => IType
+    | CSRRWI_32Zicsr => IType
+    | CSRRSI_32Zicsr => IType
+    | CSRRCI_32Zicsr => IType
+    end
+  | RV64Zicsr_instruction x =>
+    match x with
+    | CSRRW_64Zicsr  => IType
+    | CSRRS_64Zicsr  => IType
+    | CSRRC_64Zicsr  => IType
+    | CSRRWI_64Zicsr => IType
+    | CSRRSI_64Zicsr => IType
+    | CSRRCI_64Zicsr => IType
+    end
+  | RV32M_instruction x =>
+    match x with
+    | MUL_32M    => RType
+    | MULH_32M   => RType
+    | MULHSU_32M => RType
+    | MULHU_32M  => RType
+    | DIV_32M    => RType
+    | DIVU_32M   => RType
+    | REM_32M    => RType
+    | REMU_32M   => RType
+    end
+  | RV64M_instruction x =>
+    match x with
+    | MUL_64M    => RType
+    | MULH_64M   => RType
+    | MULHSU_64M => RType
+    | MULHU_64M  => RType
+    | DIV_64M    => RType
+    | DIVU_64M   => RType
+    | REM_64M    => RType
+    | REMU_64M   => RType
+    | MULW_64M   => RType
+    | DIVW_64M   => RType
+    | DIVUW_64M  => RType
+    | REMW_64M   => RType
+    | REMUW_64M  => RType
+    end
+  | RV32A_instruction x =>
+    match x with
+    | LR_W_32A      => RType
+    | SC_W_32A      => RType
+    | AMOSWAP_W_32A => RType
+    | AMOADD_W_32A  => RType
+    | AMOXOR_W_32A  => RType
+    | AMOAND_W_32A  => RType
+    | AMOOR_W_32A   => RType
+    | AMOMIN_W_32A  => RType
+    | AMOMAX_W_32A  => RType
+    | AMOMINU_W_32A => RType
+    | AMOMAXU_W_32A => RType
+    end
+  | RV64A_instruction x =>
+    match x with
+    | LR_W_64A      => RType
+    | SC_W_64A      => RType
+    | AMOSWAP_W_64A => RType
+    | AMOADD_W_64A  => RType
+    | AMOXOR_W_64A  => RType
+    | AMOAND_W_64A  => RType
+    | AMOOR_W_64A   => RType
+    | AMOMIN_W_64A  => RType
+    | AMOMAX_W_64A  => RType
+    | AMOMINU_W_64A => RType
+    | AMOMAXU_W_64A => RType
+    | LR_D_64A      => RType
+    | SC_D_64A      => RType
+    | AMOSWAP_D_64A => RType
+    | AMOADD_D_64A  => RType
+    | AMOXOR_D_64A  => RType
+    | AMOAND_D_64A  => RType
+    | AMOOR_D_64A   => RType
+    | AMOMIN_D_64A  => RType
+    | AMOMAX_D_64A  => RType
+    | AMOMINU_D_64A => RType
+    | AMOMAXU_D_64A => RType
+    end
+  | RV32F_instruction x =>
+    match x with
+    | FLW_32F       => IType
+    | FSW_32F       => SType
+    | FMADD_S_32F   => R4Type
+    | FMSUB_S_32F   => R4Type
+    | FNMSUB_S_32F  => R4Type
+    | FNMADD_S_32F  => R4Type
+    | FADD_S_32F    => RType
+    | FSUB_S_32F    => RType
+    | FMUL_S_32F    => RType
+    | FDIV_S_32F    => RType
+    | FSQRT_S_32F   => RType
+    | FSGNJ_S_32F   => RType
+    | FSGNJN_S_32F  => RType
+    | FSGNJX_S_32F  => RType
+    | FMIN_S_32F    => RType
+    | FMAX_S_32F    => RType
+    | FCVT_W_S_32F  => RType
+    | FCVT_WU_S_32F => RType
+    | FMV_X_W_32F   => RType
+    | FEQ_S_32F     => RType
+    | FLT_S_32F     => RType
+    | FLE_S_32F     => RType
+    | FCLASS_S_32F  => RType
+    | FCVT_S_W_32F  => RType
+    | FCVT_S_WU_32F => RType
+    | FMV_W_X_32F   => RType
+    end
+  | RV64F_instruction x =>
+    match x with
+    | FLW_64F       => IType
+    | FSW_64F       => SType
+    | FMADD_S_64F   => R4Type
+    | FMSUB_S_64F   => R4Type
+    | FNMSUB_S_64F  => R4Type
+    | FNMADD_S_64F  => R4Type
+    | FADD_S_64F    => RType
+    | FSUB_S_64F    => RType
+    | FMUL_S_64F    => RType
+    | FDIV_S_64F    => RType
+    | FSQRT_S_64F   => RType
+    | FSGNJ_S_64F   => RType
+    | FSGNJN_S_64F  => RType
+    | FSGNJX_S_64F  => RType
+    | FMIN_S_64F    => RType
+    | FMAX_S_64F    => RType
+    | FCVT_W_S_64F  => RType
+    | FCVT_WU_S_64F => RType
+    | FMV_X_W_64F   => RType
+    | FEQ_S_64F     => RType
+    | FLT_S_64F     => RType
+    | FLE_S_64F     => RType
+    | FCLASS_S_64F  => RType
+    | FCVT_S_W_64F  => RType
+    | FCVT_S_WU_64F => RType
+    | FMV_W_X_64F   => RType
+    | FCVT_L_S_64F  => RType
+    | FCVT_LU_S_64F => RType
+    | FCVT_S_L_64F  => RType
+    | FCVT_S_LU_64F => RType
+    end
+  | RV32D_instruction x =>
+    match x with
+    | FLD_32D       => IType
+    | FSD_32D       => SType
+    | FMADD_D_32D   => R4Type
+    | FMSUB_D_32D   => R4Type
+    | FNMSUB_D_32D  => R4Type
+    | FNMADD_D_32D  => R4Type
+    | FADD_D_32D    => RType
+    | FSUB_D_32D    => RType
+    | FMUL_D_32D    => RType
+    | FDIV_D_32D    => RType
+    | FSQRT_D_32D   => RType
+    | FSGNJ_D_32D   => RType
+    | FSGNJN_D_32D  => RType
+    | FSGNJX_D_32D  => RType
+    | FMIN_D_32D    => RType
+    | FMAX_D_32D    => RType
+    | FCVT_S_D_32D  => RType
+    | FCVT_D_S_32D  => RType
+    | FEQ_D_32D     => RType
+    | FLT_D_32D     => RType
+    | FLE_D_32D     => RType
+    | FCLASS_D_32D  => RType
+    | FCVT_W_D_32D  => RType
+    | FCVT_WU_D_32D => RType
+    | FCVT_D_W_32D  => RType
+    | FCVT_D_WU_32D => RType
+    end
+  | RV64D_instruction x =>
+    match x with
+    | FLD_64D       => IType
+    | FSD_64D       => SType
+    | FMADD_D_64D   => R4Type
+    | FMSUB_D_64D   => R4Type
+    | FNMSUB_D_64D  => R4Type
+    | FNMADD_D_64D  => R4Type
+    | FADD_D_64D    => RType
+    | FSUB_D_64D    => RType
+    | FMUL_D_64D    => RType
+    | FDIV_D_64D    => RType
+    | FSQRT_D_64D   => RType
+    | FSGNJ_D_64D   => RType
+    | FSGNJN_D_64D  => RType
+    | FSGNJX_D_64D  => RType
+    | FMIN_D_64D    => RType
+    | FMAX_D_64D    => RType
+    | FCVT_S_D_64D  => RType
+    | FCVT_D_S_64D  => RType
+    | FEQ_D_64D     => RType
+    | FLT_D_64D     => RType
+    | FLE_D_64D     => RType
+    | FCLASS_D_64D  => RType
+    | FCVT_W_D_64D  => RType
+    | FCVT_WU_D_64D => RType
+    | FCVT_D_W_64D  => RType
+    | FCVT_D_WU_64D => RType
+    | FCVT_L_D_64D  => RType
+    | FCVT_LU_D_64D => RType
+    | FMV_X_D_64D   => RType
+    | FCVT_D_L_64D  => RType
+    | FCVT_D_LU_64D => RType
+    | FMV_D_X_64D   => RType
+    end
+  | RV32Q_instruction x =>
+    match x with
+    | FLQ_32Q       => IType
+    | FSQ_32Q       => SType
+    | FMADD_Q_32Q   => R4Type
+    | FMSUB_Q_32Q   => R4Type
+    | FNMSUB_Q_32Q  => R4Type
+    | FNMADD_Q_32Q  => R4Type
+    | FADD_Q_32Q    => RType
+    | FSUB_Q_32Q    => RType
+    | FMUL_Q_32Q    => RType
+    | FDIV_Q_32Q    => RType
+    | FSQRT_Q_32Q   => RType
+    | FSGNJ_Q_32Q   => RType
+    | FSGNJN_Q_32Q  => RType
+    | FSGNJX_Q_32Q  => RType
+    | FMIN_Q_32Q    => RType
+    | FMAX_Q_32Q    => RType
+    | FCVT_S_Q_32Q  => RType
+    | FCVT_Q_S_32Q  => RType
+    | FCVT_D_Q_32Q  => RType
+    | FCVT_Q_D_32Q  => RType
+    | FEQ_Q_32Q     => RType
+    | FLT_Q_32Q     => RType
+    | FLE_Q_32Q     => RType
+    | FCLASS_Q_32Q  => RType
+    | FCVT_W_Q_32Q  => RType
+    | FCVT_WU_Q_32Q => RType
+    | FCVT_Q_W_32Q  => RType
+    | FCVT_Q_WU_32Q => RType
+    end
+  | RV64Q_instruction x =>
+    match x with
+    | FLQ_64Q       => IType
+    | FSQ_64Q       => SType
+    | FMADD_Q_64Q   => R4Type
+    | FMSUB_Q_64Q   => R4Type
+    | FNMSUB_Q_64Q  => R4Type
+    | FNMADD_Q_64Q  => R4Type
+    | FADD_Q_64Q    => RType
+    | FSUB_Q_64Q    => RType
+    | FMUL_Q_64Q    => RType
+    | FDIV_Q_64Q    => RType
+    | FSQRT_Q_64Q   => RType
+    | FSGNJ_Q_64Q   => RType
+    | FSGNJN_Q_64Q  => RType
+    | FSGNJX_Q_64Q  => RType
+    | FMIN_Q_64Q    => RType
+    | FMAX_Q_64Q    => RType
+    | FCVT_S_Q_64Q  => RType
+    | FCVT_Q_S_64Q  => RType
+    | FCVT_D_Q_64Q  => RType
+    | FCVT_Q_D_64Q  => RType
+    | FEQ_Q_64Q     => RType
+    | FLT_Q_64Q     => RType
+    | FLE_Q_64Q     => RType
+    | FCLASS_Q_64Q  => RType
+    | FCVT_W_Q_64Q  => RType
+    | FCVT_WU_Q_64Q => RType
+    | FCVT_Q_W_64Q  => RType
+    | FCVT_Q_WU_64Q => RType
+    | FCVT_L_Q_64Q  => RType
+    | FCVT_LU_Q_64Q => RType
+    | FCVT_Q_L_64Q  => RType
+    | FCVT_Q_LU_64Q => RType
+    end
   end.
 
 Definition instruction_name (i : instruction_internal_name) :=
