@@ -42,8 +42,7 @@ Record ISA : Type := {
 }.
 
 (* Instructions *)
-Inductive instruction_internal_name : Type :=
-(* RV32I *)
+Inductive instruction_internal_name_RV32I : Type :=
 | LUI_32I
 | AUIPC_32I
 | JAL_32I
@@ -83,8 +82,10 @@ Inductive instruction_internal_name : Type :=
 | AND_32I
 | FENCE_32I
 | ECALL_32I
-| EBREAK_32I
-(* RV64I *)
+| EBREAK_32I.
+Scheme Equality for instruction_internal_name_RV32I.
+
+Inductive instruction_internal_name_RV64I : Type :=
 | LUI_64I
 | AUIPC_64I
 | JAL_64I
@@ -136,26 +137,36 @@ Inductive instruction_internal_name : Type :=
 | SUBW_64I
 | SLLW_64I
 | SRLW_64I
-| SRAW_64I
-(* RV32Zifencei *)
-| FENCE_I_32Zifencei
-(* RV64Zifencei *)
-| FENCE_I_64Zifencei
-(* RV32Zicsr *)
+| SRAW_64I.
+Scheme Equality for instruction_internal_name_RV64I.
+
+Inductive instruction_internal_name_RV32Zifencei : Type :=
+| FENCE_I_32Zifencei.
+Scheme Equality for instruction_internal_name_RV32Zifencei.
+
+Inductive instruction_internal_name_RV64Zifencei : Type :=
+| FENCE_I_64Zifencei.
+Scheme Equality for instruction_internal_name_RV64Zifencei.
+
+Inductive instruction_internal_name_RV32Zicsr : Type :=
 | CSRRW_32Zicsr
 | CSRRS_32Zicsr
 | CSRRC_32Zicsr
 | CSRRWI_32Zicsr
 | CSRRSI_32Zicsr
-| CSRRCI_32Zicsr
-(* RV64Zicsr *)
+| CSRRCI_32Zicsr.
+Scheme Equality for instruction_internal_name_RV32Zicsr.
+
+Inductive instruction_internal_name_RV64Zicsr : Type :=
 | CSRRW_64Zicsr
 | CSRRS_64Zicsr
 | CSRRC_64Zicsr
 | CSRRWI_64Zicsr
 | CSRRSI_64Zicsr
-| CSRRCI_64Zicsr
-(* RV32M *)
+| CSRRCI_64Zicsr.
+Scheme Equality for instruction_internal_name_RV64Zicsr.
+
+Inductive instruction_internal_name_RV32M : Type :=
 | MUL_32M
 | MULH_32M
 | MULHSU_32M
@@ -163,8 +174,10 @@ Inductive instruction_internal_name : Type :=
 | DIV_32M
 | DIVU_32M
 | REM_32M
-| REMU_32M
-(* RV64M *)
+| REMU_32M.
+Scheme Equality for instruction_internal_name_RV32M.
+
+Inductive instruction_internal_name_RV64M : Type :=
 | MUL_64M
 | MULH_64M
 | MULHSU_64M
@@ -177,8 +190,10 @@ Inductive instruction_internal_name : Type :=
 | DIVW_64M
 | DIVUW_64M
 | REMW_64M
-| REMUW_64M
-(* RV32A *)
+| REMUW_64M.
+Scheme Equality for instruction_internal_name_RV64M.
+
+Inductive instruction_internal_name_RV32A : Type :=
 | LR_W_32A
 | SC_W_32A
 | AMOSWAP_W_32A
@@ -189,8 +204,10 @@ Inductive instruction_internal_name : Type :=
 | AMOMIN_W_32A
 | AMOMAX_W_32A
 | AMOMINU_W_32A
-| AMOMAXU_W_32A
-(* RV64A *)
+| AMOMAXU_W_32A.
+Scheme Equality for instruction_internal_name_RV32A.
+
+Inductive instruction_internal_name_RV64A : Type :=
 | LR_W_64A
 | SC_W_64A
 | AMOSWAP_W_64A
@@ -212,8 +229,10 @@ Inductive instruction_internal_name : Type :=
 | AMOMIN_D_64A
 | AMOMAX_D_64A
 | AMOMINU_D_64A
-| AMOMAXU_D_64A
-(* RV32F *)
+| AMOMAXU_D_64A.
+Scheme Equality for instruction_internal_name_RV64A.
+
+Inductive instruction_internal_name_RV32F : Type :=
 | FLW_32F
 | FSW_32F
 | FMADD_S_32F
@@ -239,8 +258,10 @@ Inductive instruction_internal_name : Type :=
 | FCLASS_S_32F
 | FCVT_S_W_32F
 | FCVT_S_WU_32F
-| FMV_W_X_32F
-(* RV64F *)
+| FMV_W_X_32F.
+Scheme Equality for instruction_internal_name_RV32F.
+
+Inductive instruction_internal_name_RV64F : Type :=
 | FLW_64F
 | FSW_64F
 | FMADD_S_64F
@@ -270,8 +291,10 @@ Inductive instruction_internal_name : Type :=
 | FCVT_L_S_64F
 | FCVT_LU_S_64F
 | FCVT_S_L_64F
-| FCVT_S_LU_64F
-(* RV32D *)
+| FCVT_S_LU_64F.
+Scheme Equality for instruction_internal_name_RV64F.
+
+Inductive instruction_internal_name_RV32D : Type :=
 | FLD_32D
 | FSD_32D
 | FMADD_D_32D
@@ -297,8 +320,10 @@ Inductive instruction_internal_name : Type :=
 | FCVT_W_D_32D
 | FCVT_WU_D_32D
 | FCVT_D_W_32D
-| FCVT_D_WU_32D
-(* RV64D *)
+| FCVT_D_WU_32D.
+Scheme Equality for instruction_internal_name_RV32D.
+
+Inductive instruction_internal_name_RV64D : Type :=
 | FLD_64D
 | FSD_64D
 | FMADD_D_64D
@@ -330,8 +355,10 @@ Inductive instruction_internal_name : Type :=
 | FMV_X_D_64D
 | FCVT_D_L_64D
 | FCVT_D_LU_64D
-| FMV_D_X_64D
-(* RV32Q *)
+| FMV_D_X_64D.
+Scheme Equality for instruction_internal_name_RV64D.
+
+Inductive instruction_internal_name_RV32Q : Type :=
 | FLQ_32Q
 | FSQ_32Q
 | FMADD_Q_32Q
@@ -359,8 +386,10 @@ Inductive instruction_internal_name : Type :=
 | FCVT_W_Q_32Q
 | FCVT_WU_Q_32Q
 | FCVT_Q_W_32Q
-| FCVT_Q_WU_32Q
-(* RV64Q *)
+| FCVT_Q_WU_32Q.
+Scheme Equality for instruction_internal_name_RV32Q.
+
+Inductive instruction_internal_name_RV64Q : Type :=
 | FLQ_64Q
 | FSQ_64Q
 | FMADD_Q_64Q
@@ -393,6 +422,39 @@ Inductive instruction_internal_name : Type :=
 | FCVT_LU_Q_64Q
 | FCVT_Q_L_64Q
 | FCVT_Q_LU_64Q.
+Scheme Equality for instruction_internal_name_RV64Q.
+
+Inductive instruction_internal_name : Type :=
+| RV32I_instruction :
+  instruction_internal_name_RV32I -> instruction_internal_name
+| RV64I_instruction :
+  instruction_internal_name_RV64I -> instruction_internal_name
+| RV32Zifencei_instruction :
+  instruction_internal_name_RV32Zifencei -> instruction_internal_name
+| RV64Zifencei_instruction :
+  instruction_internal_name_RV64Zifencei -> instruction_internal_name
+| RV32Ziscr_instruction :
+  instruction_internal_name_RV32Zicsr -> instruction_internal_name
+| RV64Ziscr_instruction :
+  instruction_internal_name_RV64Zicsr -> instruction_internal_name
+| RV32M_instruction :
+  instruction_internal_name_RV32M -> instruction_internal_name
+| RV64M_instruction :
+  instruction_internal_name_RV64M -> instruction_internal_name
+| RV32F_instruction :
+  instruction_internal_name_RV32F -> instruction_internal_name
+| RV64F_instruction :
+  instruction_internal_name_RV64F -> instruction_internal_name
+| RV32D_instruction :
+  instruction_internal_name_RV32D -> instruction_internal_name
+| RV64D_instruction :
+  instruction_internal_name_RV64D -> instruction_internal_name
+| RV32Q_instruction :
+  instruction_internal_name_RV32Q -> instruction_internal_name
+| RV64Q_instruction :
+  instruction_internal_name_RV64Q -> instruction_internal_name.
+
+About instruction_internal_name_RV32I_eq_dec.
 
 Module Decidable_instruction_internal_name <: DecidableType.
   Definition t := instruction_internal_name.
@@ -401,7 +463,7 @@ Module Decidable_instruction_internal_name <: DecidableType.
     eq_equivalence.
   Definition eq_dec : forall a b : instruction_internal_name,
     {a = b} + {a <> b}.
-  Admitted.
+  Proof. decide equality; decide equality. Qed.
 End Decidable_instruction_internal_name.
 
 Module InstructionsInternalNamesSet
