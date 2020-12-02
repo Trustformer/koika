@@ -58,7 +58,7 @@ Section RVHelpers.
         immU := (inst[|5`d12| :+ 20] ++ |12`d0|);
         immJ := {signExtend 21 11}(
           inst[|5`d31|] ++ inst[|5`d12| :+ 8] ++ inst[|5`d20|]
-          ++ inst[|5`d21|:+10] ++ |1`d0|
+          ++ inst[|5`d21| :+ 10] ++ |1`d0|
         );
         csr := (inst[|5`d20| :+ 12])
       }
