@@ -911,25 +911,6 @@ Definition classify_instruction_field (f : instruction_field_name) :=
   | immJ     => data_field
   end.
 
-Definition field_range (f : instruction_field_name) :=
-  match f with
-  | opcode   => (0, 6)
-  | rd       => (7, 11)
-  | rs1      => (15, 19)
-  | rs2      => (20, 24)
-  | rs3      => (27, 31)
-  | funct2   => (25, 26)
-  | funct3   => (12, 14)
-  | funct7   => (25, 31)
-  | immI     => (20, 31)
-  | immS_beg => (7, 11)
-  | immS_end => (25, 31)
-  | immB_beg => (7, 11)
-  | immB_end => (25, 31)
-  | immU     => (12, 31)
-  | immJ     => (12, 31)
-  end.
-
 Inductive opcode_name : Type :=
 | opcode_OP
 | opcode_JALR
@@ -2087,3 +2068,43 @@ Definition instruction_name (i : instruction_internal_name) :=
     | FCVT_Q_LU_64Q => "FCVT.Q.LU"
     end
   end.
+
+Definition instruction_bin := bits_t 32.
+
+Definition get_field (f : instruction_field_name) :=
+  match f with
+  | opcode => (|5d`0|,  |5d`7|)
+  | rd     => (|5d`7|,  |5d`5|)
+  | rs1    => (|5d`15|, |5d`5|)
+  | rs2    => (|5d`20|, |5d`5|)
+  | rs3    => (|5d`27|, |5d`5|)
+  | funct2 => (|5d`25|, |5d`2|)
+  | funct3 => (|5d`12|, |5d`3|)
+  | funct7 => (|5d`25|, |5d`7|)
+  | immI   => (|5d`20|, |5d`12|)
+  | immS   => (|5d`7|,  |5d`11|)
+  | immB   => (|5d`7|,  |5d`11|)
+  | immU   => (|5d`12|, |5d`31|)
+  | immJ   => (|5d`12|, |5d`31|)
+  end.
+
+Definition get_field_range (f : instruction_field_name) :=
+  field_range f.
+
+Definition get_first_in_pair (p : nat * nat) :=
+  match p with
+  | (a, _) => a
+  end.
+
+Definition get_second_in_pair (p : nat * nat) :=
+  match p with
+  | (_, b) => b
+  end.
+
+Definition get_field_value (f : instruction_field_name) (i : instruction_bin) :=
+  let r := get_field_range f in
+  let r_f := get_first_in_pair r in
+  let r_s := get_first_in_pair r in
+  i[ + ]
+
+Compute (get_first_in_pair (get_field opcode)).
