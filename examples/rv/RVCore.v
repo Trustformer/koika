@@ -9,6 +9,8 @@ Require Import rv.Multiplier.
 Require Import rv.RVEncoding.
 Require Import rv.Scoreboard.
 
+Compute |5`d0|.
+
 Section RVHelpers.
   Context {reg_t: Type}.
 
@@ -40,12 +42,12 @@ Section RVHelpers.
   Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {{
     fun getFields (inst : bits_t 32) : struct_t inst_field =>
       struct inst_field {
-        opcode := inst[|5`d0| :+ 7];
+        opcode := inst[|5`d0|  :+ 7];
         funct3 := inst[|5`d12| :+ 3];
         funct7 := inst[|5`d25| :+ 7];
         funct5 := inst[|5`d27| :+ 5];
         funct2 := inst[|5`d25| :+ 2];
-        rd     := inst[|5`d7| :+ 5];
+        rd     := inst[|5`d7|  :+ 5];
         rs1    := inst[|5`d15| :+ 5];
         rs2    := inst[|5`d20| :+ 5];
         rs3    := inst[|5`d27| :+ 5];
