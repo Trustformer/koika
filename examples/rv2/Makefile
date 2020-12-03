@@ -1,0 +1,2 @@
+main:
+	coqc -R . *.v

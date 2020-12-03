@@ -1004,6 +1004,10 @@ Module Type Core.
   Parameter rv_ext_fn_rtl_specs : _ext_fn_t -> ext_fn_rtl_spec.
 End Core.
 
+Module Mul32Params <: Multiplier_sig.
+  Definition n := 32.
+End Mul32Params.
+
 (** A quick way to measure term sizes:
     Compute (uaction_size RV32I.fetch).
     Compute (uaction_size RV32I.decode).

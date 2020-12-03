@@ -40,3 +40,6 @@ _objects/
 .lia.cache
 examples/*.ml
 examples/*.mli
+examples/rv2/*.vo*
+examples/rv2/*.glob
+examples/rv2/*.aux
