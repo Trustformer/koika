@@ -5,6 +5,7 @@
  (libraries cuttlebone))
 
 (executable
+ (package koika)
  (name cuttlec)
  (public_name cuttlec)
  (modules cuttlec)

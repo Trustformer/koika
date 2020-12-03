@@ -1,5 +1,8 @@
 (*! Pipelined instantiation of an RV32E core !*)
+Require Import Koika.Frontend.
+
 Require Import rv.RVCore rv.rv32.
+Require Import rv.Multiplier.
 
 Module RV32EParams <: RVParams.
   Definition NREGS := 16.

@@ -12,10 +12,6 @@ Module RVIParams <: RVParams.
   Definition WIDTH := 32.
 End RVIParams.
 
-Module Mul32Params <: Multiplier_sig.
-  Definition n := 32.
-End Mul32Params.
-
 Module RV32I <: Core.
   Module Multiplier := ShiftAddMultiplier Mul32Params.
   Include (RVCore RVIParams Multiplier).

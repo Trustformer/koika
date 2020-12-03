@@ -28,3 +28,8 @@
  (depends)
  (synopsis "A core language for rule-based hardware design 🦑️")
  (description "Kôika is a hardware design language inspired by BlueSpec SystemVerilog. Kôika programs are built from rules, small bits of hardware that operate concurrently to compute state updates but provide the illusion of serializable (atomic) updates. Kôika has simple, precise semantics that give you strong guarantees about the behavior of your designs."))
+
+(package
+  (name rv2)
+  (depends)
+)
