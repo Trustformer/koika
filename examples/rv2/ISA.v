@@ -1,4 +1,4 @@
-Require Import MSetInterface.
+Require Import Ensembles.
 
 (* Standards *)
 Inductive memory_model : Type :=
@@ -17,23 +17,12 @@ Inductive extension : Type :=
 | RVZiCSR
 | RVZifencei.
 
-(* ExtensionsSet *)
-Scheme Equality for extension.
-
-Module DecidableExtension <: DecidableType.
-  Definition t := extension.
-  Definition eq := @eq extension.
-  Instance eq_equiv : @Equivalence extension eq := eq_equivalence.
-  Definition eq_dec := extension_eq_dec.
-End DecidableExtension.
-
-Module ExtensionsSet <: WSetsOn DecidableExtension.
-  Include WSetsOn DecidableExtension.
-End ExtensionsSet.
+(* Extensions *)
+Definition extensionsSet := Ensemble extension.
 
 (* ISA *)
 Record ISA : Type := {
   ISA_memory_model: memory_model;
   ISA_base_standard : base_standard;
-  ISA_activated_extensions : ExtensionsSet.t;
+  ISA_activated_extensions : extensionsSet;
 }.
