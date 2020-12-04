@@ -825,7 +825,7 @@ Definition get_field_properties (f : instruction_field) :=
   match f with
   | opcode => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 0 ; length := 7  |}::[];
+      field_subfields  := {| first_bit := 0 ; length := 7 |}::[];
       shift            := 0
     |}
   | rd     => {|
@@ -834,33 +834,33 @@ Definition get_field_properties (f : instruction_field) :=
       shift            := 0
     |}
   | rs1    => {|
-      is_sign_extended := false;  
-      field_subfields  := {| first_bit := 15; length := 5  |}::[];
+      is_sign_extended := false;
+      field_subfields  := {| first_bit := 15; length := 5 |}::[];
       shift            := 0
     |}
   | rs2    => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 20; length := 5  |}::[];
+      field_subfields  := {| first_bit := 20; length := 5 |}::[];
       shift            := 0
     |}
   | rs3    => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 27; length := 5  |}::[];
+      field_subfields  := {| first_bit := 27; length := 5 |}::[];
       shift            := 0
     |}
   | funct2 => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 25; length := 2  |}::[];
+      field_subfields  := {| first_bit := 25; length := 2 |}::[];
       shift            := 0
     |}
   | funct3 => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 12; length := 3  |}::[];
+      field_subfields  := {| first_bit := 12; length := 3 |}::[];
       shift            := 0
     |}
   | funct7 => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 25; length := 7  |}::[];
+      field_subfields  := {| first_bit := 25; length := 7 |}::[];
       shift            := 0
     |}
   | immI   => {|
@@ -901,3 +901,10 @@ Definition get_field_properties (f : instruction_field) :=
   end.
 
 Definition instruction_bin := bits_t 32.
+
+Definition ex_instr : instruction_bin :=
+  Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1.
+
+Definition get_subfield_value (s : subfield_properties) (i : bits_t 32) :=
+  UBinop (UBits2 USel) i (first_bit s).
+  i[|5`d(first_bit s)| :+ (length s)].
