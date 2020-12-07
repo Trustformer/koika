@@ -1,21 +1,14 @@
-Require Import Ensembles.
+Require Import MSets.
 
 (* Standards *)
 Inductive memory_model : Type :=
 | RVWMO.
 
 Inductive base_standard : Type :=
-| RV32I
-| RV64I.
+| RV32I | RV64I.
 
 Inductive extension : Type :=
-| RVM
-| RVA
-| RVF
-| RVD
-| RVQ
-| RVZiCSR
-| RVZifencei.
+| RVM | RVA | RVF | RVD | RVQ | RVZiCSR | RVZifencei.
 
 (* Extensions *)
 Definition extensionsSet := Ensemble extension.
