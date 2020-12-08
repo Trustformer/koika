@@ -1,4 +1,4 @@
-Require Import MSetInterface.
+Require Import MSetInterface MSetWeakList.
 Require Import Koika.Frontend Koika.Std.
 Require Import Instructions.
 
@@ -164,8 +164,8 @@ Module DecidableInstructionField <: DecidableType.
   Definition eq_dec := instruction_field_eq_dec.
 End DecidableInstructionField.
 
-Module FieldsSet <: WSetsOn DecidableInstructionField.
-  Include WSetsOn DecidableInstructionField.
+Module FieldsSet <: MSetWeakList.Make DecidableInstructionField.
+  Include MSetWeakList DecidableInstructionField.
 End FieldsSet.
 
 Definition instruction_type_fields (t : instruction_type) :=
