@@ -348,11 +348,6 @@ Definition extension_instructions (b : base_standard) (e : extension) :=
     end
   end.
 
-Definition foldable_extension_instructions
-  (b : base_standard) (i : list instruction) (e : extension)
-:=
-  app i (extension_instructions b e).
-
 Definition ISA_instructions_set (isa : ISA) :=
   app (
     match (ISA_base_standard isa) with
@@ -361,15 +356,10 @@ Definition ISA_instructions_set (isa : ISA) :=
     end
   )
   (
-    fold_left (foldable_extension_instructions (ISA_base_standard isa))
-      (ISA_extensions isa) []
+    fold_left (fun i e =>
+      app i (extension_instructions (ISA_base_standard isa) e)
+    ) (ISA_extensions isa) []
   ).
-
-Definition example_ISA : ISA := {|
-  ISA_memory_model := RVWMO;
-  ISA_base_standard := RV32I;
-  ISA_extensions := [RVM; RVA];
-|}.
 
 Definition instruction_name (i : instruction) : string :=
   match i with
