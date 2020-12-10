@@ -1,5 +1,4 @@
-Require Import MSetInterface MSetWeakList.
-Require Import Koika.Frontend Koika.Std.
+Require Import Koika.Frontend Koika.Std Koika.Parsing.
 Require Import Instructions.
 
 Inductive instruction_type : Type :=
@@ -9,8 +8,7 @@ Inductive instruction_field : Type :=
 | opcode | rd   | rs1   | rs2 | rs3 | funct2 | funct3 | funct7 | immI | immS
 | immB   | immU | immJ.
 
-Inductive instruction_field_type : Type :=
-| identification_field | data_field.
+Inductive instruction_field_type : Type := identification_field | data_field.
 
 Definition classify_instruction_field (f : instruction_field) :=
   match f with
@@ -23,7 +21,7 @@ Definition classify_instruction_field (f : instruction_field) :=
   | immJ   => data_field
   end.
 
-Inductive opcode_name : Type :=
+Inductive opcode_name :=
 | opcode_OP        | opcode_JALR  | opcode_LOAD   | opcode_OP_IMM
 | opcode_MISC_MEM  | opcode_STORE | opcode_BRANCH | opcode_LUI
 | opcode_AUIPC     | opcode_JAL   | opcode_SYSTEM | opcode_OP_32
@@ -32,21 +30,241 @@ Inductive opcode_name : Type :=
 | opcode_STORE_FP.
 
 Definition opcode_bin (o : opcode_name) :=
-match o with
-| opcode_OP        => Ob~0~1~1~0~0~1~1 | opcode_JALR      => Ob~1~1~0~0~1~1~1
-| opcode_LOAD      => Ob~0~0~0~0~0~1~1 | opcode_OP_IMM    => Ob~0~0~1~0~0~1~1
-| opcode_MISC_MEM  => Ob~0~0~0~1~1~1~1 | opcode_STORE     => Ob~0~1~0~0~0~1~1
-| opcode_BRANCH    => Ob~1~1~0~0~0~1~1 | opcode_LUI       => Ob~0~1~1~0~1~1~1
-| opcode_AUIPC     => Ob~0~0~1~0~1~1~1 | opcode_JAL       => Ob~1~1~0~1~1~1~1
-| opcode_SYSTEM    => Ob~1~1~1~0~0~1~1 | opcode_OP_32     => Ob~0~1~1~1~0~1~1
-| opcode_OP_IMM_32 => Ob~0~0~1~1~0~1~1 | opcode_AMO       => Ob~0~1~0~1~1~1~1
-| opcode_OP_FP     => Ob~1~0~1~0~0~1~1 | opcode_MADD      => Ob~1~0~0~0~0~1~1
-| opcode_MSUB      => Ob~1~0~0~0~1~1~1 | opcode_NMSUB     => Ob~1~0~0~1~0~1~1
-| opcode_NMADD     => Ob~1~0~0~1~1~1~1 | opcode_LOAD_FP   => Ob~0~0~0~0~1~1~1
-| opcode_STORE_FP  => Ob~0~1~0~0~1~1~1
-end.
+  match o with
+  | opcode_OP        => Ob~0~1~1~0~0~1~1 | opcode_JALR      => Ob~1~1~0~0~1~1~1
+  | opcode_LOAD      => Ob~0~0~0~0~0~1~1 | opcode_OP_IMM    => Ob~0~0~1~0~0~1~1
+  | opcode_MISC_MEM  => Ob~0~0~0~1~1~1~1 | opcode_STORE     => Ob~0~1~0~0~0~1~1
+  | opcode_BRANCH    => Ob~1~1~0~0~0~1~1 | opcode_LUI       => Ob~0~1~1~0~1~1~1
+  | opcode_AUIPC     => Ob~0~0~1~0~1~1~1 | opcode_JAL       => Ob~1~1~0~1~1~1~1
+  | opcode_SYSTEM    => Ob~1~1~1~0~0~1~1 | opcode_OP_32     => Ob~0~1~1~1~0~1~1
+  | opcode_OP_IMM_32 => Ob~0~0~1~1~0~1~1 | opcode_AMO       => Ob~0~1~0~1~1~1~1
+  | opcode_OP_FP     => Ob~1~0~1~0~0~1~1 | opcode_MADD      => Ob~1~0~0~0~0~1~1
+  | opcode_MSUB      => Ob~1~0~0~0~1~1~1 | opcode_NMSUB     => Ob~1~0~0~1~0~1~1
+  | opcode_NMADD     => Ob~1~0~0~1~1~1~1 | opcode_LOAD_FP   => Ob~0~0~0~0~1~1~1
+  | opcode_STORE_FP  => Ob~0~1~0~0~1~1~1
+  end.
 
-Inductive funct3_type : Type :=
+Definition instruction_opcode (i : instruction) :=
+  match i with
+  | RV32I_instruction x =>
+    match x with
+    | LUI_32I   => opcode_LUI    | AUIPC_32I  => opcode_AUIPC
+    | JAL_32I   => opcode_JAL    | JALR_32I   => opcode_JALR
+    | BEQ_32I   => opcode_BRANCH | BNE_32I    => opcode_BRANCH
+    | BLT_32I   => opcode_BRANCH | BGE_32I    => opcode_BRANCH
+    | BLTU_32I  => opcode_BRANCH | BGEU_32I   => opcode_BRANCH
+    | LB_32I    => opcode_LOAD   | LH_32I     => opcode_LOAD
+    | LW_32I    => opcode_LOAD   | LBU_32I    => opcode_LOAD
+    | LHU_32I   => opcode_LOAD   | SB_32I     => opcode_STORE
+    | SH_32I    => opcode_STORE  | SW_32I     => opcode_STORE
+    | ADDI_32I  => opcode_OP_IMM | SLTI_32I   => opcode_OP_IMM
+    | SLTIU_32I => opcode_OP_IMM | XORI_32I   => opcode_OP_IMM
+    | ORI_32I   => opcode_OP_IMM | ANDI_32I   => opcode_OP_IMM
+    | SLLI_32I  => opcode_OP_IMM | SRLI_32I   => opcode_OP_IMM
+    | SRAI_32I  => opcode_OP_IMM | ADD_32I    => opcode_OP
+    | SUB_32I   => opcode_OP     | SLL_32I    => opcode_OP
+    | SLT_32I   => opcode_OP     | SLTU_32I   => opcode_OP
+    | XOR_32I   => opcode_OP     | SRL_32I    => opcode_OP
+    | SRA_32I   => opcode_OP     | OR_32I     => opcode_OP
+    | AND_32I   => opcode_OP     | FENCE_32I  => opcode_MISC_MEM
+    | ECALL_32I => opcode_SYSTEM | EBREAK_32I => opcode_SYSTEM
+    end
+  | RV64I_instruction x =>
+    match x with
+    | LUI_64I    => opcode_LUI       | AUIPC_64I  => opcode_AUIPC
+    | JAL_64I    => opcode_JAL       | JALR_64I   => opcode_JALR
+    | BEQ_64I    => opcode_BRANCH    | BNE_64I    => opcode_BRANCH
+    | BLT_64I    => opcode_BRANCH    | BGE_64I    => opcode_BRANCH
+    | BLTU_64I   => opcode_BRANCH    | BGEU_64I   => opcode_BRANCH
+    | LB_64I     => opcode_LOAD      | LH_64I     => opcode_LOAD
+    | LW_64I     => opcode_LOAD      | LBU_64I    => opcode_LOAD
+    | LHU_64I    => opcode_LOAD      | SB_64I     => opcode_STORE
+    | SH_64I     => opcode_STORE     | SW_64I     => opcode_STORE
+    | ADDI_64I   => opcode_OP_IMM    | SLTI_64I   => opcode_OP_IMM
+    | SLTIU_64I  => opcode_OP_IMM    | XORI_64I   => opcode_OP_IMM
+    | ORI_64I    => opcode_OP_IMM    | ANDI_64I   => opcode_OP_IMM
+    | SLLI_64I   => opcode_OP_IMM    | SRLI_64I   => opcode_OP_IMM
+    | SRAI_64I   => opcode_OP_IMM    | ADD_64I    => opcode_OP
+    | SUB_64I    => opcode_OP        | SLL_64I    => opcode_OP
+    | SLT_64I    => opcode_OP        | SLTU_64I   => opcode_OP
+    | XOR_64I    => opcode_OP        | SRL_64I    => opcode_OP
+    | SRA_64I    => opcode_OP        | OR_64I     => opcode_OP
+    | AND_64I    => opcode_OP        | FENCE_64I  => opcode_MISC_MEM
+    | ECALL_64I  => opcode_SYSTEM    | EBREAK_64I => opcode_SYSTEM
+    | LWU_64I    => opcode_LOAD      | LD_64I     => opcode_LOAD
+    | SD_64I     => opcode_STORE     | ADDIW_64I  => opcode_OP_IMM_32
+    | SLLIW_64I  => opcode_OP_IMM_32    | SRLIW_64I  => opcode_OP_IMM_32
+    | SRAIW_64I  => opcode_OP_IMM_32 | ADDW_64I   => opcode_OP_32
+    | SUBW_64I   => opcode_OP_32     | SLLW_64I   => opcode_OP_32
+    | SRLW_64I   => opcode_OP_32     | SRAW_64I   => opcode_OP_32
+    end
+  | RV32Zifencei_instruction x =>
+    match x with
+    | FENCE_I_32Zifencei => opcode_MISC_MEM
+    end
+  | RV64Zifencei_instruction x =>
+    match x with
+    | FENCE_I_64Zifencei => opcode_MISC_MEM
+    end
+  | RV32Zicsr_instruction x =>
+    match x with
+    | CSRRW_32Zicsr  => opcode_SYSTEM | CSRRS_32Zicsr  => opcode_SYSTEM
+    | CSRRC_32Zicsr  => opcode_SYSTEM | CSRRWI_32Zicsr => opcode_SYSTEM
+    | CSRRSI_32Zicsr => opcode_SYSTEM | CSRRCI_32Zicsr => opcode_SYSTEM
+    end
+  | RV64Zicsr_instruction x =>
+    match x with
+    | CSRRW_64Zicsr  => opcode_SYSTEM | CSRRS_64Zicsr  => opcode_SYSTEM
+    | CSRRC_64Zicsr  => opcode_SYSTEM | CSRRWI_64Zicsr => opcode_SYSTEM
+    | CSRRSI_64Zicsr => opcode_SYSTEM | CSRRCI_64Zicsr => opcode_SYSTEM
+    end
+  | RV32M_instruction x =>
+    match x with
+    | MUL_32M   => opcode_OP | MULH_32M => opcode_OP | MULHSU_32M => opcode_OP
+    | MULHU_32M => opcode_OP | DIV_32M  => opcode_OP | DIVU_32M   => opcode_OP
+    | REM_32M   => opcode_OP | REMU_32M => opcode_OP
+    end
+  | RV64M_instruction x =>
+    match x with
+    | MUL_64M    => opcode_OP    | MULH_64M  => opcode_OP
+    | MULHSU_64M => opcode_OP    | MULHU_64M => opcode_OP
+    | DIV_64M    => opcode_OP    | DIVU_64M  => opcode_OP
+    | REM_64M    => opcode_OP    | REMU_64M  => opcode_OP
+    | MULW_64M   => opcode_OP_32 | DIVW_64M  => opcode_OP_32
+    | DIVUW_64M  => opcode_OP_32 | REMW_64M  => opcode_OP_32
+    | REMUW_64M  => opcode_OP_32
+    end
+  | RV32A_instruction x =>
+    match x with
+    | LR_W_32A      => opcode_AMO | SC_W_32A      => opcode_AMO
+    | AMOSWAP_W_32A => opcode_AMO | AMOADD_W_32A  => opcode_AMO
+    | AMOXOR_W_32A  => opcode_AMO | AMOAND_W_32A  => opcode_AMO
+    | AMOOR_W_32A   => opcode_AMO | AMOMIN_W_32A  => opcode_AMO
+    | AMOMAX_W_32A  => opcode_AMO | AMOMINU_W_32A => opcode_AMO
+    | AMOMAXU_W_32A => opcode_AMO
+    end
+  | RV64A_instruction x =>
+    match x with
+    | LR_W_64A      => opcode_AMO | SC_W_64A      => opcode_AMO
+    | AMOSWAP_W_64A => opcode_AMO | AMOADD_W_64A  => opcode_AMO
+    | AMOXOR_W_64A  => opcode_AMO | AMOAND_W_64A  => opcode_AMO
+    | AMOOR_W_64A   => opcode_AMO | AMOMIN_W_64A  => opcode_AMO
+    | AMOMAX_W_64A  => opcode_AMO | AMOMINU_W_64A => opcode_AMO
+    | AMOMAXU_W_64A => opcode_AMO | LR_D_64A      => opcode_AMO
+    | SC_D_64A      => opcode_AMO | AMOSWAP_D_64A => opcode_AMO
+    | AMOADD_D_64A  => opcode_AMO | AMOXOR_D_64A  => opcode_AMO
+    | AMOAND_D_64A  => opcode_AMO | AMOOR_D_64A   => opcode_AMO
+    | AMOMIN_D_64A  => opcode_AMO | AMOMAX_D_64A  => opcode_AMO
+    | AMOMINU_D_64A => opcode_AMO | AMOMAXU_D_64A => opcode_AMO
+    end
+  | RV32F_instruction x =>
+    match x with
+    | FLW_32F       => opcode_LOAD_FP | FSW_32F       => opcode_STORE_FP
+    | FMADD_S_32F   => opcode_MADD    | FMSUB_S_32F   => opcode_MSUB
+    | FNMSUB_S_32F  => opcode_NMSUB   | FNMADD_S_32F  => opcode_NMADD
+    | FADD_S_32F    => opcode_OP_FP   | FSUB_S_32F    => opcode_OP_FP
+    | FMUL_S_32F    => opcode_OP_FP   | FDIV_S_32F    => opcode_OP_FP
+    | FSQRT_S_32F   => opcode_OP_FP   | FSGNJ_S_32F   => opcode_OP_FP
+    | FSGNJN_S_32F  => opcode_OP_FP   | FSGNJX_S_32F  => opcode_OP_FP
+    | FMIN_S_32F    => opcode_OP_FP   | FMAX_S_32F    => opcode_OP_FP
+    | FCVT_W_S_32F  => opcode_OP_FP   | FCVT_WU_S_32F => opcode_OP_FP
+    | FMV_X_W_32F   => opcode_OP_FP   | FEQ_S_32F     => opcode_OP_FP
+    | FLT_S_32F     => opcode_OP_FP   | FLE_S_32F     => opcode_OP_FP
+    | FCLASS_S_32F  => opcode_OP_FP   | FCVT_S_W_32F  => opcode_OP_FP
+    | FCVT_S_WU_32F => opcode_OP_FP   | FMV_W_X_32F   => opcode_OP_FP
+    end
+  | RV64F_instruction x =>
+    match x with
+    | FLW_64F       => opcode_LOAD_FP | FSW_64F       => opcode_LOAD_FP
+    | FMADD_S_64F   => opcode_MADD    | FMSUB_S_64F   => opcode_MSUB
+    | FNMSUB_S_64F  => opcode_NMSUB   | FNMADD_S_64F  => opcode_NMADD
+    | FADD_S_64F    => opcode_OP_FP   | FSUB_S_64F    => opcode_OP_FP
+    | FMUL_S_64F    => opcode_OP_FP   | FDIV_S_64F    => opcode_OP_FP
+    | FSQRT_S_64F   => opcode_OP_FP   | FSGNJ_S_64F   => opcode_OP_FP
+    | FSGNJN_S_64F  => opcode_OP_FP   | FSGNJX_S_64F  => opcode_OP_FP
+    | FMIN_S_64F    => opcode_OP_FP   | FMAX_S_64F    => opcode_OP_FP
+    | FCVT_W_S_64F  => opcode_OP_FP   | FCVT_WU_S_64F => opcode_OP_FP
+    | FMV_X_W_64F   => opcode_OP_FP   | FEQ_S_64F     => opcode_OP_FP
+    | FLT_S_64F     => opcode_OP_FP   | FLE_S_64F     => opcode_OP_FP
+    | FCLASS_S_64F  => opcode_OP_FP   | FCVT_S_W_64F  => opcode_OP_FP
+    | FCVT_S_WU_64F => opcode_OP_FP   | FMV_W_X_64F   => opcode_OP_FP
+    | FCVT_L_S_64F  => opcode_OP_FP   | FCVT_LU_S_64F => opcode_OP_FP
+    | FCVT_S_L_64F  => opcode_OP_FP   | FCVT_S_LU_64F => opcode_OP_FP
+    end
+  | RV32D_instruction x =>
+    match x with
+    | FLD_32D      => opcode_LOAD_FP | FSD_32D       => opcode_STORE_FP
+    | FMADD_D_32D  => opcode_MADD    | FMSUB_D_32D   => opcode_MSUB
+    | FNMSUB_D_32D => opcode_NMSUB   | FNMADD_D_32D  => opcode_NMADD
+    | FADD_D_32D   => opcode_OP_FP   | FSUB_D_32D    => opcode_OP_FP
+    | FMUL_D_32D   => opcode_OP_FP   | FDIV_D_32D    => opcode_OP_FP
+    | FSQRT_D_32D  => opcode_OP_FP   | FSGNJ_D_32D   => opcode_OP_FP
+    | FSGNJN_D_32D => opcode_OP_FP   | FSGNJX_D_32D  => opcode_OP_FP
+    | FMIN_D_32D   => opcode_OP_FP   | FMAX_D_32D    => opcode_OP_FP
+    | FCVT_S_D_32D => opcode_OP_FP   | FCVT_D_S_32D  => opcode_OP_FP
+    | FEQ_D_32D    => opcode_OP_FP   | FLT_D_32D     => opcode_OP_FP
+    | FLE_D_32D    => opcode_OP_FP   | FCLASS_D_32D  => opcode_OP_FP
+    | FCVT_W_D_32D => opcode_OP_FP   | FCVT_WU_D_32D => opcode_OP_FP
+    | FCVT_D_W_32D => opcode_OP_FP   | FCVT_D_WU_32D => opcode_OP_FP
+    end
+  | RV64D_instruction x =>
+    match x with
+    | FLD_64D       => opcode_LOAD_FP | FSD_64D       => opcode_STORE_FP
+    | FMADD_D_64D   => opcode_MADD    | FMSUB_D_64D   => opcode_MSUB
+    | FNMSUB_D_64D  => opcode_NMSUB   | FNMADD_D_64D  => opcode_NMADD
+    | FADD_D_64D    => opcode_OP_FP   | FSUB_D_64D    => opcode_OP_FP
+    | FMUL_D_64D    => opcode_OP_FP   | FDIV_D_64D    => opcode_OP_FP
+    | FSQRT_D_64D   => opcode_OP_FP   | FSGNJ_D_64D   => opcode_OP_FP
+    | FSGNJN_D_64D  => opcode_OP_FP   | FSGNJX_D_64D  => opcode_OP_FP
+    | FMIN_D_64D    => opcode_OP_FP   | FMAX_D_64D    => opcode_OP_FP
+    | FCVT_S_D_64D  => opcode_OP_FP   | FCVT_D_S_64D  => opcode_OP_FP
+    | FEQ_D_64D     => opcode_OP_FP   | FLT_D_64D     => opcode_OP_FP
+    | FLE_D_64D     => opcode_OP_FP   | FCLASS_D_64D  => opcode_OP_FP
+    | FCVT_W_D_64D  => opcode_OP_FP   | FCVT_WU_D_64D => opcode_OP_FP
+    | FCVT_D_W_64D  => opcode_OP_FP   | FCVT_D_WU_64D => opcode_OP_FP
+    | FCVT_L_D_64D  => opcode_OP_FP   | FCVT_LU_D_64D => opcode_OP_FP
+    | FMV_X_D_64D   => opcode_OP_FP   | FCVT_D_L_64D  => opcode_OP_FP
+    | FCVT_D_LU_64D => opcode_OP_FP   | FMV_D_X_64D   => opcode_OP_FP
+    end
+  | RV32Q_instruction x =>
+    match x with
+    | FLQ_32Q       => opcode_LOAD_FP | FSQ_32Q       => opcode_STORE_FP
+    | FMADD_Q_32Q   => opcode_MADD    | FMSUB_Q_32Q   => opcode_MSUB
+    | FNMSUB_Q_32Q  => opcode_NMSUB   | FNMADD_Q_32Q  => opcode_NMADD
+    | FADD_Q_32Q    => opcode_OP_FP   | FSUB_Q_32Q    => opcode_OP_FP
+    | FMUL_Q_32Q    => opcode_OP_FP   | FDIV_Q_32Q    => opcode_OP_FP
+    | FSQRT_Q_32Q   => opcode_OP_FP   | FSGNJ_Q_32Q   => opcode_OP_FP
+    | FSGNJN_Q_32Q  => opcode_OP_FP   | FSGNJX_Q_32Q  => opcode_OP_FP
+    | FMIN_Q_32Q    => opcode_OP_FP   | FMAX_Q_32Q    => opcode_OP_FP
+    | FCVT_S_Q_32Q  => opcode_OP_FP   | FCVT_Q_S_32Q  => opcode_OP_FP
+    | FCVT_D_Q_32Q  => opcode_OP_FP   | FCVT_Q_D_32Q  => opcode_OP_FP
+    | FEQ_Q_32Q     => opcode_OP_FP   | FLT_Q_32Q     => opcode_OP_FP
+    | FLE_Q_32Q     => opcode_OP_FP   | FCLASS_Q_32Q  => opcode_OP_FP
+    | FCVT_W_Q_32Q  => opcode_OP_FP   | FCVT_WU_Q_32Q => opcode_OP_FP
+    | FCVT_Q_W_32Q  => opcode_OP_FP   | FCVT_Q_WU_32Q => opcode_OP_FP
+    end
+  | RV64Q_instruction x =>
+    match x with
+    | FLQ_64Q       => opcode_LOAD_FP | FSQ_64Q       => opcode_STORE_FP
+    | FMADD_Q_64Q   => opcode_MADD    | FMSUB_Q_64Q   => opcode_MSUB
+    | FNMSUB_Q_64Q  => opcode_NMSUB   | FNMADD_Q_64Q  => opcode_NMADD
+    | FADD_Q_64Q    => opcode_OP_FP   | FSUB_Q_64Q    => opcode_OP_FP
+    | FMUL_Q_64Q    => opcode_OP_FP   | FDIV_Q_64Q    => opcode_OP_FP
+    | FSQRT_Q_64Q   => opcode_OP_FP   | FSGNJ_Q_64Q   => opcode_OP_FP
+    | FSGNJN_Q_64Q  => opcode_OP_FP   | FSGNJX_Q_64Q  => opcode_OP_FP
+    | FMIN_Q_64Q    => opcode_OP_FP   | FMAX_Q_64Q    => opcode_OP_FP
+    | FCVT_S_Q_64Q  => opcode_OP_FP   | FCVT_Q_S_64Q  => opcode_OP_FP
+    | FCVT_D_Q_64Q  => opcode_OP_FP   | FCVT_Q_D_64Q  => opcode_OP_FP
+    | FEQ_Q_64Q     => opcode_OP_FP   | FLT_Q_64Q     => opcode_OP_FP
+    | FLE_Q_64Q     => opcode_OP_FP   | FCLASS_Q_64Q  => opcode_OP_FP
+    | FCVT_W_Q_64Q  => opcode_OP_FP   | FCVT_WU_Q_64Q => opcode_OP_FP
+    | FCVT_Q_W_64Q  => opcode_OP_FP   | FCVT_Q_WU_64Q => opcode_OP_FP
+    | FCVT_L_Q_64Q  => opcode_OP_FP   | FCVT_LU_Q_64Q => opcode_OP_FP
+    | FCVT_Q_L_64Q  => opcode_OP_FP   | FCVT_Q_LU_64Q => opcode_OP_FP
+    end
+  end.
+
+Inductive funct3_type :=
 | funct3_ADD    | funct3_SUB     | funct3_SLL      | funct3_SLT
 | funct3_SLTU   | funct3_XOR     | funct3_SRL      | funct3_SRA
 | funct3_OR     | funct3_AND     | funct3_LB       | funct3_LH
@@ -70,51 +288,51 @@ Inductive funct3_type : Type :=
 | funct3_FSW.
 
 Definition funct3_bin (f : funct3_type) :=
-match f with
-| funct3_ADD      => Ob~0~0~0 | funct3_SUB      => Ob~0~0~0
-| funct3_SLL      => Ob~0~0~1 | funct3_SLT      => Ob~0~1~0
-| funct3_SLTU     => Ob~0~1~1 | funct3_XOR      => Ob~1~0~0
-| funct3_SRL      => Ob~1~0~1 | funct3_SRA      => Ob~1~0~1
-| funct3_OR       => Ob~1~1~0 | funct3_AND      => Ob~1~1~1
-| funct3_LB       => Ob~0~0~0 | funct3_LH       => Ob~0~0~1
-| funct3_LW       => Ob~0~1~0 | funct3_LBU      => Ob~1~0~0
-| funct3_LHU      => Ob~1~0~1 | funct3_SLTI     => Ob~0~1~0
-| funct3_SLTIU    => Ob~0~1~1 | funct3_ADDI     => Ob~0~0~0
-| funct3_XORI     => Ob~1~0~0 | funct3_ORI      => Ob~1~1~0
-| funct3_ANDI     => Ob~1~1~1 | funct3_SLLI     => Ob~0~0~1
-| funct3_SRLI     => Ob~1~0~1 | funct3_SRAI     => Ob~1~0~1
-| funct3_FENCE    => Ob~0~0~0 | funct3_SB       => Ob~0~0~0
-| funct3_SH       => Ob~0~0~1 | funct3_SW       => Ob~0~1~0
-| funct3_BEQ      => Ob~0~0~0 | funct3_BNE      => Ob~0~0~1
-| funct3_BLT      => Ob~1~0~0 | funct3_BGE      => Ob~1~0~1
-| funct3_BLTU     => Ob~1~1~0 | funct3_BGEU     => Ob~1~1~1
-| funct3_PRIV     => Ob~0~0~0 | funct3_ADDW     => Ob~0~0~0
-| funct3_SUBW     => Ob~0~0~0 | funct3_SLLW     => Ob~0~0~1
-| funct3_SRLW     => Ob~1~0~1 | funct3_SRAW     => Ob~1~0~1
-| funct3_LWU      => Ob~1~1~0 | funct3_LD       => Ob~0~1~1
-| funct3_ADDIW    => Ob~0~0~0 | funct3_SLLIW    => Ob~0~0~1
-| funct3_SRLIW    => Ob~1~0~1 | funct3_SRAIW    => Ob~1~0~1
-| funct3_SD       => Ob~0~1~1 | funct3_FENCE_I  => Ob~0~0~1
-| funct3_CSRRW    => Ob~0~0~1 | funct3_CSRRS    => Ob~0~1~0
-| funct3_CSRRC    => Ob~0~1~1 | funct3_CSRRWI   => Ob~1~0~1
-| funct3_CSRRSI   => Ob~1~1~0 | funct3_CSRRCI   => Ob~1~1~1
-| funct3_MUL      => Ob~0~0~0 | funct3_MULH     => Ob~0~0~1
-| funct3_MULHSU   => Ob~0~1~0 | funct3_MULHU    => Ob~0~1~1
-| funct3_DIV      => Ob~1~0~0 | funct3_DIVU     => Ob~1~0~1
-| funct3_REM      => Ob~1~1~0 | funct3_REMU     => Ob~1~1~1
-| funct3_MULW     => Ob~0~0~0 | funct3_DIVW     => Ob~1~0~0
-| funct3_DIVUW    => Ob~1~0~1 | funct3_REMW     => Ob~1~1~0
-| funct3_REMUW    => Ob~1~1~1 | funct3_AMOW     => Ob~0~1~0
-| funct3_AMOD     => Ob~0~1~1 | funct3_FSGNJ_S  => Ob~0~0~0
-| funct3_FSGNJN_S => Ob~0~0~1 | funct3_FSGNJX_S => Ob~0~1~0
-| funct3_FMIN_S   => Ob~0~0~0 | funct3_FMAX_S   => Ob~0~0~1
-| funct3_FMV_X_W  => Ob~0~0~0 | funct3_FEQ_S    => Ob~0~1~0
-| funct3_FLT_S    => Ob~0~0~1 | funct3_FLE_S    => Ob~0~0~0
-| funct3_FCLASS_S => Ob~0~0~1 | funct3_FLW      => Ob~0~1~0
-| funct3_FSW      => Ob~0~1~0
-end.
+  match f with
+  | funct3_ADD      => Ob~0~0~0 | funct3_SUB      => Ob~0~0~0
+  | funct3_SLL      => Ob~0~0~1 | funct3_SLT      => Ob~0~1~0
+  | funct3_SLTU     => Ob~0~1~1 | funct3_XOR      => Ob~1~0~0
+  | funct3_SRL      => Ob~1~0~1 | funct3_SRA      => Ob~1~0~1
+  | funct3_OR       => Ob~1~1~0 | funct3_AND      => Ob~1~1~1
+  | funct3_LB       => Ob~0~0~0 | funct3_LH       => Ob~0~0~1
+  | funct3_LW       => Ob~0~1~0 | funct3_LBU      => Ob~1~0~0
+  | funct3_LHU      => Ob~1~0~1 | funct3_SLTI     => Ob~0~1~0
+  | funct3_SLTIU    => Ob~0~1~1 | funct3_ADDI     => Ob~0~0~0
+  | funct3_XORI     => Ob~1~0~0 | funct3_ORI      => Ob~1~1~0
+  | funct3_ANDI     => Ob~1~1~1 | funct3_SLLI     => Ob~0~0~1
+  | funct3_SRLI     => Ob~1~0~1 | funct3_SRAI     => Ob~1~0~1
+  | funct3_FENCE    => Ob~0~0~0 | funct3_SB       => Ob~0~0~0
+  | funct3_SH       => Ob~0~0~1 | funct3_SW       => Ob~0~1~0
+  | funct3_BEQ      => Ob~0~0~0 | funct3_BNE      => Ob~0~0~1
+  | funct3_BLT      => Ob~1~0~0 | funct3_BGE      => Ob~1~0~1
+  | funct3_BLTU     => Ob~1~1~0 | funct3_BGEU     => Ob~1~1~1
+  | funct3_PRIV     => Ob~0~0~0 | funct3_ADDW     => Ob~0~0~0
+  | funct3_SUBW     => Ob~0~0~0 | funct3_SLLW     => Ob~0~0~1
+  | funct3_SRLW     => Ob~1~0~1 | funct3_SRAW     => Ob~1~0~1
+  | funct3_LWU      => Ob~1~1~0 | funct3_LD       => Ob~0~1~1
+  | funct3_ADDIW    => Ob~0~0~0 | funct3_SLLIW    => Ob~0~0~1
+  | funct3_SRLIW    => Ob~1~0~1 | funct3_SRAIW    => Ob~1~0~1
+  | funct3_SD       => Ob~0~1~1 | funct3_FENCE_I  => Ob~0~0~1
+  | funct3_CSRRW    => Ob~0~0~1 | funct3_CSRRS    => Ob~0~1~0
+  | funct3_CSRRC    => Ob~0~1~1 | funct3_CSRRWI   => Ob~1~0~1
+  | funct3_CSRRSI   => Ob~1~1~0 | funct3_CSRRCI   => Ob~1~1~1
+  | funct3_MUL      => Ob~0~0~0 | funct3_MULH     => Ob~0~0~1
+  | funct3_MULHSU   => Ob~0~1~0 | funct3_MULHU    => Ob~0~1~1
+  | funct3_DIV      => Ob~1~0~0 | funct3_DIVU     => Ob~1~0~1
+  | funct3_REM      => Ob~1~1~0 | funct3_REMU     => Ob~1~1~1
+  | funct3_MULW     => Ob~0~0~0 | funct3_DIVW     => Ob~1~0~0
+  | funct3_DIVUW    => Ob~1~0~1 | funct3_REMW     => Ob~1~1~0
+  | funct3_REMUW    => Ob~1~1~1 | funct3_AMOW     => Ob~0~1~0
+  | funct3_AMOD     => Ob~0~1~1 | funct3_FSGNJ_S  => Ob~0~0~0
+  | funct3_FSGNJN_S => Ob~0~0~1 | funct3_FSGNJX_S => Ob~0~1~0
+  | funct3_FMIN_S   => Ob~0~0~0 | funct3_FMAX_S   => Ob~0~0~1
+  | funct3_FMV_X_W  => Ob~0~0~0 | funct3_FEQ_S    => Ob~0~1~0
+  | funct3_FLT_S    => Ob~0~0~1 | funct3_FLE_S    => Ob~0~0~0
+  | funct3_FCLASS_S => Ob~0~0~1 | funct3_FLW      => Ob~0~1~0
+  | funct3_FSW      => Ob~0~1~0
+  end.
 
-Inductive funct7_type : Type :=
+Inductive funct7_type :=
 | funct7_ADD     | funct7_SUB      | funct7_SLL      | funct7_SLT
 | funct7_SLTU    | funct7_XOR      | funct7_SRL      | funct7_SRA
 | funct7_OR      | funct7_AND      | funct7_ADDW     | funct7_SUBW
@@ -129,70 +347,41 @@ Inductive funct7_type : Type :=
 | funct7_SFENCE_VMA.
 
 Definition funct7_bin (f : funct7_type) :=
-match f with
-| funct7_ADD        => Ob~0~0~0~0~0~0~0 | funct7_SUB      => Ob~0~1~0~0~0~0~0
-| funct7_SLL        => Ob~0~0~0~0~0~0~0 | funct7_SLT      => Ob~0~0~0~0~0~0~0
-| funct7_SLTU       => Ob~0~0~0~0~0~0~0 | funct7_XOR      => Ob~0~0~0~0~0~0~0
-| funct7_SRL        => Ob~0~0~0~0~0~0~0 | funct7_SRA      => Ob~0~1~0~0~0~0~0
-| funct7_OR         => Ob~0~0~0~0~0~0~0 | funct7_AND      => Ob~0~0~0~0~0~0~0
-| funct7_ADDW       => Ob~0~0~0~0~0~0~0 | funct7_SUBW     => Ob~0~1~0~0~0~0~0
-| funct7_SLLW       => Ob~0~0~0~0~0~0~0 | funct7_SRLW     => Ob~0~0~0~0~0~0~0
-| funct7_SRAW       => Ob~0~1~0~0~0~0~0 | funct7_SLLIW    => Ob~0~0~0~0~0~0~0
-| funct7_SRLIW      => Ob~0~0~0~0~0~0~0 | funct7_SRAIW    => Ob~0~1~0~0~0~0~0
-| funct7_MUL        => Ob~0~0~0~0~0~0~1 | funct7_MULH     => Ob~0~0~0~0~0~0~1
-| funct7_MULHSU     => Ob~0~0~0~0~0~0~1 | funct7_MULHU    => Ob~0~0~0~0~0~0~1
-| funct7_DIV        => Ob~0~0~0~0~0~0~1 | funct7_DIVU     => Ob~0~0~0~0~0~0~1
-| funct7_REM        => Ob~0~0~0~0~0~0~1 | funct7_REMU     => Ob~0~0~0~0~0~0~1
-| funct7_MULW       => Ob~0~0~0~0~0~0~1 | funct7_DIVW     => Ob~0~0~0~0~0~0~1
-| funct7_DIVUW      => Ob~0~0~0~0~0~0~1 | funct7_REMW     => Ob~0~0~0~0~0~0~1
-| funct7_REMUW      => Ob~0~0~0~0~0~0~1 | funct7_FADD_S   => Ob~0~0~0~0~0~0~0
-| funct7_FSUB_S     => Ob~0~0~0~0~1~0~0 | funct7_FMUL_S   => Ob~0~0~0~1~0~0~0
-| funct7_FDIV_S     => Ob~0~0~0~1~1~0~0 | funct7_FSQRT_S  => Ob~0~1~0~1~1~0~0
-| funct7_FSGNJ_S    => Ob~0~0~1~0~0~0~0 | funct7_FMIN_S   => Ob~0~0~1~0~1~0~0
-| funct7_FCVT_W_S   => Ob~1~1~0~0~0~0~0 | funct7_FMV_X_W  => Ob~1~1~1~0~0~0~0
-| funct7_FEQ_S      => Ob~1~0~1~0~0~0~0 | funct7_FCLASS_S => Ob~1~1~1~0~0~0~0
-| funct7_FCVT_S_W   => Ob~1~1~0~1~0~0~0 | funct7_FMV_W_X  => Ob~1~1~1~1~0~0~0
-| funct7_SFENCE_VMA => Ob~0~0~0~1~0~0~1
-end.
-
-Scheme Equality for instruction_field.
-
-Module DecidableInstructionField <: DecidableType.
-  Definition t := instruction_field.
-  Definition eq := @eq instruction_field.
-  Instance eq_equiv : @Equivalence instruction_field eq := eq_equivalence.
-  Definition eq_dec := instruction_field_eq_dec.
-End DecidableInstructionField.
-
-Module FieldsSet <: MSetWeakList.Make DecidableInstructionField.
-  Include MSetWeakList DecidableInstructionField.
-End FieldsSet.
+  match f with
+  | funct7_ADD        => Ob~0~0~0~0~0~0~0 | funct7_SUB      => Ob~0~1~0~0~0~0~0
+  | funct7_SLL        => Ob~0~0~0~0~0~0~0 | funct7_SLT      => Ob~0~0~0~0~0~0~0
+  | funct7_SLTU       => Ob~0~0~0~0~0~0~0 | funct7_XOR      => Ob~0~0~0~0~0~0~0
+  | funct7_SRL        => Ob~0~0~0~0~0~0~0 | funct7_SRA      => Ob~0~1~0~0~0~0~0
+  | funct7_OR         => Ob~0~0~0~0~0~0~0 | funct7_AND      => Ob~0~0~0~0~0~0~0
+  | funct7_ADDW       => Ob~0~0~0~0~0~0~0 | funct7_SUBW     => Ob~0~1~0~0~0~0~0
+  | funct7_SLLW       => Ob~0~0~0~0~0~0~0 | funct7_SRLW     => Ob~0~0~0~0~0~0~0
+  | funct7_SRAW       => Ob~0~1~0~0~0~0~0 | funct7_SLLIW    => Ob~0~0~0~0~0~0~0
+  | funct7_SRLIW      => Ob~0~0~0~0~0~0~0 | funct7_SRAIW    => Ob~0~1~0~0~0~0~0
+  | funct7_MUL        => Ob~0~0~0~0~0~0~1 | funct7_MULH     => Ob~0~0~0~0~0~0~1
+  | funct7_MULHSU     => Ob~0~0~0~0~0~0~1 | funct7_MULHU    => Ob~0~0~0~0~0~0~1
+  | funct7_DIV        => Ob~0~0~0~0~0~0~1 | funct7_DIVU     => Ob~0~0~0~0~0~0~1
+  | funct7_REM        => Ob~0~0~0~0~0~0~1 | funct7_REMU     => Ob~0~0~0~0~0~0~1
+  | funct7_MULW       => Ob~0~0~0~0~0~0~1 | funct7_DIVW     => Ob~0~0~0~0~0~0~1
+  | funct7_DIVUW      => Ob~0~0~0~0~0~0~1 | funct7_REMW     => Ob~0~0~0~0~0~0~1
+  | funct7_REMUW      => Ob~0~0~0~0~0~0~1 | funct7_FADD_S   => Ob~0~0~0~0~0~0~0
+  | funct7_FSUB_S     => Ob~0~0~0~0~1~0~0 | funct7_FMUL_S   => Ob~0~0~0~1~0~0~0
+  | funct7_FDIV_S     => Ob~0~0~0~1~1~0~0 | funct7_FSQRT_S  => Ob~0~1~0~1~1~0~0
+  | funct7_FSGNJ_S    => Ob~0~0~1~0~0~0~0 | funct7_FMIN_S   => Ob~0~0~1~0~1~0~0
+  | funct7_FCVT_W_S   => Ob~1~1~0~0~0~0~0 | funct7_FMV_X_W  => Ob~1~1~1~0~0~0~0
+  | funct7_FEQ_S      => Ob~1~0~1~0~0~0~0 | funct7_FCLASS_S => Ob~1~1~1~0~0~0~0
+  | funct7_FCVT_S_W   => Ob~1~1~0~1~0~0~0 | funct7_FMV_W_X  => Ob~1~1~1~1~0~0~0
+  | funct7_SFENCE_VMA => Ob~0~0~0~1~0~0~1
+  end.
 
 Definition instruction_type_fields (t : instruction_type) :=
   match t with
-  | RType =>
-    (FieldsSet.add opcode (FieldsSet.add rd (FieldsSet.add funct3
-    (FieldsSet.add rs1 (FieldsSet.add rs2 (FieldsSet.add funct7
-    FieldsSet.empty))))))
-  | R4Type =>
-    (FieldsSet.add opcode (FieldsSet.add rd (FieldsSet.add funct3
-    (FieldsSet.add rs1 (FieldsSet.add rs2 (FieldsSet.add funct2
-    (FieldsSet.add rs3 FieldsSet.empty)))))))
-  | IType =>
-    (FieldsSet.add opcode (FieldsSet.add rd (FieldsSet.add funct3
-    (FieldsSet.add rs1 (FieldsSet.add immI FieldsSet.empty)))))
-  | SType =>
-    (FieldsSet.add opcode (FieldsSet.add immS (FieldsSet.add funct3
-    (FieldsSet.add rs1 (FieldsSet.add rs2 FieldsSet.empty)))))
-  | BType =>
-    (FieldsSet.add opcode (FieldsSet.add immB (FieldsSet.add funct3
-    (FieldsSet.add rs1 (FieldsSet.add rs2 FieldsSet.empty)))))
-  | UType =>
-    (FieldsSet.add opcode (FieldsSet.add rd (FieldsSet.add immU
-    FieldsSet.empty)))
-  | JType =>
-    (FieldsSet.add opcode (FieldsSet.add rd (FieldsSet.add immJ
-    FieldsSet.empty)))
+  | RType  => [opcode; rd  ; funct3; rs1; rs2; funct7]
+  | R4Type => [opcode; rd  ; funct3; rs1; rs2; funct2; rs3]
+  | IType  => [opcode; rd  ; funct3; rs1; immI]
+  | SType  => [opcode; immS; funct3; rs1; rs2]
+  | BType  => [opcode; immB; funct3; rs1; rs2]
+  | UType  => [opcode; rd  ; immU]
+  | JType  => [opcode; rd  ; immJ]
   end.
 
 Definition get_instruction_type (i : instruction) :=
@@ -484,11 +673,13 @@ Definition get_field_properties (f : instruction_field) :=
     |}
   end.
 
-Definition instruction_bin := bits_t 32.
+(* Definition instruction_bin := bits_t 32. *)
 
-Definition ex_instr : instruction_bin :=
-  Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1.
+(* Definition ex_instr : instruction_bin := *)
+(*   Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1. *)
 
-Definition get_subfield_value (s : subfield_properties) (i : bits_t 32) :=
-  UBinop (UBits2 USel) i (first_bit s).
-  i[|5`d(first_bit s)| :+ (length s)].
+(* Definition get_first_bit (i : instruction_bin) := *)
+(*   i[|5'd0| :+ 2]. *)
+
+(* Definition get_subfield_value (s : subfield_properties) (i : bits_t 32) := *)
+(*   UBinop (UBits2 USel) i (first_bit s). *)
