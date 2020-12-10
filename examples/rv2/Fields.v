@@ -31,16 +31,16 @@ Inductive opcode_name :=
 
 Definition opcode_bin (o : opcode_name) :=
   match o with
-  | opcode_OP        => Ob~0~1~1~0~0~1~1 | opcode_JALR      => Ob~1~1~0~0~1~1~1
-  | opcode_LOAD      => Ob~0~0~0~0~0~1~1 | opcode_OP_IMM    => Ob~0~0~1~0~0~1~1
-  | opcode_MISC_MEM  => Ob~0~0~0~1~1~1~1 | opcode_STORE     => Ob~0~1~0~0~0~1~1
-  | opcode_BRANCH    => Ob~1~1~0~0~0~1~1 | opcode_LUI       => Ob~0~1~1~0~1~1~1
-  | opcode_AUIPC     => Ob~0~0~1~0~1~1~1 | opcode_JAL       => Ob~1~1~0~1~1~1~1
-  | opcode_SYSTEM    => Ob~1~1~1~0~0~1~1 | opcode_OP_32     => Ob~0~1~1~1~0~1~1
-  | opcode_OP_IMM_32 => Ob~0~0~1~1~0~1~1 | opcode_AMO       => Ob~0~1~0~1~1~1~1
-  | opcode_OP_FP     => Ob~1~0~1~0~0~1~1 | opcode_MADD      => Ob~1~0~0~0~0~1~1
-  | opcode_MSUB      => Ob~1~0~0~0~1~1~1 | opcode_NMSUB     => Ob~1~0~0~1~0~1~1
-  | opcode_NMADD     => Ob~1~0~0~1~1~1~1 | opcode_LOAD_FP   => Ob~0~0~0~0~1~1~1
+  | opcode_OP        => Ob~0~1~1~0~0~1~1 | opcode_JALR    => Ob~1~1~0~0~1~1~1
+  | opcode_LOAD      => Ob~0~0~0~0~0~1~1 | opcode_OP_IMM  => Ob~0~0~1~0~0~1~1
+  | opcode_MISC_MEM  => Ob~0~0~0~1~1~1~1 | opcode_STORE   => Ob~0~1~0~0~0~1~1
+  | opcode_BRANCH    => Ob~1~1~0~0~0~1~1 | opcode_LUI     => Ob~0~1~1~0~1~1~1
+  | opcode_AUIPC     => Ob~0~0~1~0~1~1~1 | opcode_JAL     => Ob~1~1~0~1~1~1~1
+  | opcode_SYSTEM    => Ob~1~1~1~0~0~1~1 | opcode_OP_32   => Ob~0~1~1~1~0~1~1
+  | opcode_OP_IMM_32 => Ob~0~0~1~1~0~1~1 | opcode_AMO     => Ob~0~1~0~1~1~1~1
+  | opcode_OP_FP     => Ob~1~0~1~0~0~1~1 | opcode_MADD    => Ob~1~0~0~0~0~1~1
+  | opcode_MSUB      => Ob~1~0~0~0~1~1~1 | opcode_NMSUB   => Ob~1~0~0~1~0~1~1
+  | opcode_NMADD     => Ob~1~0~0~1~1~1~1 | opcode_LOAD_FP => Ob~0~0~0~0~1~1~1
   | opcode_STORE_FP  => Ob~0~1~0~0~1~1~1
   end.
 
@@ -93,7 +93,7 @@ Definition instruction_opcode (i : instruction) :=
     | ECALL_64I  => opcode_SYSTEM    | EBREAK_64I => opcode_SYSTEM
     | LWU_64I    => opcode_LOAD      | LD_64I     => opcode_LOAD
     | SD_64I     => opcode_STORE     | ADDIW_64I  => opcode_OP_IMM_32
-    | SLLIW_64I  => opcode_OP_IMM_32    | SRLIW_64I  => opcode_OP_IMM_32
+    | SLLIW_64I  => opcode_OP_IMM_32 | SRLIW_64I  => opcode_OP_IMM_32
     | SRAIW_64I  => opcode_OP_IMM_32 | ADDW_64I   => opcode_OP_32
     | SUBW_64I   => opcode_OP_32     | SLLW_64I   => opcode_OP_32
     | SRLW_64I   => opcode_OP_32     | SRAW_64I   => opcode_OP_32
