@@ -228,39 +228,39 @@ Definition instruction_opcode (i : instruction) :=
     end
   | RV32Q_instruction x =>
     match x with
-    | FLQ_32Q       => opcode_LOAD_FP | FSQ_32Q       => opcode_STORE_FP
-    | FMADD_Q_32Q   => opcode_MADD    | FMSUB_Q_32Q   => opcode_MSUB
-    | FNMSUB_Q_32Q  => opcode_NMSUB   | FNMADD_Q_32Q  => opcode_NMADD
-    | FADD_Q_32Q    => opcode_OP_FP   | FSUB_Q_32Q    => opcode_OP_FP
-    | FMUL_Q_32Q    => opcode_OP_FP   | FDIV_Q_32Q    => opcode_OP_FP
-    | FSQRT_Q_32Q   => opcode_OP_FP   | FSGNJ_Q_32Q   => opcode_OP_FP
-    | FSGNJN_Q_32Q  => opcode_OP_FP   | FSGNJX_Q_32Q  => opcode_OP_FP
-    | FMIN_Q_32Q    => opcode_OP_FP   | FMAX_Q_32Q    => opcode_OP_FP
-    | FCVT_S_Q_32Q  => opcode_OP_FP   | FCVT_Q_S_32Q  => opcode_OP_FP
-    | FCVT_D_Q_32Q  => opcode_OP_FP   | FCVT_Q_D_32Q  => opcode_OP_FP
-    | FEQ_Q_32Q     => opcode_OP_FP   | FLT_Q_32Q     => opcode_OP_FP
-    | FLE_Q_32Q     => opcode_OP_FP   | FCLASS_Q_32Q  => opcode_OP_FP
-    | FCVT_W_Q_32Q  => opcode_OP_FP   | FCVT_WU_Q_32Q => opcode_OP_FP
-    | FCVT_Q_W_32Q  => opcode_OP_FP   | FCVT_Q_WU_32Q => opcode_OP_FP
+    | FLQ_32Q      => opcode_LOAD_FP | FSQ_32Q       => opcode_STORE_FP
+    | FMADD_Q_32Q  => opcode_MADD    | FMSUB_Q_32Q   => opcode_MSUB
+    | FNMSUB_Q_32Q => opcode_NMSUB   | FNMADD_Q_32Q  => opcode_NMADD
+    | FADD_Q_32Q   => opcode_OP_FP   | FSUB_Q_32Q    => opcode_OP_FP
+    | FMUL_Q_32Q   => opcode_OP_FP   | FDIV_Q_32Q    => opcode_OP_FP
+    | FSQRT_Q_32Q  => opcode_OP_FP   | FSGNJ_Q_32Q   => opcode_OP_FP
+    | FSGNJN_Q_32Q => opcode_OP_FP   | FSGNJX_Q_32Q  => opcode_OP_FP
+    | FMIN_Q_32Q   => opcode_OP_FP   | FMAX_Q_32Q    => opcode_OP_FP
+    | FCVT_S_Q_32Q => opcode_OP_FP   | FCVT_Q_S_32Q  => opcode_OP_FP
+    | FCVT_D_Q_32Q => opcode_OP_FP   | FCVT_Q_D_32Q  => opcode_OP_FP
+    | FEQ_Q_32Q    => opcode_OP_FP   | FLT_Q_32Q     => opcode_OP_FP
+    | FLE_Q_32Q    => opcode_OP_FP   | FCLASS_Q_32Q  => opcode_OP_FP
+    | FCVT_W_Q_32Q => opcode_OP_FP   | FCVT_WU_Q_32Q => opcode_OP_FP
+    | FCVT_Q_W_32Q => opcode_OP_FP   | FCVT_Q_WU_32Q => opcode_OP_FP
     end
   | RV64Q_instruction x =>
     match x with
-    | FLQ_64Q       => opcode_LOAD_FP | FSQ_64Q       => opcode_STORE_FP
-    | FMADD_Q_64Q   => opcode_MADD    | FMSUB_Q_64Q   => opcode_MSUB
-    | FNMSUB_Q_64Q  => opcode_NMSUB   | FNMADD_Q_64Q  => opcode_NMADD
-    | FADD_Q_64Q    => opcode_OP_FP   | FSUB_Q_64Q    => opcode_OP_FP
-    | FMUL_Q_64Q    => opcode_OP_FP   | FDIV_Q_64Q    => opcode_OP_FP
-    | FSQRT_Q_64Q   => opcode_OP_FP   | FSGNJ_Q_64Q   => opcode_OP_FP
-    | FSGNJN_Q_64Q  => opcode_OP_FP   | FSGNJX_Q_64Q  => opcode_OP_FP
-    | FMIN_Q_64Q    => opcode_OP_FP   | FMAX_Q_64Q    => opcode_OP_FP
-    | FCVT_S_Q_64Q  => opcode_OP_FP   | FCVT_Q_S_64Q  => opcode_OP_FP
-    | FCVT_D_Q_64Q  => opcode_OP_FP   | FCVT_Q_D_64Q  => opcode_OP_FP
-    | FEQ_Q_64Q     => opcode_OP_FP   | FLT_Q_64Q     => opcode_OP_FP
-    | FLE_Q_64Q     => opcode_OP_FP   | FCLASS_Q_64Q  => opcode_OP_FP
-    | FCVT_W_Q_64Q  => opcode_OP_FP   | FCVT_WU_Q_64Q => opcode_OP_FP
-    | FCVT_Q_W_64Q  => opcode_OP_FP   | FCVT_Q_WU_64Q => opcode_OP_FP
-    | FCVT_L_Q_64Q  => opcode_OP_FP   | FCVT_LU_Q_64Q => opcode_OP_FP
-    | FCVT_Q_L_64Q  => opcode_OP_FP   | FCVT_Q_LU_64Q => opcode_OP_FP
+    | FLQ_64Q      => opcode_LOAD_FP | FSQ_64Q       => opcode_STORE_FP
+    | FMADD_Q_64Q  => opcode_MADD    | FMSUB_Q_64Q   => opcode_MSUB
+    | FNMSUB_Q_64Q => opcode_NMSUB   | FNMADD_Q_64Q  => opcode_NMADD
+    | FADD_Q_64Q   => opcode_OP_FP   | FSUB_Q_64Q    => opcode_OP_FP
+    | FMUL_Q_64Q   => opcode_OP_FP   | FDIV_Q_64Q    => opcode_OP_FP
+    | FSQRT_Q_64Q  => opcode_OP_FP   | FSGNJ_Q_64Q   => opcode_OP_FP
+    | FSGNJN_Q_64Q => opcode_OP_FP   | FSGNJX_Q_64Q  => opcode_OP_FP
+    | FMIN_Q_64Q   => opcode_OP_FP   | FMAX_Q_64Q    => opcode_OP_FP
+    | FCVT_S_Q_64Q => opcode_OP_FP   | FCVT_Q_S_64Q  => opcode_OP_FP
+    | FCVT_D_Q_64Q => opcode_OP_FP   | FCVT_Q_D_64Q  => opcode_OP_FP
+    | FEQ_Q_64Q    => opcode_OP_FP   | FLT_Q_64Q     => opcode_OP_FP
+    | FLE_Q_64Q    => opcode_OP_FP   | FCLASS_Q_64Q  => opcode_OP_FP
+    | FCVT_W_Q_64Q => opcode_OP_FP   | FCVT_WU_Q_64Q => opcode_OP_FP
+    | FCVT_Q_W_64Q => opcode_OP_FP   | FCVT_Q_WU_64Q => opcode_OP_FP
+    | FCVT_L_Q_64Q => opcode_OP_FP   | FCVT_LU_Q_64Q => opcode_OP_FP
+    | FCVT_Q_L_64Q => opcode_OP_FP   | FCVT_Q_LU_64Q => opcode_OP_FP
     end
   end.
 
@@ -590,88 +590,148 @@ Record subfield_properties := {
 
 Record field_properties := {
   is_sign_extended : bool;
-  field_subfields : list subfield_properties;
-  shift : nat
+  shift : nat;
+  field_subfields : list subfield_properties
 }.
 
 Definition get_field_properties (f : instruction_field) :=
   match f with
   | opcode => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 0 ; length := 7 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 0 ; length := 7 |}::[]
     |}
   | rd     => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 7 ; length := 5 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 7 ; length := 5 |}::[]
     |}
   | rs1    => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 15; length := 5 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 15; length := 5 |}::[]
     |}
   | rs2    => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 20; length := 5 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 20; length := 5 |}::[]
     |}
   | rs3    => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 27; length := 5 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 27; length := 5 |}::[]
     |}
   | funct2 => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 25; length := 2 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 25; length := 2 |}::[]
     |}
   | funct3 => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 12; length := 3 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 12; length := 3 |}::[]
     |}
   | funct7 => {|
       is_sign_extended := false;
-      field_subfields  := {| first_bit := 25; length := 7 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 25; length := 7 |}::[]
     |}
   | immI   => {|
       is_sign_extended := true;
-      field_subfields  := {| first_bit := 20; length := 12 |}::[];
-      shift            := 0
+      shift            := 0;
+      field_subfields  := {| first_bit := 20; length := 12 |}::[]
     |}
   | immS   => {|
       is_sign_extended := true;
+      shift            := 0;
       field_subfields  :=
         {| first_bit := 25; length := 7 |}::
-        {| first_bit := 7 ; length := 5 |}::[];
-      shift            := 0
+        {| first_bit := 7 ; length := 5 |}::[]
     |}
   | immB   => {|
       is_sign_extended := true;
+      shift            := 1;
       field_subfields  :=
         {| first_bit := 31; length := 1 |}::
         {| first_bit := 7 ; length := 1 |}::
         {| first_bit := 25; length := 6 |}::
-        {| first_bit := 8 ; length := 4 |}::[];
-      shift            := 1
+        {| first_bit := 8 ; length := 4 |}::[]
     |}
   | immU   => {|
       is_sign_extended := false;
+      shift            := 12;
       field_subfields  := {| first_bit := 12; length := 20 |}::[];
-      shift            := 12
     |}
   | immJ   => {|
       is_sign_extended := true;
+      shift            := 1;
       field_subfields  :=
         {| first_bit := 31; length := 1  |}::
         {| first_bit := 12; length := 8  |}::
         {| first_bit := 20; length := 1  |}::
-        {| first_bit := 21; length := 10 |}::[];
-      shift            := 1
+        {| first_bit := 21; length := 10 |}::[]
     |}
   end.
+
+Definition get_field_information_quantity (f : instruction_field) :=
+  let fp := get_field_properties f in
+  let sfs := field_subfields fp in
+  (shift fp) + (fold_left (fun c sfp => c + length sfp) sfs 0).
+
+Record RTypeStruct := {
+  RType_opcode : bits_t (get_field_information_quantity opcode);
+  RType_rd     : bits_t (get_field_information_quantity rd    );
+  RType_funct3 : bits_t (get_field_information_quantity funct3);
+  RType_rs1    : bits_t (get_field_information_quantity rs1   );
+  RType_rs2    : bits_t (get_field_information_quantity rs2   );
+  RType_funct7 : bits_t (get_field_information_quantity funct7)
+}.
+
+Record R4TypeStruct := {
+  R4Type_opcode : bits_t (get_field_information_quantity opcode);
+  R4Type_rd     : bits_t (get_field_information_quantity rd    );
+  R4Type_funct3 : bits_t (get_field_information_quantity funct3);
+  R4Type_rs1    : bits_t (get_field_information_quantity rs1   );
+  R4Type_rs2    : bits_t (get_field_information_quantity rs2   );
+  R4Type_funct2 : bits_t (get_field_information_quantity funct2);
+  R4Type_rs3    : bits_t (get_field_information_quantity rs3   )
+}.
+
+Record ITypeStruct := {
+  IType_opcode : bits_t (get_field_information_quantity opcode);
+  IType_rd     : bits_t (get_field_information_quantity rd    );
+  IType_funct3 : bits_t (get_field_information_quantity funct3);
+  IType_rs1    : bits_t (get_field_information_quantity rs1   );
+  IType_immI   : bits_t (get_field_information_quantity immI  )
+}.
+
+Record STypeStruct := {
+  SType_opcode : bits_t (get_field_information_quantity opcode);
+  SType_immS   : bits_t (get_field_information_quantity immS  );
+  SType_funct3 : bits_t (get_field_information_quantity funct3);
+  SType_rs1    : bits_t (get_field_information_quantity rs1   );
+  SType_rs2    : bits_t (get_field_information_quantity rs2   )
+}.
+
+Record BTypeStruct := {
+  BType_opcode : bits_t (get_field_information_quantity opcode);
+  BType_immB   : bits_t (get_field_information_quantity immB  );
+  BType_funct3 : bits_t (get_field_information_quantity funct3);
+  BType_rs1    : bits_t (get_field_information_quantity rs1   );
+  BType_rs2    : bits_t (get_field_information_quantity rs2   )
+}.
+
+Record UTypeStruct := {
+  UType_opcode : bits_t (get_field_information_quantity opcode);
+  UType_rd     : bits_t (get_field_information_quantity rd    );
+  UType_immU   : bits_t (get_field_information_quantity immU  )
+}.
+
+Record JTypeStruct := {
+  JType_opcode : bits_t (get_field_information_quantity opcode);
+  JType_rd     : bits_t (get_field_information_quantity rd    );
+  JType_immJ   : bits_t (get_field_information_quantity immJ  )
+}.
 
 (* Definition instruction_bin := bits_t 32. *)
 
