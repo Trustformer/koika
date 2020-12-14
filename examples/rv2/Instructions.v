@@ -4,12 +4,12 @@ Import ListNotations.
 Require Import ISA.
 
 Inductive instruction_RV32I :=
-| LUI_32I  | AUIPC_32I | JAL_32I   | JALR_32I    | BEQ_32I | BNE_32I
-| BLT_32I  | BGE_32I   | BLTU_32I  | BGEU_32I    | LB_32I  | LH_32I
-| LW_32I   | LBU_32I   | LHU_32I   | SB_32I      | SH_32I  | SW_32I
-| ADDI_32I | SLTI_32I  | SLTIU_32I | XORI_32I    | ORI_32I | ANDI_32I
-| SLLI_32I | SRLI_32I  | SRAI_32I  | ADD_32I     | SUB_32I | SLL_32I
-| SLT_32I  | SLTU_32I  | XOR_32I   | SRL_32I     | SRA_32I | OR_32I
+| LUI_32I  | AUIPC_32I | JAL_32I   | JALR_32I | BEQ_32I | BNE_32I
+| BLT_32I  | BGE_32I   | BLTU_32I  | BGEU_32I | LB_32I  | LH_32I
+| LW_32I   | LBU_32I   | LHU_32I   | SB_32I   | SH_32I  | SW_32I
+| ADDI_32I | SLTI_32I  | SLTIU_32I | XORI_32I | ORI_32I | ANDI_32I
+| SLLI_32I | SRLI_32I  | SRAI_32I  | ADD_32I  | SUB_32I | SLL_32I
+| SLT_32I  | SLTU_32I  | XOR_32I   | SRL_32I  | SRA_32I | OR_32I
 | AND_32I  | FENCE_32I | ECALL_32I | EBREAK_32I.
 Inductive instruction_RV64I :=
 | LUI_64I  | AUIPC_64I | JAL_64I   | JALR_64I   | BEQ_64I   | BNE_64I
@@ -24,10 +24,10 @@ Inductive instruction_RV64I :=
 Inductive instruction_RV32Zifencei := FENCE_I_32Zifencei.
 Inductive instruction_RV64Zifencei := FENCE_I_64Zifencei.
 Inductive instruction_RV32Zicsr :=
-| CSRRW_32Zicsr  | CSRRS_32Zicsr   | CSRRC_32Zicsr | CSRRWI_32Zicsr
+| CSRRW_32Zicsr  | CSRRS_32Zicsr | CSRRC_32Zicsr | CSRRWI_32Zicsr
 | CSRRSI_32Zicsr | CSRRCI_32Zicsr.
 Inductive instruction_RV64Zicsr :=
-| CSRRW_64Zicsr  | CSRRS_64Zicsr   | CSRRC_64Zicsr | CSRRWI_64Zicsr
+| CSRRW_64Zicsr  | CSRRS_64Zicsr | CSRRC_64Zicsr | CSRRWI_64Zicsr
 | CSRRSI_64Zicsr | CSRRCI_64Zicsr.
 Inductive instruction_RV32M :=
 | MUL_32M | MULH_32M | MULHSU_32M | MULHU_32M | DIV_32M | DIVU_32M | REM_32M
@@ -37,15 +37,40 @@ Inductive instruction_RV64M :=
 | REM_64M    | REMU_64M | MULW_64M   | DIVW_64M  | DIVUW_64M | REMW_64M
 | REMUW_64M.
 Inductive instruction_RV32A :=
-| LR_W_32A       | SC_W_32A    | AMOSWAP_W_32A | AMOADD_W_32A | AMOXOR_W_32A
-| AMOAND_W_32A   | AMOOR_W_32A | AMOMIN_W_32A  | AMOMAX_W_32A | AMOMINU_W_32A
-| AMOMAXU_W_32A.
+| LR_W_00_32A      | LR_W_01_32A      | LR_W_10_32A      | LR_W_11_32A
+| SC_W_00_32A      | SC_W_01_32A      | SC_W_10_32A      | SC_W_11_32A
+| AMOSWAP_W_00_32A | AMOSWAP_W_01_32A | AMOSWAP_W_10_32A | AMOSWAP_W_11_32A
+| AMOADD_W_00_32A  | AMOADD_W_01_32A  | AMOADD_W_10_32A  | AMOADD_W_11_32A
+| AMOXOR_W_00_32A  | AMOXOR_W_01_32A  | AMOXOR_W_10_32A  | AMOXOR_W_11_32A
+| AMOAND_W_00_32A  | AMOAND_W_01_32A  | AMOAND_W_10_32A  | AMOAND_W_11_32A
+| AMOOR_W_00_32A   | AMOOR_W_01_32A   | AMOOR_W_10_32A   | AMOOR_W_11_32A
+| AMOMIN_W_00_32A  | AMOMIN_W_01_32A  | AMOMIN_W_10_32A  | AMOMIN_W_11_32A
+| AMOMAX_W_00_32A  | AMOMAX_W_01_32A  | AMOMAX_W_10_32A  | AMOMAX_W_11_32A
+| AMOMINU_W_00_32A | AMOMINU_W_01_32A | AMOMINU_W_10_32A | AMOMINU_W_11_32A
+| AMOMAXU_W_00_32A | AMOMAXU_W_01_32A | AMOMAXU_W_10_32A | AMOMAXU_W_11_32A.
 Inductive instruction_RV64A :=
-| LR_W_64A      | SC_W_64A       | AMOSWAP_W_64A | AMOADD_W_64A  | AMOXOR_W_64A
-| AMOAND_W_64A  | AMOOR_W_64A    | AMOMIN_W_64A  | AMOMAX_W_64A  | AMOMINU_W_64A
-| AMOMAXU_W_64A | LR_D_64A       | SC_D_64A      | AMOSWAP_D_64A | AMOADD_D_64A
-| AMOXOR_D_64A  | AMOAND_D_64A   | AMOOR_D_64A   | AMOMIN_D_64A  | AMOMAX_D_64A
-| AMOMINU_D_64A | AMOMAXU_D_64A.
+| LR_W_00_64A      | LR_W_01_64A      | LR_W_10_64A      | LR_W_11_64A
+| SC_W_00_64A      | SC_W_01_64A      | SC_W_10_64A      | SC_W_11_64A
+| AMOSWAP_W_00_64A | AMOSWAP_W_01_64A | AMOSWAP_W_10_64A | AMOSWAP_W_11_64A
+| AMOADD_W_00_64A  | AMOADD_W_01_64A  | AMOADD_W_10_64A  | AMOADD_W_11_64A
+| AMOXOR_W_00_64A  | AMOXOR_W_01_64A  | AMOXOR_W_10_64A  | AMOXOR_W_11_64A
+| AMOAND_W_00_64A  | AMOAND_W_01_64A  | AMOAND_W_10_64A  | AMOAND_W_11_64A
+| AMOOR_W_00_64A   | AMOOR_W_01_64A   | AMOOR_W_10_64A   | AMOOR_W_11_64A
+| AMOMIN_W_00_64A  | AMOMIN_W_01_64A  | AMOMIN_W_10_64A  | AMOMIN_W_11_64A
+| AMOMAX_W_00_64A  | AMOMAX_W_01_64A  | AMOMAX_W_10_64A  | AMOMAX_W_11_64A
+| AMOMINU_W_00_64A | AMOMINU_W_01_64A | AMOMINU_W_10_64A | AMOMINU_W_11_64A
+| AMOMAXU_W_00_64A | AMOMAXU_W_01_64A | AMOMAXU_W_10_64A | AMOMAXU_W_11_64A
+| LR_D_00_64A      | LR_D_01_64A      | LR_D_10_64A      | LR_D_11_64A
+| SC_D_00_64A      | SC_D_01_64A      | SC_D_10_64A      | SC_D_11_64A
+| AMOSWAP_D_00_64A | AMOSWAP_D_01_64A | AMOSWAP_D_10_64A | AMOSWAP_D_11_64A
+| AMOADD_D_00_64A  | AMOADD_D_01_64A  | AMOADD_D_10_64A  | AMOADD_D_11_64A
+| AMOXOR_D_00_64A  | AMOXOR_D_01_64A  | AMOXOR_D_10_64A  | AMOXOR_D_11_64A
+| AMOAND_D_00_64A  | AMOAND_D_01_64A  | AMOAND_D_10_64A  | AMOAND_D_11_64A
+| AMOOR_D_00_64A   | AMOOR_D_01_64A   | AMOOR_D_10_64A   | AMOOR_D_11_64A
+| AMOMIN_D_00_64A  | AMOMIN_D_01_64A  | AMOMIN_D_10_64A  | AMOMIN_D_11_64A
+| AMOMAX_D_00_64A  | AMOMAX_D_01_64A  | AMOMAX_D_10_64A  | AMOMAX_D_11_64A
+| AMOMINU_D_00_64A | AMOMINU_D_01_64A | AMOMINU_D_10_64A | AMOMINU_D_11_64A
+| AMOMAXU_D_00_64A | AMOMAXU_D_01_64A | AMOMAXU_D_10_64A | AMOMAXU_D_11_64A.
 Inductive instruction_RV32F :=
 | FLW_32F      | FSW_32F      | FMADD_S_32F   | FMSUB_S_32F  | FNMSUB_S_32F
 | FNMADD_S_32F | FADD_S_32F   | FSUB_S_32F    | FMUL_S_32F   | FDIV_S_32F
@@ -61,11 +86,11 @@ Inductive instruction_RV64F :=
 | FLT_S_64F    | FLE_S_64F    | FCLASS_S_64F  | FCVT_S_W_64F | FCVT_S_WU_64F
 | FMV_W_X_64F  | FCVT_L_S_64F | FCVT_LU_S_64F | FCVT_S_L_64F | FCVT_S_LU_64F.
 Inductive instruction_RV32D :=
-| FLD_32D        | FSD_32D      | FMADD_D_32D  | FMSUB_D_32D   | FNMSUB_D_32D
-| FNMADD_D_32D   | FADD_D_32D   | FSUB_D_32D   | FMUL_D_32D    | FDIV_D_32D
-| FSQRT_D_32D    | FSGNJ_D_32D  | FSGNJN_D_32D | FSGNJX_D_32D  | FMIN_D_32D
-| FMAX_D_32D     | FCVT_S_D_32D | FCVT_D_S_32D | FEQ_D_32D     | FLT_D_32D
-| FLE_D_32D      | FCLASS_D_32D | FCVT_W_D_32D | FCVT_WU_D_32D | FCVT_D_W_32D
+| FLD_32D      | FSD_32D      | FMADD_D_32D  | FMSUB_D_32D   | FNMSUB_D_32D
+| FNMADD_D_32D | FADD_D_32D   | FSUB_D_32D   | FMUL_D_32D    | FDIV_D_32D
+| FSQRT_D_32D  | FSGNJ_D_32D  | FSGNJN_D_32D | FSGNJX_D_32D  | FMIN_D_32D
+| FMAX_D_32D   | FCVT_S_D_32D | FCVT_D_S_32D | FEQ_D_32D     | FLT_D_32D
+| FLE_D_32D    | FCLASS_D_32D | FCVT_W_D_32D | FCVT_WU_D_32D | FCVT_D_W_32D
 | FCVT_D_WU_32D.
 Inductive instruction_RV64D :=
 | FLD_64D       | FSD_64D      | FMADD_D_64D   | FMSUB_D_64D   | FNMSUB_D_64D
@@ -76,38 +101,38 @@ Inductive instruction_RV64D :=
 | FCVT_D_WU_64D | FCVT_L_D_64D | FCVT_LU_D_64D | FMV_X_D_64D   | FCVT_D_L_64D
 | FCVT_D_LU_64D | FMV_D_X_64D.
 Inductive instruction_RV32Q :=
-| FLQ_32Q       | FSQ_32Q      | FMADD_Q_32Q    | FMSUB_Q_32Q  | FNMSUB_Q_32Q
-| FNMADD_Q_32Q  | FADD_Q_32Q   | FSUB_Q_32Q     | FMUL_Q_32Q   | FDIV_Q_32Q
-| FSQRT_Q_32Q   | FSGNJ_Q_32Q  | FSGNJN_Q_32Q   | FSGNJX_Q_32Q | FMIN_Q_32Q
-| FMAX_Q_32Q    | FCVT_S_Q_32Q | FCVT_Q_S_32Q   | FCVT_D_Q_32Q | FCVT_Q_D_32Q
-| FEQ_Q_32Q     | FLT_Q_32Q    | FLE_Q_32Q      | FCLASS_Q_32Q | FCVT_W_Q_32Q
+| FLQ_32Q       | FSQ_32Q      | FMADD_Q_32Q  | FMSUB_Q_32Q  | FNMSUB_Q_32Q
+| FNMADD_Q_32Q  | FADD_Q_32Q   | FSUB_Q_32Q   | FMUL_Q_32Q   | FDIV_Q_32Q
+| FSQRT_Q_32Q   | FSGNJ_Q_32Q  | FSGNJN_Q_32Q | FSGNJX_Q_32Q | FMIN_Q_32Q
+| FMAX_Q_32Q    | FCVT_S_Q_32Q | FCVT_Q_S_32Q | FCVT_D_Q_32Q | FCVT_Q_D_32Q
+| FEQ_Q_32Q     | FLT_Q_32Q    | FLE_Q_32Q    | FCLASS_Q_32Q | FCVT_W_Q_32Q
 | FCVT_WU_Q_32Q | FCVT_Q_W_32Q | FCVT_Q_WU_32Q.
 Inductive instruction_RV64Q :=
-| FLQ_64Q       | FSQ_64Q        | FMADD_Q_64Q   | FMSUB_Q_64Q  | FNMSUB_Q_64Q
-| FNMADD_Q_64Q  | FADD_Q_64Q     | FSUB_Q_64Q    | FMUL_Q_64Q   | FDIV_Q_64Q
-| FSQRT_Q_64Q   | FSGNJ_Q_64Q    | FSGNJN_Q_64Q  | FSGNJX_Q_64Q | FMIN_Q_64Q
-| FMAX_Q_64Q    | FCVT_S_Q_64Q   | FCVT_Q_S_64Q  | FCVT_D_Q_64Q | FCVT_Q_D_64Q
-| FEQ_Q_64Q     | FLT_Q_64Q      | FLE_Q_64Q     | FCLASS_Q_64Q | FCVT_W_Q_64Q
-| FCVT_WU_Q_64Q | FCVT_Q_W_64Q   | FCVT_Q_WU_64Q | FCVT_L_Q_64Q | FCVT_LU_Q_64Q
+| FLQ_64Q       | FSQ_64Q      | FMADD_Q_64Q   | FMSUB_Q_64Q  | FNMSUB_Q_64Q
+| FNMADD_Q_64Q  | FADD_Q_64Q   | FSUB_Q_64Q    | FMUL_Q_64Q   | FDIV_Q_64Q
+| FSQRT_Q_64Q   | FSGNJ_Q_64Q  | FSGNJN_Q_64Q  | FSGNJX_Q_64Q | FMIN_Q_64Q
+| FMAX_Q_64Q    | FCVT_S_Q_64Q | FCVT_Q_S_64Q  | FCVT_D_Q_64Q | FCVT_Q_D_64Q
+| FEQ_Q_64Q     | FLT_Q_64Q    | FLE_Q_64Q     | FCLASS_Q_64Q | FCVT_W_Q_64Q
+| FCVT_WU_Q_64Q | FCVT_Q_W_64Q | FCVT_Q_WU_64Q | FCVT_L_Q_64Q | FCVT_LU_Q_64Q
 | FCVT_Q_L_64Q  | FCVT_Q_LU_64Q.
 
 Inductive instruction :=
-| RV32I_instruction        : instruction_RV32I        -> instruction
-| RV64I_instruction        : instruction_RV64I        -> instruction
-| RV32Zifencei_instruction : instruction_RV32Zifencei -> instruction
-| RV64Zifencei_instruction : instruction_RV64Zifencei -> instruction
-| RV32Zicsr_instruction    : instruction_RV32Zicsr    -> instruction
-| RV64Zicsr_instruction    : instruction_RV64Zicsr    -> instruction
-| RV32M_instruction        : instruction_RV32M        -> instruction
-| RV64M_instruction        : instruction_RV64M        -> instruction
-| RV32A_instruction        : instruction_RV32A        -> instruction
-| RV64A_instruction        : instruction_RV64A        -> instruction
-| RV32F_instruction        : instruction_RV32F        -> instruction
-| RV64F_instruction        : instruction_RV64F        -> instruction
-| RV32D_instruction        : instruction_RV32D        -> instruction
-| RV64D_instruction        : instruction_RV64D        -> instruction
-| RV32Q_instruction        : instruction_RV32Q        -> instruction
-| RV64Q_instruction        : instruction_RV64Q        -> instruction.
+| RV32I_instruction        (i : instruction_RV32I)
+| RV64I_instruction        (i : instruction_RV64I)
+| RV32Zifencei_instruction (i : instruction_RV32Zifencei)
+| RV64Zifencei_instruction (i : instruction_RV64Zifencei)
+| RV32Zicsr_instruction    (i : instruction_RV32Zicsr)
+| RV64Zicsr_instruction    (i : instruction_RV64Zicsr)
+| RV32M_instruction        (i : instruction_RV32M)
+| RV64M_instruction        (i : instruction_RV64M)
+| RV32A_instruction        (i : instruction_RV32A)
+| RV64A_instruction        (i : instruction_RV64A)
+| RV32F_instruction        (i : instruction_RV32F)
+| RV64F_instruction        (i : instruction_RV64F)
+| RV32D_instruction        (i : instruction_RV32D)
+| RV64D_instruction        (i : instruction_RV64D)
+| RV32Q_instruction        (i : instruction_RV32Q)
+| RV64Q_instruction        (i : instruction_RV64Q).
 
 Definition RV32I_instructions := [
   RV32I_instruction LUI_32I  ; RV32I_instruction AUIPC_32I ;
@@ -197,26 +222,75 @@ Definition RV64M_instructions := [
 ].
 
 Definition RV32A_instructions := [
-  RV32A_instruction LR_W_32A     ; RV32A_instruction SC_W_32A     ;
-  RV32A_instruction AMOSWAP_W_32A; RV32A_instruction AMOADD_W_32A ;
-  RV32A_instruction AMOXOR_W_32A ; RV32A_instruction AMOAND_W_32A ;
-  RV32A_instruction AMOOR_W_32A  ; RV32A_instruction AMOMIN_W_32A ;
-  RV32A_instruction AMOMAX_W_32A ; RV32A_instruction AMOMINU_W_32A;
-  RV32A_instruction AMOMAXU_W_32A
+  RV32A_instruction LR_W_00_32A     ; RV32A_instruction LR_W_01_32A     ;
+  RV32A_instruction LR_W_10_32A     ; RV32A_instruction LR_W_11_32A     ;
+  RV32A_instruction SC_W_00_32A     ; RV32A_instruction SC_W_01_32A     ;
+  RV32A_instruction SC_W_10_32A     ; RV32A_instruction SC_W_11_32A     ;
+  RV32A_instruction AMOSWAP_W_00_32A; RV32A_instruction AMOSWAP_W_01_32A;
+  RV32A_instruction AMOSWAP_W_10_32A; RV32A_instruction AMOSWAP_W_11_32A;
+  RV32A_instruction AMOADD_W_00_32A ; RV32A_instruction AMOADD_W_01_32A ;
+  RV32A_instruction AMOADD_W_10_32A ; RV32A_instruction AMOADD_W_11_32A ;
+  RV32A_instruction AMOXOR_W_00_32A ; RV32A_instruction AMOXOR_W_01_32A ;
+  RV32A_instruction AMOXOR_W_10_32A ; RV32A_instruction AMOXOR_W_11_32A ;
+  RV32A_instruction AMOAND_W_00_32A ; RV32A_instruction AMOAND_W_01_32A ;
+  RV32A_instruction AMOAND_W_10_32A ; RV32A_instruction AMOAND_W_11_32A ;
+  RV32A_instruction AMOOR_W_00_32A  ; RV32A_instruction AMOOR_W_01_32A  ;
+  RV32A_instruction AMOOR_W_10_32A  ; RV32A_instruction AMOOR_W_11_32A  ;
+  RV32A_instruction AMOMIN_W_00_32A ; RV32A_instruction AMOMIN_W_01_32A ;
+  RV32A_instruction AMOMIN_W_10_32A ; RV32A_instruction AMOMIN_W_11_32A ;
+  RV32A_instruction AMOMAX_W_00_32A ; RV32A_instruction AMOMAX_W_01_32A ;
+  RV32A_instruction AMOMAX_W_10_32A ; RV32A_instruction AMOMAX_W_11_32A ;
+  RV32A_instruction AMOMINU_W_00_32A; RV32A_instruction AMOMINU_W_01_32A;
+  RV32A_instruction AMOMINU_W_10_32A; RV32A_instruction AMOMINU_W_11_32A;
+  RV32A_instruction AMOMAXU_W_00_32A; RV32A_instruction AMOMAXU_W_01_32A;
+  RV32A_instruction AMOMAXU_W_10_32A; RV32A_instruction AMOMAXU_W_11_32A
 ].
 
 Definition RV64A_instructions := [
-  RV64A_instruction LR_W_64A     ; RV64A_instruction SC_W_64A     ;
-  RV64A_instruction AMOSWAP_W_64A; RV64A_instruction AMOADD_W_64A ;
-  RV64A_instruction AMOXOR_W_64A ; RV64A_instruction AMOAND_W_64A ;
-  RV64A_instruction AMOOR_W_64A  ; RV64A_instruction AMOMIN_W_64A ;
-  RV64A_instruction AMOMAX_W_64A ; RV64A_instruction AMOMINU_W_64A;
-  RV64A_instruction AMOMAXU_W_64A; RV64A_instruction LR_D_64A     ;
-  RV64A_instruction SC_D_64A     ; RV64A_instruction AMOSWAP_D_64A;
-  RV64A_instruction AMOADD_D_64A ; RV64A_instruction AMOXOR_D_64A ;
-  RV64A_instruction AMOAND_D_64A ; RV64A_instruction AMOOR_D_64A  ;
-  RV64A_instruction AMOMIN_D_64A ; RV64A_instruction AMOMAX_D_64A ;
-  RV64A_instruction AMOMINU_D_64A; RV64A_instruction AMOMAXU_D_64A
+  RV64A_instruction LR_W_00_64A     ; RV64A_instruction LR_W_01_64A     ;
+  RV64A_instruction LR_W_10_64A     ; RV64A_instruction LR_W_11_64A     ;
+  RV64A_instruction SC_W_00_64A     ; RV64A_instruction SC_W_01_64A     ;
+  RV64A_instruction SC_W_10_64A     ; RV64A_instruction SC_W_11_64A     ;
+  RV64A_instruction AMOSWAP_W_00_64A; RV64A_instruction AMOSWAP_W_01_64A;
+  RV64A_instruction AMOSWAP_W_10_64A; RV64A_instruction AMOSWAP_W_11_64A;
+  RV64A_instruction AMOADD_W_00_64A ; RV64A_instruction AMOADD_W_01_64A ;
+  RV64A_instruction AMOADD_W_10_64A ; RV64A_instruction AMOADD_W_11_64A ;
+  RV64A_instruction AMOXOR_W_00_64A ; RV64A_instruction AMOXOR_W_01_64A ;
+  RV64A_instruction AMOXOR_W_10_64A ; RV64A_instruction AMOXOR_W_11_64A ;
+  RV64A_instruction AMOAND_W_00_64A ; RV64A_instruction AMOAND_W_01_64A ;
+  RV64A_instruction AMOAND_W_10_64A ; RV64A_instruction AMOAND_W_11_64A ;
+  RV64A_instruction AMOOR_W_00_64A  ; RV64A_instruction AMOOR_W_01_64A  ;
+  RV64A_instruction AMOOR_W_10_64A  ; RV64A_instruction AMOOR_W_11_64A  ;
+  RV64A_instruction AMOMIN_W_00_64A ; RV64A_instruction AMOMIN_W_01_64A ;
+  RV64A_instruction AMOMIN_W_10_64A ; RV64A_instruction AMOMIN_W_11_64A ;
+  RV64A_instruction AMOMAX_W_00_64A ; RV64A_instruction AMOMAX_W_01_64A ;
+  RV64A_instruction AMOMAX_W_10_64A ; RV64A_instruction AMOMAX_W_11_64A ;
+  RV64A_instruction AMOMINU_W_00_64A; RV64A_instruction AMOMINU_W_01_64A;
+  RV64A_instruction AMOMINU_W_10_64A; RV64A_instruction AMOMINU_W_11_64A;
+  RV64A_instruction AMOMAXU_W_00_64A; RV64A_instruction AMOMAXU_W_01_64A;
+  RV64A_instruction AMOMAXU_W_10_64A; RV64A_instruction AMOMAXU_W_11_64A;
+  RV64A_instruction LR_D_00_64A     ; RV64A_instruction LR_D_01_64A     ;
+  RV64A_instruction LR_D_10_64A     ; RV64A_instruction LR_D_11_64A     ;
+  RV64A_instruction SC_D_00_64A     ; RV64A_instruction SC_D_01_64A     ;
+  RV64A_instruction SC_D_10_64A     ; RV64A_instruction SC_D_11_64A     ;
+  RV64A_instruction AMOSWAP_D_00_64A; RV64A_instruction AMOSWAP_D_01_64A;
+  RV64A_instruction AMOSWAP_D_10_64A; RV64A_instruction AMOSWAP_D_11_64A;
+  RV64A_instruction AMOADD_D_00_64A ; RV64A_instruction AMOADD_D_01_64A ;
+  RV64A_instruction AMOADD_D_10_64A ; RV64A_instruction AMOADD_D_11_64A ;
+  RV64A_instruction AMOXOR_D_00_64A ; RV64A_instruction AMOXOR_D_01_64A ;
+  RV64A_instruction AMOXOR_D_10_64A ; RV64A_instruction AMOXOR_D_11_64A ;
+  RV64A_instruction AMOAND_D_00_64A ; RV64A_instruction AMOAND_D_01_64A ;
+  RV64A_instruction AMOAND_D_10_64A ; RV64A_instruction AMOAND_D_11_64A ;
+  RV64A_instruction AMOOR_D_00_64A  ; RV64A_instruction AMOOR_D_01_64A  ;
+  RV64A_instruction AMOOR_D_10_64A  ; RV64A_instruction AMOOR_D_11_64A  ;
+  RV64A_instruction AMOMIN_D_00_64A ; RV64A_instruction AMOMIN_D_01_64A ;
+  RV64A_instruction AMOMIN_D_10_64A ; RV64A_instruction AMOMIN_D_11_64A ;
+  RV64A_instruction AMOMAX_D_00_64A ; RV64A_instruction AMOMAX_D_01_64A ;
+  RV64A_instruction AMOMAX_D_10_64A ; RV64A_instruction AMOMAX_D_11_64A ;
+  RV64A_instruction AMOMINU_D_00_64A; RV64A_instruction AMOMINU_D_01_64A;
+  RV64A_instruction AMOMINU_D_10_64A; RV64A_instruction AMOMINU_D_11_64A;
+  RV64A_instruction AMOMAXU_D_00_64A; RV64A_instruction AMOMAXU_D_01_64A;
+  RV64A_instruction AMOMAXU_D_10_64A; RV64A_instruction AMOMAXU_D_11_64A
 ].
 
 Definition RV32F_instructions := [
@@ -437,26 +511,75 @@ Definition instruction_name (i : instruction) : string :=
     end
   | RV32A_instruction x =>
     match x with
-    | LR_W_32A      => "LR.W"      | SC_W_32A      => "SC.W"
-    | AMOSWAP_W_32A => "AMOSWAP.W" | AMOADD_W_32A  => "AMOADD.W"
-    | AMOXOR_W_32A  => "AMOXOR.W"  | AMOAND_W_32A  => "AMOAND.W"
-    | AMOOR_W_32A   => "AMOOR.W"   | AMOMIN_W_32A  => "AMOMIN.W"
-    | AMOMAX_W_32A  => "AMOMAX.W"  | AMOMINU_W_32A => "AMOMINU.W"
-    | AMOMAXU_W_32A => "AMOMAXU.W"
+    | LR_W_00_32A      => "LR.W"      | LR_W_01_32A      => "LR.W"
+    | LR_W_10_32A      => "LR.W"      | LR_W_11_32A      => "LR.W"
+    | SC_W_00_32A      => "SC.W"      | SC_W_01_32A      => "SC.W"
+    | SC_W_10_32A      => "SC.W"      | SC_W_11_32A      => "SC.W"
+    | AMOSWAP_W_00_32A => "AMOSWAP.W" | AMOSWAP_W_01_32A => "AMOSWAP.W"
+    | AMOSWAP_W_10_32A => "AMOSWAP.W" | AMOSWAP_W_11_32A => "AMOSWAP.W"
+    | AMOADD_W_00_32A  => "AMOADD.W"  | AMOADD_W_01_32A  => "AMOADD.W"
+    | AMOADD_W_10_32A  => "AMOADD.W"  | AMOADD_W_11_32A  => "AMOADD.W"
+    | AMOXOR_W_00_32A  => "AMOXOR.W"  | AMOXOR_W_01_32A  => "AMOXOR.W"
+    | AMOXOR_W_10_32A  => "AMOXOR.W"  | AMOXOR_W_11_32A  => "AMOXOR.W"
+    | AMOAND_W_00_32A  => "AMOAND.W"  | AMOAND_W_01_32A  => "AMOAND.W"
+    | AMOAND_W_10_32A  => "AMOAND.W"  | AMOAND_W_11_32A  => "AMOAND.W"
+    | AMOOR_W_00_32A   => "AMOOR.W"   | AMOOR_W_01_32A   => "AMOOR.W"
+    | AMOOR_W_10_32A   => "AMOOR.W"   | AMOOR_W_11_32A   => "AMOOR.W"
+    | AMOMIN_W_00_32A  => "AMOMIN.W"  | AMOMIN_W_01_32A  => "AMOMIN.W"
+    | AMOMIN_W_10_32A  => "AMOMIN.W"  | AMOMIN_W_11_32A  => "AMOMIN.W"
+    | AMOMAX_W_00_32A  => "AMOMAX.W"  | AMOMAX_W_01_32A  => "AMOMAX.W"
+    | AMOMAX_W_10_32A  => "AMOMAX.W"  | AMOMAX_W_11_32A  => "AMOMAX.W"
+    | AMOMINU_W_00_32A => "AMOMINU.W" | AMOMINU_W_01_32A => "AMOMINU.W"
+    | AMOMINU_W_10_32A => "AMOMINU.W" | AMOMINU_W_11_32A => "AMOMINU.W"
+    | AMOMAXU_W_00_32A => "AMOMAXU.W" | AMOMAXU_W_01_32A => "AMOMAXU.W"
+    | AMOMAXU_W_10_32A => "AMOMAXU.W" | AMOMAXU_W_11_32A => "AMOMAXU.W"
     end
   | RV64A_instruction x =>
     match x with
-    | LR_W_64A      => "LR.W"      | SC_W_64A      => "SC.W"
-    | AMOSWAP_W_64A => "AMOSWAP.W" | AMOADD_W_64A  => "AMOADD.W"
-    | AMOXOR_W_64A  => "AMOXOR.W"  | AMOAND_W_64A  => "AMOAND.W"
-    | AMOOR_W_64A   => "AMOOR.W"   | AMOMIN_W_64A  => "AMOMIN.W"
-    | AMOMAX_W_64A  => "AMOMAX.W"  | AMOMINU_W_64A => "AMOMINU.W"
-    | AMOMAXU_W_64A => "AMOMAXU.W" | LR_D_64A      => "LR.D"
-    | SC_D_64A      => "SC.D"      | AMOSWAP_D_64A => "AMOSWAP.D"
-    | AMOADD_D_64A  => "AMOADD.D"  | AMOXOR_D_64A  => "AMOXOR.D"
-    | AMOAND_D_64A  => "AMOAND.D"  | AMOOR_D_64A   => "AMOOR.D"
-    | AMOMIN_D_64A  => "AMOMIN.D"  | AMOMAX_D_64A  => "AMOMAX.D"
-    | AMOMINU_D_64A => "AMOMINU.D" | AMOMAXU_D_64A => "AMOMAXU.D"
+    | LR_W_00_64A      => "LR.W"      | LR_W_01_64A      => "LR.W"
+    | LR_W_10_64A      => "LR.W"      | LR_W_11_64A      => "LR.W"
+    | SC_W_00_64A      => "SC.W"      | SC_W_01_64A      => "SC.W"
+    | SC_W_10_64A      => "SC.W"      | SC_W_11_64A      => "SC.W"
+    | AMOSWAP_W_00_64A => "AMOSWAP.W" | AMOSWAP_W_01_64A => "AMOSWAP.W"
+    | AMOSWAP_W_10_64A => "AMOSWAP.W" | AMOSWAP_W_11_64A => "AMOSWAP.W"
+    | AMOADD_W_00_64A  => "AMOADD.W"  | AMOADD_W_01_64A  => "AMOADD.W"
+    | AMOADD_W_10_64A  => "AMOADD.W"  | AMOADD_W_11_64A  => "AMOADD.W"
+    | AMOXOR_W_00_64A  => "AMOXOR.W"  | AMOXOR_W_01_64A  => "AMOXOR.W"
+    | AMOXOR_W_10_64A  => "AMOXOR.W"  | AMOXOR_W_11_64A  => "AMOXOR.W"
+    | AMOAND_W_00_64A  => "AMOAND.W"  | AMOAND_W_01_64A  => "AMOAND.W"
+    | AMOAND_W_10_64A  => "AMOAND.W"  | AMOAND_W_11_64A  => "AMOAND.W"
+    | AMOOR_W_00_64A   => "AMOOR.W"   | AMOOR_W_01_64A   => "AMOOR.W"
+    | AMOOR_W_10_64A   => "AMOOR.W"   | AMOOR_W_11_64A   => "AMOOR.W"
+    | AMOMIN_W_00_64A  => "AMOMIN.W"  | AMOMIN_W_01_64A  => "AMOMIN.W"
+    | AMOMIN_W_10_64A  => "AMOMIN.W"  | AMOMIN_W_11_64A  => "AMOMIN.W"
+    | AMOMAX_W_00_64A  => "AMOMAX.W"  | AMOMAX_W_01_64A  => "AMOMAX.W"
+    | AMOMAX_W_10_64A  => "AMOMAX.W"  | AMOMAX_W_11_64A  => "AMOMAX.W"
+    | AMOMINU_W_00_64A => "AMOMINU.W" | AMOMINU_W_01_64A => "AMOMINU.W"
+    | AMOMINU_W_10_64A => "AMOMINU.W" | AMOMINU_W_11_64A => "AMOMINU.W"
+    | AMOMAXU_W_00_64A => "AMOMAXU.W" | AMOMAXU_W_01_64A => "AMOMAXU.W"
+    | AMOMAXU_W_10_64A => "AMOMAXU.W" | AMOMAXU_W_11_64A => "AMOMAXU.W"
+    | LR_D_00_64A      => "LR.D"      | LR_D_01_64A      => "LR.D"
+    | LR_D_10_64A      => "LR.D"      | LR_D_11_64A      => "LR.D"
+    | SC_D_00_64A      => "SC.D"      | SC_D_01_64A      => "SC.D"
+    | SC_D_10_64A      => "SC.D"      | SC_D_11_64A      => "SC.D"
+    | AMOSWAP_D_00_64A => "AMOSWAP.D" | AMOSWAP_D_01_64A => "AMOSWAP.D"
+    | AMOSWAP_D_10_64A => "AMOSWAP.D" | AMOSWAP_D_11_64A => "AMOSWAP.D"
+    | AMOADD_D_00_64A  => "AMOADD.D"  | AMOADD_D_01_64A  => "AMOADD.D"
+    | AMOADD_D_10_64A  => "AMOADD.D"  | AMOADD_D_11_64A  => "AMOADD.D"
+    | AMOXOR_D_00_64A  => "AMOXOR.D"  | AMOXOR_D_01_64A  => "AMOXOR.D"
+    | AMOXOR_D_10_64A  => "AMOXOR.D"  | AMOXOR_D_11_64A  => "AMOXOR.D"
+    | AMOAND_D_00_64A  => "AMOAND.D"  | AMOAND_D_01_64A  => "AMOAND.D"
+    | AMOAND_D_10_64A  => "AMOAND.D"  | AMOAND_D_11_64A  => "AMOAND.D"
+    | AMOOR_D_00_64A   => "AMOOR.D"   | AMOOR_D_01_64A   => "AMOOR.D"
+    | AMOOR_D_10_64A   => "AMOOR.D"   | AMOOR_D_11_64A   => "AMOOR.D"
+    | AMOMIN_D_00_64A  => "AMOMIN.D"  | AMOMIN_D_01_64A  => "AMOMIN.D"
+    | AMOMIN_D_10_64A  => "AMOMIN.D"  | AMOMIN_D_11_64A  => "AMOMIN.D"
+    | AMOMAX_D_00_64A  => "AMOMAX.D"  | AMOMAX_D_01_64A  => "AMOMAX.D"
+    | AMOMAX_D_10_64A  => "AMOMAX.D"  | AMOMAX_D_11_64A  => "AMOMAX.D"
+    | AMOMINU_D_00_64A => "AMOMINU.D" | AMOMINU_D_01_64A => "AMOMINU.D"
+    | AMOMINU_D_10_64A => "AMOMINU.D" | AMOMINU_D_11_64A => "AMOMINU.D"
+    | AMOMAXU_D_00_64A => "AMOMAXU.D" | AMOMAXU_D_01_64A => "AMOMAXU.D"
+    | AMOMAXU_D_10_64A => "AMOMAXU.D" | AMOMAXU_D_11_64A => "AMOMAXU.D"
     end
   | RV32F_instruction x =>
     match x with
