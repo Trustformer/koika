@@ -749,7 +749,8 @@ Inductive fct3_type :=
 | fct3_REMW     | fct3_REMUW    | fct3_AMOW    | fct3_AMOD     | fct3_FSGNJ_S
 | fct3_FSGNJN_S | fct3_FSGNJX_S | fct3_FMIN_S  | fct3_FMAX_S   | fct3_FMV_X_W
 | fct3_FEQ_S    | fct3_FLT_S    | fct3_FLE_S   | fct3_FCLASS_S | fct3_FLW
-| fct3_FSW.
+| fct3_FSW      | fct3_AW       | fct3_AD      | fct3_RNE      | fct3_RTZ
+| fct3_RDN      | fct3_RUP      | fct3_RMM     | fct3_DYN.
 
 Definition fct3_bin (f : fct3_type) :=
   match f with
@@ -793,7 +794,276 @@ Definition fct3_bin (f : fct3_type) :=
   | fct3_FMV_X_W  => Ob~0~0~0 | fct3_FEQ_S    => Ob~0~1~0
   | fct3_FLT_S    => Ob~0~0~1 | fct3_FLE_S    => Ob~0~0~0
   | fct3_FCLASS_S => Ob~0~0~1 | fct3_FLW      => Ob~0~1~0
-  | fct3_FSW      => Ob~0~1~0
+  | fct3_FSW      => Ob~0~1~0 | fct3_JALR     => Ob~0~0~0
+  | fct3_AW       => Ob~0~1~0 | fct3_AD       => Ob~0~1~1
+  | fct3_RNE      => Ob~0~0~0 | fct3_RTZ      => Ob~0~0~1
+  | fct3_RDN      => Ob~0~1~0 | fct3_RUP      => Ob~0~1~1
+  | fct3_RMM      => Ob~1~0~0 | fct3_DYN      => Ob~1~1~1
+  end.
+
+Definition instruction_opcode
+  (i : {i : instruction | has_fct3 (get_instruction_type i) = true})
+:=
+  match proj1_sig with
+  | RV32I_instruction x =>
+    match x with
+    | JALR_32I => fct3_JALR | BEQ_32I   => fct3_BEQ   | BNE_32I   => fct3_BNE
+    | BLT_32I  => fct3_BLT  | BGE_32I   => fct3_BGE   | BLTU_32I  => fct3_BLTU
+    | BGEU_32I => fct3_BGEU | LB_32I    => fct3_LB    | LH_32I    => fct3_LH
+    | LW_32I   => fct3_LW   | LBU_32I   => fct3_LBU   | LHU_32I   => fct3_LHU
+    | SB_32I   => fct3_SB   | SH_32I    => fct3_SH    | SW_32I    => fct3_SW
+    | ADDI_32I => fct3_ADDI | SLTI_32I  => fct3_SLTI  | SLTIU_32I => fct3_SLTIU
+    | XORI_32I => fct3_XORI | ORI_32I   => fct3_ORI   | ANDI_32I  => fct3_ANDI
+    | SLLI_32I => fct3_SLLI | SRLI_32I  => fct3_SRLI  | SRAI_32I  => fct3_SRAI
+    | ADD_32I  => fct3_ADD  | SUB_32I   => fct3_SUB   | SLL_32I   => fct3_SLL
+    | SLT_32I  => fct3_SLT  | SLTU_32I  => fct3_SLTU  | XOR_32I   => fct3_XOR
+    | SRL_32I  => fct3_SRL  | SRA_32I   => fct3_SRA   | OR_32I    => fct3_OR
+    | AND_32I  => fct3_AND  | FENCE_32I => fct3_FENCE | ECALL_32I => fct3_ECALL
+    | EBREAK_32I => fct3_
+    end
+  | RV64I_instruction x =>
+    match x with
+    | LUI_64I    => fct3_LUI   | AUIPC_64I  => fct3_AUIPC
+    | JAL_64I    => fct3_JAL   | JALR_64I   => fct3_JALR
+    | BEQ_64I    => fct3_BEQ   | BNE_64I    => fct3_BNE
+    | BLT_64I    => fct3_BLT   | BGE_64I    => fct3_BGE
+    | BLTU_64I   => fct3_BLTU  | BGEU_64I   => fct3_BGEU
+    | LB_64I     => fct3_LB    | LH_64I     => fct3_LH
+    | LW_64I     => fct3_LW    | LBU_64I    => fct3_LBU
+    | LHU_64I    => fct3_LHU   | SB_64I     => fct3_SB
+    | SH_64I     => fct3_SH    | SW_64I     => fct3_SW
+    | ADDI_64I   => fct3_ADDI  | SLTI_64I   => fct3_SLTI
+    | SLTIU_64I  => fct3_SLTIU | XORI_64I   => fct3_XORI
+    | ORI_64I    => fct3_ORI   | ANDI_64I   => fct3_ANDI
+    | SLLI_64I   => fct3_SLLI  | SRLI_64I   => fct3_SRLI
+    | SRAI_64I   => fct3_SRAI  | ADD_64I    => fct3_ADD
+    | SUB_64I    => fct3_SUB   | SLL_64I    => fct3_SLL
+    | SLT_64I    => fct3_SLT   | SLTU_64I   => fct3_SLTU
+    | XOR_64I    => fct3_XOR   | SRL_64I    => fct3_SRL
+    | SRA_64I    => fct3_SRA   | OR_64I     => fct3_OR
+    | AND_64I    => fct3_AND   | FENCE_64I  => fct3_FENCE
+    | ECALL_64I  => fct3_ECALL | EBREAK_64I => fct3_EBREAK
+    | LWU_64I    => fct3_LWU   | LD_64I     => fct3_LD
+    | SD_64I     => fct3_SD    | ADDIW_64I  => fct3_ADDIW
+    | SLLIW_64I  => fct3_SLLIW | SRLIW_64I  => fct3_SRLIW
+    | SRAIW_64I  => fct3_SRAIW | ADDW_64I   => fct3_ADDW
+    | SUBW_64I   => fct3_SUBW  | SLLW_64I   => fct3_SLLW
+    | SRLW_64I   => fct3_SRLW  | SRAW_64I   => fct3_SRAW
+    end
+  | RV32Zifencei_instruction x =>
+    match x with
+    | FENCE_I_32Zifencei => fct3_FENCE_I
+    end
+  | RV64Zifencei_instruction x =>
+    match x with
+    | FENCE_I_64Zifencei => fct3_FENCE_I
+    end
+  | RV32Zicsr_instruction x =>
+    match x with
+    | CSRRW_32Zicsr  => fct3_CSRRW  | CSRRS_32Zicsr  => fct3_CSRRS
+    | CSRRC_32Zicsr  => fct3_CSRRC  | CSRRWI_32Zicsr => fct3_CSRRWI
+    | CSRRSI_32Zicsr => fct3_CSRRSI | CSRRCI_32Zicsr => fct3_CSRRCI
+    end
+  | RV64Zicsr_instruction x =>
+    match x with
+    | CSRRW_64Zicsr  => fct3_CSRRW  | CSRRS_64Zicsr  => fct3_CSRRS
+    | CSRRC_64Zicsr  => fct3_CSRRC  | CSRRWI_64Zicsr => fct3_CSRRWI
+    | CSRRSI_64Zicsr => fct3_CSRRSI | CSRRCI_64Zicsr => fct3_CSRRCI
+    end
+  | RV32M_instruction x =>
+    match x with
+    | MUL_32M    => fct3_MUL    | MULH_32M   => fct3_MULH
+    | MULHSU_32M => fct3_MULHSU | MULHU_32M  => fct3_MULHU
+    | DIV_32M    => fct3_DIV    | DIVU_32M   => fct3_DIVU
+    | REM_32M    => fct3_REM    | REMU_32M   => fct3_REMU
+    end
+  | RV64M_instruction x =>
+    match x with
+    | MUL_64M    => fct3_MUL    | MULH_64M   => fct3_MULH
+    | MULHSU_64M => fct3_MULHSU | MULHU_64M  => fct3_MULHU
+    | DIV_64M    => fct3_DIV    | DIVU_64M   => fct3_DIVU
+    | REM_64M    => fct3_REM    | REMU_64M   => fct3_REMU
+    | MULW_64M   => fct3_MULW   | DIVW_64M   => fct3_DIVW
+    | DIVUW_64M  => fct3_DIVUW  | REMW_64M   => fct3_REMW
+    | REMUW_64M  => fct3_REMUW
+    end
+  | RV32A_instruction x =>
+    match x with
+    | LR_W_00_32A      => fct3_AW | LR_W_01_32A      => fct3_AW
+    | LR_W_10_32A      => fct3_AW | LR_W_11_32A      => fct3_AW
+    | SC_W_00_32A      => fct3_AW | SC_W_01_32A      => fct3_AW
+    | SC_W_10_32A      => fct3_AW | SC_W_11_32A      => fct3_AW
+    | AMOSWAP_W_00_32A => fct3_AW | AMOSWAP_W_01_32A => fct3_AW
+    | AMOSWAP_W_10_32A => fct3_AW | AMOSWAP_W_11_32A => fct3_AW
+    | AMOADD_W_00_32A  => fct3_AW | AMOADD_W_01_32A  => fct3_AW
+    | AMOADD_W_10_32A  => fct3_AW | AMOADD_W_11_32A  => fct3_AW
+    | AMOXOR_W_00_32A  => fct3_AW | AMOXOR_W_01_32A  => fct3_AW
+    | AMOXOR_W_10_32A  => fct3_AW | AMOXOR_W_11_32A  => fct3_AW
+    | AMOAND_W_00_32A  => fct3_AW | AMOAND_W_01_32A  => fct3_AW
+    | AMOAND_W_10_32A  => fct3_AW | AMOAND_W_11_32A  => fct3_AW
+    | AMOOR_W_00_32A   => fct3_AW | AMOOR_W_01_32A   => fct3_AW
+    | AMOOR_W_10_32A   => fct3_AW | AMOOR_W_11_32A   => fct3_AW
+    | AMOMIN_W_00_32A  => fct3_AW | AMOMIN_W_01_32A  => fct3_AW
+    | AMOMIN_W_10_32A  => fct3_AW | AMOMIN_W_11_32A  => fct3_AW
+    | AMOMAX_W_00_32A  => fct3_AW | AMOMAX_W_01_32A  => fct3_AW
+    | AMOMAX_W_10_32A  => fct3_AW | AMOMAX_W_11_32A  => fct3_AW
+    | AMOMINU_W_00_32A => fct3_AW | AMOMINU_W_01_32A => fct3_AW
+    | AMOMINU_W_10_32A => fct3_AW | AMOMINU_W_11_32A => fct3_AW
+    | AMOMAXU_W_00_32A => fct3_AW | AMOMAXU_W_01_32A => fct3_AW
+    | AMOMAXU_W_10_32A => fct3_AW | AMOMAXU_W_11_32A => fct3_AW
+    end
+  | RV64A_instruction x =>
+    match x with
+    | LR_W_00_64A      => fct3_AW | LR_W_01_64A      => fct3_AW 
+    | LR_W_10_64A      => fct3_AW | LR_W_11_64A      => fct3_AW 
+    | SC_W_00_64A      => fct3_AW | SC_W_01_64A      => fc3_AW
+    | SC_W_10_64A      => fct3_AW | SC_W_11_64A      => fct3_AW 
+    | AMOSWAP_W_00_64A => fct3_AW | AMOSWAP_W_01_64A => fct3_AW 
+    | AMOSWAP_W_10_64A => fct3_AW | AMOSWAP_W_11_64A => fct3_AW 
+    | AMOADD_W_00_64A  => fct3_AW | AMOADD_W_01_64A  => fct3_AW 
+    | AMOADD_W_10_64A  => fct3_AW | AMOADD_W_11_64A  => fct3_AW 
+    | AMOXOR_W_00_64A  => fct3_AW | AMOXOR_W_01_64A  => fct3_AW 
+    | AMOXOR_W_10_64A  => fct3_AW | AMOXOR_W_11_64A  => fct3_AW 
+    | AMOAND_W_00_64A  => fct3_AW | AMOAND_W_01_64A  => fct3_AW 
+    | AMOAND_W_10_64A  => fct3_AW | AMOAND_W_11_64A  => fct3_AW 
+    | AMOOR_W_00_64A   => fct3_AW | AMOOR_W_01_64A   => fct3_AW 
+    | AMOOR_W_10_64A   => fct3_AW | AMOOR_W_11_64A   => fct3_AW 
+    | AMOMIN_W_00_64A  => fct3_AW | AMOMIN_W_01_64A  => fct3_AW 
+    | AMOMIN_W_10_64A  => fct3_AW | AMOMIN_W_11_64A  => fct3_AW 
+    | AMOMAX_W_00_64A  => fct3_AW | AMOMAX_W_01_64A  => fct3_AW 
+    | AMOMAX_W_10_64A  => fct3_AW | AMOMAX_W_11_64A  => fct3_AW 
+    | AMOMINU_W_00_64A => fct3_AW | AMOMINU_W_01_64A => fct3_AW 
+    | AMOMINU_W_10_64A => fct3_AW | AMOMINU_W_11_64A => fct3_AW 
+    | AMOMAXU_W_00_64A => fct3_AW | AMOMAXU_W_01_64A => fct3_AW 
+    | AMOMAXU_W_10_64A => fct3_AW | AMOMAXU_W_11_64A => fct3_AW 
+    | LR_D_00_64A      => fct3_AD | LR_D_01_64A      => fct3_AD
+    | LR_D_10_64A      => fct3_AD | LR_D_11_64A      => fct3_AD
+    | SC_D_00_64A      => fct3_AD | SC_D_01_64A      => fct3_AD
+    | SC_D_10_64A      => fct3_AD | SC_D_11_64A      => fct3_AD
+    | AMOSWAP_D_00_64A => fct3_AD | AMOSWAP_D_01_64A => fct3_AD
+    | AMOSWAP_D_10_64A => fct3_AD | AMOSWAP_D_11_64A => fct3_AD
+    | AMOADD_D_00_64A  => fct3_AD | AMOADD_D_01_64A  => fct3_AD
+    | AMOADD_D_10_64A  => fct3_AD | AMOADD_D_11_64A  => fct3_AD
+    | AMOXOR_D_00_64A  => fct3_AD | AMOXOR_D_01_64A  => fct3_AD
+    | AMOXOR_D_10_64A  => fct3_AD | AMOXOR_D_11_64A  => fct3_AD
+    | AMOAND_D_00_64A  => fct3_AD | AMOAND_D_01_64A  => fct3_AD
+    | AMOAND_D_10_64A  => fct3_AD | AMOAND_D_11_64A  => fct3_AD
+    | AMOOR_D_00_64A   => fct3_AD | AMOOR_D_01_64A   => fct3_AD
+    | AMOOR_D_10_64A   => fct3_AD | AMOOR_D_11_64A   => fct3_AD
+    | AMOMIN_D_00_64A  => fct3_AD | AMOMIN_D_01_64A  => fct3_AD
+    | AMOMIN_D_10_64A  => fct3_AD | AMOMIN_D_11_64A  => fct3_AD
+    | AMOMAX_D_00_64A  => fct3_AD | AMOMAX_D_01_64A  => fct3_AD
+    | AMOMAX_D_10_64A  => fct3_AD | AMOMAX_D_11_64A  => fct3_AD
+    | AMOMINU_D_00_64A => fct3_AD | AMOMINU_D_01_64A => fct3_AD
+    | AMOMINU_D_10_64A => fct3_AD | AMOMINU_D_11_64A => fct3_AD
+    | AMOMAXU_D_00_64A => fct3_AD | AMOMAXU_D_01_64A => fct3_AD
+    | AMOMAXU_D_10_64A => fct3_AD | AMOMAXU_D_11_64A => fct3_AD
+    end
+  | RV32F_instruction x =>
+    match x with
+    | FLW_32F       =>        | FSW_32F       => 
+    | FMADD_S_32F   =>    | FMSUB_S_32F   => 
+    | FNMSUB_S_32F  =>   | FNMADD_S_32F  => 
+    | FADD_S_32F    =>     | FSUB_S_32F    => 
+    | FMUL_S_32F    =>     | FDIV_S_32F    => 
+    | FSQRT_S_32F   =>    | FSGNJ_S_32F   => 
+    | FSGNJN_S_32F  =>   | FSGNJX_S_32F  => 
+    | FMIN_S_32F    =>     | FMAX_S_32F    => 
+    | FCVT_W_S_32F  =>   | FCVT_WU_S_32F => 
+    | FMV_X_W_32F   =>    | FEQ_S_32F     => 
+    | FLT_S_32F     =>      | FLE_S_32F     => 
+    | FCLASS_S_32F  =>   | FCVT_S_W_32F  => 
+    | FCVT_S_WU_32F =>  | FMV_W_X_32F   => 
+    end
+  | RV64F_instruction x =>
+    match x with
+    | FLW_64F       =>        | FSW_64F       => 
+    | FMADD_S_64F   =>    | FMSUB_S_64F   => 
+    | FNMSUB_S_64F  =>   | FNMADD_S_64F  => 
+    | FADD_S_64F    =>     | FSUB_S_64F    => 
+    | FMUL_S_64F    =>     | FDIV_S_64F    => 
+    | FSQRT_S_64F   =>    | FSGNJ_S_64F   => 
+    | FSGNJN_S_64F  =>   | FSGNJX_S_64F  => 
+    | FMIN_S_64F    =>     | FMAX_S_64F    => 
+    | FCVT_W_S_64F  =>   | FCVT_WU_S_64F => 
+    | FMV_X_W_64F   =>    | FEQ_S_64F     => 
+    | FLT_S_64F     =>      | FLE_S_64F     => 
+    | FCLASS_S_64F  =>   | FCVT_S_W_64F  => 
+    | FCVT_S_WU_64F =>  | FMV_W_X_64F   => 
+    | FCVT_L_S_64F  =>   | FCVT_LU_S_64F => 
+    | FCVT_S_L_64F  =>   | FCVT_S_LU_64F => 
+    end
+  | RV32D_instruction x =>
+    match x with
+    | FLD_32D      =>       | FSD_32D       => 
+    | FMADD_D_32D  =>   | FMSUB_D_32D   => 
+    | FNMSUB_D_32D =>  | FNMADD_D_32D  => 
+    | FADD_D_32D   =>    | FSUB_D_32D    => 
+    | FMUL_D_32D   =>    | FDIV_D_32D    => 
+    | FSQRT_D_32D  =>   | FSGNJ_D_32D   => 
+    | FSGNJN_D_32D =>  | FSGNJX_D_32D  => 
+    | FMIN_D_32D   =>    | FMAX_D_32D    => 
+    | FCVT_S_D_32D =>  | FCVT_D_S_32D  => 
+    | FEQ_D_32D    =>     | FLT_D_32D     => 
+    | FLE_D_32D    =>     | FCLASS_D_32D  => 
+    | FCVT_W_D_32D =>  | FCVT_WU_D_32D => 
+    | FCVT_D_W_32D =>  | FCVT_D_WU_32D => 
+    end
+  | RV64D_instruction x =>
+    match x with
+    | FLD_64D       =>        | FSD_64D       => 
+    | FMADD_D_64D   =>    | FMSUB_D_64D   => 
+    | FNMSUB_D_64D  =>   | FNMADD_D_64D  => 
+    | FADD_D_64D    =>     | FSUB_D_64D    => 
+    | FMUL_D_64D    =>     | FDIV_D_64D    => 
+    | FSQRT_D_64D   =>    | FSGNJ_D_64D   => 
+    | FSGNJN_D_64D  =>   | FSGNJX_D_64D  => 
+    | FMIN_D_64D    =>     | FMAX_D_64D    => 
+    | FCVT_S_D_64D  =>   | FCVT_D_S_64D  => 
+    | FEQ_D_64D     =>      | FLT_D_64D     => 
+    | FLE_D_64D     =>      | FCLASS_D_64D  => 
+    | FCVT_W_D_64D  =>   | FCVT_WU_D_64D => 
+    | FCVT_D_W_64D  =>   | FCVT_D_WU_64D => 
+    | FCVT_L_D_64D  =>   | FCVT_LU_D_64D => 
+    | FMV_X_D_64D   =>    | FCVT_D_L_64D  => 
+    | FCVT_D_LU_64D =>  | FMV_D_X_64D   => 
+    end
+  | RV32Q_instruction x =>
+    match x with
+    | FLQ_32Q      =>       | FSQ_32Q       => 
+    | FMADD_Q_32Q  =>   | FMSUB_Q_32Q   => 
+    | FNMSUB_Q_32Q =>  | FNMADD_Q_32Q  => 
+    | FADD_Q_32Q   =>    | FSUB_Q_32Q    => 
+    | FMUL_Q_32Q   =>    | FDIV_Q_32Q    => 
+    | FSQRT_Q_32Q  =>   | FSGNJ_Q_32Q   => 
+    | FSGNJN_Q_32Q =>  | FSGNJX_Q_32Q  => 
+    | FMIN_Q_32Q   =>    | FMAX_Q_32Q    => 
+    | FCVT_S_Q_32Q =>  | FCVT_Q_S_32Q  => 
+    | FCVT_D_Q_32Q =>  | FCVT_Q_D_32Q  => 
+    | FEQ_Q_32Q    =>     | FLT_Q_32Q     => 
+    | FLE_Q_32Q    =>     | FCLASS_Q_32Q  => 
+    | FCVT_W_Q_32Q =>  | FCVT_WU_Q_32Q => 
+    | FCVT_Q_W_32Q =>  | FCVT_Q_WU_32Q => 
+    end
+  | RV64Q_instruction x =>
+    match x with
+    | FLQ_64Q      =>       | FSQ_64Q       => 
+    | FMADD_Q_64Q  =>   | FMSUB_Q_64Q   => 
+    | FNMSUB_Q_64Q =>  | FNMADD_Q_64Q  => 
+    | FADD_Q_64Q   =>    | FSUB_Q_64Q    => 
+    | FMUL_Q_64Q   =>    | FDIV_Q_64Q    => 
+    | FSQRT_Q_64Q  =>   | FSGNJ_Q_64Q   => 
+    | FSGNJN_Q_64Q =>  | FSGNJX_Q_64Q  => 
+    | FMIN_Q_64Q   =>    | FMAX_Q_64Q    => 
+    | FCVT_S_Q_64Q =>  | FCVT_Q_S_64Q  => 
+    | FCVT_D_Q_64Q =>  | FCVT_Q_D_64Q  => 
+    | FEQ_Q_64Q    =>     | FLT_Q_64Q     => 
+    | FLE_Q_64Q    =>     | FCLASS_Q_64Q  => 
+    | FCVT_W_Q_64Q =>  | FCVT_WU_Q_64Q => 
+    | FCVT_Q_W_64Q =>  | FCVT_Q_WU_64Q => 
+    | FCVT_L_Q_64Q =>  | FCVT_LU_Q_64Q => 
+    | FCVT_Q_L_64Q =>  | FCVT_Q_LU_64Q => 
+    end
   end.
 
 Inductive fct7_type :=
