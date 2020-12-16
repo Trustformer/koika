@@ -23,7 +23,7 @@ Inductive instruction_RV64I :=
 | SUBW_64I | SLLW_64I  | SRLW_64I  | SRAW_64I.
 Inductive instruction_RV32Zifencei := FENCE_I_32Zifencei.
 Inductive instruction_RV64Zifencei := FENCE_I_64Zifencei.
-Inductive instruction_RV32Zicsr :=
+Inductive instruction_RV32Zicsr    :=
 | CSRRW_32Zicsr  | CSRRS_32Zicsr | CSRRC_32Zicsr | CSRRWI_32Zicsr
 | CSRRSI_32Zicsr | CSRRCI_32Zicsr.
 Inductive instruction_RV64Zicsr :=
@@ -335,8 +335,8 @@ Definition RV32Zicsr_instructions := [
 ].
 
 Definition RV64Zicsr_instructions := [
-  RV64Zicsr_instruction CSRRW_64Zicsr; RV64Zicsr_instruction CSRRS_64Zicsr;
-  RV64Zicsr_instruction CSRRC_64Zicsr; RV64Zicsr_instruction CSRRWI_64Zicsr;
+  RV64Zicsr_instruction CSRRW_64Zicsr ; RV64Zicsr_instruction CSRRS_64Zicsr ;
+  RV64Zicsr_instruction CSRRC_64Zicsr ; RV64Zicsr_instruction CSRRWI_64Zicsr;
   RV64Zicsr_instruction CSRRSI_64Zicsr; RV64Zicsr_instruction CSRRCI_64Zicsr
 ].
 
