@@ -1305,7 +1305,27 @@ Definition fct3_bin (f : fct3_type) :=
   | fct3_LSF    => Ob~0~1~0 | fct3_LSD    => Ob~0~1~1 | fct3_LSQ     => Ob~1~0~0
   end.
 
-Definition instruction_opcode
+Theorem has_fct3_JType_implies_false
+  (i : instruction) (pf : has_fct3 (get_instruction_type i) = true)
+: (get_instruction_type i = JType) -> False.
+Proof.
+  intros.
+  rewrite H in pf.
+  simpl in pf.
+  congruence.
+Qed.
+
+Theorem has_fct3_UType_implies_false
+  (i : instruction) (pf : has_fct3 (get_instruction_type i) = true)
+: (get_instruction_type i = UType) -> False.
+Proof.
+  intros.
+  rewrite H in pf.
+  simpl in pf.
+  congruence.
+Qed.
+
+Definition instruction_fct3
   (i : {i : instruction | has_fct3 (get_instruction_type i) = true})
 :=
   match proj1_sig i with
@@ -1882,32 +1902,26 @@ Definition fct7_bin (f : fct7_type) :=
   | fct7_REM        => Ob~0~0~0~0~0~0~1 | fct7_REMU       => Ob~0~0~0~0~0~0~1
   | fct7_MULW       => Ob~0~0~0~0~0~0~1 | fct7_DIVW       => Ob~0~0~0~0~0~0~1
   | fct7_DIVUW      => Ob~0~0~0~0~0~0~1 | fct7_REMW       => Ob~0~0~0~0~0~0~1
-  | fct7_REMUW      => Ob~0~0~0~0~0~0~1
-
-  | fct7_FADD_S     => Ob~0~0~0~0~0~0~0
+  | fct7_REMUW      => Ob~0~0~0~0~0~0~1 | fct7_FADD_S     => Ob~0~0~0~0~0~0~0
   | fct7_FSUB_S     => Ob~0~0~0~0~1~0~0 | fct7_FMUL_S     => Ob~0~0~0~1~0~0~0
   | fct7_FDIV_S     => Ob~0~0~0~1~1~0~0 | fct7_FSQRT_S    => Ob~0~1~0~1~1~0~0
   | fct7_FSGNJ_S    => Ob~0~0~1~0~0~0~0 | fct7_FMIN_S     => Ob~0~0~1~0~1~0~0
   | fct7_FCVT_W_S   => Ob~1~1~0~0~0~0~0 | fct7_FMV_X_W    => Ob~1~1~1~0~0~0~0
   | fct7_FEQ_S      => Ob~1~0~1~0~0~0~0 | fct7_FCLASS_S   => Ob~1~1~1~0~0~0~0
   | fct7_FCVT_S_W   => Ob~1~1~0~1~0~0~0 | fct7_FMV_W_X    => Ob~1~1~1~1~0~0~0
-
-  | fct7_FADD_D     => Ob~0~0~0~0~0~0~1
-  | fct7_FSUB_D     => Ob~0~0~0~0~1~0~1 | fct7_FMUL_D     => Ob~0~0~0~1~0~0~1
-  | fct7_FDIV_D     => Ob~0~0~0~1~1~0~1 | fct7_FSQRT_D    => Ob~0~1~0~1~1~0~1
-  | fct7_FSGNJ_D    => Ob~0~0~1~0~0~0~1 | fct7_FMIN_D     => Ob~0~0~1~0~1~0~1
-  | fct7_FCVT_W_D   => Ob~1~1~0~0~0~0~1 | fct7_FMV_D_W    => Ob~1~1~1~0~0~0~1
-  | fct7_FEQ_D      => Ob~1~0~1~0~0~0~1 | fct7_FCLASS_D   => Ob~1~1~1~0~0~0~1
-  | fct7_FCVT_D_W   => Ob~1~1~0~1~0~0~1 | fct7_FMV_W_D    => Ob~1~1~1~1~0~0~1
-
-  | fct7_FADD_S     => Ob~0~0~0~0~0~1~1
+  | fct7_FADD_D     => Ob~0~0~0~0~0~0~1 | fct7_FSUB_D     => Ob~0~0~0~0~1~0~1
+  | fct7_FMUL_D     => Ob~0~0~0~1~0~0~1 | fct7_FDIV_D     => Ob~0~0~0~1~1~0~1
+  | fct7_FSQRT_D    => Ob~0~1~0~1~1~0~1 | fct7_FSGNJ_D    => Ob~0~0~1~0~0~0~1
+  | fct7_FMIN_D     => Ob~0~0~1~0~1~0~1 | fct7_FCVT_W_D   => Ob~1~1~0~0~0~0~1
+  | fct7_FMV_D_W    => Ob~1~1~1~0~0~0~1 | fct7_FEQ_D      => Ob~1~0~1~0~0~0~1
+  | fct7_FCLASS_D   => Ob~1~1~1~0~0~0~1 | fct7_FCVT_D_W   => Ob~1~1~0~1~0~0~1
+  | fct7_FMV_W_D    => Ob~1~1~1~1~0~0~1 | fct7_FADD_S     => Ob~0~0~0~0~0~1~1
   | fct7_FSUB_S     => Ob~0~0~0~0~1~1~1 | fct7_FMUL_S     => Ob~0~0~0~1~0~1~1
   | fct7_FDIV_S     => Ob~0~0~0~1~1~1~1 | fct7_FSQRT_S    => Ob~0~1~0~1~1~1~1
   | fct7_FSGNJ_S    => Ob~0~0~1~0~0~1~1 | fct7_FMIN_S     => Ob~0~0~1~0~1~1~1
   | fct7_FCVT_W_S   => Ob~1~1~0~0~0~1~1 | fct7_FMV_X_W    => Ob~1~1~1~0~0~1~1
   | fct7_FEQ_S      => Ob~1~0~1~0~0~1~1 | fct7_FCLASS_S   => Ob~1~1~1~0~0~1~1
   | fct7_FCVT_S_W   => Ob~1~1~0~1~0~1~1 | fct7_FMV_W_X    => Ob~1~1~1~1~0~1~1
-
   | fct7_SFENCE_VMA => Ob~0~0~0~1~0~0~1 | fct7_LR_00      => Ob~0~0~0~1~0~0~0
   | fct7_LR_01      => Ob~0~0~0~1~0~0~1 | fct7_LR_10      => Ob~0~0~0~1~0~1~0
   | fct7_LR_11      => Ob~0~0~0~1~0~1~1 | fct7_SC_00      => Ob~0~0~0~1~1~0~0
@@ -2041,90 +2055,705 @@ Definition instruction_fct7 (i : instruction) :=
     end
   | RV32F_instruction x =>
     match x with
-    | FADD_S_32F    => fct7_FADD_S   | FSUB_S_32F    => fct7_FSUB_S
-    | FMUL_S_32F    => fct7_FMUL_S   | FDIV_S_32F    => fct7_FDIV_S
-    | FSQRT_S_32F   => fct7_FSQRT_S  | FSGNJ_S_32F   => fct7_FSGNJ_S
-    | FSGNJN_S_32F  => fct7_FSGNJ_S  | FSGNJX_S_32F  => fct7_FS
-    | FMIN_S_32F    => fct7_FMIN_S   | FMAX_S_32F    => fct7_FMAX_S
-    | FCVT_W_S_32F  => fct7_FCVT_W_S | FCVT_WU_S_32F => fct7_FCVT_W_S
-    | FMV_X_W_32F   => fct7_FMV_X_W  | FEQ_S_32F     => fct7_FEQ_S
-    | FLT_S_32F     => fct7_FEQ_S    | FLE_S_32F     => fct7_FEQ_S
-    | FCLASS_S_32F  => fct7_FCLASS_S | FCVT_S_W_32F  => fct7_FCVT_S_W
-    | FCVT_S_WU_32F => fct7_FCVT_S_W | FMV_W_X_32F   => fct7_FMV_W_X
+    | FLW_32F           => 
+    | FSW_32F           => 
+    | FMADD_RNE_S_32F   => 
+    | FMADD_RTZ_S_32F   => 
+    | FMADD_RDN_S_32F   => 
+    | FMADD_RUP_S_32F   => 
+    | FMADD_RMM_S_32F   => 
+    | FMADD_DYN_S_32F   => 
+    | FMSUB_RNE_S_32F   => 
+    | FMSUB_RTZ_S_32F   => 
+    | FMSUB_RDN_S_32F   => 
+    | FMSUB_RUP_S_32F   => 
+    | FMSUB_RMM_S_32F   => 
+    | FMSUB_DYN_S_32F   => 
+    | FNMSUB_RNE_S_32F  => 
+    | FNMSUB_RTZ_S_32F  => 
+    | FNMSUB_RDN_S_32F  => 
+    | FNMSUB_RUP_S_32F  => 
+    | FNMSUB_RMM_S_32F  => 
+    | FNMSUB_DYN_S_32F  => 
+    | FNMADD_RNE_S_32F  => 
+    | FNMADD_RTZ_S_32F  => 
+    | FNMADD_RDN_S_32F  => 
+    | FNMADD_RUP_S_32F  => 
+    | FNMADD_RMM_S_32F  => 
+    | FNMADD_DYN_S_32F  => 
+    | FADD_RNE_S_32F    => fct7_FADD_S
+    | FADD_RTZ_S_32F    => fct7_FADD_S
+    | FADD_RDN_S_32F    => fct7_FADD_S
+    | FADD_RUP_S_32F    => fct7_FADD_S
+    | FADD_RMM_S_32F    => fct7_FADD_S
+    | FADD_DYN_S_32F    => fct7_FADD_S
+    | FSUB_RNE_S_32F    => fct7_FSUB_S
+    | FSUB_RTZ_S_32F    => fct7_FSUB_S
+    | FSUB_RDN_S_32F    => fct7_FSUB_S
+    | FSUB_RUP_S_32F    => fct7_FSUB_S
+    | FSUB_RMM_S_32F    => fct7_FSUB_S
+    | FSUB_DYN_S_32F    => fct7_FSUB_S
+    | FMUL_RNE_S_32F    => fct7_FMUL_S
+    | FMUL_RTZ_S_32F    => fct7_FMUL_S
+    | FMUL_RDN_S_32F    => fct7_FMUL_S
+    | FMUL_RUP_S_32F    => fct7_FMUL_S
+    | FMUL_RMM_S_32F    => fct7_FMUL_S
+    | FMUL_DYN_S_32F    => fct7_FMUL_S
+    | FDIV_RNE_S_32F    => fct7_FDIV_S
+    | FDIV_RTZ_S_32F    => fct7_FDIV_S
+    | FDIV_RDN_S_32F    => fct7_FDIV_S
+    | FDIV_RUP_S_32F    => fct7_FDIV_S
+    | FDIV_RMM_S_32F    => fct7_FDIV_S
+    | FDIV_DYN_S_32F    => fct7_FDIV_S
+    | FSQRT_RNE_S_32F   => fct7_FSQRT_S
+    | FSQRT_RTZ_S_32F   => fct7_FSQRT_S
+    | FSQRT_RDN_S_32F   => fct7_FSQRT_S
+    | FSQRT_RUP_S_32F   => fct7_FSQRT_S
+    | FSQRT_RMM_S_32F   => fct7_FSQRT_S
+    | FSQRT_DYN_S_32F   => fct7_FSQRT_S
+    | FSGNJ_S_32F       => fct7_FSGNJ_S
+    | FSGNJN_S_32F      => fct7_FSGNJN_S
+    | FSGNJX_S_32F      => fct7_FSGNJX_S
+    | FMIN_S_32F        => fct7_FMIN_S
+    | FMAX_S_32F        => fct7_FMAX_S
+    | FCVT_RNE_W_S_32F  => fct7_FCVT_W_S
+    | FCVT_RTZ_W_S_32F  => fct7_FCVT_W_S
+    | FCVT_RDN_W_S_32F  => fct7_FCVT_W_S
+    | FCVT_RUP_W_S_32F  => fct7_FCVT_W_S
+    | FCVT_RMM_W_S_32F  => fct7_FCVT_W_S
+    | FCVT_DYN_W_S_32F  => fct7_FCVT_W_S
+    | FCVT_RNE_WU_S_32F => fct7_FCVT_W_S
+    | FCVT_RTZ_WU_S_32F => fct7_FCVT_W_S
+    | FCVT_RDN_WU_S_32F => fct7_FCVT_W_S
+    | FCVT_RUP_WU_S_32F => fct7_FCVT_W_S
+    | FCVT_RMM_WU_S_32F => fct7_FCVT_W_S
+    | FCVT_DYN_WU_S_32F => fct7_FCVT_W_S
+    | FMV_X_W_32F       => fct7_FMV_X_W
+    | FEQ_S_32F         => fct7_FEQ_S
+    | FLT_S_32F         => fct7_FLT_S
+    | FLE_S_32F         => fct7_FLE_S
+    | FCLASS_S_32F      => fct7_FCLASS_S
+    | FCVT_RNE_S_W_32F  => fct7_FCVT_S_W
+    | FCVT_RTZ_S_W_32F  => fct7_FCVT_S_W
+    | FCVT_RDN_S_W_32F  => fct7_FCVT_S_W
+    | FCVT_RUP_S_W_32F  => fct7_FCVT_S_W
+    | FCVT_RMM_S_W_32F  => fct7_FCVT_S_W
+    | FCVT_DYN_S_W_32F  => fct7_FCVT_S_W
+    | FCVT_RNE_S_WU_32F => fct7_FCVT_S_W
+    | FCVT_RTZ_S_WU_32F => fct7_FCVT_S_W
+    | FCVT_RDN_S_WU_32F => fct7_FCVT_S_W
+    | FCVT_RUP_S_WU_32F => fct7_FCVT_S_W
+    | FCVT_RMM_S_WU_32F => fct7_FCVT_S_W
+    | FCVT_DYN_S_WU_32F => fct7_FCVT_S_W
+    | FMV_W_X_32F       => fct7_FMV_W_X
     end
   | RV64F_instruction x =>
     match x with
-    | FADD_S_64F    => fct7_FADD_S   | FSUB_S_64F    => fct7_FSUB_S
-    | FMUL_S_64F    => fct7_FMUL_S   | FDIV_S_64F    => fct7_FDIV_S
-    | FSQRT_S_64F   => fct7_FSQRT_S  | FSGNJ_S_64F   => fct7_FSGNJ_S
-    | FSGNJN_S_64F  => fct7_FSGNJ_S  | FSGNJX_S_64F  => fct7_FSGNJ_S
-    | FMIN_S_64F    => fct7_FMIN_S   | FMAX_S_64F    => fct7_FMAX_S
-    | FCVT_W_S_64F  => fct7_FCVT_W_S | FCVT_WU_S_64F => fct7_FCVT_W_S
-    | FMV_X_W_64F   => fct7_FMV_X_W  | FEQ_S_64F     => fct7_FEQ_S
-    | FLT_S_64F     => fct7_FEQ_S    | FLE_S_64F     => fct7_FEQ_S
-    | FCLASS_S_64F  => fct7_FCLASS_S | FCVT_S_W_64F  => fct7_FCLASS_S
-    | FCVT_S_WU_64F => fct7_FCVT_S_W | FMV_W_X_64F   => fct7_FMV_W_X
-    | FCVT_L_S_64F  => fct7_FCVT_W_S | FCVT_LU_S_64F => fct7_FCVT_W_S
-    | FCVT_S_L_64F  => fct7_FCVT_S_W | FCVT_S_LU_64F => fct7_FCVT_S_W
+    | FLW_32F           => 
+    | FSW_32F           => 
+    | FMADD_RNE_S_32F   => 
+    | FMADD_RTZ_S_32F   => 
+    | FMADD_RDN_S_32F   => 
+    | FMADD_RUP_S_32F   => 
+    | FMADD_RMM_S_32F   => 
+    | FMADD_DYN_S_32F   => 
+    | FMSUB_RNE_S_32F   => 
+    | FMSUB_RTZ_S_32F   => 
+    | FMSUB_RDN_S_32F   => 
+    | FMSUB_RUP_S_32F   => 
+    | FMSUB_RMM_S_32F   => 
+    | FMSUB_DYN_S_32F   => 
+    | FNMSUB_RNE_S_32F  => 
+    | FNMSUB_RTZ_S_32F  => 
+    | FNMSUB_RDN_S_32F  => 
+    | FNMSUB_RUP_S_32F  => 
+    | FNMSUB_RMM_S_32F  => 
+    | FNMSUB_DYN_S_32F  => 
+    | FNMADD_RNE_S_32F  => 
+    | FNMADD_RTZ_S_32F  => 
+    | FNMADD_RDN_S_32F  => 
+    | FNMADD_RUP_S_32F  => 
+    | FNMADD_RMM_S_32F  => 
+    | FNMADD_DYN_S_32F  => 
+    | FADD_RNE_S_64F    => fct7_FADD_S
+    | FADD_RTZ_S_64F    => fct7_FADD_S
+    | FADD_RDN_S_64F    => fct7_FADD_S
+    | FADD_RUP_S_64F    => fct7_FADD_S
+    | FADD_RMM_S_64F    => fct7_FADD_S
+    | FADD_DYN_S_64F    => fct7_FADD_S
+    | FSUB_RNE_S_64F    => fct7_FSUB_S
+    | FSUB_RTZ_S_64F    => fct7_FSUB_S
+    | FSUB_RDN_S_64F    => fct7_FSUB_S
+    | FSUB_RUP_S_64F    => fct7_FSUB_S
+    | FSUB_RMM_S_64F    => fct7_FSUB_S
+    | FSUB_DYN_S_64F    => fct7_FSUB_S
+    | FMUL_RNE_S_64F    => fct7_FMUL_S
+    | FMUL_RTZ_S_64F    => fct7_FMUL_S
+    | FMUL_RDN_S_64F    => fct7_FMUL_S
+    | FMUL_RUP_S_64F    => fct7_FMUL_S
+    | FMUL_RMM_S_64F    => fct7_FMUL_S
+    | FMUL_DYN_S_64F    => fct7_FMUL_S
+    | FDIV_RNE_S_64F    => fct7_FDIV_S
+    | FDIV_RTZ_S_64F    => fct7_FDIV_S
+    | FDIV_RDN_S_64F    => fct7_FDIV_S
+    | FDIV_RUP_S_64F    => fct7_FDIV_S
+    | FDIV_RMM_S_64F    => fct7_FDIV_S
+    | FDIV_DYN_S_64F    => fct7_FDIV_S
+    | FSQRT_RNE_S_64F   => fct7_FSQRT_S
+    | FSQRT_RTZ_S_64F   => fct7_FSQRT_S
+    | FSQRT_RDN_S_64F   => fct7_FSQRT_S
+    | FSQRT_RUP_S_64F   => fct7_FSQRT_S
+    | FSQRT_RMM_S_64F   => fct7_FSQRT_S
+    | FSQRT_DYN_S_64F   => fct7_FSQRT_S
+    | FSGNJ_S_64F       => fct7_FSGNJ_S
+    | FSGNJN_S_64F      => fct7_FSGNJN_S
+    | FSGNJX_S_64F      => fct7_FSGNJX_S
+    | FMIN_S_64F        => fct7_FMIN_S
+    | FMAX_S_64F        => fct7_FMAX_S
+    | FCVT_RNE_W_S_64F  => fct7_FCVT_W_S
+    | FCVT_RTZ_W_S_64F  => fct7_FCVT_W_S
+    | FCVT_RDN_W_S_64F  => fct7_FCVT_W_S
+    | FCVT_RUP_W_S_64F  => fct7_FCVT_W_S
+    | FCVT_RMM_W_S_64F  => fct7_FCVT_W_S
+    | FCVT_DYN_W_S_64F  => fct7_FCVT_W_S
+    | FCVT_RNE_WU_S_64F => fct7_FCVT_W_S
+    | FCVT_RTZ_WU_S_64F => fct7_FCVT_W_S
+    | FCVT_RDN_WU_S_64F => fct7_FCVT_W_S
+    | FCVT_RUP_WU_S_64F => fct7_FCVT_W_S
+    | FCVT_RMM_WU_S_64F => fct7_FCVT_W_S
+    | FCVT_DYN_WU_S_64F => fct7_FCVT_W_S
+    | FMV_X_W_64F       => fct7_FMV_W
+    | FEQ_S_64F         => fct7_FEQ_S
+    | FLT_S_64F         => fct7_FLT_S
+    | FLE_S_64F         => fct7_FLE_S
+    | FCLASS_S_64F      => fct7_FCLASS_S
+    | FCVT_RNE_S_W_64F  => fct7_FCVT_S_W
+    | FCVT_RTZ_S_W_64F  => fct7_FCVT_S_W
+    | FCVT_RDN_S_W_64F  => fct7_FCVT_S_W
+    | FCVT_RUP_S_W_64F  => fct7_FCVT_S_W
+    | FCVT_RMM_S_W_64F  => fct7_FCVT_S_W
+    | FCVT_DYN_S_W_64F  => fct7_FCVT_S_W
+    | FCVT_RNE_S_WU_64F => fct7_FCVT_S_W
+    | FCVT_RTZ_S_WU_64F => fct7_FCVT_S_W
+    | FCVT_RDN_S_WU_64F => fct7_FCVT_S_W
+    | FCVT_RUP_S_WU_64F => fct7_FCVT_S_W
+    | FCVT_RMM_S_WU_64F => fct7_FCVT_S_W
+    | FCVT_DYN_S_WU_64F => fct7_FCVT_S_W
+    | FMV_W_X_64F       => fct7_FMV_X
+    | FCVT_RNE_L_S_64F  => fct7_FCVT_W_S
+    | FCVT_RTZ_L_S_64F  => fct7_FCVT_W_S
+    | FCVT_RDN_L_S_64F  => fct7_FCVT_W_S
+    | FCVT_RUP_L_S_64F  => fct7_FCVT_W_S
+    | FCVT_RMM_L_S_64F  => fct7_FCVT_W_S
+    | FCVT_DYN_L_S_64F  => fct7_FCVT_W_S
+    | FCVT_RNE_LU_S_64F => fct7_FCVT_W_S
+    | FCVT_RTZ_LU_S_64F => fct7_FCVT_W_S
+    | FCVT_RDN_LU_S_64F => fct7_FCVT_W_S
+    | FCVT_RUP_LU_S_64F => fct7_FCVT_W_S
+    | FCVT_RMM_LU_S_64F => fct7_FCVT_W_S
+    | FCVT_DYN_LU_S_64F => fct7_FCVT_W_S
+    | FCVT_RNE_S_L_64F  => fct7_FCVT_S_W
+    | FCVT_RTZ_S_L_64F  => fct7_FCVT_S_W
+    | FCVT_RDN_S_L_64F  => fct7_FCVT_S_W
+    | FCVT_RUP_S_L_64F  => fct7_FCVT_S_W
+    | FCVT_RMM_S_L_64F  => fct7_FCVT_S_W
+    | FCVT_DYN_S_L_64F  => fct7_FCVT_S_W
+    | FCVT_RNE_S_LU_64F => fct7_FCVT_S_W
+    | FCVT_RTZ_S_LU_64F => fct7_FCVT_S_W
+    | FCVT_RDN_S_LU_64F => fct7_FCVT_S_W
+    | FCVT_RUP_S_LU_64F => fct7_FCVT_S_W
+    | FCVT_RMM_S_LU_64F => fct7_FCVT_S_W
+    | FCVT_DYN_S_LU_64F => fct7_FCVT_S_W
     end
   | RV32D_instruction x =>
     match x with
-    | FADD_D_32D   => fct7_FADD_D | FSUB_D_32D    => fct7_FSUB_D
-    | FMUL_D_32D   => fct7_FMUL_D | FDIV_D_32D    => fct7_FDIV_D
-    | FSQRT_D_32D  => fct7_ | FSGNJ_D_32D   => fct7_
-    | FSGNJN_D_32D => fct7_ | FSGNJX_D_32D  => fct7_
-    | FMIN_D_32D   => fct7_ | FMAX_D_32D    => fct7_
-    | FCVT_S_D_32D => fct7_ | FCVT_D_S_32D  => fct7_
-    | FEQ_D_32D    => fct7_ | FLT_D_32D     => fct7_
-    | FLE_D_32D    => fct7_ | FCLASS_D_32D  => fct7_
-    | FCVT_W_D_32D => fct7_ | FCVT_WU_D_32D => fct7_
-    | FCVT_D_W_32D => fct7_ | FCVT_D_WU_32D => fct7_
+    | FLD_32F           => 
+    | FSD_32F           => 
+    | FMADD_RNE_D_32F   => 
+    | FMADD_RTZ_D_32F   => 
+    | FMADD_RDN_D_32F   => 
+    | FMADD_RUP_D_32F   => 
+    | FMADD_RMM_D_32F   => 
+    | FMADD_DYN_D_32F   => 
+    | FMSUB_RNE_D_32F   => 
+    | FMSUB_RTZ_D_32F   => 
+    | FMSUB_RDN_D_32F   => 
+    | FMSUB_RUP_D_32F   => 
+    | FMSUB_RMM_D_32F   => 
+    | FMSUB_DYN_D_32F   => 
+    | FNMSUB_RNE_D_32F  => 
+    | FNMSUB_RTZ_D_32F  => 
+    | FNMSUB_RDN_D_32F  => 
+    | FNMSUB_RUP_D_32F  => 
+    | FNMSUB_RMM_D_32F  => 
+    | FNMSUB_DYN_D_32F  => 
+    | FNMADD_RNE_D_32F  => 
+    | FNMADD_RTZ_D_32F  => 
+    | FNMADD_RDN_D_32F  => 
+    | FNMADD_RUP_D_32F  => 
+    | FNMADD_RMM_D_32F  => 
+    | FNMADD_DYN_D_32F  => 
+    | FADD_RNE_D_32D    => fct7_FADD_D
+    | FADD_RTZ_D_32D    => fct7_FADD_D
+    | FADD_RDN_D_32D    => fct7_FADD_D
+    | FADD_RUP_D_32D    => fct7_FADD_D
+    | FADD_RMM_D_32D    => fct7_FADD_D
+    | FADD_DYN_D_32D    => fct7_FADD_D
+    | FSUB_RNE_D_32D    => fct7_FSUB_D
+    | FSUB_RTZ_D_32D    => fct7_FSUB_D
+    | FSUB_RDN_D_32D    => fct7_FSUB_D
+    | FSUB_RUP_D_32D    => fct7_FSUB_D
+    | FSUB_RMM_D_32D    => fct7_FSUB_D
+    | FSUB_DYN_D_32D    => fct7_FSUB_D
+    | FMUL_RNE_D_32D    => fct7_FMUL_D
+    | FMUL_RTZ_D_32D    => fct7_FMUL_D
+    | FMUL_RDN_D_32D    => fct7_FMUL_D
+    | FMUL_RUP_D_32D    => fct7_FMUL_D
+    | FMUL_RMM_D_32D    => fct7_FMUL_D
+    | FMUL_DYN_D_32D    => fct7_FMUL_D
+    | FDIV_RNE_D_32D    => fct7_FDIV_D
+    | FDIV_RTZ_D_32D    => fct7_FDIV_D
+    | FDIV_RDN_D_32D    => fct7_FDIV_D
+    | FDIV_RUP_D_32D    => fct7_FDIV_D
+    | FDIV_RMM_D_32D    => fct7_FDIV_D
+    | FDIV_DYN_D_32D    => fct7_FDIV_D
+    | FSQRT_RNE_D_32D   => fct7_FSQRT_D
+    | FSQRT_RTZ_D_32D   => fct7_FSQRT_D
+    | FSQRT_RDN_D_32D   => fct7_FSQRT_D
+    | FSQRT_RUP_D_32D   => fct7_FSQRT_D
+    | FSQRT_RMM_D_32D   => fct7_FSQRT_D
+    | FSQRT_DYN_D_32D   => fct7_FSQRT_D
+    | FSGNJ_D_32D       => fct7_FSGNJ_D
+    | FSGNJN_D_32D      => fct7_FSGNJN_D
+    | FSGNJX_D_32D      => fct7_FSGNJX_D
+    | FMIN_D_32D        => fct7_FMIN_D
+    | FMAX_D_32D        => fct7_FMAX_D
+    | FCVT_RNE_S_D_32D  => fct7_FCVT_S_D
+    | FCVT_RTZ_S_D_32D  => fct7_FCVT_S_D
+    | FCVT_RDN_S_D_32D  => fct7_FCVT_S_D
+    | FCVT_RUP_S_D_32D  => fct7_FCVT_S_D
+    | FCVT_RMM_S_D_32D  => fct7_FCVT_S_D
+    | FCVT_DYN_S_D_32D  => fct7_FCVT_S_D
+    | FCVT_RNE_D_S_32D  => fct7_FCVT_S_D
+    | FCVT_RTZ_D_S_32D  => fct7_FCVT_S_D
+    | FCVT_RDN_D_S_32D  => fct7_FCVT_S_D
+    | FCVT_RUP_D_S_32D  => fct7_FCVT_S_D
+    | FCVT_RMM_D_S_32D  => fct7_FCVT_S_D
+    | FCVT_DYN_D_S_32D  => fct7_FCVT_S_D
+    | FEQ_D_32D         => fct7_FEQ_D
+    | FLT_D_32D         => fct7_FLT_D
+    | FLE_D_32D         => fct7_FLE_D
+    | FCLASS_D_32D      => fct7_FCLASS_D
+    | FCVT_RNE_W_D_32D  => fct7_FCVT_W_D
+    | FCVT_RTZ_W_D_32D  => fct7_FCVT_W_D
+    | FCVT_RDN_W_D_32D  => fct7_FCVT_W_D
+    | FCVT_RUP_W_D_32D  => fct7_FCVT_W_D
+    | FCVT_RMM_W_D_32D  => fct7_FCVT_W_D
+    | FCVT_DYN_W_D_32D  => fct7_FCVT_W_D
+    | FCVT_RNE_WU_D_32D => fct7_FCVT_W_D
+    | FCVT_RTZ_WU_D_32D => fct7_FCVT_W_D
+    | FCVT_RDN_WU_D_32D => fct7_FCVT_W_D
+    | FCVT_RUP_WU_D_32D => fct7_FCVT_W_D
+    | FCVT_RMM_WU_D_32D => fct7_FCVT_W_D
+    | FCVT_DYN_WU_D_32D => fct7_FCVT_W_D
+    | FCVT_RNE_D_W_32D  => fct7_FCVT_D_W
+    | FCVT_RTZ_D_W_32D  => fct7_FCVT_D_W
+    | FCVT_RDN_D_W_32D  => fct7_FCVT_D_W
+    | FCVT_RUP_D_W_32D  => fct7_FCVT_D_W
+    | FCVT_RMM_D_W_32D  => fct7_FCVT_D_W
+    | FCVT_DYN_D_W_32D  => fct7_FCVT_D_W
+    | FCVT_RNE_D_WU_32D => fct7_FCVT_D_W
+    | FCVT_RTZ_D_WU_32D => fct7_FCVT_D_W
+    | FCVT_RDN_D_WU_32D => fct7_FCVT_D_W
+    | FCVT_RUP_D_WU_32D => fct7_FCVT_D_W
+    | FCVT_RMM_D_WU_32D => fct7_FCVT_D_W
+    | FCVT_DYN_D_WU_32D => fct7_FCVT_D_W
     end
   | RV64D_instruction x =>
     match x with
-    | FADD_D_64D    => fct7_ | FSUB_D_64D    => fct7_
-    | FMUL_D_64D    => fct7_ | FDIV_D_64D    => fct7_
-    | FSQRT_D_64D   => fct7_ | FSGNJ_D_64D   => fct7_
-    | FSGNJN_D_64D  => fct7_ | FSGNJX_D_64D  => fct7_
-    | FMIN_D_64D    => fct7_ | FMAX_D_64D    => fct7_
-    | FCVT_S_D_64D  => fct7_ | FCVT_D_S_64D  => fct7_
-    | FEQ_D_64D     => fct7_ | FLT_D_64D     => fct7_
-    | FLE_D_64D     => fct7_ | FCLASS_D_64D  => fct7_
-    | FCVT_W_D_64D  => fct7_ | FCVT_WU_D_64D => fct7_
-    | FCVT_D_W_64D  => fct7_ | FCVT_D_WU_64D => fct7_
-    | FCVT_L_D_64D  => fct7_ | FCVT_LU_D_64D => fct7_
-    | FMV_X_D_64D   => fct7_ | FCVT_D_L_64D  => fct7_
-    | FCVT_D_LU_64D => fct7_ | FMV_D_X_64D   => fct7_
+    | FLD_32F           => 
+    | FSD_32F           => 
+    | FMADD_RNE_D_32F   => 
+    | FMADD_RTZ_D_32F   => 
+    | FMADD_RDN_D_32F   => 
+    | FMADD_RUP_D_32F   => 
+    | FMADD_RMM_D_32F   => 
+    | FMADD_DYN_D_32F   => 
+    | FMSUB_RNE_D_32F   => 
+    | FMSUB_RTZ_D_32F   => 
+    | FMSUB_RDN_D_32F   => 
+    | FMSUB_RUP_D_32F   => 
+    | FMSUB_RMM_D_32F   => 
+    | FMSUB_DYN_D_32F   => 
+    | FNMSUB_RNE_D_32F  => 
+    | FNMSUB_RTZ_D_32F  => 
+    | FNMSUB_RDN_D_32F  => 
+    | FNMSUB_RUP_D_32F  => 
+    | FNMSUB_RMM_D_32F  => 
+    | FNMSUB_DYN_D_32F  => 
+    | FNMADD_RNE_D_32F  => 
+    | FNMADD_RTZ_D_32F  => 
+    | FNMADD_RDN_D_32F  => 
+    | FNMADD_RUP_D_32F  => 
+    | FNMADD_RMM_D_32F  => 
+    | FNMADD_DYN_D_32F  => 
+    | FADD_RNE_D_64D    => fct7_FADD_D
+    | FADD_RTZ_D_64D    => fct7_FADD_D
+    | FADD_RDN_D_64D    => fct7_FADD_D
+    | FADD_RUP_D_64D    => fct7_FADD_D
+    | FADD_RMM_D_64D    => fct7_FADD_D
+    | FADD_DYN_D_64D    => fct7_FADD_D
+    | FSUB_RNE_D_64D    => fct7_FSUB_D
+    | FSUB_RTZ_D_64D    => fct7_FSUB_D
+    | FSUB_RDN_D_64D    => fct7_FSUB_D
+    | FSUB_RUP_D_64D    => fct7_FSUB_D
+    | FSUB_RMM_D_64D    => fct7_FSUB_D
+    | FSUB_DYN_D_64D    => fct7_FSUB_D
+    | FMUL_RNE_D_64D    => fct7_FMUL_D
+    | FMUL_RTZ_D_64D    => fct7_FMUL_D
+    | FMUL_RDN_D_64D    => fct7_FMUL_D
+    | FMUL_RUP_D_64D    => fct7_FMUL_D
+    | FMUL_RMM_D_64D    => fct7_FMUL_D
+    | FMUL_DYN_D_64D    => fct7_FMUL_D
+    | FDIV_RNE_D_64D    => fct7_FDIV_D
+    | FDIV_RTZ_D_64D    => fct7_FDIV_D
+    | FDIV_RDN_D_64D    => fct7_FDIV_D
+    | FDIV_RUP_D_64D    => fct7_FDIV_D
+    | FDIV_RMM_D_64D    => fct7_FDIV_D
+    | FDIV_DYN_D_64D    => fct7_FDIV_D
+    | FSQRT_RNE_D_64D   => fct7_FSQRT_D
+    | FSQRT_RTZ_D_64D   => fct7_FSQRT_D
+    | FSQRT_RDN_D_64D   => fct7_FSQRT_D
+    | FSQRT_RUP_D_64D   => fct7_FSQRT_D
+    | FSQRT_RMM_D_64D   => fct7_FSQRT_D
+    | FSQRT_DYN_D_64D   => fct7_FSQRT_D
+    | FSGNJ_D_64D       => fct7_FSGNJ_D
+    | FSGNJN_D_64D      => fct7_FSGNJN_D
+    | FSGNJX_D_64D      => fct7_FSGNJX_D
+    | FMIN_D_64D        => fct7_FMIN_D
+    | FMAX_D_64D        => fct7_FMAX_D
+    | FCVT_RNE_S_D_64D  => fct7_FCVT_D
+    | FCVT_RTZ_S_D_64D  => fct7_FCVT_D
+    | FCVT_RDN_S_D_64D  => fct7_FCVT_D
+    | FCVT_RUP_S_D_64D  => fct7_FCVT_D
+    | FCVT_RMM_S_D_64D  => fct7_FCVT_D
+    | FCVT_DYN_S_D_64D  => fct7_FCVT_D
+    | FCVT_RNE_D_S_64D  => fct7_FCVT_S
+    | FCVT_RTZ_D_S_64D  => fct7_FCVT_S
+    | FCVT_RDN_D_S_64D  => fct7_FCVT_S
+    | FCVT_RUP_D_S_64D  => fct7_FCVT_S
+    | FCVT_RMM_D_S_64D  => fct7_FCVT_S
+    | FCVT_DYN_D_S_64D  => fct7_FCVT_S
+    | FEQ_D_64D         => fct7_FEQ_D
+    | FLT_D_64D         => fct7_FLT_D
+    | FLE_D_64D         => fct7_FLE_D
+    | FCLASS_D_64D      => fct7_FCLASS_D
+    | FCVT_RNE_W_D_64D  => fct7_FCVT_D
+    | FCVT_RTZ_W_D_64D  => fct7_FCVT_D
+    | FCVT_RDN_W_D_64D  => fct7_FCVT_D
+    | FCVT_RUP_W_D_64D  => fct7_FCVT_D
+    | FCVT_RMM_W_D_64D  => fct7_FCVT_D
+    | FCVT_DYN_W_D_64D  => fct7_FCVT_D
+    | FCVT_RNE_WU_D_64D => fct7_FCVT_D
+    | FCVT_RTZ_WU_D_64D => fct7_FCVT_D
+    | FCVT_RDN_WU_D_64D => fct7_FCVT_D
+    | FCVT_RUP_WU_D_64D => fct7_FCVT_D
+    | FCVT_RMM_WU_D_64D => fct7_FCVT_D
+    | FCVT_DYN_WU_D_64D => fct7_FCVT_D
+    | FCVT_RNE_D_W_64D  => fct7_FCVT_W
+    | FCVT_RTZ_D_W_64D  => fct7_FCVT_W
+    | FCVT_RDN_D_W_64D  => fct7_FCVT_W
+    | FCVT_RUP_D_W_64D  => fct7_FCVT_W
+    | FCVT_RMM_D_W_64D  => fct7_FCVT_W
+    | FCVT_DYN_D_W_64D  => fct7_FCVT_W
+    | FCVT_RNE_D_WU_64D => fct7_FCVT_U
+    | FCVT_RTZ_D_WU_64D => fct7_FCVT_U
+    | FCVT_RDN_D_WU_64D => fct7_FCVT_U
+    | FCVT_RUP_D_WU_64D => fct7_FCVT_U
+    | FCVT_RMM_D_WU_64D => fct7_FCVT_U
+    | FCVT_DYN_D_WU_64D => fct7_FCVT_U
+    | FCVT_RNE_L_D_64D  => fct7_FCVT_D
+    | FCVT_RTZ_L_D_64D  => fct7_FCVT_D
+    | FCVT_RDN_L_D_64D  => fct7_FCVT_D
+    | FCVT_RUP_L_D_64D  => fct7_FCVT_D
+    | FCVT_RMM_L_D_64D  => fct7_FCVT_D
+    | FCVT_DYN_L_D_64D  => fct7_FCVT_D
+    | FCVT_RNE_LU_D_64D => fct7_FCVT_D
+    | FCVT_RTZ_LU_D_64D => fct7_FCVT_D
+    | FCVT_RDN_LU_D_64D => fct7_FCVT_D
+    | FCVT_RUP_LU_D_64D => fct7_FCVT_D
+    | FCVT_RMM_LU_D_64D => fct7_FCVT_D
+    | FCVT_DYN_LU_D_64D => fct7_FCVT_D
+    | FMV_X_D_64D       => fct7_FMV_D
+    | FCVT_RNE_D_L_64D  => fct7_FCVT_L
+    | FCVT_RTZ_D_L_64D  => fct7_FCVT_L
+    | FCVT_RDN_D_L_64D  => fct7_FCVT_L
+    | FCVT_RUP_D_L_64D  => fct7_FCVT_L
+    | FCVT_RMM_D_L_64D  => fct7_FCVT_L
+    | FCVT_DYN_D_L_64D  => fct7_FCVT_L
+    | FCVT_RNE_D_LU_64D => fct7_FCVT_U
+    | FCVT_RTZ_D_LU_64D => fct7_FCVT_U
+    | FCVT_RDN_D_LU_64D => fct7_FCVT_U
+    | FCVT_RUP_D_LU_64D => fct7_FCVT_U
+    | FCVT_RMM_D_LU_64D => fct7_FCVT_U
+    | FCVT_DYN_D_LU_64D => fct7_FCVT_U
+    | FMV_D_X_64D       => fct7_FMV_X
     end
   | RV32Q_instruction x =>
     match x with
-    | FADD_Q_32Q   => fct7_ | FSUB_Q_32Q    => fct7_
-    | FMUL_Q_32Q   => fct7_ | FDIV_Q_32Q    => fct7_
-    | FSQRT_Q_32Q  => fct7_ | FSGNJ_Q_32Q   => fct7_
-    | FSGNJN_Q_32Q => fct7_ | FSGNJX_Q_32Q  => fct7_
-    | FMIN_Q_32Q   => fct7_ | FMAX_Q_32Q    => fct7_
-    | FCVT_S_Q_32Q => fct7_ | FCVT_Q_S_32Q  => fct7_
-    | FCVT_D_Q_32Q => fct7_ | FCVT_Q_D_32Q  => fct7_
-    | FEQ_Q_32Q    => fct7_ | FLT_Q_32Q     => fct7_
-    | FLE_Q_32Q    => fct7_ | FCLASS_Q_32Q  => fct7_
-    | FCVT_W_Q_32Q => fct7_ | FCVT_WU_Q_32Q => fct7_
-    | FCVT_Q_W_32Q => fct7_ | FCVT_Q_WU_32Q => fct7_
+    | FLQ_32F           => 
+    | FSQ_32F           => 
+    | FMADD_RNE_Q_32F   => 
+    | FMADD_RTZ_Q_32F   => 
+    | FMADD_RDN_Q_32F   => 
+    | FMADD_RUP_Q_32F   => 
+    | FMADD_RMM_Q_32F   => 
+    | FMADD_DYN_Q_32F   => 
+    | FMSUB_RNE_Q_32F   => 
+    | FMSUB_RTZ_Q_32F   => 
+    | FMSUB_RDN_Q_32F   => 
+    | FMSUB_RUP_Q_32F   => 
+    | FMSUB_RMM_Q_32F   => 
+    | FMSUB_DYN_Q_32F   => 
+    | FNMSUB_RNE_Q_32F  => 
+    | FNMSUB_RTZ_Q_32F  => 
+    | FNMSUB_RDN_Q_32F  => 
+    | FNMSUB_RUP_Q_32F  => 
+    | FNMSUB_RMM_Q_32F  => 
+    | FNMSUB_DYN_Q_32F  => 
+    | FNMADD_RNE_Q_32F  => 
+    | FNMADD_RTZ_Q_32F  => 
+    | FNMADD_RDN_Q_32F  => 
+    | FNMADD_RUP_Q_32F  => 
+    | FNMADD_RMM_Q_32F  => 
+    | FNMADD_DYN_Q_32F  => 
+    | FADD_RNE_Q_32Q    => fct7_FADD_Q
+    | FADD_RTZ_Q_32Q    => fct7_FADD_Q
+    | FADD_RDN_Q_32Q    => fct7_FADD_Q
+    | FADD_RUP_Q_32Q    => fct7_FADD_Q
+    | FADD_RMM_Q_32Q    => fct7_FADD_Q
+    | FADD_DYN_Q_32Q    => fct7_FADD_Q
+    | FSUB_RNE_Q_32Q    => fct7_FSUB_Q
+    | FSUB_RTZ_Q_32Q    => fct7_FSUB_Q
+    | FSUB_RDN_Q_32Q    => fct7_FSUB_Q
+    | FSUB_RUP_Q_32Q    => fct7_FSUB_Q
+    | FSUB_RMM_Q_32Q    => fct7_FSUB_Q
+    | FSUB_DYN_Q_32Q    => fct7_FSUB_Q
+    | FMUL_RNE_Q_32Q    => fct7_FMUL_Q
+    | FMUL_RTZ_Q_32Q    => fct7_FMUL_Q
+    | FMUL_RDN_Q_32Q    => fct7_FMUL_Q
+    | FMUL_RUP_Q_32Q    => fct7_FMUL_Q
+    | FMUL_RMM_Q_32Q    => fct7_FMUL_Q
+    | FMUL_DYN_Q_32Q    => fct7_FMUL_Q
+    | FDIV_RNE_Q_32Q    => fct7_FDIV_Q
+    | FDIV_RTZ_Q_32Q    => fct7_FDIV_Q
+    | FDIV_RDN_Q_32Q    => fct7_FDIV_Q
+    | FDIV_RUP_Q_32Q    => fct7_FDIV_Q
+    | FDIV_RMM_Q_32Q    => fct7_FDIV_Q
+    | FDIV_DYN_Q_32Q    => fct7_FDIV_Q
+    | FSQRT_RNE_Q_32Q   => fct7_FSQRT_Q
+    | FSQRT_RTZ_Q_32Q   => fct7_FSQRT_Q
+    | FSQRT_RDN_Q_32Q   => fct7_FSQRT_Q
+    | FSQRT_RUP_Q_32Q   => fct7_FSQRT_Q
+    | FSQRT_RMM_Q_32Q   => fct7_FSQRT_Q
+    | FSQRT_DYN_Q_32Q   => fct7_FSQRT_Q
+    | FSGNJ_Q_32Q       => fct7_FSGNJ_Q
+    | FSGNJN_Q_32Q      => fct7_FSGNJN_Q
+    | FSGNJX_Q_32Q      => fct7_FSGNJX_Q
+    | FMIN_Q_32Q        => fct7_FMIN_Q
+    | FMAX_Q_32Q        => fct7_FMAX_Q
+    | FCVT_RNE_S_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RTZ_S_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RDN_S_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RUP_S_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RMM_S_Q_32Q  => fct7_FCVT_Q
+    | FCVT_DYN_S_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RNE_Q_S_32Q  => fct7_FCVT_S
+    | FCVT_RTZ_Q_S_32Q  => fct7_FCVT_S
+    | FCVT_RDN_Q_S_32Q  => fct7_FCVT_S
+    | FCVT_RUP_Q_S_32Q  => fct7_FCVT_S
+    | FCVT_RMM_Q_S_32Q  => fct7_FCVT_S
+    | FCVT_DYN_Q_S_32Q  => fct7_FCVT_S
+    | FCVT_RNE_D_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RTZ_D_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RDN_D_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RUP_D_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RMM_D_Q_32Q  => fct7_FCVT_Q
+    | FCVT_DYN_D_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RNE_Q_D_32Q  => fct7_FCVT_D
+    | FCVT_RTZ_Q_D_32Q  => fct7_FCVT_D
+    | FCVT_RDN_Q_D_32Q  => fct7_FCVT_D
+    | FCVT_RUP_Q_D_32Q  => fct7_FCVT_D
+    | FCVT_RMM_Q_D_32Q  => fct7_FCVT_D
+    | FCVT_DYN_Q_D_32Q  => fct7_FCVT_D
+    | FEQ_Q_32Q         => fct7_FEQ_Q
+    | FLT_Q_32Q         => fct7_FLT_Q
+    | FLE_Q_32Q         => fct7_FLE_Q
+    | FCLASS_Q_32Q      => fct7_FCLASS_Q
+    | FCVT_RNE_W_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RTZ_W_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RDN_W_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RUP_W_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RMM_W_Q_32Q  => fct7_FCVT_Q
+    | FCVT_DYN_W_Q_32Q  => fct7_FCVT_Q
+    | FCVT_RNE_WU_Q_32Q => fct7_FCVT_Q
+    | FCVT_RTZ_WU_Q_32Q => fct7_FCVT_Q
+    | FCVT_RDN_WU_Q_32Q => fct7_FCVT_Q
+    | FCVT_RUP_WU_Q_32Q => fct7_FCVT_Q
+    | FCVT_RMM_WU_Q_32Q => fct7_FCVT_Q
+    | FCVT_DYN_WU_Q_32Q => fct7_FCVT_Q
+    | FCVT_RNE_Q_W_32Q  => fct7_FCVT_W
+    | FCVT_RTZ_Q_W_32Q  => fct7_FCVT_W
+    | FCVT_RDN_Q_W_32Q  => fct7_FCVT_W
+    | FCVT_RUP_Q_W_32Q  => fct7_FCVT_W
+    | FCVT_RMM_Q_W_32Q  => fct7_FCVT_W
+    | FCVT_DYN_Q_W_32Q  => fct7_FCVT_W
+    | FCVT_RNE_Q_WU_32Q => fct7_FCVT_U
+    | FCVT_RTZ_Q_WU_32Q => fct7_FCVT_U
+    | FCVT_RDN_Q_WU_32Q => fct7_FCVT_U
+    | FCVT_RUP_Q_WU_32Q => fct7_FCVT_U
+    | FCVT_RMM_Q_WU_32Q => fct7_FCVT_U
+    | FCVT_DYN_Q_WU_32Q => fct7_FCVT_U
     end
   | RV64Q_instruction x =>
     match x with
-    | FADD_Q_64Q   => fct7_ | FSUB_Q_64Q    => fct7_
-    | FMUL_Q_64Q   => fct7_ | FDIV_Q_64Q    => fct7_
-    | FSQRT_Q_64Q  => fct7_ | FSGNJ_Q_64Q   => fct7_
-    | FSGNJN_Q_64Q => fct7_ | FSGNJX_Q_64Q  => fct7_
-    | FMIN_Q_64Q   => fct7_ | FMAX_Q_64Q    => fct7_
-    | FCVT_S_Q_64Q => fct7_ | FCVT_Q_S_64Q  => fct7_
-    | FCVT_D_Q_64Q => fct7_ | FCVT_Q_D_64Q  => fct7_
-    | FEQ_Q_64Q    => fct7_ | FLT_Q_64Q     => fct7_
-    | FLE_Q_64Q    => fct7_ | FCLASS_Q_64Q  => fct7_
-    | FCVT_W_Q_64Q => fct7_ | FCVT_WU_Q_64Q => fct7_
-    | FCVT_Q_W_64Q => fct7_ | FCVT_Q_WU_64Q => fct7_
-    | FCVT_L_Q_64Q => fct7_ | FCVT_LU_Q_64Q => fct7_
-    | FCVT_Q_L_64Q => fct7_ | FCVT_Q_LU_64Q => fct7_
+    | FLQ_32F           => 
+    | FSQ_32F           => 
+    | FMADD_RNE_Q_32F   => 
+    | FMADD_RTZ_Q_32F   => 
+    | FMADD_RDN_Q_32F   => 
+    | FMADD_RUP_Q_32F   => 
+    | FMADD_RMM_Q_32F   => 
+    | FMADD_DYN_Q_32F   => 
+    | FMSUB_RNE_Q_32F   => 
+    | FMSUB_RTZ_Q_32F   => 
+    | FMSUB_RDN_Q_32F   => 
+    | FMSUB_RUP_Q_32F   => 
+    | FMSUB_RMM_Q_32F   => 
+    | FMSUB_DYN_Q_32F   => 
+    | FNMSUB_RNE_Q_32F  => 
+    | FNMSUB_RTZ_Q_32F  => 
+    | FNMSUB_RDN_Q_32F  => 
+    | FNMSUB_RUP_Q_32F  => 
+    | FNMSUB_RMM_Q_32F  => 
+    | FNMSUB_DYN_Q_32F  => 
+    | FNMADD_RNE_Q_32F  => 
+    | FNMADD_RTZ_Q_32F  => 
+    | FNMADD_RDN_Q_32F  => 
+    | FNMADD_RUP_Q_32F  => 
+    | FNMADD_RMM_Q_32F  => 
+    | FNMADD_DYN_Q_32F  => 
+    | FADD_RNE_Q_64Q    => fct7_FADD_Q
+    | FADD_RTZ_Q_64Q    => fct7_FADD_Q
+    | FADD_RDN_Q_64Q    => fct7_FADD_Q
+    | FADD_RUP_Q_64Q    => fct7_FADD_Q
+    | FADD_RMM_Q_64Q    => fct7_FADD_Q
+    | FADD_DYN_Q_64Q    => fct7_FADD_Q
+    | FSUB_RNE_Q_64Q    => fct7_FSUB_Q
+    | FSUB_RTZ_Q_64Q    => fct7_FSUB_Q
+    | FSUB_RDN_Q_64Q    => fct7_FSUB_Q
+    | FSUB_RUP_Q_64Q    => fct7_FSUB_Q
+    | FSUB_RMM_Q_64Q    => fct7_FSUB_Q
+    | FSUB_DYN_Q_64Q    => fct7_FSUB_Q
+    | FMUL_RNE_Q_64Q    => fct7_FMUL_Q
+    | FMUL_RTZ_Q_64Q    => fct7_FMUL_Q
+    | FMUL_RDN_Q_64Q    => fct7_FMUL_Q
+    | FMUL_RUP_Q_64Q    => fct7_FMUL_Q
+    | FMUL_RMM_Q_64Q    => fct7_FMUL_Q
+    | FMUL_DYN_Q_64Q    => fct7_FMUL_Q
+    | FDIV_RNE_Q_64Q    => fct7_FDIV_Q
+    | FDIV_RTZ_Q_64Q    => fct7_FDIV_Q
+    | FDIV_RDN_Q_64Q    => fct7_FDIV_Q
+    | FDIV_RUP_Q_64Q    => fct7_FDIV_Q
+    | FDIV_RMM_Q_64Q    => fct7_FDIV_Q
+    | FDIV_DYN_Q_64Q    => fct7_FDIV_Q
+    | FSQRT_RNE_Q_64Q   => fct7_FSQRT_Q
+    | FSQRT_RTZ_Q_64Q   => fct7_FSQRT_Q
+    | FSQRT_RDN_Q_64Q   => fct7_FSQRT_Q
+    | FSQRT_RUP_Q_64Q   => fct7_FSQRT_Q
+    | FSQRT_RMM_Q_64Q   => fct7_FSQRT_Q
+    | FSQRT_DYN_Q_64Q   => fct7_FSQRT_Q
+    | FSGNJ_Q_64Q       => fct7_FSGNJ_Q
+    | FSGNJN_Q_64Q      => fct7_FSGNJN_Q
+    | FSGNJX_Q_64Q      => fct7_FSGNJX_Q
+    | FMIN_Q_64Q        => fct7_FMIN_Q
+    | FMAX_Q_64Q        => fct7_FMAX_Q
+    | FCVT_RNE_S_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RTZ_S_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RDN_S_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RUP_S_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RMM_S_Q_64Q  => fct7_FCVT_Q
+    | FCVT_DYN_S_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RNE_Q_S_64Q  => fct7_FCVT_S
+    | FCVT_RTZ_Q_S_64Q  => fct7_FCVT_S
+    | FCVT_RDN_Q_S_64Q  => fct7_FCVT_S
+    | FCVT_RUP_Q_S_64Q  => fct7_FCVT_S
+    | FCVT_RMM_Q_S_64Q  => fct7_FCVT_S
+    | FCVT_DYN_Q_S_64Q  => fct7_FCVT_S
+    | FCVT_RNE_D_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RTZ_D_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RDN_D_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RUP_D_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RMM_D_Q_64Q  => fct7_FCVT_Q
+    | FCVT_DYN_D_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RNE_Q_D_64Q  => fct7_FCVT_D
+    | FCVT_RTZ_Q_D_64Q  => fct7_FCVT_D
+    | FCVT_RDN_Q_D_64Q  => fct7_FCVT_D
+    | FCVT_RUP_Q_D_64Q  => fct7_FCVT_D
+    | FCVT_RMM_Q_D_64Q  => fct7_FCVT_D
+    | FCVT_DYN_Q_D_64Q  => fct7_FCVT_D
+    | FEQ_Q_64Q         => fct7_FEQ_Q
+    | FLT_Q_64Q         => fct7_FLT_Q
+    | FLE_Q_64Q         => fct7_FLE_Q
+    | FCLASS_Q_64Q      => fct7_FCLASS_Q
+    | FCVT_RNE_W_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RTZ_W_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RDN_W_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RUP_W_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RMM_W_Q_64Q  => fct7_FCVT_Q
+    | FCVT_DYN_W_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RNE_WU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RTZ_WU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RDN_WU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RUP_WU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RMM_WU_Q_64Q => fct7_FCVT_Q
+    | FCVT_DYN_WU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RNE_Q_W_64Q  => fct7_FCVT_W
+    | FCVT_RTZ_Q_W_64Q  => fct7_FCVT_W
+    | FCVT_RDN_Q_W_64Q  => fct7_FCVT_W
+    | FCVT_RUP_Q_W_64Q  => fct7_FCVT_W
+    | FCVT_RMM_Q_W_64Q  => fct7_FCVT_W
+    | FCVT_DYN_Q_W_64Q  => fct7_FCVT_W
+    | FCVT_RNE_Q_WU_64Q => fct7_FCVT_U
+    | FCVT_RTZ_Q_WU_64Q => fct7_FCVT_U
+    | FCVT_RDN_Q_WU_64Q => fct7_FCVT_U
+    | FCVT_RUP_Q_WU_64Q => fct7_FCVT_U
+    | FCVT_RMM_Q_WU_64Q => fct7_FCVT_U
+    | FCVT_DYN_Q_WU_64Q => fct7_FCVT_U
+    | FCVT_RNE_L_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RTZ_L_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RDN_L_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RUP_L_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RMM_L_Q_64Q  => fct7_FCVT_Q
+    | FCVT_DYN_L_Q_64Q  => fct7_FCVT_Q
+    | FCVT_RNE_LU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RTZ_LU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RDN_LU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RUP_LU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RMM_LU_Q_64Q => fct7_FCVT_Q
+    | FCVT_DYN_LU_Q_64Q => fct7_FCVT_Q
+    | FCVT_RNE_Q_L_64Q  => fct7_FCVT_L
+    | FCVT_RTZ_Q_L_64Q  => fct7_FCVT_L
+    | FCVT_RDN_Q_L_64Q  => fct7_FCVT_L
+    | FCVT_RUP_Q_L_64Q  => fct7_FCVT_L
+    | FCVT_RMM_Q_L_64Q  => fct7_FCVT_L
+    | FCVT_DYN_Q_L_64Q  => fct7_FCVT_L
+    | FCVT_RNE_Q_LU_64Q => fct7_FCVT_U
+    | FCVT_RTZ_Q_LU_64Q => fct7_FCVT_U
+    | FCVT_RDN_Q_LU_64Q => fct7_FCVT_U
+    | FCVT_RUP_Q_LU_64Q => fct7_FCVT_U
+    | FCVT_RMM_Q_LU_64Q => fct7_FCVT_U
+    | FCVT_DYN_Q_LU_64Q => fct7_FCVT_U
     end
   end.
 
@@ -2292,16 +2921,3 @@ Inductive instruction_struct :=
 | BTypeStruct  (s : BType_struct )
 | UTypeStruct  (s : UType_struct )
 | JTypeStruct  (s : JType_struct ).
-
-Inductive
-
-(* Definition instruction_bin := bits_t 32. *)
-
-(* Definition ex_instr : instruction_bin := *)
-(*   Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1. *)
-
-(* Definition get_first_bit (i : instruction_bin) := *)
-(*   i[|5'd0| :+ 2]. *)
-
-(* Definition get_subfield_value (s : subfield_properties) (i : bits_t 32) := *)
-(*   UBinop (UBits2 USel) i (first_bit s). *)
