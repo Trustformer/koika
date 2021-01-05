@@ -521,145 +521,80 @@ Inductive field :=
 
 Definition has_opcode (t : instruction_type) :=
   match t with
-  | RType  => true
-  | R4Type => true
-  | IType  => true
-  | SType  => true
-  | BType  => true
-  | UType  => true
-  | JType  => true
+  | RType => true | R4Type => true | IType => true | SType => true
+  | BType => true | UType  => true | JType => true
   end.
 
 Definition has_fct2 (t : instruction_type) :=
   match t with
-  | RType  => false
-  | R4Type => true
-  | IType  => false
-  | SType  => false
-  | BType  => false
-  | UType  => false
-  | JType  => false
+  | RType => false | R4Type => true  | IType => false | SType => false
+  | BType => false | UType  => false | JType => false
   end.
 
 Definition has_fct3 (t : instruction_type) :=
   match t with
-  | RType  => true
-  | R4Type => true
-  | IType  => true
-  | SType  => true
-  | BType  => true
-  | UType  => false
-  | JType  => false
+  | RType => true | R4Type => true  | IType => true  | SType => true
+  | BType => true | UType  => false | JType => false
   end.
 
 Definition has_fct7 (t : instruction_type) :=
   match t with
-  | RType  => true
-  | R4Type => false
-  | IType  => false
-  | SType  => false
-  | BType  => false
-  | UType  => false
-  | JType  => false
+  | RType => true  | R4Type => false | IType => false | SType => false
+  | BType => false | UType  => false | JType => false
   end.
 
 Definition has_rs1 (t : instruction_type) :=
   match t with
-  | RType  => true
-  | R4Type => true
-  | IType  => true
-  | SType  => true
-  | BType  => true
-  | UType  => false
-  | JType  => false
+  | RType => true | R4Type => true  | IType => true  | SType => true
+  | BType => true | UType  => false | JType => false
   end.
 
 Definition has_rs2 (t : instruction_type) :=
   match t with
-  | RType  => true
-  | R4Type => true
-  | IType  => false
-  | SType  => true
-  | BType  => true
-  | UType  => false
-  | JType  => false
+  | RType => true | R4Type => true  | IType => false | SType => true
+  | BType => true | UType  => false | JType => false
   end.
 
 Definition has_rs3 (t : instruction_type) :=
   match t with
-  | RType  => false
-  | R4Type => true
-  | IType  => false
-  | SType  => false
-  | BType  => false
-  | UType  => false
-  | JType  => false
+  | RType => false | R4Type => true  | IType => false | SType => false
+  | BType => false | UType  => false | JType => false
   end.
 
 Definition has_rd (t : instruction_type) :=
   match t with
-  | RType  => true
-  | R4Type => true
-  | IType  => true
-  | SType  => false
-  | BType  => false
-  | UType  => true
-  | JType  => true
+  | RType => true  | R4Type => true | IType => true | SType => false
+  | BType => false | UType  => true | JType => true
   end.
 
 Definition has_immI (t : instruction_type) :=
   match t with
-  | RType  => false
-  | R4Type => false
-  | IType  => true
-  | SType  => false
-  | BType  => false
-  | UType  => false
-  | JType  => false
+  | RType => false | R4Type => false | IType => true | SType => false
+  | BType => false | UType  => false | JType => false
   end.
 
 Definition has_immS (t : instruction_type) :=
   match t with
-  | RType  => false
-  | R4Type => false
-  | IType  => false
-  | SType  => true
-  | BType  => false
-  | UType  => false
-  | JType  => false
+  | RType => false | R4Type => false | IType => false | SType => true
+  | BType => false | UType  => false | JType => false
   end.
 
 Definition has_immB (t : instruction_type) :=
   match t with
-  | RType  => false
-  | R4Type => false
-  | IType  => false
-  | SType  => false
-  | BType  => true
-  | UType  => false
-  | JType  => false
+  | RType => false | R4Type => false | IType => false | SType => false
+  | BType => true  | UType  => false | JType => false
   end.
 
 Definition has_immU (t : instruction_type) :=
   match t with
-  | RType  => false
-  | R4Type => false
-  | IType  => false
-  | SType  => false
-  | BType  => false
-  | UType  => true
-  | JType  => false
+  | RType => false | R4Type => false | IType => false | SType => false
+  | BType => false | UType  => true  | JType => false
   end.
 
 Definition has_immJ (t : instruction_type) :=
   match t with
-  | RType  => false
-  | R4Type => false
-  | IType  => false
-  | SType  => false
-  | BType  => false
-  | UType  => false
-  | JType  => true
+  | RType => false | R4Type => false | IType => false | SType => false
+  | BType => false | UType  => false | JType => true
   end.
 
 Definition instruction_type_fields (t : instruction_type) :=
@@ -680,18 +615,9 @@ Definition instruction_type_fields (t : instruction_type) :=
 
 Definition is_field_identifier (f : field) :=
   match f with
-  | opcode => true
-  | fct2   => true
-  | fct3   => true
-  | fct7   => true
-  | rs1    => false
-  | rs2    => false
-  | rs3    => false
-  | rd     => false
-  | immI   => false
-  | immS   => false
-  | immB   => false
-  | immU   => false
+  | opcode => true  | fct2 => true  | fct3 => true  | fct7 => true
+  | rs1    => false | rs2  => false | rs3  => false | rd   => false
+  | immI   => false | immS => false | immB => false | immU => false
   | immJ   => false
   end.
 
@@ -1305,546 +1231,961 @@ Definition fct3_bin (f : fct3_type) :=
   | fct3_LSF    => Ob~0~1~0 | fct3_LSD    => Ob~0~1~1 | fct3_LSQ     => Ob~1~0~0
   end.
 
-Theorem has_fct3_JType_implies_false
-  (i : instruction) (pf : has_fct3 (get_instruction_type i) = true)
-: (get_instruction_type i = JType) -> False.
-Proof.
-  intros.
-  rewrite H in pf.
-  simpl in pf.
-  congruence.
-Qed.
+Definition instruction_fct3 :
+  forall (i : instruction), has_fct3 (get_instruction_type i) = true
+  -> fct3_type.
+refine (fun i =>
+  match i with
+  | RV32I_instruction JALR_32I   => fun _ => fct3_JALR
+  | RV32I_instruction BEQ_32I    => fun _ => fct3_BEQ
+  | RV32I_instruction BNE_32I    => fun _ => fct3_BNE
+  | RV32I_instruction BLT_32I    => fun _ => fct3_BLT
+  | RV32I_instruction BGE_32I    => fun _ => fct3_BGE
+  | RV32I_instruction BLTU_32I   => fun _ => fct3_BLTU
+  | RV32I_instruction BGEU_32I   => fun _ => fct3_BGEU
+  | RV32I_instruction LB_32I     => fun _ => fct3_LB
+  | RV32I_instruction LH_32I     => fun _ => fct3_LH
+  | RV32I_instruction LW_32I     => fun _ => fct3_LW
+  | RV32I_instruction LBU_32I    => fun _ => fct3_LBU
+  | RV32I_instruction LHU_32I    => fun _ => fct3_LHU
+  | RV32I_instruction SB_32I     => fun _ => fct3_SB
+  | RV32I_instruction SH_32I     => fun _ => fct3_SH
+  | RV32I_instruction SW_32I     => fun _ => fct3_SW
+  | RV32I_instruction ADDI_32I   => fun _ => fct3_ADDI
+  | RV32I_instruction SLTI_32I   => fun _ => fct3_SLTI
+  | RV32I_instruction SLTIU_32I  => fun _ => fct3_SLTIU
+  | RV32I_instruction XORI_32I   => fun _ => fct3_XORI
+  | RV32I_instruction ORI_32I    => fun _ => fct3_ORI
+  | RV32I_instruction ANDI_32I   => fun _ => fct3_ANDI
+  | RV32I_instruction SLLI_32I   => fun _ => fct3_SLLI
+  | RV32I_instruction SRLI_32I   => fun _ => fct3_SRLI
+  | RV32I_instruction SRAI_32I   => fun _ => fct3_SRAI
+  | RV32I_instruction ADD_32I    => fun _ => fct3_ADD
+  | RV32I_instruction SUB_32I    => fun _ => fct3_SUB
+  | RV32I_instruction SLL_32I    => fun _ => fct3_SLL
+  | RV32I_instruction SLT_32I    => fun _ => fct3_SLT
+  | RV32I_instruction SLTU_32I   => fun _ => fct3_SLTU
+  | RV32I_instruction XOR_32I    => fun _ => fct3_XOR
+  | RV32I_instruction SRL_32I    => fun _ => fct3_SRL
+  | RV32I_instruction SRA_32I    => fun _ => fct3_SRA
+  | RV32I_instruction OR_32I     => fun _ => fct3_OR
+  | RV32I_instruction AND_32I    => fun _ => fct3_AND
+  | RV32I_instruction FENCE_32I  => fun _ => fct3_FENCE
+  | RV32I_instruction ECALL_32I  => fun _ => fct3_PRIV
+  | RV32I_instruction EBREAK_32I => fun _ => fct3_PRIV
+  | RV64I_instruction JALR_64I   => fun _ => fct3_JALR
+  | RV64I_instruction BEQ_64I    => fun _ => fct3_BEQ
+  | RV64I_instruction BNE_64I    => fun _ => fct3_BNE
+  | RV64I_instruction BLT_64I    => fun _ => fct3_BLT
+  | RV64I_instruction BGE_64I    => fun _ => fct3_BGE
+  | RV64I_instruction BLTU_64I   => fun _ => fct3_BLTU
+  | RV64I_instruction BGEU_64I   => fun _ => fct3_BGEU
+  | RV64I_instruction LB_64I     => fun _ => fct3_LB
+  | RV64I_instruction LH_64I     => fun _ => fct3_LH
+  | RV64I_instruction LW_64I     => fun _ => fct3_LW
+  | RV64I_instruction LBU_64I    => fun _ => fct3_LBU
+  | RV64I_instruction LHU_64I    => fun _ => fct3_LHU
+  | RV64I_instruction SB_64I     => fun _ => fct3_SB
+  | RV64I_instruction SH_64I     => fun _ => fct3_SH
+  | RV64I_instruction SW_64I     => fun _ => fct3_SW
+  | RV64I_instruction ADDI_64I   => fun _ => fct3_ADDI
+  | RV64I_instruction SLTI_64I   => fun _ => fct3_SLTI
+  | RV64I_instruction SLTIU_64I  => fun _ => fct3_SLTIU
+  | RV64I_instruction XORI_64I   => fun _ => fct3_XORI
+  | RV64I_instruction ORI_64I    => fun _ => fct3_ORI
+  | RV64I_instruction ANDI_64I   => fun _ => fct3_ANDI
+  | RV64I_instruction SLLI_64I   => fun _ => fct3_SLLI
+  | RV64I_instruction SRLI_64I   => fun _ => fct3_SRLI
+  | RV64I_instruction SRAI_64I   => fun _ => fct3_SRAI
+  | RV64I_instruction ADD_64I    => fun _ => fct3_ADD
+  | RV64I_instruction SUB_64I    => fun _ => fct3_SUB
+  | RV64I_instruction SLL_64I    => fun _ => fct3_SLL
+  | RV64I_instruction SLT_64I    => fun _ => fct3_SLT
+  | RV64I_instruction SLTU_64I   => fun _ => fct3_SLTU
+  | RV64I_instruction XOR_64I    => fun _ => fct3_XOR
+  | RV64I_instruction SRL_64I    => fun _ => fct3_SRL
+  | RV64I_instruction SRA_64I    => fun _ => fct3_SRA
+  | RV64I_instruction OR_64I     => fun _ => fct3_OR
+  | RV64I_instruction AND_64I    => fun _ => fct3_AND
+  | RV64I_instruction FENCE_64I  => fun _ => fct3_FENCE
+  | RV64I_instruction ECALL_64I  => fun _ => fct3_PRIV
+  | RV64I_instruction EBREAK_64I => fun _ => fct3_PRIV
+  | RV64I_instruction LWU_64I    => fun _ => fct3_LWU
+  | RV64I_instruction LD_64I     => fun _ => fct3_LD
+  | RV64I_instruction SD_64I     => fun _ => fct3_SD
+  | RV64I_instruction ADDIW_64I  => fun _ => fct3_ADDIW
+  | RV64I_instruction SLLIW_64I  => fun _ => fct3_SLLIW
+  | RV64I_instruction SRLIW_64I  => fun _ => fct3_SRLIW
+  | RV64I_instruction SRAIW_64I  => fun _ => fct3_SRAIW
+  | RV64I_instruction ADDW_64I   => fun _ => fct3_ADDW
+  | RV64I_instruction SUBW_64I   => fun _ => fct3_SUBW
+  | RV64I_instruction SLLW_64I   => fun _ => fct3_SLLW
+  | RV64I_instruction SRLW_64I   => fun _ => fct3_SRLW
+  | RV64I_instruction SRAW_64I   => fun _ => fct3_SRAW
+  | RV32Zifencei_instruction FENCE_I_32Zifencei => fun _ => fct3_FENCE_I
+  | RV64Zifencei_instruction FENCE_I_64Zifencei => fun _ => fct3_FENCE_I
+  | RV32Zicsr_instruction CSRRW_32Zicsr  => fun _ => fct3_CSRRW
+  | RV32Zicsr_instruction CSRRS_32Zicsr  => fun _ => fct3_CSRRS
+  | RV32Zicsr_instruction CSRRC_32Zicsr  => fun _ => fct3_CSRRC
+  | RV32Zicsr_instruction CSRRWI_32Zicsr => fun _ => fct3_CSRRWI
+  | RV32Zicsr_instruction CSRRSI_32Zicsr => fun _ => fct3_CSRRSI
+  | RV32Zicsr_instruction CSRRCI_32Zicsr => fun _ => fct3_CSRRCI
+  | RV64Zicsr_instruction CSRRW_64Zicsr  => fun _ => fct3_CSRRW
+  | RV64Zicsr_instruction CSRRS_64Zicsr  => fun _ => fct3_CSRRS
+  | RV64Zicsr_instruction CSRRC_64Zicsr  => fun _ => fct3_CSRRC
+  | RV64Zicsr_instruction CSRRWI_64Zicsr => fun _ => fct3_CSRRWI
+  | RV64Zicsr_instruction CSRRSI_64Zicsr => fun _ => fct3_CSRRSI
+  | RV64Zicsr_instruction CSRRCI_64Zicsr => fun _ => fct3_CSRRCI
+  | RV32M_instruction MUL_32M    => fun _ => fct3_MUL
+  | RV32M_instruction MULH_32M   => fun _ => fct3_MULH
+  | RV32M_instruction MULHSU_32M => fun _ => fct3_MULHSU
+  | RV32M_instruction MULHU_32M  => fun _ => fct3_MULHU
+  | RV32M_instruction DIV_32M    => fun _ => fct3_DIV
+  | RV32M_instruction DIVU_32M   => fun _ => fct3_DIVU
+  | RV32M_instruction REM_32M    => fun _ => fct3_REM
+  | RV32M_instruction REMU_32M   => fun _ => fct3_REMU
+  | RV64M_instruction MUL_64M    => fun _ => fct3_MUL
+  | RV64M_instruction MULH_64M   => fun _ => fct3_MULH
+  | RV64M_instruction MULHSU_64M => fun _ => fct3_MULHSU
+  | RV64M_instruction MULHU_64M  => fun _ => fct3_MULHU
+  | RV64M_instruction DIV_64M    => fun _ => fct3_DIV
+  | RV64M_instruction DIVU_64M   => fun _ => fct3_DIVU
+  | RV64M_instruction REM_64M    => fun _ => fct3_REM
+  | RV64M_instruction REMU_64M   => fun _ => fct3_REMU
+  | RV64M_instruction MULW_64M   => fun _ => fct3_MULW
+  | RV64M_instruction DIVW_64M   => fun _ => fct3_DIVW
+  | RV64M_instruction DIVUW_64M  => fun _ => fct3_DIVUW
+  | RV64M_instruction REMW_64M   => fun _ => fct3_REMW
+  | RV64M_instruction REMUW_64M  => fun _ => fct3_REMUW
+  | RV32A_instruction LR_W_00_32A      => fun _ => fct3_AW
+  | RV32A_instruction LR_W_01_32A      => fun _ => fct3_AW
+  | RV32A_instruction LR_W_10_32A      => fun _ => fct3_AW
+  | RV32A_instruction LR_W_11_32A      => fun _ => fct3_AW
+  | RV32A_instruction SC_W_00_32A      => fun _ => fct3_AW
+  | RV32A_instruction SC_W_01_32A      => fun _ => fct3_AW
+  | RV32A_instruction SC_W_10_32A      => fun _ => fct3_AW
+  | RV32A_instruction SC_W_11_32A      => fun _ => fct3_AW
+  | RV32A_instruction AMOSWAP_W_00_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOSWAP_W_01_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOSWAP_W_10_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOSWAP_W_11_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOADD_W_00_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOADD_W_01_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOADD_W_10_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOADD_W_11_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOXOR_W_00_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOXOR_W_01_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOXOR_W_10_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOXOR_W_11_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOAND_W_00_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOAND_W_01_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOAND_W_10_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOAND_W_11_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOOR_W_00_32A   => fun _ => fct3_AW
+  | RV32A_instruction AMOOR_W_01_32A   => fun _ => fct3_AW
+  | RV32A_instruction AMOOR_W_10_32A   => fun _ => fct3_AW
+  | RV32A_instruction AMOOR_W_11_32A   => fun _ => fct3_AW
+  | RV32A_instruction AMOMIN_W_00_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMIN_W_01_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMIN_W_10_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMIN_W_11_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMAX_W_00_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMAX_W_01_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMAX_W_10_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMAX_W_11_32A  => fun _ => fct3_AW
+  | RV32A_instruction AMOMINU_W_00_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOMINU_W_01_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOMINU_W_10_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOMINU_W_11_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOMAXU_W_00_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOMAXU_W_01_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOMAXU_W_10_32A => fun _ => fct3_AW
+  | RV32A_instruction AMOMAXU_W_11_32A => fun _ => fct3_AW
+  | RV64A_instruction LR_W_00_64A      => fun _ => fct3_AW
+  | RV64A_instruction LR_W_01_64A      => fun _ => fct3_AW
+  | RV64A_instruction LR_W_10_64A      => fun _ => fct3_AW
+  | RV64A_instruction LR_W_11_64A      => fun _ => fct3_AW
+  | RV64A_instruction SC_W_00_64A      => fun _ => fct3_AW
+  | RV64A_instruction SC_W_01_64A      => fun _ => fct3_AW
+  | RV64A_instruction SC_W_10_64A      => fun _ => fct3_AW
+  | RV64A_instruction SC_W_11_64A      => fun _ => fct3_AW
+  | RV64A_instruction AMOSWAP_W_00_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOSWAP_W_01_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOSWAP_W_10_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOSWAP_W_11_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOADD_W_00_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOADD_W_01_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOADD_W_10_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOADD_W_11_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOXOR_W_00_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOXOR_W_01_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOXOR_W_10_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOXOR_W_11_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOAND_W_00_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOAND_W_01_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOAND_W_10_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOAND_W_11_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOOR_W_00_64A   => fun _ => fct3_AW
+  | RV64A_instruction AMOOR_W_01_64A   => fun _ => fct3_AW
+  | RV64A_instruction AMOOR_W_10_64A   => fun _ => fct3_AW
+  | RV64A_instruction AMOOR_W_11_64A   => fun _ => fct3_AW
+  | RV64A_instruction AMOMIN_W_00_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMIN_W_01_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMIN_W_10_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMIN_W_11_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMAX_W_00_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMAX_W_01_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMAX_W_10_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMAX_W_11_64A  => fun _ => fct3_AW
+  | RV64A_instruction AMOMINU_W_00_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOMINU_W_01_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOMINU_W_10_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOMINU_W_11_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOMAXU_W_00_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOMAXU_W_01_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOMAXU_W_10_64A => fun _ => fct3_AW
+  | RV64A_instruction AMOMAXU_W_11_64A => fun _ => fct3_AW
+  | RV64A_instruction LR_D_00_64A      => fun _ => fct3_AD
+  | RV64A_instruction LR_D_01_64A      => fun _ => fct3_AD
+  | RV64A_instruction LR_D_10_64A      => fun _ => fct3_AD
+  | RV64A_instruction LR_D_11_64A      => fun _ => fct3_AD
+  | RV64A_instruction SC_D_00_64A      => fun _ => fct3_AD
+  | RV64A_instruction SC_D_01_64A      => fun _ => fct3_AD
+  | RV64A_instruction SC_D_10_64A      => fun _ => fct3_AD
+  | RV64A_instruction SC_D_11_64A      => fun _ => fct3_AD
+  | RV64A_instruction AMOSWAP_D_00_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOSWAP_D_01_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOSWAP_D_10_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOSWAP_D_11_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOADD_D_00_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOADD_D_01_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOADD_D_10_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOADD_D_11_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOXOR_D_00_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOXOR_D_01_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOXOR_D_10_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOXOR_D_11_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOAND_D_00_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOAND_D_01_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOAND_D_10_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOAND_D_11_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOOR_D_00_64A   => fun _ => fct3_AD
+  | RV64A_instruction AMOOR_D_01_64A   => fun _ => fct3_AD
+  | RV64A_instruction AMOOR_D_10_64A   => fun _ => fct3_AD
+  | RV64A_instruction AMOOR_D_11_64A   => fun _ => fct3_AD
+  | RV64A_instruction AMOMIN_D_00_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMIN_D_01_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMIN_D_10_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMIN_D_11_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMAX_D_00_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMAX_D_01_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMAX_D_10_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMAX_D_11_64A  => fun _ => fct3_AD
+  | RV64A_instruction AMOMINU_D_00_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOMINU_D_01_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOMINU_D_10_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOMINU_D_11_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOMAXU_D_00_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOMAXU_D_01_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOMAXU_D_10_64A => fun _ => fct3_AD
+  | RV64A_instruction AMOMAXU_D_11_64A => fun _ => fct3_AD
+  | RV32F_instruction FLW_32F           => fun _ => fct3_LSF
+  | RV32F_instruction FSW_32F           => fun _ => fct3_LSF
+  | RV32F_instruction FMADD_RNE_S_32F   => fun _ => fct3_RNE
+  | RV32F_instruction FMADD_RTZ_S_32F   => fun _ => fct3_RTZ
+  | RV32F_instruction FMADD_RDN_S_32F   => fun _ => fct3_RDN
+  | RV32F_instruction FMADD_RUP_S_32F   => fun _ => fct3_RUP
+  | RV32F_instruction FMADD_RMM_S_32F   => fun _ => fct3_RMM
+  | RV32F_instruction FMADD_DYN_S_32F   => fun _ => fct3_DYN
+  | RV32F_instruction FMSUB_RNE_S_32F   => fun _ => fct3_RNE
+  | RV32F_instruction FMSUB_RTZ_S_32F   => fun _ => fct3_RTZ
+  | RV32F_instruction FMSUB_RDN_S_32F   => fun _ => fct3_RDN
+  | RV32F_instruction FMSUB_RUP_S_32F   => fun _ => fct3_RUP
+  | RV32F_instruction FMSUB_RMM_S_32F   => fun _ => fct3_RMM
+  | RV32F_instruction FMSUB_DYN_S_32F   => fun _ => fct3_DYN
+  | RV32F_instruction FNMSUB_RNE_S_32F  => fun _ => fct3_RNE
+  | RV32F_instruction FNMSUB_RTZ_S_32F  => fun _ => fct3_RTZ
+  | RV32F_instruction FNMSUB_RDN_S_32F  => fun _ => fct3_RDN
+  | RV32F_instruction FNMSUB_RUP_S_32F  => fun _ => fct3_RUP
+  | RV32F_instruction FNMSUB_RMM_S_32F  => fun _ => fct3_RMM
+  | RV32F_instruction FNMSUB_DYN_S_32F  => fun _ => fct3_DYN
+  | RV32F_instruction FNMADD_RNE_S_32F  => fun _ => fct3_RNE
+  | RV32F_instruction FNMADD_RTZ_S_32F  => fun _ => fct3_RTZ
+  | RV32F_instruction FNMADD_RDN_S_32F  => fun _ => fct3_RDN
+  | RV32F_instruction FNMADD_RUP_S_32F  => fun _ => fct3_RUP
+  | RV32F_instruction FNMADD_RMM_S_32F  => fun _ => fct3_RMM
+  | RV32F_instruction FNMADD_DYN_S_32F  => fun _ => fct3_DYN
+  | RV32F_instruction FADD_RNE_S_32F    => fun _ => fct3_RNE
+  | RV32F_instruction FADD_RTZ_S_32F    => fun _ => fct3_RTZ
+  | RV32F_instruction FADD_RDN_S_32F    => fun _ => fct3_RDN
+  | RV32F_instruction FADD_RUP_S_32F    => fun _ => fct3_RUP
+  | RV32F_instruction FADD_RMM_S_32F    => fun _ => fct3_RMM
+  | RV32F_instruction FADD_DYN_S_32F    => fun _ => fct3_DYN
+  | RV32F_instruction FSUB_RNE_S_32F    => fun _ => fct3_RNE
+  | RV32F_instruction FSUB_RTZ_S_32F    => fun _ => fct3_RTZ
+  | RV32F_instruction FSUB_RDN_S_32F    => fun _ => fct3_RDN
+  | RV32F_instruction FSUB_RUP_S_32F    => fun _ => fct3_RUP
+  | RV32F_instruction FSUB_RMM_S_32F    => fun _ => fct3_RMM
+  | RV32F_instruction FSUB_DYN_S_32F    => fun _ => fct3_DYN
+  | RV32F_instruction FMUL_RNE_S_32F    => fun _ => fct3_RNE
+  | RV32F_instruction FMUL_RTZ_S_32F    => fun _ => fct3_RTZ
+  | RV32F_instruction FMUL_RDN_S_32F    => fun _ => fct3_RDN
+  | RV32F_instruction FMUL_RUP_S_32F    => fun _ => fct3_RUP
+  | RV32F_instruction FMUL_RMM_S_32F    => fun _ => fct3_RMM
+  | RV32F_instruction FMUL_DYN_S_32F    => fun _ => fct3_DYN
+  | RV32F_instruction FDIV_RNE_S_32F    => fun _ => fct3_RNE
+  | RV32F_instruction FDIV_RTZ_S_32F    => fun _ => fct3_RTZ
+  | RV32F_instruction FDIV_RDN_S_32F    => fun _ => fct3_RDN
+  | RV32F_instruction FDIV_RUP_S_32F    => fun _ => fct3_RUP
+  | RV32F_instruction FDIV_RMM_S_32F    => fun _ => fct3_RMM
+  | RV32F_instruction FDIV_DYN_S_32F    => fun _ => fct3_DYN
+  | RV32F_instruction FSQRT_RNE_S_32F   => fun _ => fct3_RNE
+  | RV32F_instruction FSQRT_RTZ_S_32F   => fun _ => fct3_RTZ
+  | RV32F_instruction FSQRT_RDN_S_32F   => fun _ => fct3_RDN
+  | RV32F_instruction FSQRT_RUP_S_32F   => fun _ => fct3_RUP
+  | RV32F_instruction FSQRT_RMM_S_32F   => fun _ => fct3_RMM
+  | RV32F_instruction FSQRT_DYN_S_32F   => fun _ => fct3_DYN
+  | RV32F_instruction FSGNJ_S_32F       => fun _ => fct3_FSGNJ
+  | RV32F_instruction FSGNJN_S_32F      => fun _ => fct3_FSGNJN
+  | RV32F_instruction FSGNJX_S_32F      => fun _ => fct3_FSGNJX
+  | RV32F_instruction FMIN_S_32F        => fun _ => fct3_FMIN
+  | RV32F_instruction FMAX_S_32F        => fun _ => fct3_FMAX
+  | RV32F_instruction FCVT_RNE_W_S_32F  => fun _ => fct3_RNE
+  | RV32F_instruction FCVT_RTZ_W_S_32F  => fun _ => fct3_RTZ
+  | RV32F_instruction FCVT_RDN_W_S_32F  => fun _ => fct3_RDN
+  | RV32F_instruction FCVT_RUP_W_S_32F  => fun _ => fct3_RUP
+  | RV32F_instruction FCVT_RMM_W_S_32F  => fun _ => fct3_RMM
+  | RV32F_instruction FCVT_DYN_W_S_32F  => fun _ => fct3_DYN
+  | RV32F_instruction FCVT_RNE_WU_S_32F => fun _ => fct3_RNE
+  | RV32F_instruction FCVT_RTZ_WU_S_32F => fun _ => fct3_RTZ
+  | RV32F_instruction FCVT_RDN_WU_S_32F => fun _ => fct3_RDN
+  | RV32F_instruction FCVT_RUP_WU_S_32F => fun _ => fct3_RUP
+  | RV32F_instruction FCVT_RMM_WU_S_32F => fun _ => fct3_RMM
+  | RV32F_instruction FCVT_DYN_WU_S_32F => fun _ => fct3_DYN
+  | RV32F_instruction FMV_X_W_32F       => fun _ => fct3_FMV
+  | RV32F_instruction FEQ_S_32F         => fun _ => fct3_FEQ
+  | RV32F_instruction FLT_S_32F         => fun _ => fct3_FLT
+  | RV32F_instruction FLE_S_32F         => fun _ => fct3_FLE
+  | RV32F_instruction FCLASS_S_32F      => fun _ => fct3_FCLASS
+  | RV32F_instruction FCVT_RNE_S_W_32F  => fun _ => fct3_RNE
+  | RV32F_instruction FCVT_RTZ_S_W_32F  => fun _ => fct3_RTZ
+  | RV32F_instruction FCVT_RDN_S_W_32F  => fun _ => fct3_RDN
+  | RV32F_instruction FCVT_RUP_S_W_32F  => fun _ => fct3_RUP
+  | RV32F_instruction FCVT_RMM_S_W_32F  => fun _ => fct3_RMM
+  | RV32F_instruction FCVT_DYN_S_W_32F  => fun _ => fct3_DYN
+  | RV32F_instruction FCVT_RNE_S_WU_32F => fun _ => fct3_RNE
+  | RV32F_instruction FCVT_RTZ_S_WU_32F => fun _ => fct3_RTZ
+  | RV32F_instruction FCVT_RDN_S_WU_32F => fun _ => fct3_RDN
+  | RV32F_instruction FCVT_RUP_S_WU_32F => fun _ => fct3_RUP
+  | RV32F_instruction FCVT_RMM_S_WU_32F => fun _ => fct3_RMM
+  | RV32F_instruction FCVT_DYN_S_WU_32F => fun _ => fct3_DYN
+  | RV32F_instruction FMV_W_X_32F       => fun _ => fct3_FMV
+  | RV64F_instruction FLW_64F           => fun _ => fct3_LSF
+  | RV64F_instruction FSW_64F           => fun _ => fct3_LSF
+  | RV64F_instruction FMADD_RNE_S_64F   => fun _ => fct3_RNE
+  | RV64F_instruction FMADD_RTZ_S_64F   => fun _ => fct3_RTZ
+  | RV64F_instruction FMADD_RDN_S_64F   => fun _ => fct3_RDN
+  | RV64F_instruction FMADD_RUP_S_64F   => fun _ => fct3_RUP
+  | RV64F_instruction FMADD_RMM_S_64F   => fun _ => fct3_RMM
+  | RV64F_instruction FMADD_DYN_S_64F   => fun _ => fct3_DYN
+  | RV64F_instruction FMSUB_RNE_S_64F   => fun _ => fct3_RNE
+  | RV64F_instruction FMSUB_RTZ_S_64F   => fun _ => fct3_RTZ
+  | RV64F_instruction FMSUB_RDN_S_64F   => fun _ => fct3_RDN
+  | RV64F_instruction FMSUB_RUP_S_64F   => fun _ => fct3_RUP
+  | RV64F_instruction FMSUB_RMM_S_64F   => fun _ => fct3_RMM
+  | RV64F_instruction FMSUB_DYN_S_64F   => fun _ => fct3_DYN
+  | RV64F_instruction FNMSUB_RNE_S_64F  => fun _ => fct3_RNE
+  | RV64F_instruction FNMSUB_RTZ_S_64F  => fun _ => fct3_RTZ
+  | RV64F_instruction FNMSUB_RDN_S_64F  => fun _ => fct3_RDN
+  | RV64F_instruction FNMSUB_RUP_S_64F  => fun _ => fct3_RUP
+  | RV64F_instruction FNMSUB_RMM_S_64F  => fun _ => fct3_RMM
+  | RV64F_instruction FNMSUB_DYN_S_64F  => fun _ => fct3_DYN
+  | RV64F_instruction FNMADD_RNE_S_64F  => fun _ => fct3_RNE
+  | RV64F_instruction FNMADD_RTZ_S_64F  => fun _ => fct3_RTZ
+  | RV64F_instruction FNMADD_RDN_S_64F  => fun _ => fct3_RDN
+  | RV64F_instruction FNMADD_RUP_S_64F  => fun _ => fct3_RUP
+  | RV64F_instruction FNMADD_RMM_S_64F  => fun _ => fct3_RMM
+  | RV64F_instruction FNMADD_DYN_S_64F  => fun _ => fct3_DYN
+  | RV64F_instruction FADD_RNE_S_64F    => fun _ => fct3_RNE
+  | RV64F_instruction FADD_RTZ_S_64F    => fun _ => fct3_RTZ
+  | RV64F_instruction FADD_RDN_S_64F    => fun _ => fct3_RDN
+  | RV64F_instruction FADD_RUP_S_64F    => fun _ => fct3_RUP
+  | RV64F_instruction FADD_RMM_S_64F    => fun _ => fct3_RMM
+  | RV64F_instruction FADD_DYN_S_64F    => fun _ => fct3_DYN
+  | RV64F_instruction FSUB_RNE_S_64F    => fun _ => fct3_RNE
+  | RV64F_instruction FSUB_RTZ_S_64F    => fun _ => fct3_RTZ
+  | RV64F_instruction FSUB_RDN_S_64F    => fun _ => fct3_RDN
+  | RV64F_instruction FSUB_RUP_S_64F    => fun _ => fct3_RUP
+  | RV64F_instruction FSUB_RMM_S_64F    => fun _ => fct3_RMM
+  | RV64F_instruction FSUB_DYN_S_64F    => fun _ => fct3_DYN
+  | RV64F_instruction FMUL_RNE_S_64F    => fun _ => fct3_RNE
+  | RV64F_instruction FMUL_RTZ_S_64F    => fun _ => fct3_RTZ
+  | RV64F_instruction FMUL_RDN_S_64F    => fun _ => fct3_RDN
+  | RV64F_instruction FMUL_RUP_S_64F    => fun _ => fct3_RUP
+  | RV64F_instruction FMUL_RMM_S_64F    => fun _ => fct3_RMM
+  | RV64F_instruction FMUL_DYN_S_64F    => fun _ => fct3_DYN
+  | RV64F_instruction FDIV_RNE_S_64F    => fun _ => fct3_RNE
+  | RV64F_instruction FDIV_RTZ_S_64F    => fun _ => fct3_RTZ
+  | RV64F_instruction FDIV_RDN_S_64F    => fun _ => fct3_RDN
+  | RV64F_instruction FDIV_RUP_S_64F    => fun _ => fct3_RUP
+  | RV64F_instruction FDIV_RMM_S_64F    => fun _ => fct3_RMM
+  | RV64F_instruction FDIV_DYN_S_64F    => fun _ => fct3_DYN
+  | RV64F_instruction FSQRT_RNE_S_64F   => fun _ => fct3_RNE
+  | RV64F_instruction FSQRT_RTZ_S_64F   => fun _ => fct3_RTZ
+  | RV64F_instruction FSQRT_RDN_S_64F   => fun _ => fct3_RDN
+  | RV64F_instruction FSQRT_RUP_S_64F   => fun _ => fct3_RUP
+  | RV64F_instruction FSQRT_RMM_S_64F   => fun _ => fct3_RMM
+  | RV64F_instruction FSQRT_DYN_S_64F   => fun _ => fct3_DYN
+  | RV64F_instruction FSGNJ_S_64F       => fun _ => fct3_FSGNJ
+  | RV64F_instruction FSGNJN_S_64F      => fun _ => fct3_FSGNJN
+  | RV64F_instruction FSGNJX_S_64F      => fun _ => fct3_FSGNJX
+  | RV64F_instruction FMIN_S_64F        => fun _ => fct3_FMIN
+  | RV64F_instruction FMAX_S_64F        => fun _ => fct3_FMAX
+  | RV64F_instruction FCVT_RNE_W_S_64F  => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_W_S_64F  => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_W_S_64F  => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_W_S_64F  => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_W_S_64F  => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_W_S_64F  => fun _ => fct3_DYN
+  | RV64F_instruction FCVT_RNE_WU_S_64F => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_WU_S_64F => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_WU_S_64F => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_WU_S_64F => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_WU_S_64F => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_WU_S_64F => fun _ => fct3_DYN
+  | RV64F_instruction FMV_X_W_64F       => fun _ => fct3_FMV
+  | RV64F_instruction FEQ_S_64F         => fun _ => fct3_FEQ
+  | RV64F_instruction FLT_S_64F         => fun _ => fct3_FLT
+  | RV64F_instruction FLE_S_64F         => fun _ => fct3_FLE
+  | RV64F_instruction FCLASS_S_64F      => fun _ => fct3_FCLASS
+  | RV64F_instruction FCVT_RNE_S_W_64F  => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_S_W_64F  => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_S_W_64F  => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_S_W_64F  => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_S_W_64F  => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_S_W_64F  => fun _ => fct3_DYN
+  | RV64F_instruction FCVT_RNE_S_WU_64F => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_S_WU_64F => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_S_WU_64F => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_S_WU_64F => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_S_WU_64F => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_S_WU_64F => fun _ => fct3_DYN
+  | RV64F_instruction FMV_W_X_64F       => fun _ => fct3_FMV
+  | RV64F_instruction FCVT_RNE_L_S_64F  => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_L_S_64F  => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_L_S_64F  => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_L_S_64F  => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_L_S_64F  => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_L_S_64F  => fun _ => fct3_DYN
+  | RV64F_instruction FCVT_RNE_LU_S_64F => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_LU_S_64F => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_LU_S_64F => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_LU_S_64F => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_LU_S_64F => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_LU_S_64F => fun _ => fct3_DYN
+  | RV64F_instruction FCVT_RNE_S_L_64F  => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_S_L_64F  => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_S_L_64F  => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_S_L_64F  => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_S_L_64F  => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_S_L_64F  => fun _ => fct3_DYN
+  | RV64F_instruction FCVT_RNE_S_LU_64F => fun _ => fct3_RNE
+  | RV64F_instruction FCVT_RTZ_S_LU_64F => fun _ => fct3_RTZ
+  | RV64F_instruction FCVT_RDN_S_LU_64F => fun _ => fct3_RDN
+  | RV64F_instruction FCVT_RUP_S_LU_64F => fun _ => fct3_RUP
+  | RV64F_instruction FCVT_RMM_S_LU_64F => fun _ => fct3_RMM
+  | RV64F_instruction FCVT_DYN_S_LU_64F => fun _ => fct3_DYN
+  | RV32D_instruction FLD_32D           => fun _ => fct3_LSD
+  | RV32D_instruction FSD_32D           => fun _ => fct3_LSD
+  | RV32D_instruction FMADD_RNE_D_32D   => fun _ => fct3_RNE
+  | RV32D_instruction FMADD_RTZ_D_32D   => fun _ => fct3_RTZ
+  | RV32D_instruction FMADD_RDN_D_32D   => fun _ => fct3_RDN
+  | RV32D_instruction FMADD_RUP_D_32D   => fun _ => fct3_RUP
+  | RV32D_instruction FMADD_RMM_D_32D   => fun _ => fct3_RMM
+  | RV32D_instruction FMADD_DYN_D_32D   => fun _ => fct3_DYN
+  | RV32D_instruction FMSUB_RNE_D_32D   => fun _ => fct3_RNE
+  | RV32D_instruction FMSUB_RTZ_D_32D   => fun _ => fct3_RTZ
+  | RV32D_instruction FMSUB_RDN_D_32D   => fun _ => fct3_RDN
+  | RV32D_instruction FMSUB_RUP_D_32D   => fun _ => fct3_RUP
+  | RV32D_instruction FMSUB_RMM_D_32D   => fun _ => fct3_RMM
+  | RV32D_instruction FMSUB_DYN_D_32D   => fun _ => fct3_DYN
+  | RV32D_instruction FNMSUB_RNE_D_32D  => fun _ => fct3_RNE
+  | RV32D_instruction FNMSUB_RTZ_D_32D  => fun _ => fct3_RTZ
+  | RV32D_instruction FNMSUB_RDN_D_32D  => fun _ => fct3_RDN
+  | RV32D_instruction FNMSUB_RUP_D_32D  => fun _ => fct3_RUP
+  | RV32D_instruction FNMSUB_RMM_D_32D  => fun _ => fct3_RMM
+  | RV32D_instruction FNMSUB_DYN_D_32D  => fun _ => fct3_DYN
+  | RV32D_instruction FNMADD_RNE_D_32D  => fun _ => fct3_RNE
+  | RV32D_instruction FNMADD_RTZ_D_32D  => fun _ => fct3_RTZ
+  | RV32D_instruction FNMADD_RDN_D_32D  => fun _ => fct3_RDN
+  | RV32D_instruction FNMADD_RUP_D_32D  => fun _ => fct3_RUP
+  | RV32D_instruction FNMADD_RMM_D_32D  => fun _ => fct3_RMM
+  | RV32D_instruction FNMADD_DYN_D_32D  => fun _ => fct3_DYN
+  | RV32D_instruction FADD_RNE_D_32D    => fun _ => fct3_RNE
+  | RV32D_instruction FADD_RTZ_D_32D    => fun _ => fct3_RTZ
+  | RV32D_instruction FADD_RDN_D_32D    => fun _ => fct3_RDN
+  | RV32D_instruction FADD_RUP_D_32D    => fun _ => fct3_RUP
+  | RV32D_instruction FADD_RMM_D_32D    => fun _ => fct3_RMM
+  | RV32D_instruction FADD_DYN_D_32D    => fun _ => fct3_DYN
+  | RV32D_instruction FSUB_RNE_D_32D    => fun _ => fct3_RNE
+  | RV32D_instruction FSUB_RTZ_D_32D    => fun _ => fct3_RTZ
+  | RV32D_instruction FSUB_RDN_D_32D    => fun _ => fct3_RDN
+  | RV32D_instruction FSUB_RUP_D_32D    => fun _ => fct3_RUP
+  | RV32D_instruction FSUB_RMM_D_32D    => fun _ => fct3_RMM
+  | RV32D_instruction FSUB_DYN_D_32D    => fun _ => fct3_DYN
+  | RV32D_instruction FMUL_RNE_D_32D    => fun _ => fct3_RNE
+  | RV32D_instruction FMUL_RTZ_D_32D    => fun _ => fct3_RTZ
+  | RV32D_instruction FMUL_RDN_D_32D    => fun _ => fct3_RDN
+  | RV32D_instruction FMUL_RUP_D_32D    => fun _ => fct3_RUP
+  | RV32D_instruction FMUL_RMM_D_32D    => fun _ => fct3_RMM
+  | RV32D_instruction FMUL_DYN_D_32D    => fun _ => fct3_DYN
+  | RV32D_instruction FDIV_RNE_D_32D    => fun _ => fct3_RNE
+  | RV32D_instruction FDIV_RTZ_D_32D    => fun _ => fct3_RTZ
+  | RV32D_instruction FDIV_RDN_D_32D    => fun _ => fct3_RDN
+  | RV32D_instruction FDIV_RUP_D_32D    => fun _ => fct3_RUP
+  | RV32D_instruction FDIV_RMM_D_32D    => fun _ => fct3_RMM
+  | RV32D_instruction FDIV_DYN_D_32D    => fun _ => fct3_DYN
+  | RV32D_instruction FSQRT_RNE_D_32D   => fun _ => fct3_RNE
+  | RV32D_instruction FSQRT_RTZ_D_32D   => fun _ => fct3_RTZ
+  | RV32D_instruction FSQRT_RDN_D_32D   => fun _ => fct3_RDN
+  | RV32D_instruction FSQRT_RUP_D_32D   => fun _ => fct3_RUP
+  | RV32D_instruction FSQRT_RMM_D_32D   => fun _ => fct3_RMM
+  | RV32D_instruction FSQRT_DYN_D_32D   => fun _ => fct3_DYN
+  | RV32D_instruction FSGNJ_D_32D       => fun _ => fct3_FSGNJ
+  | RV32D_instruction FSGNJN_D_32D      => fun _ => fct3_FSGNJN
+  | RV32D_instruction FSGNJX_D_32D      => fun _ => fct3_FSGNJX
+  | RV32D_instruction FMIN_D_32D        => fun _ => fct3_FMIN
+  | RV32D_instruction FMAX_D_32D        => fun _ => fct3_FMAX
+  | RV32D_instruction FCVT_RNE_S_D_32D  => fun _ => fct3_RNE
+  | RV32D_instruction FCVT_RTZ_S_D_32D  => fun _ => fct3_RTZ
+  | RV32D_instruction FCVT_RDN_S_D_32D  => fun _ => fct3_RDN
+  | RV32D_instruction FCVT_RUP_S_D_32D  => fun _ => fct3_RUP
+  | RV32D_instruction FCVT_RMM_S_D_32D  => fun _ => fct3_RMM
+  | RV32D_instruction FCVT_DYN_S_D_32D  => fun _ => fct3_DYN
+  | RV32D_instruction FCVT_RNE_D_S_32D  => fun _ => fct3_RNE
+  | RV32D_instruction FCVT_RTZ_D_S_32D  => fun _ => fct3_RTZ
+  | RV32D_instruction FCVT_RDN_D_S_32D  => fun _ => fct3_RDN
+  | RV32D_instruction FCVT_RUP_D_S_32D  => fun _ => fct3_RUP
+  | RV32D_instruction FCVT_RMM_D_S_32D  => fun _ => fct3_RMM
+  | RV32D_instruction FCVT_DYN_D_S_32D  => fun _ => fct3_DYN
+  | RV32D_instruction FEQ_D_32D         => fun _ => fct3_FEQ
+  | RV32D_instruction FLT_D_32D         => fun _ => fct3_FLT
+  | RV32D_instruction FLE_D_32D         => fun _ => fct3_FLE
+  | RV32D_instruction FCLASS_D_32D      => fun _ => fct3_FCLASS
+  | RV32D_instruction FCVT_RNE_W_D_32D  => fun _ => fct3_RNE
+  | RV32D_instruction FCVT_RTZ_W_D_32D  => fun _ => fct3_RTZ
+  | RV32D_instruction FCVT_RDN_W_D_32D  => fun _ => fct3_RDN
+  | RV32D_instruction FCVT_RUP_W_D_32D  => fun _ => fct3_RUP
+  | RV32D_instruction FCVT_RMM_W_D_32D  => fun _ => fct3_RMM
+  | RV32D_instruction FCVT_DYN_W_D_32D  => fun _ => fct3_DYN
+  | RV32D_instruction FCVT_RNE_WU_D_32D => fun _ => fct3_RNE
+  | RV32D_instruction FCVT_RTZ_WU_D_32D => fun _ => fct3_RTZ
+  | RV32D_instruction FCVT_RDN_WU_D_32D => fun _ => fct3_RDN
+  | RV32D_instruction FCVT_RUP_WU_D_32D => fun _ => fct3_RUP
+  | RV32D_instruction FCVT_RMM_WU_D_32D => fun _ => fct3_RMM
+  | RV32D_instruction FCVT_DYN_WU_D_32D => fun _ => fct3_DYN
+  | RV32D_instruction FCVT_RNE_D_W_32D  => fun _ => fct3_RNE
+  | RV32D_instruction FCVT_RTZ_D_W_32D  => fun _ => fct3_RTZ
+  | RV32D_instruction FCVT_RDN_D_W_32D  => fun _ => fct3_RDN
+  | RV32D_instruction FCVT_RUP_D_W_32D  => fun _ => fct3_RUP
+  | RV32D_instruction FCVT_RMM_D_W_32D  => fun _ => fct3_RMM
+  | RV32D_instruction FCVT_DYN_D_W_32D  => fun _ => fct3_DYN
+  | RV32D_instruction FCVT_RNE_D_WU_32D => fun _ => fct3_RNE
+  | RV32D_instruction FCVT_RTZ_D_WU_32D => fun _ => fct3_RTZ
+  | RV32D_instruction FCVT_RDN_D_WU_32D => fun _ => fct3_RDN
+  | RV32D_instruction FCVT_RUP_D_WU_32D => fun _ => fct3_RUP
+  | RV32D_instruction FCVT_RMM_D_WU_32D => fun _ => fct3_RMM
+  | RV32D_instruction FCVT_DYN_D_WU_32D => fun _ => fct3_DYN
+  | RV64D_instruction FLD_64D           => fun _ => fct3_LSD
+  | RV64D_instruction FSD_64D           => fun _ => fct3_LSD
+  | RV64D_instruction FMADD_RNE_D_64D   => fun _ => fct3_RNE
+  | RV64D_instruction FMADD_RTZ_D_64D   => fun _ => fct3_RTZ
+  | RV64D_instruction FMADD_RDN_D_64D   => fun _ => fct3_RDN
+  | RV64D_instruction FMADD_RUP_D_64D   => fun _ => fct3_RUP
+  | RV64D_instruction FMADD_RMM_D_64D   => fun _ => fct3_RMM
+  | RV64D_instruction FMADD_DYN_D_64D   => fun _ => fct3_DYN
+  | RV64D_instruction FMSUB_RNE_D_64D   => fun _ => fct3_RNE
+  | RV64D_instruction FMSUB_RTZ_D_64D   => fun _ => fct3_RTZ
+  | RV64D_instruction FMSUB_RDN_D_64D   => fun _ => fct3_RDN
+  | RV64D_instruction FMSUB_RUP_D_64D   => fun _ => fct3_RUP
+  | RV64D_instruction FMSUB_RMM_D_64D   => fun _ => fct3_RMM
+  | RV64D_instruction FMSUB_DYN_D_64D   => fun _ => fct3_DYN
+  | RV64D_instruction FNMSUB_RNE_D_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FNMSUB_RTZ_D_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FNMSUB_RDN_D_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FNMSUB_RUP_D_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FNMSUB_RMM_D_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FNMSUB_DYN_D_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FNMADD_RNE_D_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FNMADD_RTZ_D_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FNMADD_RDN_D_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FNMADD_RUP_D_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FNMADD_RMM_D_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FNMADD_DYN_D_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FADD_RNE_D_64D    => fun _ => fct3_RNE
+  | RV64D_instruction FADD_RTZ_D_64D    => fun _ => fct3_RTZ
+  | RV64D_instruction FADD_RDN_D_64D    => fun _ => fct3_RDN
+  | RV64D_instruction FADD_RUP_D_64D    => fun _ => fct3_RUP
+  | RV64D_instruction FADD_RMM_D_64D    => fun _ => fct3_RMM
+  | RV64D_instruction FADD_DYN_D_64D    => fun _ => fct3_DYN
+  | RV64D_instruction FSUB_RNE_D_64D    => fun _ => fct3_RNE
+  | RV64D_instruction FSUB_RTZ_D_64D    => fun _ => fct3_RTZ
+  | RV64D_instruction FSUB_RDN_D_64D    => fun _ => fct3_RDN
+  | RV64D_instruction FSUB_RUP_D_64D    => fun _ => fct3_RUP
+  | RV64D_instruction FSUB_RMM_D_64D    => fun _ => fct3_RMM
+  | RV64D_instruction FSUB_DYN_D_64D    => fun _ => fct3_DYN
+  | RV64D_instruction FMUL_RNE_D_64D    => fun _ => fct3_RNE
+  | RV64D_instruction FMUL_RTZ_D_64D    => fun _ => fct3_RTZ
+  | RV64D_instruction FMUL_RDN_D_64D    => fun _ => fct3_RDN
+  | RV64D_instruction FMUL_RUP_D_64D    => fun _ => fct3_RUP
+  | RV64D_instruction FMUL_RMM_D_64D    => fun _ => fct3_RMM
+  | RV64D_instruction FMUL_DYN_D_64D    => fun _ => fct3_DYN
+  | RV64D_instruction FDIV_RNE_D_64D    => fun _ => fct3_RNE
+  | RV64D_instruction FDIV_RTZ_D_64D    => fun _ => fct3_RTZ
+  | RV64D_instruction FDIV_RDN_D_64D    => fun _ => fct3_RDN
+  | RV64D_instruction FDIV_RUP_D_64D    => fun _ => fct3_RUP
+  | RV64D_instruction FDIV_RMM_D_64D    => fun _ => fct3_RMM
+  | RV64D_instruction FDIV_DYN_D_64D    => fun _ => fct3_DYN
+  | RV64D_instruction FSQRT_RNE_D_64D   => fun _ => fct3_RNE
+  | RV64D_instruction FSQRT_RTZ_D_64D   => fun _ => fct3_RTZ
+  | RV64D_instruction FSQRT_RDN_D_64D   => fun _ => fct3_RDN
+  | RV64D_instruction FSQRT_RUP_D_64D   => fun _ => fct3_RUP
+  | RV64D_instruction FSQRT_RMM_D_64D   => fun _ => fct3_RMM
+  | RV64D_instruction FSQRT_DYN_D_64D   => fun _ => fct3_DYN
+  | RV64D_instruction FSGNJ_D_64D       => fun _ => fct3_FSGNJ
+  | RV64D_instruction FSGNJN_D_64D      => fun _ => fct3_FSGNJN
+  | RV64D_instruction FSGNJX_D_64D      => fun _ => fct3_FSGNJX
+  | RV64D_instruction FMIN_D_64D        => fun _ => fct3_FMIN
+  | RV64D_instruction FMAX_D_64D        => fun _ => fct3_FMAX
+  | RV64D_instruction FCVT_RNE_S_D_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_S_D_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_S_D_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_S_D_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_S_D_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_S_D_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FCVT_RNE_D_S_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_D_S_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_D_S_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_D_S_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_D_S_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_D_S_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FEQ_D_64D         => fun _ => fct3_FEQ
+  | RV64D_instruction FLT_D_64D         => fun _ => fct3_FLT
+  | RV64D_instruction FLE_D_64D         => fun _ => fct3_FLE
+  | RV64D_instruction FCLASS_D_64D      => fun _ => fct3_FCLASS
+  | RV64D_instruction FCVT_RNE_W_D_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_W_D_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_W_D_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_W_D_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_W_D_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_W_D_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FCVT_RNE_WU_D_64D => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_WU_D_64D => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_WU_D_64D => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_WU_D_64D => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_WU_D_64D => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_WU_D_64D => fun _ => fct3_DYN
+  | RV64D_instruction FCVT_RNE_D_W_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_D_W_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_D_W_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_D_W_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_D_W_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_D_W_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FCVT_RNE_D_WU_64D => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_D_WU_64D => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_D_WU_64D => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_D_WU_64D => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_D_WU_64D => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_D_WU_64D => fun _ => fct3_DYN
+  | RV64D_instruction FCVT_RNE_L_D_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_L_D_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_L_D_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_L_D_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_L_D_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_L_D_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FCVT_RNE_LU_D_64D => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_LU_D_64D => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_LU_D_64D => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_LU_D_64D => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_LU_D_64D => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_LU_D_64D => fun _ => fct3_DYN
+  | RV64D_instruction FMV_X_D_64D       => fun _ => fct3_FMV
+  | RV64D_instruction FCVT_RNE_D_L_64D  => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_D_L_64D  => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_D_L_64D  => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_D_L_64D  => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_D_L_64D  => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_D_L_64D  => fun _ => fct3_DYN
+  | RV64D_instruction FCVT_RNE_D_LU_64D => fun _ => fct3_RNE
+  | RV64D_instruction FCVT_RTZ_D_LU_64D => fun _ => fct3_RTZ
+  | RV64D_instruction FCVT_RDN_D_LU_64D => fun _ => fct3_RDN
+  | RV64D_instruction FCVT_RUP_D_LU_64D => fun _ => fct3_RUP
+  | RV64D_instruction FCVT_RMM_D_LU_64D => fun _ => fct3_RMM
+  | RV64D_instruction FCVT_DYN_D_LU_64D => fun _ => fct3_DYN
+  | RV64D_instruction FMV_D_X_64D       => fun _ => fct3_FMV
+  | RV32Q_instruction FLQ_32Q           => fun _ => fct3_LSQ
+  | RV32Q_instruction FSQ_32Q           => fun _ => fct3_LSQ
+  | RV32Q_instruction FMADD_RNE_Q_32Q   => fun _ => fct3_RNE
+  | RV32Q_instruction FMADD_RTZ_Q_32Q   => fun _ => fct3_RTZ
+  | RV32Q_instruction FMADD_RDN_Q_32Q   => fun _ => fct3_RDN
+  | RV32Q_instruction FMADD_RUP_Q_32Q   => fun _ => fct3_RUP
+  | RV32Q_instruction FMADD_RMM_Q_32Q   => fun _ => fct3_RMM
+  | RV32Q_instruction FMADD_DYN_Q_32Q   => fun _ => fct3_DYN
+  | RV32Q_instruction FMSUB_RNE_Q_32Q   => fun _ => fct3_RNE
+  | RV32Q_instruction FMSUB_RTZ_Q_32Q   => fun _ => fct3_RTZ
+  | RV32Q_instruction FMSUB_RDN_Q_32Q   => fun _ => fct3_RDN
+  | RV32Q_instruction FMSUB_RUP_Q_32Q   => fun _ => fct3_RUP
+  | RV32Q_instruction FMSUB_RMM_Q_32Q   => fun _ => fct3_RMM
+  | RV32Q_instruction FMSUB_DYN_Q_32Q   => fun _ => fct3_DYN
+  | RV32Q_instruction FNMSUB_RNE_Q_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FNMSUB_RTZ_Q_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FNMSUB_RDN_Q_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FNMSUB_RUP_Q_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FNMSUB_RMM_Q_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FNMSUB_DYN_Q_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FNMADD_RNE_Q_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FNMADD_RTZ_Q_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FNMADD_RDN_Q_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FNMADD_RUP_Q_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FNMADD_RMM_Q_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FNMADD_DYN_Q_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FADD_RNE_Q_32Q    => fun _ => fct3_RNE
+  | RV32Q_instruction FADD_RTZ_Q_32Q    => fun _ => fct3_RTZ
+  | RV32Q_instruction FADD_RDN_Q_32Q    => fun _ => fct3_RDN
+  | RV32Q_instruction FADD_RUP_Q_32Q    => fun _ => fct3_RUP
+  | RV32Q_instruction FADD_RMM_Q_32Q    => fun _ => fct3_RMM
+  | RV32Q_instruction FADD_DYN_Q_32Q    => fun _ => fct3_DYN
+  | RV32Q_instruction FSUB_RNE_Q_32Q    => fun _ => fct3_RNE
+  | RV32Q_instruction FSUB_RTZ_Q_32Q    => fun _ => fct3_RTZ
+  | RV32Q_instruction FSUB_RDN_Q_32Q    => fun _ => fct3_RDN
+  | RV32Q_instruction FSUB_RUP_Q_32Q    => fun _ => fct3_RUP
+  | RV32Q_instruction FSUB_RMM_Q_32Q    => fun _ => fct3_RMM
+  | RV32Q_instruction FSUB_DYN_Q_32Q    => fun _ => fct3_DYN
+  | RV32Q_instruction FMUL_RNE_Q_32Q    => fun _ => fct3_RNE
+  | RV32Q_instruction FMUL_RTZ_Q_32Q    => fun _ => fct3_RTZ
+  | RV32Q_instruction FMUL_RDN_Q_32Q    => fun _ => fct3_RDN
+  | RV32Q_instruction FMUL_RUP_Q_32Q    => fun _ => fct3_RUP
+  | RV32Q_instruction FMUL_RMM_Q_32Q    => fun _ => fct3_RMM
+  | RV32Q_instruction FMUL_DYN_Q_32Q    => fun _ => fct3_DYN
+  | RV32Q_instruction FDIV_RNE_Q_32Q    => fun _ => fct3_RNE
+  | RV32Q_instruction FDIV_RTZ_Q_32Q    => fun _ => fct3_RTZ
+  | RV32Q_instruction FDIV_RDN_Q_32Q    => fun _ => fct3_RDN
+  | RV32Q_instruction FDIV_RUP_Q_32Q    => fun _ => fct3_RUP
+  | RV32Q_instruction FDIV_RMM_Q_32Q    => fun _ => fct3_RMM
+  | RV32Q_instruction FDIV_DYN_Q_32Q    => fun _ => fct3_DYN
+  | RV32Q_instruction FSQRT_RNE_Q_32Q   => fun _ => fct3_RNE
+  | RV32Q_instruction FSQRT_RTZ_Q_32Q   => fun _ => fct3_RTZ
+  | RV32Q_instruction FSQRT_RDN_Q_32Q   => fun _ => fct3_RDN
+  | RV32Q_instruction FSQRT_RUP_Q_32Q   => fun _ => fct3_RUP
+  | RV32Q_instruction FSQRT_RMM_Q_32Q   => fun _ => fct3_RMM
+  | RV32Q_instruction FSQRT_DYN_Q_32Q   => fun _ => fct3_DYN
+  | RV32Q_instruction FSGNJ_Q_32Q       => fun _ => fct3_FSGNJ
+  | RV32Q_instruction FSGNJN_Q_32Q      => fun _ => fct3_FSGNJN
+  | RV32Q_instruction FSGNJX_Q_32Q      => fun _ => fct3_FSGNJX
+  | RV32Q_instruction FMIN_Q_32Q        => fun _ => fct3_FMIN
+  | RV32Q_instruction FMAX_Q_32Q        => fun _ => fct3_FMAX
+  | RV32Q_instruction FCVT_RNE_S_Q_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_S_Q_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_S_Q_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_S_Q_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_S_Q_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_S_Q_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FCVT_RNE_Q_S_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_Q_S_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_Q_S_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_Q_S_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_Q_S_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_Q_S_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FCVT_RNE_D_Q_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_D_Q_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_D_Q_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_D_Q_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_D_Q_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_D_Q_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FCVT_RNE_Q_D_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_Q_D_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_Q_D_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_Q_D_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_Q_D_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_Q_D_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FEQ_Q_32Q         => fun _ => fct3_FEQ
+  | RV32Q_instruction FLT_Q_32Q         => fun _ => fct3_FLT
+  | RV32Q_instruction FLE_Q_32Q         => fun _ => fct3_FLE
+  | RV32Q_instruction FCLASS_Q_32Q      => fun _ => fct3_FCLASS
+  | RV32Q_instruction FCVT_RNE_W_Q_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_W_Q_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_W_Q_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_W_Q_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_W_Q_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_W_Q_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FCVT_RNE_WU_Q_32Q => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_WU_Q_32Q => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_WU_Q_32Q => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_WU_Q_32Q => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_WU_Q_32Q => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_WU_Q_32Q => fun _ => fct3_DYN
+  | RV32Q_instruction FCVT_RNE_Q_W_32Q  => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_Q_W_32Q  => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_Q_W_32Q  => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_Q_W_32Q  => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_Q_W_32Q  => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_Q_W_32Q  => fun _ => fct3_DYN
+  | RV32Q_instruction FCVT_RNE_Q_WU_32Q => fun _ => fct3_RNE
+  | RV32Q_instruction FCVT_RTZ_Q_WU_32Q => fun _ => fct3_RTZ
+  | RV32Q_instruction FCVT_RDN_Q_WU_32Q => fun _ => fct3_RDN
+  | RV32Q_instruction FCVT_RUP_Q_WU_32Q => fun _ => fct3_RUP
+  | RV32Q_instruction FCVT_RMM_Q_WU_32Q => fun _ => fct3_RMM
+  | RV32Q_instruction FCVT_DYN_Q_WU_32Q => fun _ => fct3_DYN
+  | RV64Q_instruction FLQ_64Q           => fun _ => fct3_LSQ
+  | RV64Q_instruction FSQ_64Q           => fun _ => fct3_LSQ
+  | RV64Q_instruction FMADD_RNE_Q_64Q   => fun _ => fct3_RNE
+  | RV64Q_instruction FMADD_RTZ_Q_64Q   => fun _ => fct3_RTZ
+  | RV64Q_instruction FMADD_RDN_Q_64Q   => fun _ => fct3_RDN
+  | RV64Q_instruction FMADD_RUP_Q_64Q   => fun _ => fct3_RUP
+  | RV64Q_instruction FMADD_RMM_Q_64Q   => fun _ => fct3_RMM
+  | RV64Q_instruction FMADD_DYN_Q_64Q   => fun _ => fct3_DYN
+  | RV64Q_instruction FMSUB_RNE_Q_64Q   => fun _ => fct3_RNE
+  | RV64Q_instruction FMSUB_RTZ_Q_64Q   => fun _ => fct3_RTZ
+  | RV64Q_instruction FMSUB_RDN_Q_64Q   => fun _ => fct3_RDN
+  | RV64Q_instruction FMSUB_RUP_Q_64Q   => fun _ => fct3_RUP
+  | RV64Q_instruction FMSUB_RMM_Q_64Q   => fun _ => fct3_RMM
+  | RV64Q_instruction FMSUB_DYN_Q_64Q   => fun _ => fct3_DYN
+  | RV64Q_instruction FNMSUB_RNE_Q_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FNMSUB_RTZ_Q_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FNMSUB_RDN_Q_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FNMSUB_RUP_Q_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FNMSUB_RMM_Q_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FNMSUB_DYN_Q_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FNMADD_RNE_Q_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FNMADD_RTZ_Q_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FNMADD_RDN_Q_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FNMADD_RUP_Q_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FNMADD_RMM_Q_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FNMADD_DYN_Q_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FADD_RNE_Q_64Q    => fun _ => fct3_RNE
+  | RV64Q_instruction FADD_RTZ_Q_64Q    => fun _ => fct3_RTZ
+  | RV64Q_instruction FADD_RDN_Q_64Q    => fun _ => fct3_RDN
+  | RV64Q_instruction FADD_RUP_Q_64Q    => fun _ => fct3_RUP
+  | RV64Q_instruction FADD_RMM_Q_64Q    => fun _ => fct3_RMM
+  | RV64Q_instruction FADD_DYN_Q_64Q    => fun _ => fct3_DYN
+  | RV64Q_instruction FSUB_RNE_Q_64Q    => fun _ => fct3_RNE
+  | RV64Q_instruction FSUB_RTZ_Q_64Q    => fun _ => fct3_RTZ
+  | RV64Q_instruction FSUB_RDN_Q_64Q    => fun _ => fct3_RDN
+  | RV64Q_instruction FSUB_RUP_Q_64Q    => fun _ => fct3_RUP
+  | RV64Q_instruction FSUB_RMM_Q_64Q    => fun _ => fct3_RMM
+  | RV64Q_instruction FSUB_DYN_Q_64Q    => fun _ => fct3_DYN
+  | RV64Q_instruction FMUL_RNE_Q_64Q    => fun _ => fct3_RNE
+  | RV64Q_instruction FMUL_RTZ_Q_64Q    => fun _ => fct3_RTZ
+  | RV64Q_instruction FMUL_RDN_Q_64Q    => fun _ => fct3_RDN
+  | RV64Q_instruction FMUL_RUP_Q_64Q    => fun _ => fct3_RUP
+  | RV64Q_instruction FMUL_RMM_Q_64Q    => fun _ => fct3_RMM
+  | RV64Q_instruction FMUL_DYN_Q_64Q    => fun _ => fct3_DYN
+  | RV64Q_instruction FDIV_RNE_Q_64Q    => fun _ => fct3_RNE
+  | RV64Q_instruction FDIV_RTZ_Q_64Q    => fun _ => fct3_RTZ
+  | RV64Q_instruction FDIV_RDN_Q_64Q    => fun _ => fct3_RDN
+  | RV64Q_instruction FDIV_RUP_Q_64Q    => fun _ => fct3_RUP
+  | RV64Q_instruction FDIV_RMM_Q_64Q    => fun _ => fct3_RMM
+  | RV64Q_instruction FDIV_DYN_Q_64Q    => fun _ => fct3_DYN
+  | RV64Q_instruction FSQRT_RNE_Q_64Q   => fun _ => fct3_RNE
+  | RV64Q_instruction FSQRT_RTZ_Q_64Q   => fun _ => fct3_RTZ
+  | RV64Q_instruction FSQRT_RDN_Q_64Q   => fun _ => fct3_RDN
+  | RV64Q_instruction FSQRT_RUP_Q_64Q   => fun _ => fct3_RUP
+  | RV64Q_instruction FSQRT_RMM_Q_64Q   => fun _ => fct3_RMM
+  | RV64Q_instruction FSQRT_DYN_Q_64Q   => fun _ => fct3_DYN
+  | RV64Q_instruction FSGNJ_Q_64Q       => fun _ => fct3_FSGNJ
+  | RV64Q_instruction FSGNJN_Q_64Q      => fun _ => fct3_FSGNJN
+  | RV64Q_instruction FSGNJX_Q_64Q      => fun _ => fct3_FSGNJX
+  | RV64Q_instruction FMIN_Q_64Q        => fun _ => fct3_FMIN
+  | RV64Q_instruction FMAX_Q_64Q        => fun _ => fct3_FMAX
+  | RV64Q_instruction FCVT_RNE_S_Q_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_S_Q_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_S_Q_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_S_Q_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_S_Q_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_S_Q_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_Q_S_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_Q_S_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_Q_S_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_Q_S_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_Q_S_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_Q_S_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_D_Q_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_D_Q_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_D_Q_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_D_Q_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_D_Q_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_D_Q_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_Q_D_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_Q_D_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_Q_D_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_Q_D_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_Q_D_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_Q_D_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FEQ_Q_64Q         => fun _ => fct3_FEQ
+  | RV64Q_instruction FLT_Q_64Q         => fun _ => fct3_FLT
+  | RV64Q_instruction FLE_Q_64Q         => fun _ => fct3_FLE
+  | RV64Q_instruction FCLASS_Q_64Q      => fun _ => fct3_FCLASS
+  | RV64Q_instruction FCVT_RNE_W_Q_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_W_Q_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_W_Q_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_W_Q_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_W_Q_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_W_Q_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_WU_Q_64Q => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_WU_Q_64Q => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_WU_Q_64Q => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_WU_Q_64Q => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_WU_Q_64Q => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_WU_Q_64Q => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_Q_W_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_Q_W_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_Q_W_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_Q_W_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_Q_W_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_Q_W_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_Q_WU_64Q => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_Q_WU_64Q => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_Q_WU_64Q => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_Q_WU_64Q => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_Q_WU_64Q => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_Q_WU_64Q => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_L_Q_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_L_Q_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_L_Q_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_L_Q_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_L_Q_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_L_Q_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_LU_Q_64Q => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_LU_Q_64Q => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_LU_Q_64Q => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_LU_Q_64Q => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_LU_Q_64Q => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_LU_Q_64Q => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_Q_L_64Q  => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_Q_L_64Q  => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_Q_L_64Q  => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_Q_L_64Q  => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_Q_L_64Q  => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_Q_L_64Q  => fun _ => fct3_DYN
+  | RV64Q_instruction FCVT_RNE_Q_LU_64Q => fun _ => fct3_RNE
+  | RV64Q_instruction FCVT_RTZ_Q_LU_64Q => fun _ => fct3_RTZ
+  | RV64Q_instruction FCVT_RDN_Q_LU_64Q => fun _ => fct3_RDN
+  | RV64Q_instruction FCVT_RUP_Q_LU_64Q => fun _ => fct3_RUP
+  | RV64Q_instruction FCVT_RMM_Q_LU_64Q => fun _ => fct3_RMM
+  | RV64Q_instruction FCVT_DYN_Q_LU_64Q => fun _ => fct3_DYN
+  | _ => fun _ => False_rec _ _
+  end); try reflexivity; simpl in e; inversion e.
+Defined.
 
-Theorem has_fct3_UType_implies_false
-  (i : instruction) (pf : has_fct3 (get_instruction_type i) = true)
-: (get_instruction_type i = UType) -> False.
-Proof.
-  intros.
-  rewrite H in pf.
-  simpl in pf.
-  congruence.
-Qed.
+forall (i : instruction), has_fct3 (get_instruction_type i) = true
+-> {f : fct3_type | True}.
+Compute instruction_fct3 _ has_fct3_x.
 
 Definition instruction_fct3
   (i : {i : instruction | has_fct3 (get_instruction_type i) = true})
 :=
-  match proj1_sig i with
-  | RV32I_instruction x =>
-    match x with
-    | JALR_32I => fct3_JALR | BEQ_32I   => fct3_BEQ   | BNE_32I   => fct3_BNE
-    | BLT_32I  => fct3_BLT  | BGE_32I   => fct3_BGE   | BLTU_32I  => fct3_BLTU
-    | BGEU_32I => fct3_BGEU | LB_32I    => fct3_LB    | LH_32I    => fct3_LH
-    | LW_32I   => fct3_LW   | LBU_32I   => fct3_LBU   | LHU_32I   => fct3_LHU
-    | SB_32I   => fct3_SB   | SH_32I    => fct3_SH    | SW_32I    => fct3_SW
-    | ADDI_32I => fct3_ADDI | SLTI_32I  => fct3_SLTI  | SLTIU_32I => fct3_SLTIU
-    | XORI_32I => fct3_XORI | ORI_32I   => fct3_ORI   | ANDI_32I  => fct3_ANDI
-    | SLLI_32I => fct3_SLLI | SRLI_32I  => fct3_SRLI  | SRAI_32I  => fct3_SRAI
-    | ADD_32I  => fct3_ADD  | SUB_32I   => fct3_SUB   | SLL_32I   => fct3_SLL
-    | SLT_32I  => fct3_SLT  | SLTU_32I  => fct3_SLTU  | XOR_32I   => fct3_XOR
-    | SRL_32I  => fct3_SRL  | SRA_32I   => fct3_SRA   | OR_32I    => fct3_OR
-    | AND_32I  => fct3_AND  | FENCE_32I => fct3_FENCE | ECALL_32I => fct3_PRIV
-    | EBREAK_32I => fct3_PRIV
-    end
-  | RV64I_instruction x =>
-    match x with
-    | JALR_64I   => fct3_JALR
-    | BEQ_64I    => fct3_BEQ   | BNE_64I    => fct3_BNE
-    | BLT_64I    => fct3_BLT   | BGE_64I    => fct3_BGE
-    | BLTU_64I   => fct3_BLTU  | BGEU_64I   => fct3_BGEU
-    | LB_64I     => fct3_LB    | LH_64I     => fct3_LH
-    | LW_64I     => fct3_LW    | LBU_64I    => fct3_LBU
-    | LHU_64I    => fct3_LHU   | SB_64I     => fct3_SB
-    | SH_64I     => fct3_SH    | SW_64I     => fct3_SW
-    | ADDI_64I   => fct3_ADDI  | SLTI_64I   => fct3_SLTI
-    | SLTIU_64I  => fct3_SLTIU | XORI_64I   => fct3_XORI
-    | ORI_64I    => fct3_ORI   | ANDI_64I   => fct3_ANDI
-    | SLLI_64I   => fct3_SLLI  | SRLI_64I   => fct3_SRLI
-    | SRAI_64I   => fct3_SRAI  | ADD_64I    => fct3_ADD
-    | SUB_64I    => fct3_SUB   | SLL_64I    => fct3_SLL
-    | SLT_64I    => fct3_SLT   | SLTU_64I   => fct3_SLTU
-    | XOR_64I    => fct3_XOR   | SRL_64I    => fct3_SRL
-    | SRA_64I    => fct3_SRA   | OR_64I     => fct3_OR
-    | AND_64I    => fct3_AND   | FENCE_64I  => fct3_FENCE
-    | ECALL_64I  => fct3_PRIV  | EBREAK_64I => fct3_PRIV
-    | LWU_64I    => fct3_LWU   | LD_64I     => fct3_LD
-    | SD_64I     => fct3_SD    | ADDIW_64I  => fct3_ADDIW
-    | SLLIW_64I  => fct3_SLLIW | SRLIW_64I  => fct3_SRLIW
-    | SRAIW_64I  => fct3_SRAIW | ADDW_64I   => fct3_ADDW
-    | SUBW_64I   => fct3_SUBW  | SLLW_64I   => fct3_SLLW
-    | SRLW_64I   => fct3_SRLW  | SRAW_64I   => fct3_SRAW
-    end
-  | RV32Zifencei_instruction x =>
-    match x with
-    | FENCE_I_32Zifencei => fct3_FENCE_I
-    end
-  | RV64Zifencei_instruction x =>
-    match x with
-    | FENCE_I_64Zifencei => fct3_FENCE_I
-    end
-  | RV32Zicsr_instruction x =>
-    match x with
-    | CSRRW_32Zicsr  => fct3_CSRRW  | CSRRS_32Zicsr  => fct3_CSRRS
-    | CSRRC_32Zicsr  => fct3_CSRRC  | CSRRWI_32Zicsr => fct3_CSRRWI
-    | CSRRSI_32Zicsr => fct3_CSRRSI | CSRRCI_32Zicsr => fct3_CSRRCI
-    end
-  | RV64Zicsr_instruction x =>
-    match x with
-    | CSRRW_64Zicsr  => fct3_CSRRW  | CSRRS_64Zicsr  => fct3_CSRRS
-    | CSRRC_64Zicsr  => fct3_CSRRC  | CSRRWI_64Zicsr => fct3_CSRRWI
-    | CSRRSI_64Zicsr => fct3_CSRRSI | CSRRCI_64Zicsr => fct3_CSRRCI
-    end
-  | RV32M_instruction x =>
-    match x with
-    | MUL_32M    => fct3_MUL    | MULH_32M   => fct3_MULH
-    | MULHSU_32M => fct3_MULHSU | MULHU_32M  => fct3_MULHU
-    | DIV_32M    => fct3_DIV    | DIVU_32M   => fct3_DIVU
-    | REM_32M    => fct3_REM    | REMU_32M   => fct3_REMU
-    end
-  | RV64M_instruction x =>
-    match x with
-    | MUL_64M    => fct3_MUL    | MULH_64M   => fct3_MULH
-    | MULHSU_64M => fct3_MULHSU | MULHU_64M  => fct3_MULHU
-    | DIV_64M    => fct3_DIV    | DIVU_64M   => fct3_DIVU
-    | REM_64M    => fct3_REM    | REMU_64M   => fct3_REMU
-    | MULW_64M   => fct3_MULW   | DIVW_64M   => fct3_DIVW
-    | DIVUW_64M  => fct3_DIVUW  | REMW_64M   => fct3_REMW
-    | REMUW_64M  => fct3_REMUW
-    end
-  | RV32A_instruction x =>
-    match x with
-    | LR_W_00_32A      => fct3_AW | LR_W_01_32A      => fct3_AW
-    | LR_W_10_32A      => fct3_AW | LR_W_11_32A      => fct3_AW
-    | SC_W_00_32A      => fct3_AW | SC_W_01_32A      => fct3_AW
-    | SC_W_10_32A      => fct3_AW | SC_W_11_32A      => fct3_AW
-    | AMOSWAP_W_00_32A => fct3_AW | AMOSWAP_W_01_32A => fct3_AW
-    | AMOSWAP_W_10_32A => fct3_AW | AMOSWAP_W_11_32A => fct3_AW
-    | AMOADD_W_00_32A  => fct3_AW | AMOADD_W_01_32A  => fct3_AW
-    | AMOADD_W_10_32A  => fct3_AW | AMOADD_W_11_32A  => fct3_AW
-    | AMOXOR_W_00_32A  => fct3_AW | AMOXOR_W_01_32A  => fct3_AW
-    | AMOXOR_W_10_32A  => fct3_AW | AMOXOR_W_11_32A  => fct3_AW
-    | AMOAND_W_00_32A  => fct3_AW | AMOAND_W_01_32A  => fct3_AW
-    | AMOAND_W_10_32A  => fct3_AW | AMOAND_W_11_32A  => fct3_AW
-    | AMOOR_W_00_32A   => fct3_AW | AMOOR_W_01_32A   => fct3_AW
-    | AMOOR_W_10_32A   => fct3_AW | AMOOR_W_11_32A   => fct3_AW
-    | AMOMIN_W_00_32A  => fct3_AW | AMOMIN_W_01_32A  => fct3_AW
-    | AMOMIN_W_10_32A  => fct3_AW | AMOMIN_W_11_32A  => fct3_AW
-    | AMOMAX_W_00_32A  => fct3_AW | AMOMAX_W_01_32A  => fct3_AW
-    | AMOMAX_W_10_32A  => fct3_AW | AMOMAX_W_11_32A  => fct3_AW
-    | AMOMINU_W_00_32A => fct3_AW | AMOMINU_W_01_32A => fct3_AW
-    | AMOMINU_W_10_32A => fct3_AW | AMOMINU_W_11_32A => fct3_AW
-    | AMOMAXU_W_00_32A => fct3_AW | AMOMAXU_W_01_32A => fct3_AW
-    | AMOMAXU_W_10_32A => fct3_AW | AMOMAXU_W_11_32A => fct3_AW
-    end
-  | RV64A_instruction x =>
-    match x with
-    | LR_W_00_64A      => fct3_AW | LR_W_01_64A      => fct3_AW
-    | LR_W_10_64A      => fct3_AW | LR_W_11_64A      => fct3_AW
-    | SC_W_00_64A      => fct3_AW | SC_W_01_64A      => fct3_AW
-    | SC_W_10_64A      => fct3_AW | SC_W_11_64A      => fct3_AW
-    | AMOSWAP_W_00_64A => fct3_AW | AMOSWAP_W_01_64A => fct3_AW
-    | AMOSWAP_W_10_64A => fct3_AW | AMOSWAP_W_11_64A => fct3_AW
-    | AMOADD_W_00_64A  => fct3_AW | AMOADD_W_01_64A  => fct3_AW
-    | AMOADD_W_10_64A  => fct3_AW | AMOADD_W_11_64A  => fct3_AW
-    | AMOXOR_W_00_64A  => fct3_AW | AMOXOR_W_01_64A  => fct3_AW
-    | AMOXOR_W_10_64A  => fct3_AW | AMOXOR_W_11_64A  => fct3_AW
-    | AMOAND_W_00_64A  => fct3_AW | AMOAND_W_01_64A  => fct3_AW
-    | AMOAND_W_10_64A  => fct3_AW | AMOAND_W_11_64A  => fct3_AW
-    | AMOOR_W_00_64A   => fct3_AW | AMOOR_W_01_64A   => fct3_AW
-    | AMOOR_W_10_64A   => fct3_AW | AMOOR_W_11_64A   => fct3_AW
-    | AMOMIN_W_00_64A  => fct3_AW | AMOMIN_W_01_64A  => fct3_AW
-    | AMOMIN_W_10_64A  => fct3_AW | AMOMIN_W_11_64A  => fct3_AW
-    | AMOMAX_W_00_64A  => fct3_AW | AMOMAX_W_01_64A  => fct3_AW
-    | AMOMAX_W_10_64A  => fct3_AW | AMOMAX_W_11_64A  => fct3_AW
-    | AMOMINU_W_00_64A => fct3_AW | AMOMINU_W_01_64A => fct3_AW
-    | AMOMINU_W_10_64A => fct3_AW | AMOMINU_W_11_64A => fct3_AW
-    | AMOMAXU_W_00_64A => fct3_AW | AMOMAXU_W_01_64A => fct3_AW
-    | AMOMAXU_W_10_64A => fct3_AW | AMOMAXU_W_11_64A => fct3_AW
-    | LR_D_00_64A      => fct3_AD | LR_D_01_64A      => fct3_AD
-    | LR_D_10_64A      => fct3_AD | LR_D_11_64A      => fct3_AD
-    | SC_D_00_64A      => fct3_AD | SC_D_01_64A      => fct3_AD
-    | SC_D_10_64A      => fct3_AD | SC_D_11_64A      => fct3_AD
-    | AMOSWAP_D_00_64A => fct3_AD | AMOSWAP_D_01_64A => fct3_AD
-    | AMOSWAP_D_10_64A => fct3_AD | AMOSWAP_D_11_64A => fct3_AD
-    | AMOADD_D_00_64A  => fct3_AD | AMOADD_D_01_64A  => fct3_AD
-    | AMOADD_D_10_64A  => fct3_AD | AMOADD_D_11_64A  => fct3_AD
-    | AMOXOR_D_00_64A  => fct3_AD | AMOXOR_D_01_64A  => fct3_AD
-    | AMOXOR_D_10_64A  => fct3_AD | AMOXOR_D_11_64A  => fct3_AD
-    | AMOAND_D_00_64A  => fct3_AD | AMOAND_D_01_64A  => fct3_AD
-    | AMOAND_D_10_64A  => fct3_AD | AMOAND_D_11_64A  => fct3_AD
-    | AMOOR_D_00_64A   => fct3_AD | AMOOR_D_01_64A   => fct3_AD
-    | AMOOR_D_10_64A   => fct3_AD | AMOOR_D_11_64A   => fct3_AD
-    | AMOMIN_D_00_64A  => fct3_AD | AMOMIN_D_01_64A  => fct3_AD
-    | AMOMIN_D_10_64A  => fct3_AD | AMOMIN_D_11_64A  => fct3_AD
-    | AMOMAX_D_00_64A  => fct3_AD | AMOMAX_D_01_64A  => fct3_AD
-    | AMOMAX_D_10_64A  => fct3_AD | AMOMAX_D_11_64A  => fct3_AD
-    | AMOMINU_D_00_64A => fct3_AD | AMOMINU_D_01_64A => fct3_AD
-    | AMOMINU_D_10_64A => fct3_AD | AMOMINU_D_11_64A => fct3_AD
-    | AMOMAXU_D_00_64A => fct3_AD | AMOMAXU_D_01_64A => fct3_AD
-    | AMOMAXU_D_10_64A => fct3_AD | AMOMAXU_D_11_64A => fct3_AD
-    end
-  | RV32F_instruction x =>
-    match x with
-    | FLW_32F           => fct3_LSF    | FSW_32F           => fct3_LSF
-    | FMADD_RNE_S_32F   => fct3_RNE    | FMADD_RTZ_S_32F   => fct3_RTZ
-    | FMADD_RDN_S_32F   => fct3_RDN    | FMADD_RUP_S_32F   => fct3_RUP
-    | FMADD_RMM_S_32F   => fct3_RMM    | FMADD_DYN_S_32F   => fct3_DYN
-    | FMSUB_RNE_S_32F   => fct3_RNE    | FMSUB_RTZ_S_32F   => fct3_RTZ
-    | FMSUB_RDN_S_32F   => fct3_RDN    | FMSUB_RUP_S_32F   => fct3_RUP
-    | FMSUB_RMM_S_32F   => fct3_RMM    | FMSUB_DYN_S_32F   => fct3_DYN
-    | FNMSUB_RNE_S_32F  => fct3_RNE    | FNMSUB_RTZ_S_32F  => fct3_RTZ
-    | FNMSUB_RDN_S_32F  => fct3_RDN    | FNMSUB_RUP_S_32F  => fct3_RUP
-    | FNMSUB_RMM_S_32F  => fct3_RMM    | FNMSUB_DYN_S_32F  => fct3_DYN
-    | FNMADD_RNE_S_32F  => fct3_RNE    | FNMADD_RTZ_S_32F  => fct3_RTZ
-    | FNMADD_RDN_S_32F  => fct3_RDN    | FNMADD_RUP_S_32F  => fct3_RUP
-    | FNMADD_RMM_S_32F  => fct3_RMM    | FNMADD_DYN_S_32F  => fct3_DYN
-    | FADD_RNE_S_32F    => fct3_RNE    | FADD_RTZ_S_32F    => fct3_RTZ
-    | FADD_RDN_S_32F    => fct3_RDN    | FADD_RUP_S_32F    => fct3_RUP
-    | FADD_RMM_S_32F    => fct3_RMM    | FADD_DYN_S_32F    => fct3_DYN
-    | FSUB_RNE_S_32F    => fct3_RNE    | FSUB_RTZ_S_32F    => fct3_RTZ
-    | FSUB_RDN_S_32F    => fct3_RDN    | FSUB_RUP_S_32F    => fct3_RUP
-    | FSUB_RMM_S_32F    => fct3_RMM    | FSUB_DYN_S_32F    => fct3_DYN
-    | FMUL_RNE_S_32F    => fct3_RNE    | FMUL_RTZ_S_32F    => fct3_RTZ
-    | FMUL_RDN_S_32F    => fct3_RDN    | FMUL_RUP_S_32F    => fct3_RUP
-    | FMUL_RMM_S_32F    => fct3_RMM    | FMUL_DYN_S_32F    => fct3_DYN
-    | FDIV_RNE_S_32F    => fct3_RNE    | FDIV_RTZ_S_32F    => fct3_RTZ
-    | FDIV_RDN_S_32F    => fct3_RDN    | FDIV_RUP_S_32F    => fct3_RUP
-    | FDIV_RMM_S_32F    => fct3_RMM    | FDIV_DYN_S_32F    => fct3_DYN
-    | FSQRT_RNE_S_32F   => fct3_RNE    | FSQRT_RTZ_S_32F   => fct3_RTZ
-    | FSQRT_RDN_S_32F   => fct3_RDN    | FSQRT_RUP_S_32F   => fct3_RUP
-    | FSQRT_RMM_S_32F   => fct3_RMM    | FSQRT_DYN_S_32F   => fct3_DYN
-    | FSGNJ_S_32F       => fct3_FSGNJ  | FSGNJN_S_32F      => fct3_FSGNJN
-    | FSGNJX_S_32F      => fct3_FSGNJX | FMIN_S_32F        => fct3_FMIN
-    | FMAX_S_32F        => fct3_FMAX   | FCVT_RNE_W_S_32F  => fct3_RNE
-    | FCVT_RTZ_W_S_32F  => fct3_RTZ    | FCVT_RDN_W_S_32F  => fct3_RDN
-    | FCVT_RUP_W_S_32F  => fct3_RUP    | FCVT_RMM_W_S_32F  => fct3_RMM
-    | FCVT_DYN_W_S_32F  => fct3_DYN    | FCVT_RNE_WU_S_32F => fct3_RNE
-    | FCVT_RTZ_WU_S_32F => fct3_RTZ    | FCVT_RDN_WU_S_32F => fct3_RDN
-    | FCVT_RUP_WU_S_32F => fct3_RUP    | FCVT_RMM_WU_S_32F => fct3_RMM
-    | FCVT_DYN_WU_S_32F => fct3_DYN    | FMV_X_W_32F       => fct3_FMV
-    | FEQ_S_32F         => fct3_FEQ    | FLT_S_32F         => fct3_FLT
-    | FLE_S_32F         => fct3_FLE    | FCLASS_S_32F      => fct3_FCLASS
-    | FCVT_RNE_S_W_32F  => fct3_RNE    | FCVT_RTZ_S_W_32F  => fct3_RTZ
-    | FCVT_RDN_S_W_32F  => fct3_RDN    | FCVT_RUP_S_W_32F  => fct3_RUP
-    | FCVT_RMM_S_W_32F  => fct3_RMM    | FCVT_DYN_S_W_32F  => fct3_DYN
-    | FCVT_RNE_S_WU_32F => fct3_RNE    | FCVT_RTZ_S_WU_32F => fct3_RTZ
-    | FCVT_RDN_S_WU_32F => fct3_RDN    | FCVT_RUP_S_WU_32F => fct3_RUP
-    | FCVT_RMM_S_WU_32F => fct3_RMM    | FCVT_DYN_S_WU_32F => fct3_DYN
-    | FMV_W_X_32F       => fct3_FMV
-    end
-  | RV64F_instruction x =>
-    match x with
-    | FLW_64F           => fct3_LSF    | FSW_64F           => fct3_LSF
-    | FMADD_RNE_S_64F   => fct3_RNE    | FMADD_RTZ_S_64F   => fct3_RTZ
-    | FMADD_RDN_S_64F   => fct3_RDN    | FMADD_RUP_S_64F   => fct3_RUP
-    | FMADD_RMM_S_64F   => fct3_RMM    | FMADD_DYN_S_64F   => fct3_DYN
-    | FMSUB_RNE_S_64F   => fct3_RNE    | FMSUB_RTZ_S_64F   => fct3_RTZ
-    | FMSUB_RDN_S_64F   => fct3_RDN    | FMSUB_RUP_S_64F   => fct3_RUP
-    | FMSUB_RMM_S_64F   => fct3_RMM    | FMSUB_DYN_S_64F   => fct3_DYN
-    | FNMSUB_RNE_S_64F  => fct3_RNE    | FNMSUB_RTZ_S_64F  => fct3_RTZ
-    | FNMSUB_RDN_S_64F  => fct3_RDN    | FNMSUB_RUP_S_64F  => fct3_RUP
-    | FNMSUB_RMM_S_64F  => fct3_RMM    | FNMSUB_DYN_S_64F  => fct3_DYN
-    | FNMADD_RNE_S_64F  => fct3_RNE    | FNMADD_RTZ_S_64F  => fct3_RTZ
-    | FNMADD_RDN_S_64F  => fct3_RDN    | FNMADD_RUP_S_64F  => fct3_RUP
-    | FNMADD_RMM_S_64F  => fct3_RMM    | FNMADD_DYN_S_64F  => fct3_DYN
-    | FADD_RNE_S_64F    => fct3_RNE    | FADD_RTZ_S_64F    => fct3_RTZ
-    | FADD_RDN_S_64F    => fct3_RDN    | FADD_RUP_S_64F    => fct3_RUP
-    | FADD_RMM_S_64F    => fct3_RMM    | FADD_DYN_S_64F    => fct3_DYN
-    | FSUB_RNE_S_64F    => fct3_RNE    | FSUB_RTZ_S_64F    => fct3_RTZ
-    | FSUB_RDN_S_64F    => fct3_RDN    | FSUB_RUP_S_64F    => fct3_RUP
-    | FSUB_RMM_S_64F    => fct3_RMM    | FSUB_DYN_S_64F    => fct3_DYN
-    | FMUL_RNE_S_64F    => fct3_RNE    | FMUL_RTZ_S_64F    => fct3_RTZ
-    | FMUL_RDN_S_64F    => fct3_RDN    | FMUL_RUP_S_64F    => fct3_RUP
-    | FMUL_RMM_S_64F    => fct3_RMM    | FMUL_DYN_S_64F    => fct3_DYN
-    | FDIV_RNE_S_64F    => fct3_RNE    | FDIV_RTZ_S_64F    => fct3_RTZ
-    | FDIV_RDN_S_64F    => fct3_RDN    | FDIV_RUP_S_64F    => fct3_RUP
-    | FDIV_RMM_S_64F    => fct3_RMM    | FDIV_DYN_S_64F    => fct3_DYN
-    | FSQRT_RNE_S_64F   => fct3_RNE    | FSQRT_RTZ_S_64F   => fct3_RTZ
-    | FSQRT_RDN_S_64F   => fct3_RDN    | FSQRT_RUP_S_64F   => fct3_RUP
-    | FSQRT_RMM_S_64F   => fct3_RMM    | FSQRT_DYN_S_64F   => fct3_DYN
-    | FSGNJ_S_64F       => fct3_FSGNJ  | FSGNJN_S_64F      => fct3_FSGNJN
-    | FSGNJX_S_64F      => fct3_FSGNJX | FMIN_S_64F        => fct3_FMIN
-    | FMAX_S_64F        => fct3_FMAX   | FCVT_RNE_W_S_64F  => fct3_RNE
-    | FCVT_RTZ_W_S_64F  => fct3_RTZ    | FCVT_RDN_W_S_64F  => fct3_RDN
-    | FCVT_RUP_W_S_64F  => fct3_RUP    | FCVT_RMM_W_S_64F  => fct3_RMM
-    | FCVT_DYN_W_S_64F  => fct3_DYN    | FCVT_RNE_WU_S_64F => fct3_RNE
-    | FCVT_RTZ_WU_S_64F => fct3_RTZ    | FCVT_RDN_WU_S_64F => fct3_RDN
-    | FCVT_RUP_WU_S_64F => fct3_RUP    | FCVT_RMM_WU_S_64F => fct3_RMM
-    | FCVT_DYN_WU_S_64F => fct3_DYN    | FMV_X_W_64F       => fct3_FMV
-    | FEQ_S_64F         => fct3_FEQ    | FLT_S_64F         => fct3_FLT
-    | FLE_S_64F         => fct3_FLE    | FCLASS_S_64F      => fct3_FCLASS
-    | FCVT_RNE_S_W_64F  => fct3_RNE    | FCVT_RTZ_S_W_64F  => fct3_RTZ
-    | FCVT_RDN_S_W_64F  => fct3_RDN    | FCVT_RUP_S_W_64F  => fct3_RUP
-    | FCVT_RMM_S_W_64F  => fct3_RMM    | FCVT_DYN_S_W_64F  => fct3_DYN
-    | FCVT_RNE_S_WU_64F => fct3_RNE    | FCVT_RTZ_S_WU_64F => fct3_RTZ
-    | FCVT_RDN_S_WU_64F => fct3_RDN    | FCVT_RUP_S_WU_64F => fct3_RUP
-    | FCVT_RMM_S_WU_64F => fct3_RMM    | FCVT_DYN_S_WU_64F => fct3_DYN
-    | FMV_W_X_64F       => fct3_FMV    | FCVT_RNE_L_S_64F  => fct3_RNE
-    | FCVT_RTZ_L_S_64F  => fct3_RTZ    | FCVT_RDN_L_S_64F  => fct3_RDN
-    | FCVT_RUP_L_S_64F  => fct3_RUP    | FCVT_RMM_L_S_64F  => fct3_RMM
-    | FCVT_DYN_L_S_64F  => fct3_DYN    | FCVT_RNE_LU_S_64F => fct3_RNE
-    | FCVT_RTZ_LU_S_64F => fct3_RTZ    | FCVT_RDN_LU_S_64F => fct3_RDN
-    | FCVT_RUP_LU_S_64F => fct3_RUP    | FCVT_RMM_LU_S_64F => fct3_RMM
-    | FCVT_DYN_LU_S_64F => fct3_DYN    | FCVT_RNE_S_L_64F  => fct3_RNE
-    | FCVT_RTZ_S_L_64F  => fct3_RTZ    | FCVT_RDN_S_L_64F  => fct3_RDN
-    | FCVT_RUP_S_L_64F  => fct3_RUP    | FCVT_RMM_S_L_64F  => fct3_RMM
-    | FCVT_DYN_S_L_64F  => fct3_DYN    | FCVT_RNE_S_LU_64F => fct3_RNE
-    | FCVT_RTZ_S_LU_64F => fct3_RTZ    | FCVT_RDN_S_LU_64F => fct3_RDN
-    | FCVT_RUP_S_LU_64F => fct3_RUP    | FCVT_RMM_S_LU_64F => fct3_RMM
-    | FCVT_DYN_S_LU_64F => fct3_DYN
-    end
-  | RV32D_instruction x =>
-    match x with
-    | FLD_32D           => fct3_LSD    | FSD_32D           => fct3_LSD
-    | FMADD_RNE_D_32D   => fct3_RNE    | FMADD_RTZ_D_32D   => fct3_RTZ
-    | FMADD_RDN_D_32D   => fct3_RDN    | FMADD_RUP_D_32D   => fct3_RUP
-    | FMADD_RMM_D_32D   => fct3_RMM    | FMADD_DYN_D_32D   => fct3_DYN
-    | FMSUB_RNE_D_32D   => fct3_RNE    | FMSUB_RTZ_D_32D   => fct3_RTZ
-    | FMSUB_RDN_D_32D   => fct3_RDN    | FMSUB_RUP_D_32D   => fct3_RUP
-    | FMSUB_RMM_D_32D   => fct3_RMM    | FMSUB_DYN_D_32D   => fct3_DYN
-    | FNMSUB_RNE_D_32D  => fct3_RNE    | FNMSUB_RTZ_D_32D  => fct3_RTZ
-    | FNMSUB_RDN_D_32D  => fct3_RDN    | FNMSUB_RUP_D_32D  => fct3_RUP
-    | FNMSUB_RMM_D_32D  => fct3_RMM    | FNMSUB_DYN_D_32D  => fct3_DYN
-    | FNMADD_RNE_D_32D  => fct3_RNE    | FNMADD_RTZ_D_32D  => fct3_RTZ
-    | FNMADD_RDN_D_32D  => fct3_RDN    | FNMADD_RUP_D_32D  => fct3_RUP
-    | FNMADD_RMM_D_32D  => fct3_RMM    | FNMADD_DYN_D_32D  => fct3_DYN
-    | FADD_RNE_D_32D    => fct3_RNE    | FADD_RTZ_D_32D    => fct3_RTZ
-    | FADD_RDN_D_32D    => fct3_RDN    | FADD_RUP_D_32D    => fct3_RUP
-    | FADD_RMM_D_32D    => fct3_RMM    | FADD_DYN_D_32D    => fct3_DYN
-    | FSUB_RNE_D_32D    => fct3_RNE    | FSUB_RTZ_D_32D    => fct3_RTZ
-    | FSUB_RDN_D_32D    => fct3_RDN    | FSUB_RUP_D_32D    => fct3_RUP
-    | FSUB_RMM_D_32D    => fct3_RMM    | FSUB_DYN_D_32D    => fct3_DYN
-    | FMUL_RNE_D_32D    => fct3_RNE    | FMUL_RTZ_D_32D    => fct3_RTZ
-    | FMUL_RDN_D_32D    => fct3_RDN    | FMUL_RUP_D_32D    => fct3_RUP
-    | FMUL_RMM_D_32D    => fct3_RMM    | FMUL_DYN_D_32D    => fct3_DYN
-    | FDIV_RNE_D_32D    => fct3_RNE    | FDIV_RTZ_D_32D    => fct3_RTZ
-    | FDIV_RDN_D_32D    => fct3_RDN    | FDIV_RUP_D_32D    => fct3_RUP
-    | FDIV_RMM_D_32D    => fct3_RMM    | FDIV_DYN_D_32D    => fct3_DYN
-    | FSQRT_RNE_D_32D   => fct3_RNE    | FSQRT_RTZ_D_32D   => fct3_RTZ
-    | FSQRT_RDN_D_32D   => fct3_RDN    | FSQRT_RUP_D_32D   => fct3_RUP
-    | FSQRT_RMM_D_32D   => fct3_RMM    | FSQRT_DYN_D_32D   => fct3_DYN
-    | FSGNJ_D_32D       => fct3_FSGNJ  | FSGNJN_D_32D      => fct3_FSGNJN
-    | FSGNJX_D_32D      => fct3_FSGNJX | FMIN_D_32D        => fct3_FMIN
-    | FMAX_D_32D        => fct3_FMAX   | FCVT_RNE_S_D_32D  => fct3_RNE
-    | FCVT_RTZ_S_D_32D  => fct3_RTZ    | FCVT_RDN_S_D_32D  => fct3_RDN
-    | FCVT_RUP_S_D_32D  => fct3_RUP    | FCVT_RMM_S_D_32D  => fct3_RMM
-    | FCVT_DYN_S_D_32D  => fct3_DYN    | FCVT_RNE_D_S_32D  => fct3_RNE
-    | FCVT_RTZ_D_S_32D  => fct3_RTZ    | FCVT_RDN_D_S_32D  => fct3_RDN
-    | FCVT_RUP_D_S_32D  => fct3_RUP    | FCVT_RMM_D_S_32D  => fct3_RMM
-    | FCVT_DYN_D_S_32D  => fct3_DYN    | FEQ_D_32D         => fct3_FEQ
-    | FLT_D_32D         => fct3_FLT    | FLE_D_32D         => fct3_FLE
-    | FCLASS_D_32D      => fct3_FCLASS | FCVT_RNE_W_D_32D  => fct3_RNE
-    | FCVT_RTZ_W_D_32D  => fct3_RTZ    | FCVT_RDN_W_D_32D  => fct3_RDN
-    | FCVT_RUP_W_D_32D  => fct3_RUP    | FCVT_RMM_W_D_32D  => fct3_RMM
-    | FCVT_DYN_W_D_32D  => fct3_DYN    | FCVT_RNE_WU_D_32D => fct3_RNE
-    | FCVT_RTZ_WU_D_32D => fct3_RTZ    | FCVT_RDN_WU_D_32D => fct3_RDN
-    | FCVT_RUP_WU_D_32D => fct3_RUP    | FCVT_RMM_WU_D_32D => fct3_RMM
-    | FCVT_DYN_WU_D_32D => fct3_DYN    | FCVT_RNE_D_W_32D  => fct3_RNE
-    | FCVT_RTZ_D_W_32D  => fct3_RTZ    | FCVT_RDN_D_W_32D  => fct3_RDN
-    | FCVT_RUP_D_W_32D  => fct3_RUP    | FCVT_RMM_D_W_32D  => fct3_RMM
-    | FCVT_DYN_D_W_32D  => fct3_DYN    | FCVT_RNE_D_WU_32D => fct3_RNE
-    | FCVT_RTZ_D_WU_32D => fct3_RTZ    | FCVT_RDN_D_WU_32D => fct3_RDN
-    | FCVT_RUP_D_WU_32D => fct3_RUP    | FCVT_RMM_D_WU_32D => fct3_RMM
-    | FCVT_DYN_D_WU_32D => fct3_DYN
-    end
-  | RV64D_instruction x =>
-    match x with
-    | FLD_64D           => fct3_LSD    | FSD_64D           => fct3_LSD
-    | FMADD_RNE_D_64D   => fct3_RNE    | FMADD_RTZ_D_64D   => fct3_RTZ
-    | FMADD_RDN_D_64D   => fct3_RDN    | FMADD_RUP_D_64D   => fct3_RUP
-    | FMADD_RMM_D_64D   => fct3_RMM    | FMADD_DYN_D_64D   => fct3_DYN
-    | FMSUB_RNE_D_64D   => fct3_RNE    | FMSUB_RTZ_D_64D   => fct3_RTZ
-    | FMSUB_RDN_D_64D   => fct3_RDN    | FMSUB_RUP_D_64D   => fct3_RUP
-    | FMSUB_RMM_D_64D   => fct3_RMM    | FMSUB_DYN_D_64D   => fct3_DYN
-    | FNMSUB_RNE_D_64D  => fct3_RNE    | FNMSUB_RTZ_D_64D  => fct3_RTZ
-    | FNMSUB_RDN_D_64D  => fct3_RDN    | FNMSUB_RUP_D_64D  => fct3_RUP
-    | FNMSUB_RMM_D_64D  => fct3_RMM    | FNMSUB_DYN_D_64D  => fct3_DYN
-    | FNMADD_RNE_D_64D  => fct3_RNE    | FNMADD_RTZ_D_64D  => fct3_RTZ
-    | FNMADD_RDN_D_64D  => fct3_RDN    | FNMADD_RUP_D_64D  => fct3_RUP
-    | FNMADD_RMM_D_64D  => fct3_RMM    | FNMADD_DYN_D_64D  => fct3_DYN
-    | FADD_RNE_D_64D    => fct3_RNE    | FADD_RTZ_D_64D    => fct3_RTZ
-    | FADD_RDN_D_64D    => fct3_RDN    | FADD_RUP_D_64D    => fct3_RUP
-    | FADD_RMM_D_64D    => fct3_RMM    | FADD_DYN_D_64D    => fct3_DYN
-    | FSUB_RNE_D_64D    => fct3_RNE    | FSUB_RTZ_D_64D    => fct3_RTZ
-    | FSUB_RDN_D_64D    => fct3_RDN    | FSUB_RUP_D_64D    => fct3_RUP
-    | FSUB_RMM_D_64D    => fct3_RMM    | FSUB_DYN_D_64D    => fct3_DYN
-    | FMUL_RNE_D_64D    => fct3_RNE    | FMUL_RTZ_D_64D    => fct3_RTZ
-    | FMUL_RDN_D_64D    => fct3_RDN    | FMUL_RUP_D_64D    => fct3_RUP
-    | FMUL_RMM_D_64D    => fct3_RMM    | FMUL_DYN_D_64D    => fct3_DYN
-    | FDIV_RNE_D_64D    => fct3_RNE    | FDIV_RTZ_D_64D    => fct3_RTZ
-    | FDIV_RDN_D_64D    => fct3_RDN    | FDIV_RUP_D_64D    => fct3_RUP
-    | FDIV_RMM_D_64D    => fct3_RMM    | FDIV_DYN_D_64D    => fct3_DYN
-    | FSQRT_RNE_D_64D   => fct3_RNE    | FSQRT_RTZ_D_64D   => fct3_RTZ
-    | FSQRT_RDN_D_64D   => fct3_RDN    | FSQRT_RUP_D_64D   => fct3_RUP
-    | FSQRT_RMM_D_64D   => fct3_RMM    | FSQRT_DYN_D_64D   => fct3_DYN
-    | FSGNJ_D_64D       => fct3_FSGNJ  | FSGNJN_D_64D      => fct3_FSGNJN
-    | FSGNJX_D_64D      => fct3_FSGNJX | FMIN_D_64D        => fct3_FMIN
-    | FMAX_D_64D        => fct3_FMAX   | FCVT_RNE_S_D_64D  => fct3_RNE
-    | FCVT_RTZ_S_D_64D  => fct3_RTZ    | FCVT_RDN_S_D_64D  => fct3_RDN
-    | FCVT_RUP_S_D_64D  => fct3_RUP    | FCVT_RMM_S_D_64D  => fct3_RMM
-    | FCVT_DYN_S_D_64D  => fct3_DYN    | FCVT_RNE_D_S_64D  => fct3_RNE
-    | FCVT_RTZ_D_S_64D  => fct3_RTZ    | FCVT_RDN_D_S_64D  => fct3_RDN
-    | FCVT_RUP_D_S_64D  => fct3_RUP    | FCVT_RMM_D_S_64D  => fct3_RMM
-    | FCVT_DYN_D_S_64D  => fct3_DYN    | FEQ_D_64D         => fct3_FEQ
-    | FLT_D_64D         => fct3_FLT    | FLE_D_64D         => fct3_FLE
-    | FCLASS_D_64D      => fct3_FCLASS | FCVT_RNE_W_D_64D  => fct3_RNE
-    | FCVT_RTZ_W_D_64D  => fct3_RTZ    | FCVT_RDN_W_D_64D  => fct3_RDN
-    | FCVT_RUP_W_D_64D  => fct3_RUP    | FCVT_RMM_W_D_64D  => fct3_RMM
-    | FCVT_DYN_W_D_64D  => fct3_DYN    | FCVT_RNE_WU_D_64D => fct3_RNE
-    | FCVT_RTZ_WU_D_64D => fct3_RTZ    | FCVT_RDN_WU_D_64D => fct3_RDN
-    | FCVT_RUP_WU_D_64D => fct3_RUP    | FCVT_RMM_WU_D_64D => fct3_RMM
-    | FCVT_DYN_WU_D_64D => fct3_DYN    | FCVT_RNE_D_W_64D  => fct3_RNE
-    | FCVT_RTZ_D_W_64D  => fct3_RTZ    | FCVT_RDN_D_W_64D  => fct3_RDN
-    | FCVT_RUP_D_W_64D  => fct3_RUP    | FCVT_RMM_D_W_64D  => fct3_RMM
-    | FCVT_DYN_D_W_64D  => fct3_DYN    | FCVT_RNE_D_WU_64D => fct3_RNE
-    | FCVT_RTZ_D_WU_64D => fct3_RTZ    | FCVT_RDN_D_WU_64D => fct3_RDN
-    | FCVT_RUP_D_WU_64D => fct3_RUP    | FCVT_RMM_D_WU_64D => fct3_RMM
-    | FCVT_DYN_D_WU_64D => fct3_DYN    | FCVT_RNE_L_D_64D  => fct3_RNE
-    | FCVT_RTZ_L_D_64D  => fct3_RTZ    | FCVT_RDN_L_D_64D  => fct3_RDN
-    | FCVT_RUP_L_D_64D  => fct3_RUP    | FCVT_RMM_L_D_64D  => fct3_RMM
-    | FCVT_DYN_L_D_64D  => fct3_DYN    | FCVT_RNE_LU_D_64D => fct3_RNE
-    | FCVT_RTZ_LU_D_64D => fct3_RTZ    | FCVT_RDN_LU_D_64D => fct3_RDN
-    | FCVT_RUP_LU_D_64D => fct3_RUP    | FCVT_RMM_LU_D_64D => fct3_RMM
-    | FCVT_DYN_LU_D_64D => fct3_DYN    | FMV_X_D_64D       => fct3_FMV
-    | FCVT_RNE_D_L_64D  => fct3_RNE    | FCVT_RTZ_D_L_64D  => fct3_RTZ
-    | FCVT_RDN_D_L_64D  => fct3_RDN    | FCVT_RUP_D_L_64D  => fct3_RUP
-    | FCVT_RMM_D_L_64D  => fct3_RMM    | FCVT_DYN_D_L_64D  => fct3_DYN
-    | FCVT_RNE_D_LU_64D => fct3_RNE    | FCVT_RTZ_D_LU_64D => fct3_RTZ
-    | FCVT_RDN_D_LU_64D => fct3_RDN    | FCVT_RUP_D_LU_64D => fct3_RUP
-    | FCVT_RMM_D_LU_64D => fct3_RMM    | FCVT_DYN_D_LU_64D => fct3_DYN
-    | FMV_D_X_64D       => fct3_FMV
-    end
-  | RV32Q_instruction x =>
-    match x with
-    | FLQ_32Q           => fct3_LSQ    | FSQ_32Q           => fct3_LSQ
-    | FMADD_RNE_Q_32Q   => fct3_RNE    | FMADD_RTZ_Q_32Q   => fct3_RTZ
-    | FMADD_RDN_Q_32Q   => fct3_RDN    | FMADD_RUP_Q_32Q   => fct3_RUP
-    | FMADD_RMM_Q_32Q   => fct3_RMM    | FMADD_DYN_Q_32Q   => fct3_DYN
-    | FMSUB_RNE_Q_32Q   => fct3_RNE    | FMSUB_RTZ_Q_32Q   => fct3_RTZ
-    | FMSUB_RDN_Q_32Q   => fct3_RDN    | FMSUB_RUP_Q_32Q   => fct3_RUP
-    | FMSUB_RMM_Q_32Q   => fct3_RMM    | FMSUB_DYN_Q_32Q   => fct3_DYN
-    | FNMSUB_RNE_Q_32Q  => fct3_RNE    | FNMSUB_RTZ_Q_32Q  => fct3_RTZ
-    | FNMSUB_RDN_Q_32Q  => fct3_RDN    | FNMSUB_RUP_Q_32Q  => fct3_RUP
-    | FNMSUB_RMM_Q_32Q  => fct3_RMM    | FNMSUB_DYN_Q_32Q  => fct3_DYN
-    | FNMADD_RNE_Q_32Q  => fct3_RNE    | FNMADD_RTZ_Q_32Q  => fct3_RTZ
-    | FNMADD_RDN_Q_32Q  => fct3_RDN    | FNMADD_RUP_Q_32Q  => fct3_RUP
-    | FNMADD_RMM_Q_32Q  => fct3_RMM    | FNMADD_DYN_Q_32Q  => fct3_DYN
-    | FADD_RNE_Q_32Q    => fct3_RNE    | FADD_RTZ_Q_32Q    => fct3_RTZ
-    | FADD_RDN_Q_32Q    => fct3_RDN    | FADD_RUP_Q_32Q    => fct3_RUP
-    | FADD_RMM_Q_32Q    => fct3_RMM    | FADD_DYN_Q_32Q    => fct3_DYN
-    | FSUB_RNE_Q_32Q    => fct3_RNE    | FSUB_RTZ_Q_32Q    => fct3_RTZ
-    | FSUB_RDN_Q_32Q    => fct3_RDN    | FSUB_RUP_Q_32Q    => fct3_RUP
-    | FSUB_RMM_Q_32Q    => fct3_RMM    | FSUB_DYN_Q_32Q    => fct3_DYN
-    | FMUL_RNE_Q_32Q    => fct3_RNE    | FMUL_RTZ_Q_32Q    => fct3_RTZ
-    | FMUL_RDN_Q_32Q    => fct3_RDN    | FMUL_RUP_Q_32Q    => fct3_RUP
-    | FMUL_RMM_Q_32Q    => fct3_RMM    | FMUL_DYN_Q_32Q    => fct3_DYN
-    | FDIV_RNE_Q_32Q    => fct3_RNE    | FDIV_RTZ_Q_32Q    => fct3_RTZ
-    | FDIV_RDN_Q_32Q    => fct3_RDN    | FDIV_RUP_Q_32Q    => fct3_RUP
-    | FDIV_RMM_Q_32Q    => fct3_RMM    | FDIV_DYN_Q_32Q    => fct3_DYN
-    | FSQRT_RNE_Q_32Q   => fct3_RNE    | FSQRT_RTZ_Q_32Q   => fct3_RTZ
-    | FSQRT_RDN_Q_32Q   => fct3_RDN    | FSQRT_RUP_Q_32Q   => fct3_RUP
-    | FSQRT_RMM_Q_32Q   => fct3_RMM    | FSQRT_DYN_Q_32Q   => fct3_DYN
-    | FSGNJ_Q_32Q       => fct3_FSGNJ  | FSGNJN_Q_32Q      => fct3_FSGNJN
-    | FSGNJX_Q_32Q      => fct3_FSGNJX | FMIN_Q_32Q        => fct3_FMIN
-    | FMAX_Q_32Q        => fct3_FMAX   | FCVT_RNE_S_Q_32Q  => fct3_RNE
-    | FCVT_RTZ_S_Q_32Q  => fct3_RTZ    | FCVT_RDN_S_Q_32Q  => fct3_RDN
-    | FCVT_RUP_S_Q_32Q  => fct3_RUP    | FCVT_RMM_S_Q_32Q  => fct3_RMM
-    | FCVT_DYN_S_Q_32Q  => fct3_DYN    | FCVT_RNE_Q_S_32Q  => fct3_RNE
-    | FCVT_RTZ_Q_S_32Q  => fct3_RTZ    | FCVT_RDN_Q_S_32Q  => fct3_RDN
-    | FCVT_RUP_Q_S_32Q  => fct3_RUP    | FCVT_RMM_Q_S_32Q  => fct3_RMM
-    | FCVT_DYN_Q_S_32Q  => fct3_DYN    | FCVT_RNE_D_Q_32Q  => fct3_RNE
-    | FCVT_RTZ_D_Q_32Q  => fct3_RTZ    | FCVT_RDN_D_Q_32Q  => fct3_RDN
-    | FCVT_RUP_D_Q_32Q  => fct3_RUP    | FCVT_RMM_D_Q_32Q  => fct3_RMM
-    | FCVT_DYN_D_Q_32Q  => fct3_DYN    | FCVT_RNE_Q_D_32Q  => fct3_RNE
-    | FCVT_RTZ_Q_D_32Q  => fct3_RTZ    | FCVT_RDN_Q_D_32Q  => fct3_RDN
-    | FCVT_RUP_Q_D_32Q  => fct3_RUP    | FCVT_RMM_Q_D_32Q  => fct3_RMM
-    | FCVT_DYN_Q_D_32Q  => fct3_DYN    | FEQ_Q_32Q         => fct3_FEQ
-    | FLT_Q_32Q         => fct3_FLT    | FLE_Q_32Q         => fct3_FLE
-    | FCLASS_Q_32Q      => fct3_FCLASS | FCVT_RNE_W_Q_32Q  => fct3_RNE
-    | FCVT_RTZ_W_Q_32Q  => fct3_RTZ    | FCVT_RDN_W_Q_32Q  => fct3_RDN
-    | FCVT_RUP_W_Q_32Q  => fct3_RUP    | FCVT_RMM_W_Q_32Q  => fct3_RMM
-    | FCVT_DYN_W_Q_32Q  => fct3_DYN    | FCVT_RNE_WU_Q_32Q => fct3_RNE
-    | FCVT_RTZ_WU_Q_32Q => fct3_RTZ    | FCVT_RDN_WU_Q_32Q => fct3_RDN
-    | FCVT_RUP_WU_Q_32Q => fct3_RUP    | FCVT_RMM_WU_Q_32Q => fct3_RMM
-    | FCVT_DYN_WU_Q_32Q => fct3_DYN    | FCVT_RNE_Q_W_32Q  => fct3_RNE
-    | FCVT_RTZ_Q_W_32Q  => fct3_RTZ    | FCVT_RDN_Q_W_32Q  => fct3_RDN
-    | FCVT_RUP_Q_W_32Q  => fct3_RUP    | FCVT_RMM_Q_W_32Q  => fct3_RMM
-    | FCVT_DYN_Q_W_32Q  => fct3_DYN    | FCVT_RNE_Q_WU_32Q => fct3_RNE
-    | FCVT_RTZ_Q_WU_32Q => fct3_RTZ    | FCVT_RDN_Q_WU_32Q => fct3_RDN
-    | FCVT_RUP_Q_WU_32Q => fct3_RUP    | FCVT_RMM_Q_WU_32Q => fct3_RMM
-    | FCVT_DYN_Q_WU_32Q => fct3_DYN
-    end
-  | RV64Q_instruction x =>
-    match x with
-    | FLQ_64Q           => fct3_LSQ    | FSQ_64Q           => fct3_LSQ
-    | FMADD_RNE_Q_64Q   => fct3_RNE    | FMADD_RTZ_Q_64Q   => fct3_RTZ
-    | FMADD_RDN_Q_64Q   => fct3_RDN    | FMADD_RUP_Q_64Q   => fct3_RUP
-    | FMADD_RMM_Q_64Q   => fct3_RMM    | FMADD_DYN_Q_64Q   => fct3_DYN
-    | FMSUB_RNE_Q_64Q   => fct3_RNE    | FMSUB_RTZ_Q_64Q   => fct3_RTZ
-    | FMSUB_RDN_Q_64Q   => fct3_RDN    | FMSUB_RUP_Q_64Q   => fct3_RUP
-    | FMSUB_RMM_Q_64Q   => fct3_RMM    | FMSUB_DYN_Q_64Q   => fct3_DYN
-    | FNMSUB_RNE_Q_64Q  => fct3_RNE    | FNMSUB_RTZ_Q_64Q  => fct3_RTZ
-    | FNMSUB_RDN_Q_64Q  => fct3_RDN    | FNMSUB_RUP_Q_64Q  => fct3_RUP
-    | FNMSUB_RMM_Q_64Q  => fct3_RMM    | FNMSUB_DYN_Q_64Q  => fct3_DYN
-    | FNMADD_RNE_Q_64Q  => fct3_RNE    | FNMADD_RTZ_Q_64Q  => fct3_RTZ
-    | FNMADD_RDN_Q_64Q  => fct3_RDN    | FNMADD_RUP_Q_64Q  => fct3_RUP
-    | FNMADD_RMM_Q_64Q  => fct3_RMM    | FNMADD_DYN_Q_64Q  => fct3_DYN
-    | FADD_RNE_Q_64Q    => fct3_RNE    | FADD_RTZ_Q_64Q    => fct3_RTZ
-    | FADD_RDN_Q_64Q    => fct3_RDN    | FADD_RUP_Q_64Q    => fct3_RUP
-    | FADD_RMM_Q_64Q    => fct3_RMM    | FADD_DYN_Q_64Q    => fct3_DYN
-    | FSUB_RNE_Q_64Q    => fct3_RNE    | FSUB_RTZ_Q_64Q    => fct3_RTZ
-    | FSUB_RDN_Q_64Q    => fct3_RDN    | FSUB_RUP_Q_64Q    => fct3_RUP
-    | FSUB_RMM_Q_64Q    => fct3_RMM    | FSUB_DYN_Q_64Q    => fct3_DYN
-    | FMUL_RNE_Q_64Q    => fct3_RNE    | FMUL_RTZ_Q_64Q    => fct3_RTZ
-    | FMUL_RDN_Q_64Q    => fct3_RDN    | FMUL_RUP_Q_64Q    => fct3_RUP
-    | FMUL_RMM_Q_64Q    => fct3_RMM    | FMUL_DYN_Q_64Q    => fct3_DYN
-    | FDIV_RNE_Q_64Q    => fct3_RNE    | FDIV_RTZ_Q_64Q    => fct3_RTZ
-    | FDIV_RDN_Q_64Q    => fct3_RDN    | FDIV_RUP_Q_64Q    => fct3_RUP
-    | FDIV_RMM_Q_64Q    => fct3_RMM    | FDIV_DYN_Q_64Q    => fct3_DYN
-    | FSQRT_RNE_Q_64Q   => fct3_RNE    | FSQRT_RTZ_Q_64Q   => fct3_RTZ
-    | FSQRT_RDN_Q_64Q   => fct3_RDN    | FSQRT_RUP_Q_64Q   => fct3_RUP
-    | FSQRT_RMM_Q_64Q   => fct3_RMM    | FSQRT_DYN_Q_64Q   => fct3_DYN
-    | FSGNJ_Q_64Q       => fct3_FSGNJ  | FSGNJN_Q_64Q      => fct3_FSGNJN
-    | FSGNJX_Q_64Q      => fct3_FSGNJX | FMIN_Q_64Q        => fct3_FMIN
-    | FMAX_Q_64Q        => fct3_FMAX   | FCVT_RNE_S_Q_64Q  => fct3_RNE
-    | FCVT_RTZ_S_Q_64Q  => fct3_RTZ    | FCVT_RDN_S_Q_64Q  => fct3_RDN
-    | FCVT_RUP_S_Q_64Q  => fct3_RUP    | FCVT_RMM_S_Q_64Q  => fct3_RMM
-    | FCVT_DYN_S_Q_64Q  => fct3_DYN    | FCVT_RNE_Q_S_64Q  => fct3_RNE
-    | FCVT_RTZ_Q_S_64Q  => fct3_RTZ    | FCVT_RDN_Q_S_64Q  => fct3_RDN
-    | FCVT_RUP_Q_S_64Q  => fct3_RUP    | FCVT_RMM_Q_S_64Q  => fct3_RMM
-    | FCVT_DYN_Q_S_64Q  => fct3_DYN    | FCVT_RNE_D_Q_64Q  => fct3_RNE
-    | FCVT_RTZ_D_Q_64Q  => fct3_RTZ    | FCVT_RDN_D_Q_64Q  => fct3_RDN
-    | FCVT_RUP_D_Q_64Q  => fct3_RUP    | FCVT_RMM_D_Q_64Q  => fct3_RMM
-    | FCVT_DYN_D_Q_64Q  => fct3_DYN    | FCVT_RNE_Q_D_64Q  => fct3_RNE
-    | FCVT_RTZ_Q_D_64Q  => fct3_RTZ    | FCVT_RDN_Q_D_64Q  => fct3_RDN
-    | FCVT_RUP_Q_D_64Q  => fct3_RUP    | FCVT_RMM_Q_D_64Q  => fct3_RMM
-    | FCVT_DYN_Q_D_64Q  => fct3_DYN    | FEQ_Q_64Q         => fct3_FEQ
-    | FLT_Q_64Q         => fct3_FLT    | FLE_Q_64Q         => fct3_FLE
-    | FCLASS_Q_64Q      => fct3_FCLASS | FCVT_RNE_W_Q_64Q  => fct3_RNE
-    | FCVT_RTZ_W_Q_64Q  => fct3_RTZ    | FCVT_RDN_W_Q_64Q  => fct3_RDN
-    | FCVT_RUP_W_Q_64Q  => fct3_RUP    | FCVT_RMM_W_Q_64Q  => fct3_RMM
-    | FCVT_DYN_W_Q_64Q  => fct3_DYN    | FCVT_RNE_WU_Q_64Q => fct3_RNE
-    | FCVT_RTZ_WU_Q_64Q => fct3_RTZ    | FCVT_RDN_WU_Q_64Q => fct3_RDN
-    | FCVT_RUP_WU_Q_64Q => fct3_RUP    | FCVT_RMM_WU_Q_64Q => fct3_RMM
-    | FCVT_DYN_WU_Q_64Q => fct3_DYN    | FCVT_RNE_Q_W_64Q  => fct3_RNE
-    | FCVT_RTZ_Q_W_64Q  => fct3_RTZ    | FCVT_RDN_Q_W_64Q  => fct3_RDN
-    | FCVT_RUP_Q_W_64Q  => fct3_RUP    | FCVT_RMM_Q_W_64Q  => fct3_RMM
-    | FCVT_DYN_Q_W_64Q  => fct3_DYN    | FCVT_RNE_Q_WU_64Q => fct3_RNE
-    | FCVT_RTZ_Q_WU_64Q => fct3_RTZ    | FCVT_RDN_Q_WU_64Q => fct3_RDN
-    | FCVT_RUP_Q_WU_64Q => fct3_RUP    | FCVT_RMM_Q_WU_64Q => fct3_RMM
-    | FCVT_DYN_Q_WU_64Q => fct3_DYN    | FCVT_RNE_L_Q_64Q  => fct3_RNE
-    | FCVT_RTZ_L_Q_64Q  => fct3_RTZ    | FCVT_RDN_L_Q_64Q  => fct3_RDN
-    | FCVT_RUP_L_Q_64Q  => fct3_RUP    | FCVT_RMM_L_Q_64Q  => fct3_RMM
-    | FCVT_DYN_L_Q_64Q  => fct3_DYN    | FCVT_RNE_LU_Q_64Q => fct3_RNE
-    | FCVT_RTZ_LU_Q_64Q => fct3_RTZ    | FCVT_RDN_LU_Q_64Q => fct3_RDN
-    | FCVT_RUP_LU_Q_64Q => fct3_RUP    | FCVT_RMM_LU_Q_64Q => fct3_RMM
-    | FCVT_DYN_LU_Q_64Q => fct3_DYN    | FCVT_RNE_Q_L_64Q  => fct3_RNE
-    | FCVT_RTZ_Q_L_64Q  => fct3_RTZ    | FCVT_RDN_Q_L_64Q  => fct3_RDN
-    | FCVT_RUP_Q_L_64Q  => fct3_RUP    | FCVT_RMM_Q_L_64Q  => fct3_RMM
-    | FCVT_DYN_Q_L_64Q  => fct3_DYN    | FCVT_RNE_Q_LU_64Q => fct3_RNE
-    | FCVT_RTZ_Q_LU_64Q => fct3_RTZ    | FCVT_RDN_Q_LU_64Q => fct3_RDN
-    | FCVT_RUP_Q_LU_64Q => fct3_RUP    | FCVT_RMM_Q_LU_64Q => fct3_RMM
-    | FCVT_DYN_Q_LU_64Q => fct3_DYN
-    end
+  match i with
+  | exist _ (RV32I_instruction LUI_32I) pf => match has_fct3_UType_implies_false (RV32I_instruction LUI_32I) pf with end
   end.
 
 Inductive fct7_type :=
@@ -2055,32 +2396,32 @@ Definition instruction_fct7 (i : instruction) :=
     end
   | RV32F_instruction x =>
     match x with
-    | FLW_32F           => 
-    | FSW_32F           => 
-    | FMADD_RNE_S_32F   => 
-    | FMADD_RTZ_S_32F   => 
-    | FMADD_RDN_S_32F   => 
-    | FMADD_RUP_S_32F   => 
-    | FMADD_RMM_S_32F   => 
-    | FMADD_DYN_S_32F   => 
-    | FMSUB_RNE_S_32F   => 
-    | FMSUB_RTZ_S_32F   => 
-    | FMSUB_RDN_S_32F   => 
-    | FMSUB_RUP_S_32F   => 
-    | FMSUB_RMM_S_32F   => 
-    | FMSUB_DYN_S_32F   => 
-    | FNMSUB_RNE_S_32F  => 
-    | FNMSUB_RTZ_S_32F  => 
-    | FNMSUB_RDN_S_32F  => 
-    | FNMSUB_RUP_S_32F  => 
-    | FNMSUB_RMM_S_32F  => 
-    | FNMSUB_DYN_S_32F  => 
-    | FNMADD_RNE_S_32F  => 
-    | FNMADD_RTZ_S_32F  => 
-    | FNMADD_RDN_S_32F  => 
-    | FNMADD_RUP_S_32F  => 
-    | FNMADD_RMM_S_32F  => 
-    | FNMADD_DYN_S_32F  => 
+    | FLW_32F           =>
+    | FSW_32F           =>
+    | FMADD_RNE_S_32F   =>
+    | FMADD_RTZ_S_32F   =>
+    | FMADD_RDN_S_32F   =>
+    | FMADD_RUP_S_32F   =>
+    | FMADD_RMM_S_32F   =>
+    | FMADD_DYN_S_32F   =>
+    | FMSUB_RNE_S_32F   =>
+    | FMSUB_RTZ_S_32F   =>
+    | FMSUB_RDN_S_32F   =>
+    | FMSUB_RUP_S_32F   =>
+    | FMSUB_RMM_S_32F   =>
+    | FMSUB_DYN_S_32F   =>
+    | FNMSUB_RNE_S_32F  =>
+    | FNMSUB_RTZ_S_32F  =>
+    | FNMSUB_RDN_S_32F  =>
+    | FNMSUB_RUP_S_32F  =>
+    | FNMSUB_RMM_S_32F  =>
+    | FNMSUB_DYN_S_32F  =>
+    | FNMADD_RNE_S_32F  =>
+    | FNMADD_RTZ_S_32F  =>
+    | FNMADD_RDN_S_32F  =>
+    | FNMADD_RUP_S_32F  =>
+    | FNMADD_RMM_S_32F  =>
+    | FNMADD_DYN_S_32F  =>
     | FADD_RNE_S_32F    => fct7_FADD_S
     | FADD_RTZ_S_32F    => fct7_FADD_S
     | FADD_RDN_S_32F    => fct7_FADD_S
@@ -2149,32 +2490,32 @@ Definition instruction_fct7 (i : instruction) :=
     end
   | RV64F_instruction x =>
     match x with
-    | FLW_32F           => 
-    | FSW_32F           => 
-    | FMADD_RNE_S_32F   => 
-    | FMADD_RTZ_S_32F   => 
-    | FMADD_RDN_S_32F   => 
-    | FMADD_RUP_S_32F   => 
-    | FMADD_RMM_S_32F   => 
-    | FMADD_DYN_S_32F   => 
-    | FMSUB_RNE_S_32F   => 
-    | FMSUB_RTZ_S_32F   => 
-    | FMSUB_RDN_S_32F   => 
-    | FMSUB_RUP_S_32F   => 
-    | FMSUB_RMM_S_32F   => 
-    | FMSUB_DYN_S_32F   => 
-    | FNMSUB_RNE_S_32F  => 
-    | FNMSUB_RTZ_S_32F  => 
-    | FNMSUB_RDN_S_32F  => 
-    | FNMSUB_RUP_S_32F  => 
-    | FNMSUB_RMM_S_32F  => 
-    | FNMSUB_DYN_S_32F  => 
-    | FNMADD_RNE_S_32F  => 
-    | FNMADD_RTZ_S_32F  => 
-    | FNMADD_RDN_S_32F  => 
-    | FNMADD_RUP_S_32F  => 
-    | FNMADD_RMM_S_32F  => 
-    | FNMADD_DYN_S_32F  => 
+    | FLW_32F           =>
+    | FSW_32F           =>
+    | FMADD_RNE_S_32F   =>
+    | FMADD_RTZ_S_32F   =>
+    | FMADD_RDN_S_32F   =>
+    | FMADD_RUP_S_32F   =>
+    | FMADD_RMM_S_32F   =>
+    | FMADD_DYN_S_32F   =>
+    | FMSUB_RNE_S_32F   =>
+    | FMSUB_RTZ_S_32F   =>
+    | FMSUB_RDN_S_32F   =>
+    | FMSUB_RUP_S_32F   =>
+    | FMSUB_RMM_S_32F   =>
+    | FMSUB_DYN_S_32F   =>
+    | FNMSUB_RNE_S_32F  =>
+    | FNMSUB_RTZ_S_32F  =>
+    | FNMSUB_RDN_S_32F  =>
+    | FNMSUB_RUP_S_32F  =>
+    | FNMSUB_RMM_S_32F  =>
+    | FNMSUB_DYN_S_32F  =>
+    | FNMADD_RNE_S_32F  =>
+    | FNMADD_RTZ_S_32F  =>
+    | FNMADD_RDN_S_32F  =>
+    | FNMADD_RUP_S_32F  =>
+    | FNMADD_RMM_S_32F  =>
+    | FNMADD_DYN_S_32F  =>
     | FADD_RNE_S_64F    => fct7_FADD_S
     | FADD_RTZ_S_64F    => fct7_FADD_S
     | FADD_RDN_S_64F    => fct7_FADD_S
@@ -2267,32 +2608,32 @@ Definition instruction_fct7 (i : instruction) :=
     end
   | RV32D_instruction x =>
     match x with
-    | FLD_32F           => 
-    | FSD_32F           => 
-    | FMADD_RNE_D_32F   => 
-    | FMADD_RTZ_D_32F   => 
-    | FMADD_RDN_D_32F   => 
-    | FMADD_RUP_D_32F   => 
-    | FMADD_RMM_D_32F   => 
-    | FMADD_DYN_D_32F   => 
-    | FMSUB_RNE_D_32F   => 
-    | FMSUB_RTZ_D_32F   => 
-    | FMSUB_RDN_D_32F   => 
-    | FMSUB_RUP_D_32F   => 
-    | FMSUB_RMM_D_32F   => 
-    | FMSUB_DYN_D_32F   => 
-    | FNMSUB_RNE_D_32F  => 
-    | FNMSUB_RTZ_D_32F  => 
-    | FNMSUB_RDN_D_32F  => 
-    | FNMSUB_RUP_D_32F  => 
-    | FNMSUB_RMM_D_32F  => 
-    | FNMSUB_DYN_D_32F  => 
-    | FNMADD_RNE_D_32F  => 
-    | FNMADD_RTZ_D_32F  => 
-    | FNMADD_RDN_D_32F  => 
-    | FNMADD_RUP_D_32F  => 
-    | FNMADD_RMM_D_32F  => 
-    | FNMADD_DYN_D_32F  => 
+    | FLD_32F           =>
+    | FSD_32F           =>
+    | FMADD_RNE_D_32F   =>
+    | FMADD_RTZ_D_32F   =>
+    | FMADD_RDN_D_32F   =>
+    | FMADD_RUP_D_32F   =>
+    | FMADD_RMM_D_32F   =>
+    | FMADD_DYN_D_32F   =>
+    | FMSUB_RNE_D_32F   =>
+    | FMSUB_RTZ_D_32F   =>
+    | FMSUB_RDN_D_32F   =>
+    | FMSUB_RUP_D_32F   =>
+    | FMSUB_RMM_D_32F   =>
+    | FMSUB_DYN_D_32F   =>
+    | FNMSUB_RNE_D_32F  =>
+    | FNMSUB_RTZ_D_32F  =>
+    | FNMSUB_RDN_D_32F  =>
+    | FNMSUB_RUP_D_32F  =>
+    | FNMSUB_RMM_D_32F  =>
+    | FNMSUB_DYN_D_32F  =>
+    | FNMADD_RNE_D_32F  =>
+    | FNMADD_RTZ_D_32F  =>
+    | FNMADD_RDN_D_32F  =>
+    | FNMADD_RUP_D_32F  =>
+    | FNMADD_RMM_D_32F  =>
+    | FNMADD_DYN_D_32F  =>
     | FADD_RNE_D_32D    => fct7_FADD_D
     | FADD_RTZ_D_32D    => fct7_FADD_D
     | FADD_RDN_D_32D    => fct7_FADD_D
@@ -2371,32 +2712,32 @@ Definition instruction_fct7 (i : instruction) :=
     end
   | RV64D_instruction x =>
     match x with
-    | FLD_32F           => 
-    | FSD_32F           => 
-    | FMADD_RNE_D_32F   => 
-    | FMADD_RTZ_D_32F   => 
-    | FMADD_RDN_D_32F   => 
-    | FMADD_RUP_D_32F   => 
-    | FMADD_RMM_D_32F   => 
-    | FMADD_DYN_D_32F   => 
-    | FMSUB_RNE_D_32F   => 
-    | FMSUB_RTZ_D_32F   => 
-    | FMSUB_RDN_D_32F   => 
-    | FMSUB_RUP_D_32F   => 
-    | FMSUB_RMM_D_32F   => 
-    | FMSUB_DYN_D_32F   => 
-    | FNMSUB_RNE_D_32F  => 
-    | FNMSUB_RTZ_D_32F  => 
-    | FNMSUB_RDN_D_32F  => 
-    | FNMSUB_RUP_D_32F  => 
-    | FNMSUB_RMM_D_32F  => 
-    | FNMSUB_DYN_D_32F  => 
-    | FNMADD_RNE_D_32F  => 
-    | FNMADD_RTZ_D_32F  => 
-    | FNMADD_RDN_D_32F  => 
-    | FNMADD_RUP_D_32F  => 
-    | FNMADD_RMM_D_32F  => 
-    | FNMADD_DYN_D_32F  => 
+    | FLD_32F           =>
+    | FSD_32F           =>
+    | FMADD_RNE_D_32F   =>
+    | FMADD_RTZ_D_32F   =>
+    | FMADD_RDN_D_32F   =>
+    | FMADD_RUP_D_32F   =>
+    | FMADD_RMM_D_32F   =>
+    | FMADD_DYN_D_32F   =>
+    | FMSUB_RNE_D_32F   =>
+    | FMSUB_RTZ_D_32F   =>
+    | FMSUB_RDN_D_32F   =>
+    | FMSUB_RUP_D_32F   =>
+    | FMSUB_RMM_D_32F   =>
+    | FMSUB_DYN_D_32F   =>
+    | FNMSUB_RNE_D_32F  =>
+    | FNMSUB_RTZ_D_32F  =>
+    | FNMSUB_RDN_D_32F  =>
+    | FNMSUB_RUP_D_32F  =>
+    | FNMSUB_RMM_D_32F  =>
+    | FNMSUB_DYN_D_32F  =>
+    | FNMADD_RNE_D_32F  =>
+    | FNMADD_RTZ_D_32F  =>
+    | FNMADD_RDN_D_32F  =>
+    | FNMADD_RUP_D_32F  =>
+    | FNMADD_RMM_D_32F  =>
+    | FNMADD_DYN_D_32F  =>
     | FADD_RNE_D_64D    => fct7_FADD_D
     | FADD_RTZ_D_64D    => fct7_FADD_D
     | FADD_RDN_D_64D    => fct7_FADD_D
@@ -2501,32 +2842,32 @@ Definition instruction_fct7 (i : instruction) :=
     end
   | RV32Q_instruction x =>
     match x with
-    | FLQ_32F           => 
-    | FSQ_32F           => 
-    | FMADD_RNE_Q_32F   => 
-    | FMADD_RTZ_Q_32F   => 
-    | FMADD_RDN_Q_32F   => 
-    | FMADD_RUP_Q_32F   => 
-    | FMADD_RMM_Q_32F   => 
-    | FMADD_DYN_Q_32F   => 
-    | FMSUB_RNE_Q_32F   => 
-    | FMSUB_RTZ_Q_32F   => 
-    | FMSUB_RDN_Q_32F   => 
-    | FMSUB_RUP_Q_32F   => 
-    | FMSUB_RMM_Q_32F   => 
-    | FMSUB_DYN_Q_32F   => 
-    | FNMSUB_RNE_Q_32F  => 
-    | FNMSUB_RTZ_Q_32F  => 
-    | FNMSUB_RDN_Q_32F  => 
-    | FNMSUB_RUP_Q_32F  => 
-    | FNMSUB_RMM_Q_32F  => 
-    | FNMSUB_DYN_Q_32F  => 
-    | FNMADD_RNE_Q_32F  => 
-    | FNMADD_RTZ_Q_32F  => 
-    | FNMADD_RDN_Q_32F  => 
-    | FNMADD_RUP_Q_32F  => 
-    | FNMADD_RMM_Q_32F  => 
-    | FNMADD_DYN_Q_32F  => 
+    | FLQ_32F           =>
+    | FSQ_32F           =>
+    | FMADD_RNE_Q_32F   =>
+    | FMADD_RTZ_Q_32F   =>
+    | FMADD_RDN_Q_32F   =>
+    | FMADD_RUP_Q_32F   =>
+    | FMADD_RMM_Q_32F   =>
+    | FMADD_DYN_Q_32F   =>
+    | FMSUB_RNE_Q_32F   =>
+    | FMSUB_RTZ_Q_32F   =>
+    | FMSUB_RDN_Q_32F   =>
+    | FMSUB_RUP_Q_32F   =>
+    | FMSUB_RMM_Q_32F   =>
+    | FMSUB_DYN_Q_32F   =>
+    | FNMSUB_RNE_Q_32F  =>
+    | FNMSUB_RTZ_Q_32F  =>
+    | FNMSUB_RDN_Q_32F  =>
+    | FNMSUB_RUP_Q_32F  =>
+    | FNMSUB_RMM_Q_32F  =>
+    | FNMSUB_DYN_Q_32F  =>
+    | FNMADD_RNE_Q_32F  =>
+    | FNMADD_RTZ_Q_32F  =>
+    | FNMADD_RDN_Q_32F  =>
+    | FNMADD_RUP_Q_32F  =>
+    | FNMADD_RMM_Q_32F  =>
+    | FNMADD_DYN_Q_32F  =>
     | FADD_RNE_Q_32Q    => fct7_FADD_Q
     | FADD_RTZ_Q_32Q    => fct7_FADD_Q
     | FADD_RDN_Q_32Q    => fct7_FADD_Q
@@ -2617,32 +2958,32 @@ Definition instruction_fct7 (i : instruction) :=
     end
   | RV64Q_instruction x =>
     match x with
-    | FLQ_32F           => 
-    | FSQ_32F           => 
-    | FMADD_RNE_Q_32F   => 
-    | FMADD_RTZ_Q_32F   => 
-    | FMADD_RDN_Q_32F   => 
-    | FMADD_RUP_Q_32F   => 
-    | FMADD_RMM_Q_32F   => 
-    | FMADD_DYN_Q_32F   => 
-    | FMSUB_RNE_Q_32F   => 
-    | FMSUB_RTZ_Q_32F   => 
-    | FMSUB_RDN_Q_32F   => 
-    | FMSUB_RUP_Q_32F   => 
-    | FMSUB_RMM_Q_32F   => 
-    | FMSUB_DYN_Q_32F   => 
-    | FNMSUB_RNE_Q_32F  => 
-    | FNMSUB_RTZ_Q_32F  => 
-    | FNMSUB_RDN_Q_32F  => 
-    | FNMSUB_RUP_Q_32F  => 
-    | FNMSUB_RMM_Q_32F  => 
-    | FNMSUB_DYN_Q_32F  => 
-    | FNMADD_RNE_Q_32F  => 
-    | FNMADD_RTZ_Q_32F  => 
-    | FNMADD_RDN_Q_32F  => 
-    | FNMADD_RUP_Q_32F  => 
-    | FNMADD_RMM_Q_32F  => 
-    | FNMADD_DYN_Q_32F  => 
+    | FLQ_32F           =>
+    | FSQ_32F           =>
+    | FMADD_RNE_Q_32F   =>
+    | FMADD_RTZ_Q_32F   =>
+    | FMADD_RDN_Q_32F   =>
+    | FMADD_RUP_Q_32F   =>
+    | FMADD_RMM_Q_32F   =>
+    | FMADD_DYN_Q_32F   =>
+    | FMSUB_RNE_Q_32F   =>
+    | FMSUB_RTZ_Q_32F   =>
+    | FMSUB_RDN_Q_32F   =>
+    | FMSUB_RUP_Q_32F   =>
+    | FMSUB_RMM_Q_32F   =>
+    | FMSUB_DYN_Q_32F   =>
+    | FNMSUB_RNE_Q_32F  =>
+    | FNMSUB_RTZ_Q_32F  =>
+    | FNMSUB_RDN_Q_32F  =>
+    | FNMSUB_RUP_Q_32F  =>
+    | FNMSUB_RMM_Q_32F  =>
+    | FNMSUB_DYN_Q_32F  =>
+    | FNMADD_RNE_Q_32F  =>
+    | FNMADD_RTZ_Q_32F  =>
+    | FNMADD_RDN_Q_32F  =>
+    | FNMADD_RUP_Q_32F  =>
+    | FNMADD_RMM_Q_32F  =>
+    | FNMADD_DYN_Q_32F  =>
     | FADD_RNE_Q_64Q    => fct7_FADD_Q
     | FADD_RTZ_Q_64Q    => fct7_FADD_Q
     | FADD_RDN_Q_64Q    => fct7_FADD_Q
