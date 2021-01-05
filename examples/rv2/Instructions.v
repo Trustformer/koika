@@ -33,8 +33,8 @@ Inductive instruction_RV32M :=
 | MUL_32M | MULH_32M | MULHSU_32M | MULHU_32M | DIV_32M | DIVU_32M | REM_32M
 | REMU_32M.
 Inductive instruction_RV64M :=
-| MUL_64M    | MULH_64M | MULHSU_64M | MULHU_64M | DIV_64M   | DIVU_64M
-| REM_64M    | REMU_64M | MULW_64M   | DIVW_64M  | DIVUW_64M | REMW_64M
+| MUL_64M | MULH_64M | MULHSU_64M | MULHU_64M | DIV_64M   | DIVU_64M
+| REM_64M | REMU_64M | MULW_64M   | DIVW_64M  | DIVUW_64M | REMW_64M
 | REMUW_64M.
 Inductive instruction_RV32A :=
 | LR_W_00_32A      | LR_W_01_32A      | LR_W_10_32A      | LR_W_11_32A
@@ -269,6 +269,8 @@ Inductive instruction :=
 | RV64D_instruction        (i : instruction_RV64D)
 | RV32Q_instruction        (i : instruction_RV32Q)
 | RV64Q_instruction        (i : instruction_RV64Q).
+
+Type instruction.
 
 Definition RV32I_instructions := [
   RV32I_instruction LUI_32I  ; RV32I_instruction AUIPC_32I ;
