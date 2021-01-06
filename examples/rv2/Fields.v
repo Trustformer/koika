@@ -2094,29 +2094,21 @@ Inductive fct7_type :=
 | fct7_ADD        | fct7_SUB        | fct7_SLL        | fct7_SLT
 | fct7_SLTU       | fct7_XOR        | fct7_SRL        | fct7_SRA
 | fct7_OR         | fct7_AND        | fct7_ADDW       | fct7_SUBW
-| fct7_SLLW       | fct7_SRLW       | fct7_SRAW       | fct7_SLLIW
-| fct7_SRLIW      | fct7_SRAIW      | fct7_MUL        | fct7_MULH
-| fct7_MULHSU     | fct7_MULHU      | fct7_DIV        | fct7_DIVU
-| fct7_REM        | fct7_REMU       | fct7_MULW       | fct7_DIVW
-| fct7_DIVUW      | fct7_REMW       | fct7_REMUW
-
-| fct7_FADD_S
-| fct7_FSUB_S     | fct7_FMUL_S     | fct7_FDIV_S     | fct7_FSQRT_S
-| fct7_FSGNJ_S    | fct7_FMIN_S     | fct7_FCVT_W_S   | fct7_FMV_X_W
-| fct7_FEQ_S      | fct7_FCLASS_S   | fct7_FCVT_S_W   | fct7_FMV_W_X
-
-| fct7_FADD_D
-| fct7_FSUB_D     | fct7_FMUL_D     | fct7_FDIV_D     | fct7_FSQRT_D
-| fct7_FSGNJ_D    | fct7_FMIN_D     | fct7_FCVT_W_D   | fct7_FMV_X_D
-| fct7_FEQ_D      | fct7_FCLASS_D   | fct7_FCVT_D_W   | fct7_FMV_D_X
-| fct7_FCVT_S_D   | fct7_FCVT_D_S   | fct7_FCVT_D_Q   | fct7_FCVT_Q_D
-
-| fct7_FADD_Q
-| fct7_FSUB_Q     | fct7_FMUL_Q     | fct7_FDIV_Q     | fct7_FSQRT_Q
-| fct7_FSGNJ_Q    | fct7_FMIN_Q     | fct7_FCVT_X_Q   | fct7_FMV_Q_W
-| fct7_FEQ_Q      | fct7_FCLASS_Q   | fct7_FCVT_Q_X   | fct7_FMV_W_Q
-| fct7_FCVT_Q_S
-
+| fct7_SLLW       | fct7_SRLW       | fct7_SRAW       | fct7_MUL
+| fct7_MULH       | fct7_MULHSU     | fct7_MULHU      | fct7_DIV
+| fct7_DIVU       | fct7_REM        | fct7_REMU       | fct7_MULW
+| fct7_DIVW       | fct7_DIVUW      | fct7_REMW       | fct7_REMUW
+| fct7_FADD_S     | fct7_FSUB_S     | fct7_FMUL_S     | fct7_FDIV_S
+| fct7_FSQRT_S    | fct7_FSGNJ_S    | fct7_FMIN_S     | fct7_FCVT_W_S
+| fct7_FMV_X_W    | fct7_FEQ_S      | fct7_FCLASS_S   | fct7_FCVT_S_W
+| fct7_FMV_W_X    | fct7_FADD_D     | fct7_FSUB_D     | fct7_FMUL_D
+| fct7_FDIV_D     | fct7_FSQRT_D    | fct7_FSGNJ_D    | fct7_FMIN_D
+| fct7_FCVT_W_D   | fct7_FMV_X_D    | fct7_FEQ_D      | fct7_FCLASS_D
+| fct7_FCVT_D_W   | fct7_FMV_D_X    | fct7_FCVT_S_D   | fct7_FCVT_D_S
+| fct7_FCVT_D_Q   | fct7_FCVT_Q_D   | fct7_FADD_Q     | fct7_FSUB_Q
+| fct7_FMUL_Q     | fct7_FDIV_Q     | fct7_FSQRT_Q    | fct7_FSGNJ_Q
+| fct7_FMIN_Q     | fct7_FCVT_X_Q   | fct7_FMV_Q_W    | fct7_FEQ_Q
+| fct7_FCLASS_Q   | fct7_FCVT_Q_X   | fct7_FMV_W_Q    | fct7_FCVT_Q_S
 | fct7_SFENCE_VMA | fct7_LR_00      | fct7_LR_01      | fct7_LR_10
 | fct7_LR_11      | fct7_SC_00      | fct7_SC_01      | fct7_SC_10
 | fct7_SC_11      | fct7_AMOSWAP_00 | fct7_AMOSWAP_01 | fct7_AMOSWAP_10
@@ -2139,59 +2131,58 @@ Definition fct7_bin (f : fct7_type) :=
   | fct7_OR         => Ob~0~0~0~0~0~0~0 | fct7_AND        => Ob~0~0~0~0~0~0~0
   | fct7_ADDW       => Ob~0~0~0~0~0~0~0 | fct7_SUBW       => Ob~0~1~0~0~0~0~0
   | fct7_SLLW       => Ob~0~0~0~0~0~0~0 | fct7_SRLW       => Ob~0~0~0~0~0~0~0
-  | fct7_SRAW       => Ob~0~1~0~0~0~0~0 | fct7_SLLIW      => Ob~0~0~0~0~0~0~0
-  | fct7_SRLIW      => Ob~0~0~0~0~0~0~0 | fct7_SRAIW      => Ob~0~1~0~0~0~0~0
-  | fct7_MUL        => Ob~0~0~0~0~0~0~1 | fct7_MULH       => Ob~0~0~0~0~0~0~1
-  | fct7_MULHSU     => Ob~0~0~0~0~0~0~1 | fct7_MULHU      => Ob~0~0~0~0~0~0~1
-  | fct7_DIV        => Ob~0~0~0~0~0~0~1 | fct7_DIVU       => Ob~0~0~0~0~0~0~1
-  | fct7_REM        => Ob~0~0~0~0~0~0~1 | fct7_REMU       => Ob~0~0~0~0~0~0~1
-  | fct7_MULW       => Ob~0~0~0~0~0~0~1 | fct7_DIVW       => Ob~0~0~0~0~0~0~1
-  | fct7_DIVUW      => Ob~0~0~0~0~0~0~1 | fct7_REMW       => Ob~0~0~0~0~0~0~1
-  | fct7_REMUW      => Ob~0~0~0~0~0~0~1 | fct7_FADD_S     => Ob~0~0~0~0~0~0~0
-  | fct7_FSUB_S     => Ob~0~0~0~0~1~0~0 | fct7_FMUL_S     => Ob~0~0~0~1~0~0~0
-  | fct7_FDIV_S     => Ob~0~0~0~1~1~0~0 | fct7_FSQRT_S    => Ob~0~1~0~1~1~0~0
-  | fct7_FSGNJ_S    => Ob~0~0~1~0~0~0~0 | fct7_FMIN_S     => Ob~0~0~1~0~1~0~0
-  | fct7_FCVT_W_S   => Ob~1~1~0~0~0~0~0 | fct7_FMV_X_W    => Ob~1~1~1~0~0~0~0
-  | fct7_FEQ_S      => Ob~1~0~1~0~0~0~0 | fct7_FCLASS_S   => Ob~1~1~1~0~0~0~0
-  | fct7_FCVT_S_W   => Ob~1~1~0~1~0~0~0 | fct7_FMV_W_X    => Ob~1~1~1~1~0~0~0
-  | fct7_FADD_D     => Ob~0~0~0~0~0~0~1 | fct7_FCVT_S_D   => Ob~0~1~0~0~0~0~0
-  | fct7_FCVT_D_S   => Ob~0~1~0~0~0~0~1 | fct7_FSUB_D     => Ob~0~0~0~0~1~0~1
-  | fct7_FMUL_D     => Ob~0~0~0~1~0~0~1 | fct7_FDIV_D     => Ob~0~0~0~1~1~0~1
-  | fct7_FSQRT_D    => Ob~0~1~0~1~1~0~1 | fct7_FSGNJ_D    => Ob~0~0~1~0~0~0~1
-  | fct7_FMIN_D     => Ob~0~0~1~0~1~0~1 | fct7_FCVT_W_D   => Ob~1~1~0~0~0~0~1
-  | fct7_FMV_X_D    => Ob~1~1~1~0~0~0~1 | fct7_FEQ_D      => Ob~1~0~1~0~0~0~1
-  | fct7_FCLASS_D   => Ob~1~1~1~0~0~0~1 | fct7_FCVT_D_W   => Ob~1~1~0~1~0~0~1
-  | fct7_FMV_D_X    => Ob~1~1~1~1~0~0~1 | fct7_FADD_Q     => Ob~0~0~0~0~0~1~1
-  | fct7_FSUB_Q     => Ob~0~0~0~0~1~1~1 | fct7_FMUL_Q     => Ob~0~0~0~1~0~1~1
-  | fct7_FDIV_Q     => Ob~0~0~0~1~1~1~1 | fct7_FSQRT_Q    => Ob~0~1~0~1~1~1~1
-  | fct7_FSGNJ_Q    => Ob~0~0~1~0~0~1~1 | fct7_FMIN_Q     => Ob~0~0~1~0~1~1~1
-  | fct7_FCVT_X_Q   => Ob~1~1~0~0~0~1~1 | fct7_FMV_Q_W    => Ob~1~1~1~0~0~1~1
-  | fct7_FEQ_Q      => Ob~1~0~1~0~0~1~1 | fct7_FCLASS_Q   => Ob~1~1~1~0~0~1~1
-  | fct7_FCVT_Q_X   => Ob~1~1~0~1~0~1~1 | fct7_FMV_W_Q    => Ob~1~1~1~1~0~1~1
-  | fct7_SFENCE_VMA => Ob~0~0~0~1~0~0~1 | fct7_LR_00      => Ob~0~0~0~1~0~0~0
-  | fct7_LR_01      => Ob~0~0~0~1~0~0~1 | fct7_LR_10      => Ob~0~0~0~1~0~1~0
-  | fct7_LR_11      => Ob~0~0~0~1~0~1~1 | fct7_SC_00      => Ob~0~0~0~1~1~0~0
-  | fct7_SC_01      => Ob~0~0~0~1~1~0~1 | fct7_SC_10      => Ob~0~0~0~1~1~1~0
-  | fct7_SC_11      => Ob~0~0~0~1~1~1~1 | fct7_AMOSWAP_00 => Ob~0~0~0~0~1~0~0
-  | fct7_AMOSWAP_01 => Ob~0~0~0~0~1~0~1 | fct7_AMOSWAP_10 => Ob~0~0~0~0~1~1~0
-  | fct7_AMOSWAP_11 => Ob~0~0~0~0~1~1~1 | fct7_AMOADD_00  => Ob~0~0~0~0~0~0~0
-  | fct7_AMOADD_01  => Ob~0~0~0~0~0~0~1 | fct7_AMOADD_10  => Ob~0~0~0~0~0~1~0
-  | fct7_AMOADD_11  => Ob~0~0~0~0~0~1~1 | fct7_AMOXOR_00  => Ob~0~0~1~0~0~0~0
-  | fct7_AMOXOR_01  => Ob~0~0~1~0~0~0~1 | fct7_AMOXOR_10  => Ob~0~0~1~0~0~1~0
-  | fct7_AMOXOR_11  => Ob~0~0~1~0~0~1~1 | fct7_AMOAND_00  => Ob~0~1~1~0~0~0~0
-  | fct7_AMOAND_01  => Ob~0~1~1~0~0~0~1 | fct7_AMOAND_10  => Ob~0~1~1~0~0~1~0
-  | fct7_AMOAND_11  => Ob~0~1~1~0~0~1~1 | fct7_AMOOR_00   => Ob~0~1~0~0~0~0~0
-  | fct7_AMOOR_01   => Ob~0~1~0~0~0~0~1 | fct7_AMOOR_10   => Ob~0~1~0~0~0~1~0
-  | fct7_AMOOR_11   => Ob~0~1~0~0~0~1~1 | fct7_AMOMIN_00  => Ob~1~0~0~0~0~0~0
-  | fct7_AMOMIN_01  => Ob~1~0~0~0~0~0~1 | fct7_AMOMIN_10  => Ob~1~0~0~0~0~1~0
-  | fct7_AMOMIN_11  => Ob~1~0~0~0~0~1~1 | fct7_AMOMAX_00  => Ob~1~0~1~0~0~0~0
-  | fct7_AMOMAX_01  => Ob~1~0~1~0~0~0~1 | fct7_AMOMAX_10  => Ob~1~0~1~0~0~1~0
-  | fct7_AMOMAX_11  => Ob~1~0~1~0~0~1~1 | fct7_AMOMINU_00 => Ob~1~1~0~0~0~0~0
-  | fct7_AMOMINU_01 => Ob~1~1~0~0~0~0~1 | fct7_AMOMINU_10 => Ob~1~1~0~0~0~1~0
-  | fct7_AMOMINU_11 => Ob~1~1~0~0~0~1~1 | fct7_AMOMAXU_00 => Ob~1~1~1~0~0~0~0
-  | fct7_AMOMAXU_01 => Ob~1~1~1~0~0~0~1 | fct7_AMOMAXU_10 => Ob~1~1~1~0~0~1~0
-  | fct7_AMOMAXU_11 => Ob~1~1~1~0~0~1~1 | fct7_FCVT_Q_S   => Ob~0~1~0~0~0~1~1
-  | fct7_FCVT_D_Q   => Ob~0~1~0~0~0~0~1 | fct7_FCVT_Q_D   => Ob~0~1~0~0~0~1~1
+  | fct7_SRAW       => Ob~0~1~0~0~0~0~0 | fct7_MUL        => Ob~0~0~0~0~0~0~1
+  | fct7_MULH       => Ob~0~0~0~0~0~0~1 | fct7_MULHSU     => Ob~0~0~0~0~0~0~1
+  | fct7_MULHU      => Ob~0~0~0~0~0~0~1 | fct7_DIV        => Ob~0~0~0~0~0~0~1
+  | fct7_DIVU       => Ob~0~0~0~0~0~0~1 | fct7_REM        => Ob~0~0~0~0~0~0~1
+  | fct7_REMU       => Ob~0~0~0~0~0~0~1 | fct7_MULW       => Ob~0~0~0~0~0~0~1
+  | fct7_DIVW       => Ob~0~0~0~0~0~0~1 | fct7_DIVUW      => Ob~0~0~0~0~0~0~1
+  | fct7_REMW       => Ob~0~0~0~0~0~0~1 | fct7_REMUW      => Ob~0~0~0~0~0~0~1
+  | fct7_FADD_S     => Ob~0~0~0~0~0~0~0 | fct7_FSUB_S     => Ob~0~0~0~0~1~0~0
+  | fct7_FMUL_S     => Ob~0~0~0~1~0~0~0 | fct7_FDIV_S     => Ob~0~0~0~1~1~0~0
+  | fct7_FSQRT_S    => Ob~0~1~0~1~1~0~0 | fct7_FSGNJ_S    => Ob~0~0~1~0~0~0~0
+  | fct7_FMIN_S     => Ob~0~0~1~0~1~0~0 | fct7_FCVT_W_S   => Ob~1~1~0~0~0~0~0
+  | fct7_FMV_X_W    => Ob~1~1~1~0~0~0~0 | fct7_FEQ_S      => Ob~1~0~1~0~0~0~0
+  | fct7_FCLASS_S   => Ob~1~1~1~0~0~0~0 | fct7_FCVT_S_W   => Ob~1~1~0~1~0~0~0
+  | fct7_FMV_W_X    => Ob~1~1~1~1~0~0~0 | fct7_FADD_D     => Ob~0~0~0~0~0~0~1
+  | fct7_FCVT_S_D   => Ob~0~1~0~0~0~0~0 | fct7_FCVT_D_S   => Ob~0~1~0~0~0~0~1
+  | fct7_FSUB_D     => Ob~0~0~0~0~1~0~1 | fct7_FMUL_D     => Ob~0~0~0~1~0~0~1
+  | fct7_FDIV_D     => Ob~0~0~0~1~1~0~1 | fct7_FSQRT_D    => Ob~0~1~0~1~1~0~1
+  | fct7_FSGNJ_D    => Ob~0~0~1~0~0~0~1 | fct7_FMIN_D     => Ob~0~0~1~0~1~0~1
+  | fct7_FCVT_W_D   => Ob~1~1~0~0~0~0~1 | fct7_FMV_X_D    => Ob~1~1~1~0~0~0~1
+  | fct7_FEQ_D      => Ob~1~0~1~0~0~0~1 | fct7_FCLASS_D   => Ob~1~1~1~0~0~0~1
+  | fct7_FCVT_D_W   => Ob~1~1~0~1~0~0~1 | fct7_FMV_D_X    => Ob~1~1~1~1~0~0~1
+  | fct7_FADD_Q     => Ob~0~0~0~0~0~1~1 | fct7_FSUB_Q     => Ob~0~0~0~0~1~1~1
+  | fct7_FMUL_Q     => Ob~0~0~0~1~0~1~1 | fct7_FDIV_Q     => Ob~0~0~0~1~1~1~1
+  | fct7_FSQRT_Q    => Ob~0~1~0~1~1~1~1 | fct7_FSGNJ_Q    => Ob~0~0~1~0~0~1~1
+  | fct7_FMIN_Q     => Ob~0~0~1~0~1~1~1 | fct7_FCVT_X_Q   => Ob~1~1~0~0~0~1~1
+  | fct7_FMV_Q_W    => Ob~1~1~1~0~0~1~1 | fct7_FEQ_Q      => Ob~1~0~1~0~0~1~1
+  | fct7_FCLASS_Q   => Ob~1~1~1~0~0~1~1 | fct7_FCVT_Q_X   => Ob~1~1~0~1~0~1~1
+  | fct7_FMV_W_Q    => Ob~1~1~1~1~0~1~1 | fct7_SFENCE_VMA => Ob~0~0~0~1~0~0~1
+  | fct7_LR_00      => Ob~0~0~0~1~0~0~0 | fct7_LR_01      => Ob~0~0~0~1~0~0~1
+  | fct7_LR_10      => Ob~0~0~0~1~0~1~0 | fct7_LR_11      => Ob~0~0~0~1~0~1~1
+  | fct7_SC_00      => Ob~0~0~0~1~1~0~0 | fct7_SC_01      => Ob~0~0~0~1~1~0~1
+  | fct7_SC_10      => Ob~0~0~0~1~1~1~0 | fct7_SC_11      => Ob~0~0~0~1~1~1~1
+  | fct7_AMOSWAP_00 => Ob~0~0~0~0~1~0~0 | fct7_AMOSWAP_01 => Ob~0~0~0~0~1~0~1
+  | fct7_AMOSWAP_10 => Ob~0~0~0~0~1~1~0 | fct7_AMOSWAP_11 => Ob~0~0~0~0~1~1~1
+  | fct7_AMOADD_00  => Ob~0~0~0~0~0~0~0 | fct7_AMOADD_01  => Ob~0~0~0~0~0~0~1
+  | fct7_AMOADD_10  => Ob~0~0~0~0~0~1~0 | fct7_AMOADD_11  => Ob~0~0~0~0~0~1~1
+  | fct7_AMOXOR_00  => Ob~0~0~1~0~0~0~0 | fct7_AMOXOR_01  => Ob~0~0~1~0~0~0~1
+  | fct7_AMOXOR_10  => Ob~0~0~1~0~0~1~0 | fct7_AMOXOR_11  => Ob~0~0~1~0~0~1~1
+  | fct7_AMOAND_00  => Ob~0~1~1~0~0~0~0 | fct7_AMOAND_01  => Ob~0~1~1~0~0~0~1
+  | fct7_AMOAND_10  => Ob~0~1~1~0~0~1~0 | fct7_AMOAND_11  => Ob~0~1~1~0~0~1~1
+  | fct7_AMOOR_00   => Ob~0~1~0~0~0~0~0 | fct7_AMOOR_01   => Ob~0~1~0~0~0~0~1
+  | fct7_AMOOR_10   => Ob~0~1~0~0~0~1~0 | fct7_AMOOR_11   => Ob~0~1~0~0~0~1~1
+  | fct7_AMOMIN_00  => Ob~1~0~0~0~0~0~0 | fct7_AMOMIN_01  => Ob~1~0~0~0~0~0~1
+  | fct7_AMOMIN_10  => Ob~1~0~0~0~0~1~0 | fct7_AMOMIN_11  => Ob~1~0~0~0~0~1~1
+  | fct7_AMOMAX_00  => Ob~1~0~1~0~0~0~0 | fct7_AMOMAX_01  => Ob~1~0~1~0~0~0~1
+  | fct7_AMOMAX_10  => Ob~1~0~1~0~0~1~0 | fct7_AMOMAX_11  => Ob~1~0~1~0~0~1~1
+  | fct7_AMOMINU_00 => Ob~1~1~0~0~0~0~0 | fct7_AMOMINU_01 => Ob~1~1~0~0~0~0~1
+  | fct7_AMOMINU_10 => Ob~1~1~0~0~0~1~0 | fct7_AMOMINU_11 => Ob~1~1~0~0~0~1~1
+  | fct7_AMOMAXU_00 => Ob~1~1~1~0~0~0~0 | fct7_AMOMAXU_01 => Ob~1~1~1~0~0~0~1
+  | fct7_AMOMAXU_10 => Ob~1~1~1~0~0~1~0 | fct7_AMOMAXU_11 => Ob~1~1~1~0~0~1~1
+  | fct7_FCVT_Q_S   => Ob~0~1~0~0~0~1~1 | fct7_FCVT_D_Q   => Ob~0~1~0~0~0~0~1
+  | fct7_FCVT_Q_D   => Ob~0~1~0~0~0~1~1
   end.
 
 Definition instruction_fct7 :
