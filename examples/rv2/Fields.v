@@ -1,4 +1,5 @@
 Require Import Koika.Frontend Koika.Std Koika.Parsing.
+
 Require Import Instructions.
 
 Inductive instruction_type :=
@@ -2899,6 +2900,18 @@ refine (fun i =>
   | _                 => fun _ => False_rec _ _
   end); try reflexivity; simpl in e; inversion e.
 Defined.
+
+Definition sample_instruction :=
+  Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0.
+
+Compute bits_t 7.
+
+Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {{
+  fun (inst : bits_t 32) : struct_t inst_field =>
+  inst[|5`d0| :+ 7]
+}}.
+
+Compute (sample_instruction [|5`d0| :+  7]).
 
 Record subfield_properties := {
   first_bit : nat;
