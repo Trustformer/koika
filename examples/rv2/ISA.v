@@ -31,7 +31,7 @@ Inductive extension :=
 
 (* Caracterization of a RISC-V implementation*)
 Record ISA := {
-  ISA_memory_model  : memory_model;
-  ISA_base_standard : base_standard;
+  ISA_memory_model  : memory_model  ;
+  ISA_base_standard : base_standard ;
   ISA_extensions    : list extension;
 }.
