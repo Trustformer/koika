@@ -1,8 +1,18 @@
-Require Import Strings.String List.
-Import ListNotations.
+(*! Definition of the instructions introduced in the RISC-V specification, as
+   well as of the instruction_name function which associates a printable name
+   to each instruction
+!*)
+
+Require Import Strings.String.
 
 Require Import ISA.
 
+(* As the semantics of instructions of the same name can vary depending on the
+   RISC-V implementation, the instructions names are appended with the
+   identifier of the module (base standard or extension) they originate from.
+   For instance, both an LUI_32I and an LUI_64I instruction are defined
+   hereafter.
+*)
 Inductive instruction :=
 | LUI_32I            | AUIPC_32I         | JAL_32I
 | JALR_32I           | BEQ_32I           | BNE_32I

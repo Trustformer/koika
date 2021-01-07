@@ -1,3 +1,8 @@
+(*! Definition of the instruction fields as defined in the RISC-V specification,
+    as well as of the values required for identifying instructions (opcode,
+    fct7, etc).
+!*)
+
 Require Import Koika.Frontend Koika.Std Koika.Parsing.
 
 Require Import Instructions.

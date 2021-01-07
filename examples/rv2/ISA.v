@@ -1,4 +1,4 @@
-(*! Definition of the elements sufficient to fully caracterize a RISC-V
+(*! Definition of the elements required to fully caracterize a RISC-V
     implementation
 !*)
 
