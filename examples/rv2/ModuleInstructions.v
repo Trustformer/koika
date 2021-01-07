@@ -1,3 +1,12 @@
+(*! Definition of the sets of instructions included by each module (base
+    standard or extension), as well as of the ISA_instructions_set function,
+    which returns the set of instructions present in a given RISC-V
+    implementation.
+!*)
+
+Require Import List.
+Import ListNotations.
+
 Require Import ISA.
 Require Import Instructions.
 
