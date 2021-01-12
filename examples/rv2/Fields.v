@@ -3035,9 +3035,86 @@ Definition example_ISA := {|
   ISA_extensions    := [];
 |}.
 
+Record type_presence := {
+  RType_present  : bool;
+  R4Type_present : bool;
+  IType_present  : bool;
+  SType_present  : bool;
+  BType_present  : bool;
+  UType_present  : bool;
+  JType_present  : bool;
+}.
+
 Definition instrs := ISA_instructions_set example_ISA.
 
+Definition add_rvm (i : ISA) :=
+  {|
+    ISA_memory_model := ISA_memory_model i;
+    ISA_base_standard := ISA_base_standard i;
+    ISA_extensions := RVM::(ISA_extensions i);
+  |}.
+
+Definition instrs_post := ISA_instructions_set (add_rvm example_ISA).
+Compute instrs.
+Compute instrs_post.
+
+Definition get_present_types (instructions : list instruction)
+: type_presence :=
+  let present_types := {|
+    RType_present  := false; R4Type_present := false; IType_present  := false;
+    SType_present  := false; BType_present  := false; UType_present  := false;
+    JType_present  := false;
+  |} in
+  fold_left (fun p i =>
+    match (get_instruction_type i) with
+    | RType => {|
+        RType_present  := true; R4Type_present := R4Type_present p;
+        IType_present  := IType_present p; SType_present  := SType_present p;
+        BType_present  := BType_present p; UType_present  := UType_present p;
+        JType_present  := JType_present p;
+      |}
+    | R4Type => {|
+        RType_present  := RType_present p; R4Type_present := true;
+        IType_present  := IType_present p; SType_present  := SType_present p;
+        BType_present  := BType_present p; UType_present  := UType_present p;
+        JType_present  := JType_present p;
+      |}
+    | IType => {|
+        RType_present  := RType_present p; R4Type_present := R4Type_present p;
+        IType_present  := true; SType_present  := SType_present p;
+        BType_present  := BType_present p; UType_present  := UType_present p;
+        JType_present  := JType_present p;
+      |}
+    | SType => {|
+        RType_present  := RType_present p; R4Type_present := R4Type_present p;
+        IType_present  := IType_present p; SType_present  := true;
+        BType_present  := BType_present p; UType_present  := UType_present p;
+        JType_present  := JType_present p;
+      |}
+    | BType => {|
+        RType_present  := RType_present p; R4Type_present := R4Type_present p;
+        IType_present  := IType_present p; SType_present  := SType_present p;
+        BType_present  := true; UType_present  := UType_present p;
+        JType_present  := JType_present p;
+      |}
+    | UType => {|
+        RType_present  := RType_present p; R4Type_present := R4Type_present p;
+        IType_present  := IType_present p; SType_present  := SType_present p;
+        BType_present  := BType_present p; UType_present  := true;
+        JType_present  := JType_present p;
+      |}
+    | JType => {|
+        RType_present  := RType_present p; R4Type_present := R4Type_present p;
+        IType_present  := IType_present p; SType_present  := SType_present p;
+        BType_present  := BType_present p; UType_present  := UType_present p;
+        JType_present  := true;
+      |}
+    end
+  ) instructions present_types.
+
+
 Compute get_instructions_types instrs.
+Compute get_present_types instrs.
 
 Record RType_struct := {
   RType
