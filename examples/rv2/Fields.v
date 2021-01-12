@@ -2911,12 +2911,17 @@ Definition sample_instruction :=
 
 Compute bits_t 7.
 
+Definition inst_field := {|
+  struct_name   := "instFields";
+  struct_fields := ("opcode", bits_t 7) :: nil;
+|}.
+
+Context {reg_t : type}.
+
 Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {{
-  fun (inst : bits_t 32) : struct_t inst_field =>
+  fun getFields (inst : bits_t 32) : bits_t 7 =>
   inst[|5`d0| :+ 7]
 }}.
-
-Compute (sample_instruction [|5`d0| :+  7]).
 
 Record subfield_properties := {
   first_bit : nat;
@@ -2929,7 +2934,7 @@ Record field_properties := {
   field_subfields : list subfield_properties
 }.
 
-Definition get_field_properties (f : instruction_field) :=
+Definition get_field_properties (f : field) :=
   match f with
   | opcode => {|
       is_sign_extended := false;
@@ -3008,15 +3013,31 @@ Definition get_field_properties (f : instruction_field) :=
     |}
   end.
 
-Definition get_field_information_quantity (f : instruction_field) :=
+Definition get_field_information_quantity (f : field) :=
   let fp := get_field_properties f in
   let sfs := field_subfields fp in
   (shift fp) + (fold_left (fun c sfp => c + length sfp) sfs 0).
 
 Record instruction_struct := {
-  identification_fields := lis
-  data_fields :=
-}
+  identification_fields : list field;
+  data_fields : list field;
+}.
+
+Definition get_instructions_types (instructions : list instruction)
+: list instruction_type :=
+  map (get_instruction_type) instructions.
+
+Require Import ISA ModuleInstructions.
+
+Definition example_ISA := {|
+  ISA_memory_model  := RVWMO;
+  ISA_base_standard := RV32I;
+  ISA_extensions    := [];
+|}.
+
+Definition instrs := ISA_instructions_set example_ISA.
+
+Compute get_instructions_types instrs.
 
 Record RType_struct := {
   RType
