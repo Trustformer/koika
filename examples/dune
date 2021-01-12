@@ -131,6 +131,18 @@ Extraction \"gcd_machine.ml\" gcd_machine.prog."))
 
 
 ;; -*- dune -*-
+(subdir "_objects/invert.v"
+ (rule (write-file "invert_extr.v"
+                   "Require Coq.extraction.Extraction examples.invert.
+Extraction \"invert.ml\" invert.prog."))
+ (coq.extraction
+  (prelude invert_extr)
+  (extracted_modules invert)
+  (theories Koika examples)
+  (flags "-w" "-overriding-logical-loadpath")))
+
+
+;; -*- dune -*-
 (subdir "_objects/method_call.v"
  (rule (write-file "method_call_extr.v"
                    "Require Coq.extraction.Extraction examples.method_call.
@@ -138,6 +150,18 @@ Extraction \"method_call.ml\" method_call.prog."))
  (coq.extraction
   (prelude method_call_extr)
   (extracted_modules method_call)
+  (theories Koika examples)
+  (flags "-w" "-overriding-logical-loadpath")))
+
+
+;; -*- dune -*-
+(subdir "_objects/nothing.v"
+ (rule (write-file "nothing_extr.v"
+                   "Require Coq.extraction.Extraction examples.nothing.
+Extraction \"nothing.ml\" nothing.prog."))
+ (coq.extraction
+  (prelude nothing_extr)
+  (extracted_modules nothing)
   (theories Koika examples)
   (flags "-w" "-overriding-logical-loadpath")))
 

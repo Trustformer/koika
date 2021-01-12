@@ -176,7 +176,6 @@ Module RV (Parameters : RVParameters).
 
   (* External functions, used to model memory *)
   Inductive memory := imem | dmem.
-
 End RV.
 
 Module Type Core.
