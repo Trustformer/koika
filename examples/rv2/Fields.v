@@ -2906,6 +2906,8 @@ refine (fun i =>
   end); try reflexivity; simpl in e; inversion e.
 Defined.
 
+(* TODO, cleanup, rename functions *)
+
 Definition sample_instruction :=
   Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0.
 
@@ -3036,147 +3038,140 @@ Definition example_ISA := {|
 |}.
 
 Record type_presence := {
-  RType_present  : bool;
-  R4Type_present : bool;
-  IType_present  : bool;
-  SType_present  : bool;
-  BType_present  : bool;
-  UType_present  : bool;
-  JType_present  : bool;
+  RType_present : bool; R4Type_present : bool; IType_present : bool;
+  SType_present : bool; BType_present  : bool; UType_present : bool;
+  JType_present : bool;
 }.
 
 Definition instrs := ISA_instructions_set example_ISA.
 
-Definition add_rvm (i : ISA) :=
-  {|
-    ISA_memory_model := ISA_memory_model i;
-    ISA_base_standard := ISA_base_standard i;
-    ISA_extensions := RVM::(ISA_extensions i);
-  |}.
-
-Definition instrs_post := ISA_instructions_set (add_rvm example_ISA).
-Compute instrs.
-Compute instrs_post.
-
 Definition get_present_types (instructions : list instruction)
 : type_presence :=
   let present_types := {|
-    RType_present  := false; R4Type_present := false; IType_present  := false;
-    SType_present  := false; BType_present  := false; UType_present  := false;
-    JType_present  := false;
+    RType_present := false; R4Type_present := false; IType_present := false;
+    SType_present := false; BType_present  := false; UType_present := false;
+    JType_present := false;
   |} in
   fold_left (fun p i =>
     match (get_instruction_type i) with
     | RType => {|
-        RType_present  := true; R4Type_present := R4Type_present p;
-        IType_present  := IType_present p; SType_present  := SType_present p;
-        BType_present  := BType_present p; UType_present  := UType_present p;
-        JType_present  := JType_present p;
+        RType_present := true           ; R4Type_present := R4Type_present p;
+        IType_present := IType_present p; SType_present  := SType_present  p;
+        BType_present := BType_present p; UType_present  := UType_present  p;
+        JType_present := JType_present p;
       |}
     | R4Type => {|
-        RType_present  := RType_present p; R4Type_present := true;
-        IType_present  := IType_present p; SType_present  := SType_present p;
-        BType_present  := BType_present p; UType_present  := UType_present p;
-        JType_present  := JType_present p;
+        RType_present := RType_present p; R4Type_present := true;
+        IType_present := IType_present p; SType_present  := SType_present p;
+        BType_present := BType_present p; UType_present  := UType_present p;
+        JType_present := JType_present p;
       |}
     | IType => {|
-        RType_present  := RType_present p; R4Type_present := R4Type_present p;
-        IType_present  := true; SType_present  := SType_present p;
-        BType_present  := BType_present p; UType_present  := UType_present p;
-        JType_present  := JType_present p;
+        RType_present := RType_present p; R4Type_present := R4Type_present p;
+        IType_present := true           ; SType_present  := SType_present  p;
+        BType_present := BType_present p; UType_present  := UType_present  p;
+        JType_present := JType_present p;
       |}
     | SType => {|
-        RType_present  := RType_present p; R4Type_present := R4Type_present p;
-        IType_present  := IType_present p; SType_present  := true;
-        BType_present  := BType_present p; UType_present  := UType_present p;
-        JType_present  := JType_present p;
+        RType_present := RType_present p; R4Type_present := R4Type_present p;
+        IType_present := IType_present p; SType_present  := true;
+        BType_present := BType_present p; UType_present  := UType_present  p;
+        JType_present := JType_present p;
       |}
     | BType => {|
-        RType_present  := RType_present p; R4Type_present := R4Type_present p;
-        IType_present  := IType_present p; SType_present  := SType_present p;
-        BType_present  := true; UType_present  := UType_present p;
-        JType_present  := JType_present p;
+        RType_present := RType_present p; R4Type_present := R4Type_present p;
+        IType_present := IType_present p; SType_present  := SType_present  p;
+        BType_present := true           ; UType_present  := UType_present  p;
+        JType_present := JType_present p;
       |}
     | UType => {|
-        RType_present  := RType_present p; R4Type_present := R4Type_present p;
-        IType_present  := IType_present p; SType_present  := SType_present p;
-        BType_present  := BType_present p; UType_present  := true;
-        JType_present  := JType_present p;
+        RType_present := RType_present p; R4Type_present := R4Type_present p;
+        IType_present := IType_present p; SType_present  := SType_present  p;
+        BType_present := BType_present p; UType_present  := true;
+        JType_present := JType_present p;
       |}
     | JType => {|
-        RType_present  := RType_present p; R4Type_present := R4Type_present p;
-        IType_present  := IType_present p; SType_present  := SType_present p;
-        BType_present  := BType_present p; UType_present  := UType_present p;
-        JType_present  := true;
+        RType_present := RType_present p; R4Type_present := R4Type_present p;
+        IType_present := IType_present p; SType_present  := SType_present  p;
+        BType_present := BType_present p; UType_present  := UType_present  p;
+        JType_present := true;
       |}
     end
   ) instructions present_types.
 
+Record field_presence := {
+  opcode_present : bool; fct2_present : bool; fct3_present : bool;
+  fct7_present   : bool; rs1_present  : bool; rs2_present  : bool;
+  rs3_present    : bool; rd_present   : bool; immI_present : bool;
+  immS_present   : bool; immB_present : bool; immU_present : bool;
+  immJ_present   : bool;
+}.
 
+Definition get_present_fields_type (type : instruction_type) : field_presence :=
+  {|
+    opcode_present := has_opcode type; fct2_present := has_fct2 type;
+    fct3_present   := has_fct3   type; fct7_present := has_fct7 type;
+    rs1_present    := has_rs1    type; rs2_present  := has_rs2  type;
+    rs3_present    := has_rs3    type; rd_present   := has_rd   type;
+    immI_present   := has_immI   type; immS_present := has_immS type;
+    immB_present   := has_immB   type; immU_present := has_immU type;
+    immJ_present   := has_immJ   type;
+  |}.
+
+Definition merge_fields_presence (fp1 fp2 : field_presence) : field_presence :=
+  {|
+    opcode_present := opcode_present fp1 || opcode_present fp2;
+    fct2_present   := fct2_present   fp1 || fct2_present   fp2;
+    fct3_present   := fct3_present   fp1 || fct3_present   fp2;
+    fct7_present   := fct7_present   fp1 || fct7_present   fp2;
+    rs1_present    := rs1_present    fp1 || rs1_present    fp2;
+    rs2_present    := rs2_present    fp1 || rs2_present    fp2;
+    rs3_present    := rs3_present    fp1 || rs3_present    fp2;
+    rd_present     := rd_present     fp1 || rd_present     fp2;
+    immI_present   := immI_present   fp1 || immI_present   fp2;
+    immS_present   := immS_present   fp1 || immS_present   fp2;
+    immB_present   := immB_present   fp1 || immB_present   fp2;
+    immU_present   := immU_present   fp1 || immU_present   fp2;
+    immJ_present   := immJ_present   fp1 || immJ_present   fp2;
+  |}.
+
+Definition get_type (present_types : type_presence) (t : instruction_type)
+: option instruction_type :=
+  match t with
+  | RType  => if (RType_present  present_types) then Some RType  else None
+  | R4Type => if (R4Type_present present_types) then Some R4Type else None
+  | IType  => if (IType_present  present_types) then Some IType  else None
+  | SType  => if (SType_present  present_types) then Some SType  else None
+  | BType  => if (BType_present  present_types) then Some BType  else None
+  | UType  => if (UType_present  present_types) then Some UType  else None
+  | JType  => if (JType_present  present_types) then Some JType  else None
+  end.
+
+Definition get_types_list (present_types : type_presence)
+: list instruction_type :=
+  let all_types := RType::R4Type::IType::SType::BType::UType::JType::[] in
+  let after := map (get_type present_types) all_types in
+  fold_left (fun p t =>
+    match t with
+    | Some x => x::p
+    | None => p
+    end
+  ) after [].
+
+Definition get_present_fields_ISA (instructions : list instruction)
+: (field_presence) :=
+  let present_types_list := get_types_list (get_present_types instructions) in
+  let no_fields := {|
+    opcode_present := false; fct2_present := false; fct3_present := false;
+    fct7_present   := false; rs1_present  := false; rs2_present  := false;
+    rs3_present    := false; rd_present   := false; immI_present := false;
+    immS_present   := false; immB_present := false; immU_present := false;
+    immJ_present   := false;
+  |} in
+  fold_left
+    (fun p t => merge_fields_presence p (get_present_fields_type t))
+    present_types_list no_fields.
+
+Compute get_present_fields_ISA instrs.
 Compute get_instructions_types instrs.
 Compute get_present_types instrs.
-
-Record RType_struct := {
-  RType
-  RType_opcode : bits_t (get_field_information_quantity opcode);
-  RType_rd     : bits_t (get_field_information_quantity rd    );
-  RType_fct3   : bits_t (get_field_information_quantity fct3  );
-  RType_rs1    : bits_t (get_field_information_quantity rs1   );
-  RType_rs2    : bits_t (get_field_information_quantity rs2   );
-  RType_fct7   : bits_t (get_field_information_quantity fct7  )
-}.
-
-Record R4Type_struct := {
-  R4Type_opcode : bits_t (get_field_information_quantity opcode);
-  R4Type_rd     : bits_t (get_field_information_quantity rd    );
-  R4Type_fct3   : bits_t (get_field_information_quantity fct3  );
-  R4Type_rs1    : bits_t (get_field_information_quantity rs1   );
-  R4Type_rs2    : bits_t (get_field_information_quantity rs2   );
-  R4Type_fct2   : bits_t (get_field_information_quantity fct2  );
-  R4Type_rs3    : bits_t (get_field_information_quantity rs3   )
-}.
-
-Record IType_struct := {
-  IType_opcode : bits_t (get_field_information_quantity opcode);
-  IType_rd     : bits_t (get_field_information_quantity rd    );
-  IType_fct3   : bits_t (get_field_information_quantity fct3  );
-  IType_rs1    : bits_t (get_field_information_quantity rs1   );
-  IType_immI   : bits_t (get_field_information_quantity immI  )
-}.
-
-Record SType_struct := {
-  SType_opcode : bits_t (get_field_information_quantity opcode);
-  SType_immS   : bits_t (get_field_information_quantity immS  );
-  SType_fct3   : bits_t (get_field_information_quantity fct3  );
-  SType_rs1    : bits_t (get_field_information_quantity rs1   );
-  SType_rs2    : bits_t (get_field_information_quantity rs2   )
-}.
-
-Record BType_struct := {
-  BType_opcode : bits_t (get_field_information_quantity opcode);
-  BType_immB   : bits_t (get_field_information_quantity immB  );
-  BType_fct3   : bits_t (get_field_information_quantity fct3  );
-  BType_rs1    : bits_t (get_field_information_quantity rs1   );
-  BType_rs2    : bits_t (get_field_information_quantity rs2   )
-}.
-
-Record UType_struct := {
-  UType_opcode : bits_t (get_field_information_quantity opcode);
-  UType_rd     : bits_t (get_field_information_quantity rd    );
-  UType_immU   : bits_t (get_field_information_quantity immU  )
-}.
-
-Record JType_struct := {
-  JType_opcode : bits_t (get_field_information_quantity opcode);
-  JType_rd     : bits_t (get_field_information_quantity rd    );
-  JType_immJ   : bits_t (get_field_information_quantity immJ  )
-}.
-
-Inductive instruction_struct :=
-| RTypeStruct  (s : RType_struct )
-| R4TypeStruct (s : R4Type_struct)
-| ITypeStruct  (s : IType_struct )
-| STypeStruct  (s : SType_struct )
-| BTypeStruct  (s : BType_struct )
-| UTypeStruct  (s : UType_struct )
-| JTypeStruct  (s : JType_struct ).
