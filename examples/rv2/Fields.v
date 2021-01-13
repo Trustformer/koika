@@ -2913,18 +2913,6 @@ Definition sample_instruction :=
 
 Compute bits_t 7.
 
-Definition inst_field := {|
-  struct_name   := "instFields";
-  struct_fields := ("opcode", bits_t 7) :: nil;
-|}.
-
-Context {reg_t : type}.
-
-Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {{
-  fun getFields (inst : bits_t 32) : bits_t 7 =>
-  inst[|5`d0| :+ 7]
-}}.
-
 Record subfield_properties := {
   first_bit : nat;
   length : nat
@@ -3138,13 +3126,13 @@ Definition merge_fields_presence (fp1 fp2 : field_presence) : field_presence :=
 Definition get_type (present_types : type_presence) (t : instruction_type)
 : option instruction_type :=
   match t with
-  | RType  => if (RType_present  present_types) then Some RType  else None
-  | R4Type => if (R4Type_present present_types) then Some R4Type else None
-  | IType  => if (IType_present  present_types) then Some IType  else None
-  | SType  => if (SType_present  present_types) then Some SType  else None
-  | BType  => if (BType_present  present_types) then Some BType  else None
-  | UType  => if (UType_present  present_types) then Some UType  else None
-  | JType  => if (JType_present  present_types) then Some JType  else None
+  | RType  => if (RType_present  present_types) then Some t else None
+  | R4Type => if (R4Type_present present_types) then Some t else None
+  | IType  => if (IType_present  present_types) then Some t else None
+  | SType  => if (SType_present  present_types) then Some t else None
+  | BType  => if (BType_present  present_types) then Some t else None
+  | UType  => if (UType_present  present_types) then Some t else None
+  | JType  => if (JType_present  present_types) then Some t else None
   end.
 
 Definition get_types_list (present_types : type_presence)
@@ -3154,6 +3142,37 @@ Definition get_types_list (present_types : type_presence)
   fold_left (fun p t =>
     match t with
     | Some x => x::p
+    | None => p
+    end
+  ) after [].
+
+Definition get_field (present_fields : field_presence) (f : field)
+: option field :=
+  match f with
+  | opcode => if (opcode_present present_fields) then Some f else None
+  | fct2   => if (fct2_present   present_fields) then Some f else None
+  | fct3   => if (fct3_present   present_fields) then Some f else None
+  | fct7   => if (fct7_present   present_fields) then Some f else None
+  | rs1    => if (rs1_present    present_fields) then Some f else None
+  | rs2    => if (rs2_present    present_fields) then Some f else None
+  | rs3    => if (rs3_present    present_fields) then Some f else None
+  | rd     => if (rd_present     present_fields) then Some f else None
+  | immI   => if (immI_present   present_fields) then Some f else None
+  | immS   => if (immS_present   present_fields) then Some f else None
+  | immB   => if (immB_present   present_fields) then Some f else None
+  | immU   => if (immU_present   present_fields) then Some f else None
+  | immJ   => if (immJ_present   present_fields) then Some f else None
+  end.
+
+Definition get_fields_list (present_fields : field_presence) : list field :=
+  let all_fields :=
+    opcode::fct2::fct3::fct7::rs1::rs2::rs3::rd::immI::immS::immB::immU::immJ::
+    []
+  in
+  let after := map (get_field present_fields) all_fields in
+  fold_left (fun p f =>
+    match f with
+    | Some f => f::p
     | None => p
     end
   ) after [].
@@ -3171,6 +3190,60 @@ Definition get_present_fields_ISA (instructions : list instruction)
   fold_left
     (fun p t => merge_fields_presence p (get_present_fields_type t))
     present_types_list no_fields.
+
+Definition get_field_name (f : field) :=
+  match f with
+  | opcode => "opcode" | fct2   => "fct2" | fct3   => "fct3" | fct7   => "fct7"
+  | rs1    => "rs1"    | rs2    => "rs2"  | rs3    => "rs3"  | rd     => "rd"
+  | immI   => "immI"   | immS   => "immS" | immB   => "immB" | immU   => "immU"
+  | immJ   => "immJ"
+  end.
+
+Compute get_fields_list (get_present_fields_ISA instrs).
+
+Definition get_fields_formatted_for_struct (instrs : list instruction) :=
+  fold_left (fun l f =>
+      (get_field_name f, bits_t (get_field_information_quantity f))::l
+    ) (get_fields_list (get_present_fields_ISA instrs)) [].
+
+Definition get_inst_field (instrs : list instruction) :=
+  let present_fields := get_present_fields_ISA instrs in
+{|
+  struct_name   := "instFields";
+  struct_fields := get_fields_formatted_for_struct instrs;
+|}.
+
+Definition inst_field := get_inst_field instrs.
+Compute inst_field.
+
+Context {reg_t : Type}.
+Definition getFields : UInternalFunction reg_t empty_ext_fn_t :=
+  {{
+  fun getFields (inst : bits_t 32) : struct_t inst_field =>
+    struct inst_field {
+      opcode := inst[|5`d0|  :+ 7];
+      funct3 := inst[|5`d12| :+ 3];
+      funct7 := inst[|5`d25| :+ 7];
+      funct5 := inst[|5`d27| :+ 5];
+      funct2 := inst[|5`d25| :+ 2];
+      rd     := inst[|5`d7|  :+ 5];
+      rs1    := inst[|5`d15| :+ 5];
+      rs2    := inst[|5`d20| :+ 5];
+      rs3    := inst[|5`d27| :+ 5];
+      immI   := {signExtend 12 20}(inst[|5`d20| :+ 12]);
+      immS   := {signExtend 12 20}(inst[|5`d25| :+ 7] ++ inst[|5`d7| :+ 5]);
+      immB   := {signExtend 13 19}(
+        inst[|5`d31|] ++ inst[|5`d7|] ++ inst[|5`d25| :+ 6]
+        ++ inst[|5`d8| :+ 4] ++ |1`d0|
+      );
+      immU := (inst[|5`d12| :+ 20] ++ |12`d0|);
+      immJ := {signExtend 21 11}(
+        inst[|5`d31|] ++ inst[|5`d12| :+ 8] ++ inst[|5`d20|]
+        ++ inst[|5`d21| :+ 10] ++ |1`d0|
+      );
+      csr := (inst[|5`d20| :+ 12])
+    }
+}}.
 
 Compute get_present_fields_ISA instrs.
 Compute get_instructions_types instrs.
