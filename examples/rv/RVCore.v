@@ -1,6 +1,7 @@
 (*! Implementation of our RISC-V core !*)
 
 Require Import Coq.Lists.List.
+Import ListNotations.
 
 Require Import Koika.Frontend.
 Require Import Koika.Std.
@@ -20,10 +21,14 @@ Require Import rv.InstructionsFct7.
 Require Import rv.InstructionsOpcodes.
 Require Import rv.StructsBuilding.
 
+Definition rv32i_ISA : ISA := {|
+  ISA_memory_model  := RVWMO;
+  ISA_base_standard := RV32I;
+  ISA_extensions    := [];
+|}.
+
 Section RVHelpers.
   Context {reg_t: Type}.
-
-  Import ListNotations.
 
   Definition imm_type := {|
     enum_name        := "immType";
@@ -38,15 +43,7 @@ Section RVHelpers.
       :: ("immediateType", maybe (enum_t imm_type)) :: nil
   |}.
 
-  Definition inst_field := {|
-    struct_name   := "instFields";
-    struct_fields := ("opcode", bits_t 7) :: ("funct3", bits_t 3)
-      :: ("funct7", bits_t 7) :: ("funct5", bits_t 5) :: ("funct2", bits_t 2)
-      :: ("rd", bits_t 5) :: ("rs1", bits_t 5) :: ("rs2", bits_t 5)
-      :: ("rs3", bits_t 5) :: ("immI", bits_t 32) :: ("immS", bits_t 32)
-      :: ("immB", bits_t 32) :: ("immU", bits_t 32) :: ("immJ", bits_t 32)
-      :: ("csr", bits_t 12) :: nil
-  |}.
+  Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
 
   Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {{
     fun getFields (inst : bits_t 32) : struct_t inst_field =>
@@ -54,12 +51,9 @@ Section RVHelpers.
         opcode := inst[|5`d0|  :+ 7];
         funct3 := inst[|5`d12| :+ 3];
         funct7 := inst[|5`d25| :+ 7];
-        funct5 := inst[|5`d27| :+ 5];
-        funct2 := inst[|5`d25| :+ 2];
         rd     := inst[|5`d7|  :+ 5];
         rs1    := inst[|5`d15| :+ 5];
         rs2    := inst[|5`d20| :+ 5];
-        rs3    := inst[|5`d27| :+ 5];
         immI   := {signExtend 12 20}(inst[|5`d20| :+ 12]);
         immS   := {signExtend 12 20}(inst[|5`d25| :+ 7] ++ inst[|5`d7| :+ 5]);
         immB   := {signExtend 13 19}(
@@ -70,8 +64,7 @@ Section RVHelpers.
         immJ := {signExtend 21 11}(
           inst[|5`d31|] ++ inst[|5`d12| :+ 8] ++ inst[|5`d20|]
           ++ inst[|5`d21| :+ 10] ++ |1`d0|
-        );
-        csr := (inst[|5`d20| :+ 12])
+        )
       }
   }}.
 

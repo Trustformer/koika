@@ -7,8 +7,9 @@ Require Import rv.ISA rv.Instructions rv.ModuleInstructions rv.IFields rv.ITypes
 
 Definition get_i_field_information_quantity (f : i_field) :=
   let fp := get_i_field_properties f in
+  if (is_sign_extended fp) then 32 else
   let sfs := i_field_subfields fp in
-  (shift fp) + (fold_left (fun c sfp => c + length sfp) sfs 0).
+  (shift fp) + (fold_left (fun c sfp => c + length sfp) sfs 0) .
 
 Definition get_i_fields_formatted_for_struct (instrs : list instruction) :=
   fold_left (fun l f =>
