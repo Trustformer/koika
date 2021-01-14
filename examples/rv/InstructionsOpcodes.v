@@ -1,5 +1,5 @@
 Require Import Koika.Frontend.
-Require Import Instructions IFields ITypes.
+Require Import rv.Instructions rv.IFields rv.ITypes.
 
 Inductive opcode_name :=
 | opc_OP     | opc_JALR   | opc_LOAD      | opc_OP_IMM | opc_MISC_MEM

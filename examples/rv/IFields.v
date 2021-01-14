@@ -1,7 +1,7 @@
 Require Import List Strings.String.
 Import ListNotations.
 
-Require Import ITypes.
+Require Import rv.ITypes.
 
 Inductive i_field :=
 | opcode | fct2 | fct3 | fct7 | rs1 | rs2 | rs3 | rd | immI | immS | immB | immU

@@ -5,7 +5,7 @@
 
 Require Import Strings.String.
 
-Require Import ISA.
+Require Import rv.ISA.
 
 (* As the semantics of instructions of the same name can vary depending on the
    RISC-V implementation, the instructions names are appended with the

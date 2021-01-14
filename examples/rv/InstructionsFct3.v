@@ -1,5 +1,5 @@
 Require Import Koika.Frontend.
-Require Import Instructions IFields ITypes.
+Require Import rv.Instructions rv.IFields rv.ITypes.
 
 Inductive fct3_type :=
 | fct3_ADD    | fct3_SUB    | fct3_SLL     | fct3_SLT    | fct3_SLTU
