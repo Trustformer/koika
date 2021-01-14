@@ -9,7 +9,6 @@ Require Import rv.Multiplier.
 Require Import rv.RVEncoding.
 Require Import rv.Scoreboard.
 
-
 Section RVHelpers.
   Context {reg_t: Type}.
 
