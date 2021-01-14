@@ -1,7 +1,7 @@
 Require Import List.
 Import ListNotations.
 
-Require Import Instructions IFields ITypes.
+Require Import rv.Instructions rv.IFields rv.ITypes.
 
 (* Types for efficiently tracking the presence of elements *)
 Record present_i_types := {

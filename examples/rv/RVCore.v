@@ -9,6 +9,17 @@ Require Import rv.Multiplier.
 Require Import rv.RVEncoding.
 Require Import rv.Scoreboard.
 
+Require Import rv.ISA.
+Require Import rv.Instructions.
+Require Import rv.ITypes.
+Require Import rv.IFields.
+Require Import rv.InstructionsProperties.
+Require Import rv.ModuleInstructions.
+Require Import rv.InstructionsFct3.
+Require Import rv.InstructionsFct7.
+Require Import rv.InstructionsOpcodes.
+Require Import rv.StructsBuilding.
+
 Section RVHelpers.
   Context {reg_t: Type}.
 
