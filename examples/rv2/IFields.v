@@ -1,4 +1,4 @@
-Require Import List.
+Require Import List Strings.String.
 Import ListNotations.
 
 Require Import ITypes.
@@ -6,6 +6,14 @@ Require Import ITypes.
 Inductive i_field :=
 | opcode | fct2 | fct3 | fct7 | rs1 | rs2 | rs3 | rd | immI | immS | immB | immU
 | immJ.
+
+Definition get_i_field_name (f : i_field) : string :=
+  match f with
+  | opcode => "opcode" | fct2   => "fct2" | fct3   => "fct3" | fct7   => "fct7"
+  | rs1    => "rs1"    | rs2    => "rs2"  | rs3    => "rs3"  | rd     => "rd"
+  | immI   => "immI"   | immS   => "immS" | immB   => "immB" | immU   => "immU"
+  | immJ   => "immJ"
+  end.
 
 Definition has_opcode (t : i_type) :=
   match t with
