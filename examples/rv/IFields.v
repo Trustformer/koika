@@ -9,9 +9,10 @@ Inductive i_field :=
 
 Definition get_i_field_name (f : i_field) : string :=
   match f with
-  | opcode => "opcode" | fct2   => "fct2" | fct3   => "fct3" | fct7   => "fct7"
-  | rs1    => "rs1"    | rs2    => "rs2"  | rs3    => "rs3"  | rd     => "rd"
-  | immI   => "immI"   | immS   => "immS" | immB   => "immB" | immU   => "immU"
+  | opcode => "opcode" | fct2 => "funct2" | fct3 => "funct3"
+  | fct7   => "funct7" | rs1  => "rs1"    | rs2  => "rs2" 
+  | rs3    => "rs3"    | rd   => "rd"     | immI => "immI"
+  | immS   => "immS"   | immB => "immB"   | immU => "immU"
   | immJ   => "immJ"
   end.
 
