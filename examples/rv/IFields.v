@@ -10,7 +10,7 @@ Inductive i_field :=
 Definition get_i_field_name (f : i_field) : string :=
   match f with
   | opcode => "opcode" | fct2 => "funct2" | fct3 => "funct3"
-  | fct7   => "funct7" | rs1  => "rs1"    | rs2  => "rs2" 
+  | fct7   => "funct7" | rs1  => "rs1"    | rs2  => "rs2"
   | rs3    => "rs3"    | rd   => "rd"     | immI => "immI"
   | immS   => "immS"   | immB => "immB"   | immU => "immU"
   | immJ   => "immJ"
@@ -94,9 +94,11 @@ Definition has_immJ (t : i_type) :=
   | BType => false | UType  => false | JType => true
   end.
 
+Require Import NArith.BinNat.
+
 Record subfield_properties := {
-  first_bit : nat;
-  length : nat
+  first_bit : N;
+  subfield_length : nat
 }.
 
 Record i_field_properties := {
@@ -110,77 +112,77 @@ Definition get_i_field_properties (f : i_field) :=
   | opcode => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 0 ; length := 7 |}::[]
+      i_field_subfields := {| first_bit := 0 ; subfield_length := 7 |}::[]
     |}
   | rd     => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 7 ; length := 5 |}::[]
+      i_field_subfields := {| first_bit := 7 ; subfield_length := 5 |}::[]
     |}
   | rs1    => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 15; length := 5 |}::[]
+      i_field_subfields := {| first_bit := 15; subfield_length := 5 |}::[]
     |}
   | rs2    => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 20; length := 5 |}::[]
+      i_field_subfields := {| first_bit := 20; subfield_length := 5 |}::[]
     |}
   | rs3    => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 27; length := 5 |}::[]
+      i_field_subfields := {| first_bit := 27; subfield_length := 5 |}::[]
     |}
   | fct2 => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 25; length := 2 |}::[]
+      i_field_subfields := {| first_bit := 25; subfield_length := 2 |}::[]
     |}
   | fct3 => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 12; length := 3 |}::[]
+      i_field_subfields := {| first_bit := 12; subfield_length := 3 |}::[]
     |}
   | fct7 => {|
       is_sign_extended  := false;
       shift             := 0;
-      i_field_subfields := {| first_bit := 25; length := 7 |}::[]
+      i_field_subfields := {| first_bit := 25; subfield_length := 7 |}::[]
     |}
   | immI   => {|
       is_sign_extended  := true;
       shift             := 0;
-      i_field_subfields := {| first_bit := 20; length := 12 |}::[]
+      i_field_subfields := {| first_bit := 20; subfield_length := 12 |}::[]
     |}
   | immS   => {|
       is_sign_extended  := true;
       shift             := 0;
       i_field_subfields :=
-        {| first_bit := 25; length := 7 |}::
-        {| first_bit := 7 ; length := 5 |}::[]
+        {| first_bit := 25; subfield_length := 7 |}::
+        {| first_bit := 7 ; subfield_length := 5 |}::[]
     |}
   | immB   => {|
       is_sign_extended  := true;
       shift             := 1;
       i_field_subfields :=
-        {| first_bit := 31; length := 1 |}::
-        {| first_bit := 7 ; length := 1 |}::
-        {| first_bit := 25; length := 6 |}::
-        {| first_bit := 8 ; length := 4 |}::[]
+        {| first_bit := 31; subfield_length := 1 |}::
+        {| first_bit := 7 ; subfield_length := 1 |}::
+        {| first_bit := 25; subfield_length := 6 |}::
+        {| first_bit := 8 ; subfield_length := 4 |}::[]
     |}
   | immU   => {|
-      is_sign_extended := false;
-      shift            := 12;
-      i_field_subfields  := {| first_bit := 12; length := 20 |}::[];
+      is_sign_extended  := false;
+      shift             := 12;
+      i_field_subfields := {| first_bit := 12; subfield_length := 20 |}::[];
     |}
   | immJ   => {|
-      is_sign_extended := true;
-      shift            := 1;
-      i_field_subfields  :=
-        {| first_bit := 31; length := 1  |}::
-        {| first_bit := 12; length := 8  |}::
-        {| first_bit := 20; length := 1  |}::
-        {| first_bit := 21; length := 10 |}::[]
+      is_sign_extended  := true;
+      shift             := 1;
+      i_field_subfields :=
+        {| first_bit := 31; subfield_length := 1  |}::
+        {| first_bit := 12; subfield_length := 8  |}::
+        {| first_bit := 20; subfield_length := 1  |}::
+        {| first_bit := 21; subfield_length := 10 |}::[]
     |}
   end.
 

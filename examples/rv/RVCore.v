@@ -48,25 +48,26 @@ Section RVHelpers.
   Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {{
     fun getFields (inst : bits_t 32) : struct_t inst_field =>
       struct inst_field {
-        opcode := inst[|5`d0|  :+ 7];
-        funct3 := inst[|5`d12| :+ 3];
-        funct7 := inst[|5`d25| :+ 7];
-        rd     := inst[|5`d7|  :+ 5];
-        rs1    := inst[|5`d15| :+ 5];
-        rs2    := inst[|5`d20| :+ 5];
-        immI   := {signExtend 12 20}(inst[|5`d20| :+ 12]);
-        immS   := {signExtend 12 20}(inst[|5`d25| :+ 7] ++ inst[|5`d7| :+ 5]);
-        immB   := {signExtend 13 19}(
-          inst[|5`d31|] ++ inst[|5`d7|] ++ inst[|5`d25| :+ 6]
-          ++ inst[|5`d8| :+ 4] ++ |1`d0|
-        );
-        immU := (inst[|5`d12| :+ 20] ++ |12`d0|);
-        immJ := {signExtend 21 11}(
-          inst[|5`d31|] ++ inst[|5`d12| :+ 8] ++ inst[|5`d20|]
-          ++ inst[|5`d21| :+ 10] ++ |1`d0|
-        )
+        (* opcode := inst[|5`d0|  :+ 7]; *)
+        funct3 := inst[|5`d12| :+ 3]
+        (* funct7 := inst[|5`d25| :+ 7]; *)
+        (* rd     := inst[|5`d7|  :+ 5]; *)
+        (* rs1    := inst[|5`d15| :+ 5]; *)
+        (* rs2    := inst[|5`d20| :+ 5]; *)
+        (* immI   := {signExtend 12 20}(inst[|5`d20| :+ 12]); *)
+        (* immS   := {signExtend 12 20}(inst[|5`d25| :+ 7] ++ inst[|5`d7| :+ 5]); *)
+        (* immB   := {signExtend 13 19}( *)
+        (*   inst[|5`d31|] ++ inst[|5`d7|] ++ inst[|5`d25| :+ 6] *)
+        (*   ++ inst[|5`d8| :+ 4] ++ |1`d0| *)
+        (* ); *)
+        (* immU := (inst[|5`d12| :+ 20] ++ |12`d0|); *)
+        (* immJ := {signExtend 21 11}( *)
+        (*   inst[|5`d31|] ++ inst[|5`d12| :+ 8] ++ inst[|5`d20|] *)
+        (*   ++ inst[|5`d21| :+ 10] ++ |1`d0| *)
+        (* ) *)
       }
   }}.
+  Print getFields.
 
   Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {{
     fun isLegalInstruction (inst : bits_t 32) : bits_t 1 =>
