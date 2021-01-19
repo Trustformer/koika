@@ -8,7 +8,7 @@ Inductive memory_model :=
 Inductive base_standard :=
 | RV32I (* 32 bits *)
 | RV64I (* 64 bits *).
-(* in draft : RV32E (32 bits for embedded systems), RV128I (128 bits) *)
+(* in draft: RV32E (32 bits for embedded systems), RV128I (128 bits) *)
 
 Inductive extension :=
 | RVM        (* integer multiplication and division *)
@@ -18,7 +18,7 @@ Inductive extension :=
 | RVQ        (* quad-precision floating-point       *)
 | RVZiCSR    (* control and status register         *)
 | RVZifencei (* instruction-fetch fence             *).
-(* in draft : Counters (performance counters and timers),
+(* in draft: Counters (performance counters and timers),
    L (decimal floating-point), B (bit manipulation),
    J (dynamically translated languages), T (transactional memory),
    P (packed-SIMD), V (vector operations), Zam (misaligned atomics),
