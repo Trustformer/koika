@@ -243,8 +243,7 @@ Section RVHelpers.
       end
   }}.
 
-  Compute get_opcodes_from_instructions_list 
-    (get_i_fields_list_from_instructions (ISA_instructions_set rv32i_ISA)).
+(* Compute get_opcodes_bin_from_opcodes (get_opcodes_from_instructions_list (ISA_instructions_set rv32i_ISA)). *)
 
   (* Definition get_opcodes_list_from_instructions_list *)
   (*   (instructions : list instruction) *)
