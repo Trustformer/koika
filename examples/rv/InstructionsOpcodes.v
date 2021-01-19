@@ -23,10 +23,8 @@ Definition opcode_bin (o : opcode_name) :=
   | opc_STORE_FP  => Ob~0~1~0~0~1~1~1
   end.
 
-Definition instruction_opcode
-  (i : {i : instruction | has_opcode (get_instruction_i_type i) = true})
-:=
-  match proj1_sig i with
+Definition instruction_opcode (i : instruction) :=
+  match i with
   | LUI_32I            => opc_LUI       | AUIPC_32I          => opc_AUIPC
   | JAL_32I            => opc_JAL       | JALR_32I           => opc_JALR
   | BEQ_32I            => opc_BRANCH    | BNE_32I            => opc_BRANCH

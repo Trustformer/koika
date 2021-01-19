@@ -1,6 +1,8 @@
 Require Import List.
 Import ListNotations.
 
+Require Import Koika.Frontend.
+
 Require Import rv.Instructions rv.IFields rv.ITypes rv.InstructionsOpcodes.
 
 (* Types for efficiently tracking the presence of elements *)
@@ -202,8 +204,7 @@ Definition get_i_fields_list_from_instructions (instrs : list instruction)
   )).
 
 (* List of possible information fields values from instructions *)
-Definition get_present_opcodes_from_instructions
-  (instrs : list {i : instruction | has_opcode (get_instruction_i_type i) = true})
+Definition get_present_opcodes_from_instructions (instrs : list instruction)
 : present_opcodes :=
   let all_absent := {|
     opc_OP_present        := false; opc_JALR_present    := false;
@@ -768,9 +769,30 @@ Definition get_opcodes_from_present_opcodes (opcodes : present_opcodes)
     end
   ) after [].
 
-Definition get_opcodes_from_instructions_list 
-  (instrs : list {i : instruction | has_opcode (get_instruction_i_type i) = true})
+Definition get_opcodes_from_instructions_list (instrs : list instruction)
 : list opcode_name :=
   get_opcodes_from_present_opcodes (
     get_present_opcodes_from_instructions instrs
   ).
+
+Definition get_opcodes_bin_from_opcodes (opcodes : list opcode_name)
+: list (bits_t 7) :=
+  map (opcode_bin) opcodes.
+
+Definition get_rs1_users (instrs : list instruction) : list instruction :=
+  filter (fun i => has_rs1 (get_instruction_i_type i)) instrs.
+
+Definition get_rs2_users (instrs : list instruction) : list instruction :=
+  filter (fun i => has_rs2 (get_instruction_i_type i)) instrs.
+
+Definition get_rs3_users (instrs : list instruction) : list instruction :=
+  filter (fun i => has_rs3 (get_instruction_i_type i)) instrs.
+
+Definition get_fct2_users (instrs : list instruction) : list instruction :=
+  filter (fun i => has_fct2 (get_instruction_i_type i)) instrs.
+
+Definition get_fct3_users (instrs : list instruction) : list instruction :=
+  filter (fun i => has_fct3 (get_instruction_i_type i)) instrs.
+
+Definition get_fct7_users (instrs : list instruction) : list instruction :=
+  filter (fun i => has_fct7 (get_instruction_i_type i)) instrs.
