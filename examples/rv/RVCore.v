@@ -243,6 +243,30 @@ Section RVHelpers.
       end
   }}.
 
+  Compute get_opcodes_from_instructions_list 
+    (get_i_fields_list_from_instructions (ISA_instructions_set rv32i_ISA)).
+
+  (* Definition get_opcodes_list_from_instructions_list *)
+  (*   (instructions : list instruction) *)
+  (*   : list (bits_t (get_i_field_information_quantity opcode)) *)
+  (* := *)
+  (*   let *) 
+  (*   [opcode_bin opc_OP]. *)
+
+  (* Definition get_isa_rs1_instrs := *)
+
+
+(*   Definition usesRS1_bis := {| *)
+(*     int_name := "usesRS1"; *)
+(*     int_argspec := [prod_of_argsig *)
+(*       {| arg_name := "inst"; arg_type := bits_t 32 |} *)
+(*     ]; *)
+(*     int_retSig := bits_t 1; *)
+(*     int_body := *)
+(*   |}. *)
+
+(*   Print usesRS1. *)
+
   Definition usesRS2 : UInternalFunction reg_t empty_ext_fn_t := {{
     fun usesRS2 (inst : bits_t 32) : bits_t 1 =>
       match (inst[Ob~0~0~0~1~0 :+ 5]) with

@@ -1,9 +1,10 @@
 Require Import List.
 Import ListNotations.
 
-Require Import rv.Instructions rv.IFields rv.ITypes.
+Require Import rv.Instructions rv.IFields rv.ITypes rv.InstructionsOpcodes.
 
 (* Types for efficiently tracking the presence of elements *)
+(* TODO use sets instead *)
 Record present_i_types := {
   RType_present : bool; R4Type_present : bool; IType_present : bool;
   SType_present : bool; BType_present  : bool; UType_present : bool;
@@ -16,6 +17,20 @@ Record present_i_fields := {
   rs3_present    : bool; rd_present   : bool; immI_present : bool;
   immS_present   : bool; immB_present : bool; immU_present : bool;
   immJ_present   : bool;
+}.
+
+Record present_opcodes := {
+  opc_OP_present        : bool; opc_JALR_present    : bool;
+  opc_LOAD_present      : bool; opc_OP_IMM_present  : bool;
+  opc_MISC_MEM_present  : bool; opc_STORE_present   : bool;
+  opc_BRANCH_present    : bool; opc_LUI_present     : bool;
+  opc_AUIPC_present     : bool; opc_JAL_present     : bool;
+  opc_SYSTEM_present    : bool; opc_OP_32_present   : bool;
+  opc_OP_IMM_32_present : bool; opc_AMO_present     : bool;
+  opc_OP_FP_present     : bool; opc_MADD_present    : bool;
+  opc_MSUB_present      : bool; opc_NMSUB_present   : bool;
+  opc_NMADD_present     : bool; opc_LOAD_FP_present : bool;
+  opc_STORE_FP_present  : bool
 }.
 
 (* Types present in a list of instructions *)
@@ -185,3 +200,577 @@ Definition get_i_fields_list_from_instructions (instrs : list instruction)
       get_present_i_types_from_instructions instrs
     )
   )).
+
+(* List of possible information fields values from instructions *)
+Definition get_present_opcodes_from_instructions
+  (instrs : list {i : instruction | has_opcode (get_instruction_i_type i) = true})
+: present_opcodes :=
+  let all_absent := {|
+    opc_OP_present        := false; opc_JALR_present    := false;
+    opc_LOAD_present      := false; opc_OP_IMM_present  := false;
+    opc_MISC_MEM_present  := false; opc_STORE_present   := false;
+    opc_BRANCH_present    := false; opc_LUI_present     := false;
+    opc_AUIPC_present     := false; opc_JAL_present     := false;
+    opc_SYSTEM_present    := false; opc_OP_32_present   := false;
+    opc_OP_IMM_32_present := false; opc_AMO_present     := false;
+    opc_OP_FP_present     := false; opc_MADD_present    := false;
+    opc_MSUB_present      := false; opc_NMSUB_present   := false;
+    opc_NMADD_present     := false; opc_LOAD_FP_present := false;
+    opc_STORE_FP_present  := false
+  |} in
+  fold_left (fun p i =>
+    match (instruction_opcode i) with
+    | opc_OP =>
+      {|
+        opc_OP_present        := true;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_JALR =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := true;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_LOAD =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := true;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_OP_IMM =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := true;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_MISC_MEM =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := true;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_STORE =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := true;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_BRANCH =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := true;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_LUI =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := true;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_AUIPC =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := true;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_JAL =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := true;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_SYSTEM =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := true;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_OP_32 =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := true;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_OP_IMM_32 =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := true;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_AMO =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := true;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_OP_FP =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := true;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_MADD =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := true;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_MSUB =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := true;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_NMSUB =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := true;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_NMADD =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := true;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_LOAD_FP =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := true;
+        opc_STORE_FP_present  := opc_STORE_FP_present  p
+      |}
+    | opc_STORE_FP =>
+      {|
+        opc_OP_present        := opc_OP_present        p;
+        opc_JALR_present      := opc_JALR_present      p;
+        opc_LOAD_present      := opc_LOAD_present      p;
+        opc_OP_IMM_present    := opc_OP_IMM_present    p;
+        opc_MISC_MEM_present  := opc_MISC_MEM_present  p;
+        opc_STORE_present     := opc_STORE_present     p;
+        opc_BRANCH_present    := opc_BRANCH_present    p;
+        opc_LUI_present       := opc_LUI_present       p;
+        opc_AUIPC_present     := opc_AUIPC_present     p;
+        opc_JAL_present       := opc_JAL_present       p;
+        opc_SYSTEM_present    := opc_SYSTEM_present    p;
+        opc_OP_32_present     := opc_OP_32_present     p;
+        opc_OP_IMM_32_present := opc_OP_IMM_32_present p;
+        opc_AMO_present       := opc_AMO_present       p;
+        opc_OP_FP_present     := opc_OP_FP_present     p;
+        opc_MADD_present      := opc_MADD_present      p;
+        opc_MSUB_present      := opc_MSUB_present      p;
+        opc_NMSUB_present     := opc_NMSUB_present     p;
+        opc_NMADD_present     := opc_NMADD_present     p;
+        opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
+        opc_STORE_FP_present  := true
+      |}
+    end
+  ) instrs all_absent.
+
+Definition check_opcode_presence (opcodes : present_opcodes) (o : opcode_name)
+: option opcode_name :=
+  match o with
+  | opc_OP        => if (opc_OP_present        opcodes) then Some o else None
+  | opc_JALR      => if (opc_JALR_present      opcodes) then Some o else None
+  | opc_LOAD      => if (opc_LOAD_present      opcodes) then Some o else None
+  | opc_OP_IMM    => if (opc_OP_IMM_present    opcodes) then Some o else None
+  | opc_MISC_MEM  => if (opc_MISC_MEM_present  opcodes) then Some o else None
+  | opc_STORE     => if (opc_STORE_present     opcodes) then Some o else None
+  | opc_BRANCH    => if (opc_BRANCH_present    opcodes) then Some o else None
+  | opc_LUI       => if (opc_LUI_present       opcodes) then Some o else None
+  | opc_AUIPC     => if (opc_AUIPC_present     opcodes) then Some o else None
+  | opc_JAL       => if (opc_JAL_present       opcodes) then Some o else None
+  | opc_SYSTEM    => if (opc_SYSTEM_present    opcodes) then Some o else None
+  | opc_OP_32     => if (opc_OP_32_present     opcodes) then Some o else None
+  | opc_OP_IMM_32 => if (opc_OP_IMM_32_present opcodes) then Some o else None
+  | opc_AMO       => if (opc_AMO_present       opcodes) then Some o else None
+  | opc_OP_FP     => if (opc_OP_FP_present     opcodes) then Some o else None
+  | opc_MADD      => if (opc_MADD_present      opcodes) then Some o else None
+  | opc_MSUB      => if (opc_MSUB_present      opcodes) then Some o else None
+  | opc_NMSUB     => if (opc_NMSUB_present     opcodes) then Some o else None
+  | opc_NMADD     => if (opc_NMADD_present     opcodes) then Some o else None
+  | opc_LOAD_FP   => if (opc_LOAD_FP_present   opcodes) then Some o else None
+  | opc_STORE_FP  => if (opc_STORE_FP_present  opcodes) then Some o else None
+  end.
+
+Definition get_opcodes_from_present_opcodes (opcodes : present_opcodes)
+: list opcode_name :=
+  let all_opcodes := opc_OP::opc_JALR::opc_LOAD::opc_OP_IMM::opc_MISC_MEM::
+    opc_STORE::opc_BRANCH::opc_LUI::opc_AUIPC::opc_JAL::opc_SYSTEM::opc_OP_32::
+    opc_OP_IMM_32::opc_AMO::opc_OP_FP::opc_MADD::opc_MSUB::opc_NMSUB::
+    opc_NMADD::opc_LOAD_FP::opc_STORE_FP::[]
+  in
+  let after := map (check_opcode_presence opcodes) all_opcodes in
+  fold_left (fun p t =>
+    match t with
+    | Some x => x::p
+    | None => p
+    end
+  ) after [].
+
+Definition get_opcodes_from_instructions_list 
+  (instrs : list {i : instruction | has_opcode (get_instruction_i_type i) = true})
+: list opcode_name :=
+  get_opcodes_from_present_opcodes (
+    get_present_opcodes_from_instructions instrs
+  ).
