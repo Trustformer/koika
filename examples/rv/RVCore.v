@@ -45,8 +45,7 @@ Section RVHelpers.
 
   Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
 
-  Definition getFields : UInternalFunction reg_t empty_ext_fn_t :=
-  {|
+  Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name := "getFields";
     int_argspec := [prod_of_argsig
       {| arg_name := "inst"; arg_type := bits_t 32 |}
@@ -59,7 +58,14 @@ Section RVHelpers.
           let merge_actions := (fun a1 a2 =>
             UBinop (UBits2 UConcat) a1 a2
           ) in
-          let slice_actions := (
+          (* slice_actions returns an action that fetches the data from every
+             subfield of the current field.
+             For instance, opcode only has a single subfield, whereas the final
+             value of immB is built by stitching together several uncontiguous
+             sections of the bitcode of an instruction.
+             See IFields.v for more details.
+           *)
+          let slice_actions : uaction reg_t empty_ext_fn_t := (
             let get_single_slice := (fun sp =>
               UBinop (UBits2 (UIndexedSlice (subfield_length sp))) {{ inst }}
               (USugar (UConstBits (Bits.of_N 5 (first_bit sp))))
@@ -76,12 +82,19 @@ Section RVHelpers.
             | Some x => x
             end
           ) in
+          (* To get the final value of some fields, the result of slice_actions
+             has to be shifted.
+             For instance, the immJ field is only ever used for the JAL
+             instruction. Its value is shifted to increase its reach in exchange
+             for coarser controls.
+           *)
           let manage_shift := (fun action =>
             match shift fp with
             | 0 => action
             | x => merge_actions (USugar (UConstBits (Bits.of_N x 0))) action
             end
           ) in
+          (* Some fields have to be extended to 32/64 bits before use *)
           let manage_sign_extension := (fun action =>
             match is_sign_extended fp with
             | true =>
