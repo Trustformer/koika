@@ -72,7 +72,7 @@ Section RVHelpers.
             ) in
             let option_slices := fold_left (fun a c =>
               match a with
-              | None => Some (get_single_slice c)
+              | None   => Some (get_single_slice c)
               | Some x => Some (merge_actions x (get_single_slice c))
               end
             ) (i_field_subfields (get_i_field_properties f)) None
@@ -228,43 +228,28 @@ Section RVHelpers.
       end
   }}.
 
-  Definition usesRS1 : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun usesRS1 (inst : bits_t 32) : bits_t 1 =>
-      match (inst[Ob~0~0~0~1~0 :+ 5]) with
-      | Ob~1~1~0~0~0 => Ob~1 (* bge, bne, bltu, blt, bgeu, beq *)
-      | Ob~0~0~0~0~0 => Ob~1 (* lh, ld, lw, lwu, lbu, lhu, lb *)
-      | Ob~0~1~0~0~0 => Ob~1 (* sh, sb, sw, sd *)
-      | Ob~0~1~1~0~0 => Ob~1 (* sll, mulh, sltu, mulhu, slt, mulhsu, or, rem,
-        xor, div, and, remu, srl, divu, sra, add, mul, sub *)
-      | Ob~1~1~0~0~1 => Ob~1 (* jalr *)
-      | Ob~0~0~1~0~0 => Ob~1 (* srli, srli, srai, srai, slli, slli, ori, sltiu,
-        andi, slti, addi, xori *)
-      return default: Ob~0
-      end
-  }}.
-
-(* Compute get_opcodes_bin_from_opcodes (get_opcodes_from_instructions_list (ISA_instructions_set rv32i_ISA)). *)
-
-  (* Definition get_opcodes_list_from_instructions_list *)
-  (*   (instructions : list instruction) *)
-  (*   : list (bits_t (get_i_field_information_quantity opcode)) *)
-  (* := *)
-  (*   let *) 
-  (*   [opcode_bin opc_OP]. *)
-
-  (* Definition get_isa_rs1_instrs := *)
-
-
-(*   Definition usesRS1_bis := {| *)
-(*     int_name := "usesRS1"; *)
-(*     int_argspec := [prod_of_argsig *)
-(*       {| arg_name := "inst"; arg_type := bits_t 32 |} *)
-(*     ]; *)
-(*     int_retSig := bits_t 1; *)
-(*     int_body := *)
-(*   |}. *)
-
-(*   Print usesRS1. *)
+  (* TODO only analyze useful bits - for instance, the last two bits of the
+     opcode are always 11 and can thus be safely ignored
+   *)
+  Definition usesRS1 : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name := "usesRS1";
+    int_argspec := [prod_of_argsig
+      {| arg_name := "inst"; arg_type := bits_t 32 |}
+    ];
+    int_retSig := bits_t 1;
+    int_body := UBind "__reserved__matchPattern"
+      (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
+      (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
+      (
+        let rs1_opcodes := get_opcodes_from_instructions_list (get_rs1_users (
+          ISA_instructions_set rv32i_ISA
+        )) in
+        map (fun o =>
+          (USugar (UConstBits (opcode_bin o)), {{Ob~1}})
+        ) rs1_opcodes
+      )
+    ))
+  |}.
 
   Definition usesRS2 : UInternalFunction reg_t empty_ext_fn_t := {{
     fun usesRS2 (inst : bits_t 32) : bits_t 1 =>
