@@ -251,32 +251,45 @@ Section RVHelpers.
     ))
   |}.
 
-  Definition usesRS2 : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun usesRS2 (inst : bits_t 32) : bits_t 1 =>
-      match (inst[Ob~0~0~0~1~0 :+ 5]) with
-      | Ob~1~1~0~0~0 => Ob~1 (* bge, bne, bltu, blt, bgeu, beq *)
-      | Ob~0~1~0~0~0 => Ob~1 (* sh, sb, sw, sd *)
-      | Ob~0~1~1~0~0 => Ob~1 (* sll, mulh, sltu, mulhu, slt, mulhsu, or, rem,
-        xor, div, and, remu, srl, divu, sra, add, mul, sub *)
-      return default: Ob~0
-      end
-  }}.
+  Definition usesRS2 : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name := "usesRS2";
+    int_argspec := [prod_of_argsig
+      {| arg_name := "inst"; arg_type := bits_t 32 |}
+    ];
+    int_retSig := bits_t 1;
+    int_body := UBind "__reserved__matchPattern"
+      (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
+      (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
+      (
+        let rs2_opcodes := get_opcodes_from_instructions_list (get_rs2_users (
+          ISA_instructions_set rv32i_ISA
+        )) in
+        map (fun o =>
+          (USugar (UConstBits (opcode_bin o)), {{Ob~1}})
+        ) rs2_opcodes
+      )
+    ))
+  |}.
 
-  Definition usesRD : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun usesRD (inst : bits_t 32) : bits_t 1 =>
-      match (inst[Ob~0~0~0~1~0 :+ 5]) with
-      | Ob~0~1~1~0~1 => Ob~1 (* lui *)
-      | Ob~1~1~0~1~1 => Ob~1 (* jal *)
-      | Ob~0~0~0~0~0 => Ob~1 (* lh, ld, lw, lwu, lbu, lhu, lb *)
-      | Ob~0~1~1~0~0 => Ob~1 (* sll, mulh, sltu, mulhu, slt, mulhsu, or,
-        rem, xor, div, and, remu, srl, divu, sra, add, mul, sub *)
-      | Ob~1~1~0~0~1 => Ob~1 (* jalr *)
-      | Ob~0~0~1~0~0 => Ob~1 (* srli, srli, srai, srai, slli, slli, ori,
-        sltiu, andi, slti, addi, xori *)
-      | Ob~0~0~1~0~1 => Ob~1 (* auipc *)
-      return default: Ob~0
-      end
-  }}.
+  Definition usesRD : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name := "usesRD";
+    int_argspec := [prod_of_argsig
+      {| arg_name := "inst"; arg_type := bits_t 32 |}
+    ];
+    int_retSig := bits_t 1;
+    int_body := UBind "__reserved__matchPattern"
+      (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
+      (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
+      (
+        let rd_opcodes := get_opcodes_from_instructions_list (get_rd_users (
+          ISA_instructions_set rv32i_ISA
+        )) in
+        map (fun o =>
+          (USugar (UConstBits (opcode_bin o)), {{Ob~1}})
+        ) rd_opcodes
+      )
+    ))
+  |}.
 
   Definition decode_fun : UInternalFunction reg_t empty_ext_fn_t := {{
     fun decode_fun (arg_inst : bits_t 32) : struct_t decoded_sig =>
