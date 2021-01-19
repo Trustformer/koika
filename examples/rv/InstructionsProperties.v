@@ -796,3 +796,6 @@ Definition get_fct3_users (instrs : list instruction) : list instruction :=
 
 Definition get_fct7_users (instrs : list instruction) : list instruction :=
   filter (fun i => has_fct7 (get_instruction_i_type i)) instrs.
+
+Definition get_rd_users (instrs : list instruction) : list instruction :=
+  filter (fun i => has_rd (get_instruction_i_type i)) instrs.
