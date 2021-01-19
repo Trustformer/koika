@@ -45,29 +45,93 @@ Section RVHelpers.
 
   Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
 
-  Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun getFields (inst : bits_t 32) : struct_t inst_field =>
-      struct inst_field {
-        (* opcode := inst[|5`d0|  :+ 7]; *)
-        funct3 := inst[|5`d12| :+ 3]
-        (* funct7 := inst[|5`d25| :+ 7]; *)
-        (* rd     := inst[|5`d7|  :+ 5]; *)
-        (* rs1    := inst[|5`d15| :+ 5]; *)
-        (* rs2    := inst[|5`d20| :+ 5]; *)
-        (* immI   := {signExtend 12 20}(inst[|5`d20| :+ 12]); *)
-        (* immS   := {signExtend 12 20}(inst[|5`d25| :+ 7] ++ inst[|5`d7| :+ 5]); *)
-        (* immB   := {signExtend 13 19}( *)
-        (*   inst[|5`d31|] ++ inst[|5`d7|] ++ inst[|5`d25| :+ 6] *)
-        (*   ++ inst[|5`d8| :+ 4] ++ |1`d0| *)
-        (* ); *)
-        (* immU := (inst[|5`d12| :+ 20] ++ |12`d0|); *)
-        (* immJ := {signExtend 21 11}( *)
-        (*   inst[|5`d31|] ++ inst[|5`d12| :+ 8] ++ inst[|5`d20|] *)
-        (*   ++ inst[|5`d21| :+ 10] ++ |1`d0| *)
-        (* ) *)
-      }
-  }}.
-  Print getFields.
+  Definition get_shift_data (f : i_field)
+    : option (uaction reg_t empty_ext_fn_t)
+  :=
+    let fp := get_i_field_properties f in
+    match shift fp with
+    | 0 => None
+    | x => Some (USugar (UConstBits (Bits.of_N x 0)))
+    end.
+
+  Definition get_single_slice (sp : subfield_properties)
+    : uaction reg_t empty_ext_fn_t
+  :=
+    UBinop (UBits2 (UIndexedSlice (subfield_length sp))) {{ inst }}
+    (USugar (UConstBits (Bits.of_N 5 (first_bit sp)))).
+
+  Definition merge_actions (a1 a2 : uaction reg_t empty_ext_fn_t)
+    : uaction reg_t empty_ext_fn_t
+  :=
+    UBinop (UBits2 UConcat) a1 a2.
+
+  Definition sign_extend_if_required
+    (f : i_field) (initial_action : uaction reg_t empty_ext_fn_t)
+    : uaction reg_t empty_ext_fn_t
+  :=
+    let fp := get_i_field_properties f in
+    match is_sign_extended fp with
+    | true =>
+        let base_info_qtt := get_i_field_base_information_quantity f in
+        USugar (
+          UCallModule id Lift_self
+            (signExtend base_info_qtt (32 - base_info_qtt))
+            [initial_action]
+        )
+    | false => initial_action
+    end.
+
+  Definition get_slice_actions (f : i_field)
+    : uaction reg_t empty_ext_fn_t
+  :=
+    let option_slices := fold_left (fun a c =>
+        match a with
+        | None => Some (get_single_slice c)
+        | Some x => Some (merge_actions x (get_single_slice c))
+        end
+      ) (i_field_subfields (get_i_field_properties f)) None
+    in
+    match option_slices with
+    | None   => USugar USkip
+    | Some x => x
+    end.
+
+  Definition extend_action_with_shift
+    (f : i_field) (action : uaction reg_t empty_ext_fn_t)
+    : uaction reg_t empty_ext_fn_t
+  :=
+    match get_shift_data f with
+    | None   => action
+    | Some x => merge_actions x action
+    end.
+
+  Definition get_field_action (f : i_field) : uaction reg_t empty_ext_fn_t :=
+    sign_extend_if_required f (extend_action_with_shift f (
+      get_slice_actions f
+    )).
+
+  Definition manage_field (f : i_field)
+    : (string * uaction reg_t empty_ext_fn_t)
+  :=
+    (get_i_field_name f, get_field_action f).
+
+  Definition generate_get_field_function (fields : list i_field)
+    : UInternalFunction reg_t empty_ext_fn_t
+  := {|
+    int_name := "getFields";
+    int_argspec := [prod_of_argsig
+      {| arg_name := "inst"; arg_type := bits_t 32 |}
+    ];
+    int_retSig := struct_t inst_field;
+    int_body := USugar (UStructInit inst_field
+      (fold_left (fun a f => (manage_field f) :: a) fields [])
+    )
+  |}.
+
+  Definition getFields : UInternalFunction reg_t empty_ext_fn_t :=
+    generate_get_field_function (get_i_fields_list_from_instructions (
+      ISA_instructions_set rv32i_ISA
+    )).
 
   Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {{
     fun isLegalInstruction (inst : bits_t 32) : bits_t 1 =>
