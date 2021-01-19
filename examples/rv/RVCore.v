@@ -43,86 +43,63 @@ Section RVHelpers.
       :: ("immediateType", maybe (enum_t imm_type)) :: nil
   |}.
 
-  Definition merge_actions (a1 a2 : uaction reg_t empty_ext_fn_t)
-    : uaction reg_t empty_ext_fn_t
-  :=
-    UBinop (UBits2 UConcat) a1 a2.
-
-  Definition sign_extend_if_required
-    (f : i_field) (initial_action : uaction reg_t empty_ext_fn_t)
-    : uaction reg_t empty_ext_fn_t
-  :=
-    let fp := get_i_field_properties f in
-    match is_sign_extended fp with
-    | true =>
-        let base_info_qtt := get_i_field_base_information_quantity f in
-        USugar (
-          UCallModule id Lift_self
-            (signExtend base_info_qtt (32 - base_info_qtt))
-            [initial_action]
-        )
-    | false => initial_action
-    end.
-
-  Definition get_slice_actions (f : i_field) : uaction reg_t empty_ext_fn_t :=
-    let get_single_slice := (fun sp =>
-      UBinop (UBits2 (UIndexedSlice (subfield_length sp))) {{ inst }}
-      (USugar (UConstBits (Bits.of_N 5 (first_bit sp))))
-    ) in
-    let option_slices := fold_left (
-      fun a c =>
-        match a with
-        | None => Some (get_single_slice c)
-        | Some x => Some (merge_actions x (get_single_slice c))
-        end
-      ) (i_field_subfields (get_i_field_properties f)) None
-    in
-    match option_slices with
-    | None   => USugar USkip
-    | Some x => x
-    end.
-
-  Definition extend_action_with_shift
-    (f : i_field) (action : uaction reg_t empty_ext_fn_t)
-    : uaction reg_t empty_ext_fn_t
-  :=
-    let fp := get_i_field_properties f in
-    match shift fp with
-    | 0 => action
-    | x => merge_actions (USugar (UConstBits (Bits.of_N x 0))) action
-    end.
-
   Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
 
-  Definition generate_getField_body (fields : list i_field)
-    : uaction reg_t empty_ext_fn_t
-  :=
-    USugar (UStructInit inst_field (
-      fold_left (fun a f =>
-        let field_action := sign_extend_if_required f (
-          extend_action_with_shift f (get_slice_actions f)
-        ) in
-        (get_i_field_name f, field_action) :: a
-      ) fields []
-    )).
-
-  Definition generate_get_field_function (fields : list i_field)
-    : UInternalFunction reg_t empty_ext_fn_t
-  := {|
+  Definition getFields : UInternalFunction reg_t empty_ext_fn_t :=
+  {|
     int_name := "getFields";
     int_argspec := [prod_of_argsig
       {| arg_name := "inst"; arg_type := bits_t 32 |}
     ];
     int_retSig := struct_t inst_field;
-    int_body := USugar (UStructInit inst_field
-      (fold_left (fun a f => (manage_field f) :: a) fields [])
-    )
+    int_body :=
+      USugar (UStructInit inst_field (
+        fold_left (fun a f =>
+          let fp := get_i_field_properties f in
+          let merge_actions := (fun a1 a2 =>
+            UBinop (UBits2 UConcat) a1 a2
+          ) in
+          let slice_actions := (
+            let get_single_slice := (fun sp =>
+              UBinop (UBits2 (UIndexedSlice (subfield_length sp))) {{ inst }}
+              (USugar (UConstBits (Bits.of_N 5 (first_bit sp))))
+            ) in
+            let option_slices := fold_left (fun a c =>
+              match a with
+              | None => Some (get_single_slice c)
+              | Some x => Some (merge_actions x (get_single_slice c))
+              end
+            ) (i_field_subfields (get_i_field_properties f)) None
+            in
+            match option_slices with
+            | None   => USugar USkip
+            | Some x => x
+            end
+          ) in
+          let manage_shift := (fun action =>
+            match shift fp with
+            | 0 => action
+            | x => merge_actions (USugar (UConstBits (Bits.of_N x 0))) action
+            end
+          ) in
+          let manage_sign_extension := (fun action =>
+            match is_sign_extended fp with
+            | true =>
+              let base_info_qtt := get_i_field_base_information_quantity f in
+              USugar (UCallModule id Lift_self
+                (signExtend base_info_qtt (32 - base_info_qtt)) [action]
+              )
+            | false => action
+            end
+          ) in
+          let field_action := manage_sign_extension (manage_shift (
+            slice_actions
+          )) in
+          (get_i_field_name f, field_action) :: a
+        ) (get_i_fields_list_from_instructions (ISA_instructions_set rv32i_ISA))
+        []
+      ))
   |}.
-
-  Definition getFields : UInternalFunction reg_t empty_ext_fn_t :=
-    generate_get_field_function (get_i_fields_list_from_instructions (
-      ISA_instructions_set rv32i_ISA
-    )).
 
   Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {{
     fun isLegalInstruction (inst : bits_t 32) : bits_t 1 =>
