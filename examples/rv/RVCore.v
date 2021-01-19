@@ -43,23 +43,6 @@ Section RVHelpers.
       :: ("immediateType", maybe (enum_t imm_type)) :: nil
   |}.
 
-  Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
-
-  Definition get_shift_data (f : i_field)
-    : option (uaction reg_t empty_ext_fn_t)
-  :=
-    let fp := get_i_field_properties f in
-    match shift fp with
-    | 0 => None
-    | x => Some (USugar (UConstBits (Bits.of_N x 0)))
-    end.
-
-  Definition get_single_slice (sp : subfield_properties)
-    : uaction reg_t empty_ext_fn_t
-  :=
-    UBinop (UBits2 (UIndexedSlice (subfield_length sp))) {{ inst }}
-    (USugar (UConstBits (Bits.of_N 5 (first_bit sp)))).
-
   Definition merge_actions (a1 a2 : uaction reg_t empty_ext_fn_t)
     : uaction reg_t empty_ext_fn_t
   :=
@@ -81,10 +64,13 @@ Section RVHelpers.
     | false => initial_action
     end.
 
-  Definition get_slice_actions (f : i_field)
-    : uaction reg_t empty_ext_fn_t
-  :=
-    let option_slices := fold_left (fun a c =>
+  Definition get_slice_actions (f : i_field) : uaction reg_t empty_ext_fn_t :=
+    let get_single_slice := (fun sp =>
+      UBinop (UBits2 (UIndexedSlice (subfield_length sp))) {{ inst }}
+      (USugar (UConstBits (Bits.of_N 5 (first_bit sp))))
+    ) in
+    let option_slices := fold_left (
+      fun a c =>
         match a with
         | None => Some (get_single_slice c)
         | Some x => Some (merge_actions x (get_single_slice c))
@@ -100,20 +86,25 @@ Section RVHelpers.
     (f : i_field) (action : uaction reg_t empty_ext_fn_t)
     : uaction reg_t empty_ext_fn_t
   :=
-    match get_shift_data f with
-    | None   => action
-    | Some x => merge_actions x action
+    let fp := get_i_field_properties f in
+    match shift fp with
+    | 0 => action
+    | x => merge_actions (USugar (UConstBits (Bits.of_N x 0))) action
     end.
 
-  Definition get_field_action (f : i_field) : uaction reg_t empty_ext_fn_t :=
-    sign_extend_if_required f (extend_action_with_shift f (
-      get_slice_actions f
-    )).
+  Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
 
-  Definition manage_field (f : i_field)
-    : (string * uaction reg_t empty_ext_fn_t)
+  Definition generate_getField_body (fields : list i_field)
+    : uaction reg_t empty_ext_fn_t
   :=
-    (get_i_field_name f, get_field_action f).
+    USugar (UStructInit inst_field (
+      fold_left (fun a f =>
+        let field_action := sign_extend_if_required f (
+          extend_action_with_shift f (get_slice_actions f)
+        ) in
+        (get_i_field_name f, field_action) :: a
+      ) fields []
+    )).
 
   Definition generate_get_field_function (fields : list i_field)
     : UInternalFunction reg_t empty_ext_fn_t
