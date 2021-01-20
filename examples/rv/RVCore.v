@@ -205,32 +205,61 @@ Section RVHelpers.
       end
   }}.
 
-  Definition getImmediateType : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun getImmediateType (inst : bits_t 32) : maybe (enum_t imm_type) =>
-      match (inst[|5`d2| :+ 5]) with
-      | #opcode_LOAD[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmI})
-      | #opcode_OP_IMM[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmI})
-      | #opcode_JALR[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmI})
-      | #opcode_AUIPC[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmU})
-      | #opcode_LUI[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmU})
-      | #opcode_STORE[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmS})
-      | #opcode_BRANCH[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmB})
-      | #opcode_JAL[|3`d2| :+ 5] =>
-        {valid (enum_t imm_type)}(enum imm_type {ImmJ})
-      return default: {invalid (enum_t imm_type)}()
-      end
-  }}.
-
   (* TODO only analyze useful bits - for instance, the last two bits of the
      opcode are always 11 and can thus be safely ignored
    *)
+  Definition getImmediateType : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name := "getImmediateType";
+    int_argspec := [("inst", bits_t 32)];
+    int_retSig := maybe (enum_t imm_type);
+    int_body := UBind "__reserved__matchPattern"
+      (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
+      (USugar (USwitch
+        {{__reserved__matchPattern}}
+        {{{invalid (enum_t imm_type)} ()}}
+        (
+          let opcodes := get_opcodes_from_instructions_list (
+            ISA_instructions_set rv32i_ISA
+          ) in
+          map (fun o =>
+            (
+              USugar (UConstBits (opcode_bin o)),
+              USugar (UStructInit {|
+                  struct_name   := "maybe_immType";
+                  struct_fields := [
+                    ("valid", bits_t 1);
+                    ("data", enum_t imm_type)
+                  ]
+                |}
+                [
+                  ("valid", USugar (UConstBits Ob~1));
+                  ("data", (
+                    match o with
+                    | opc_JALR      => {{ enum imm_type {ImmI} }}
+                    | opc_LOAD      => {{ enum imm_type {ImmI} }}
+                    | opc_OP_IMM    => {{ enum imm_type {ImmI} }}
+                    | opc_MISC_MEM  => {{ enum imm_type {ImmI} }}
+                    | opc_STORE     => {{ enum imm_type {ImmS} }}
+                    | opc_BRANCH    => {{ enum imm_type {ImmB} }}
+                    | opc_LUI       => {{ enum imm_type {ImmU} }}
+                    | opc_AUIPC     => {{ enum imm_type {ImmU} }}
+                    | opc_JAL       => {{ enum imm_type {ImmJ} }}
+                    | opc_SYSTEM    => {{ enum imm_type {ImmI} }}
+                    | opc_OP_IMM_32 => {{ enum imm_type {ImmI} }}
+                    | opc_LOAD_FP   => {{ enum imm_type {ImmI} }}
+                    | opc_STORE_FP  => {{ enum imm_type {ImmS} }}
+                    | _             => {{ enum imm_type {ImmI} }} (* This case is never used *)
+                    end
+                  ))
+                ]
+              )
+
+            )
+          ) opcodes
+        )
+      ))
+    |}.
+
   Definition usesRS1 : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name := "usesRS1";
     int_argspec := [prod_of_argsig
