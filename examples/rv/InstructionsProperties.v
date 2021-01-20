@@ -799,3 +799,14 @@ Definition get_fct7_users (instrs : list instruction) : list instruction :=
 
 Definition get_rd_users (instrs : list instruction) : list instruction :=
   filter (fun i => has_rd (get_instruction_i_type i)) instrs.
+
+Definition get_i_type_from_opcode (o : opcode_name) : i_type :=
+  match o with
+  | opc_OP        => RType  | opc_JALR     => IType  | opc_LOAD     => IType
+  | opc_OP_IMM    => IType  | opc_MISC_MEM => IType  | opc_STORE    => SType
+  | opc_BRANCH    => BType  | opc_LUI      => UType  | opc_AUIPC    => UType
+  | opc_JAL       => JType  | opc_SYSTEM   => IType  | opc_OP_32    => RType
+  | opc_OP_IMM_32 => IType  | opc_AMO      => RType  | opc_OP_FP    => RType
+  | opc_MADD      => R4Type | opc_MSUB     => R4Type | opc_NMSUB    => R4Type
+  | opc_NMADD     => R4Type | opc_LOAD_FP  => IType  | opc_STORE_FP => SType
+  end.
