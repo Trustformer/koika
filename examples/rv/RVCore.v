@@ -58,6 +58,20 @@ Section RVHelpers.
           let merge_actions := (fun a1 a2 =>
             UBinop (UBits2 UConcat) a1 a2
           ) in
+          (* To get the final value of some fields, the result of slice_actions
+             has to be shifted.
+             For instance, the immJ field is only ever used for the JAL
+             instruction. Its value is shifted to increase its reach in exchange
+             for coarser controls.
+             Since the value is built through concatenation, the shift has to be
+             applied first.
+           *)
+          let manage_shift := (
+            match shift fp with
+            | 0 => None
+            | x => Some (USugar (UConstBits (Bits.of_N x 0)))
+            end
+          ) in
           (* slice_actions returns an action that fetches the data from every
              subfield of the current field.
              For instance, opcode only has a single subfield, whereas the final
@@ -70,28 +84,16 @@ Section RVHelpers.
               UBinop (UBits2 (UIndexedSlice (subfield_length sp))) {{ inst }}
               (USugar (UConstBits (Bits.of_N 5 (first_bit sp))))
             ) in
-            let option_slices := fold_left (fun a c =>
+            let option_slices := fold_right (fun c a =>
               match a with
               | None   => Some (get_single_slice c)
-              | Some x => Some (merge_actions x (get_single_slice c))
+              | Some x => Some (merge_actions (get_single_slice c) x)
               end
-            ) (i_field_subfields (get_i_field_properties f)) None
+            ) manage_shift (i_field_subfields (get_i_field_properties f))
             in
             match option_slices with
             | None   => USugar USkip
             | Some x => x
-            end
-          ) in
-          (* To get the final value of some fields, the result of slice_actions
-             has to be shifted.
-             For instance, the immJ field is only ever used for the JAL
-             instruction. Its value is shifted to increase its reach in exchange
-             for coarser controls.
-           *)
-          let manage_shift := (fun action =>
-            match shift fp with
-            | 0 => action
-            | x => merge_actions (USugar (UConstBits (Bits.of_N x 0))) action
             end
           ) in
           (* Some fields have to be extended to 32/64 bits before use *)
@@ -105,9 +107,7 @@ Section RVHelpers.
             | false => action
             end
           ) in
-          let field_action := manage_sign_extension (manage_shift (
-            slice_actions
-          )) in
+          let field_action := manage_sign_extension (slice_actions) in
           (get_i_field_name f, field_action) :: a
         ) (get_i_fields_list_from_instructions (ISA_instructions_set rv32i_ISA))
         []
