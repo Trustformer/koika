@@ -46,12 +46,12 @@ Section RVHelpers.
   Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
 
   Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {|
-    int_name := "getFields";
+    int_name    := "getFields";
     int_argspec := [prod_of_argsig
       {| arg_name := "inst"; arg_type := bits_t 32 |}
     ];
-    int_retSig := struct_t inst_field;
-    int_body :=
+    int_retSig  := struct_t inst_field;
+    int_body    :=
       USugar (UStructInit inst_field (
         fold_left (fun a f =>
           let fp := get_i_field_properties f in
@@ -205,6 +205,34 @@ Section RVHelpers.
       end
   }}.
 
+  Compute isLegalInstruction.
+
+  Definition isLegalInstructionB : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name    := "isLegalInstruction";
+    int_argspec := [("inst", bits_t 32)];
+    int_retSig  := bits_t 1;
+    int_body    :=
+      let opcodes := get_opcodes_from_instructions_list (
+        ISA_instructions_set rv32i_ISA
+      ) in
+      let merge_actions := (fun a1 a2 =>
+        UBinop (UBits2 UConcat) a1 a2
+      ) in
+      UBind "fields" (USugar (UCallModule
+        (fun x : reg_t => x) (fun x : empty_ext_fn_t => x) getFields
+        [{{inst}}]
+      ))
+      UBind "__reserved__matchPattern" {{ get(fields, funct3) }} (USugar (
+        (USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
+        (map (fun actions f =>
+          (
+            USugar (UConstBits (fct3_bin f)),
+            {{ Ob~1 }}
+          ) :: actions
+        ) fcts3)
+      )))
+  |}.
+
   (* TODO only analyze useful bits - for instance, the last two bits of the
      opcode are always 11 and can thus be safely ignored
    *)
@@ -248,7 +276,8 @@ Section RVHelpers.
                     | opc_OP_IMM_32 => {{ enum imm_type {ImmI} }}
                     | opc_LOAD_FP   => {{ enum imm_type {ImmI} }}
                     | opc_STORE_FP  => {{ enum imm_type {ImmS} }}
-                    | _             => {{ enum imm_type {ImmI} }} (* This case is never used *)
+                    (* This case is never used *)
+                    | _             => {{ enum imm_type {ImmI} }}
                     end
                   ))
                 ]

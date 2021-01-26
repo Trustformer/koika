@@ -3,7 +3,7 @@ Import ListNotations.
 
 Require Import Koika.Frontend.
 
-Require Import rv.Instructions rv.IFields rv.ITypes rv.InstructionsOpcodes.
+Require Import rv.Instructions rv.IFields rv.ITypes rv.InstructionsOpcodes rv.InstructionsFct3.
 
 (* Types for efficiently tracking the presence of elements *)
 (* TODO use sets instead *)
@@ -653,6 +653,7 @@ Definition get_present_opcodes_from_instructions (instrs : list instruction)
         opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
         opc_STORE_FP_present  := opc_STORE_FP_present  p
       |}
+    (* TODO *)
     | opc_NMADD =>
       {|
         opc_OP_present        := opc_OP_present        p;
@@ -810,3 +811,49 @@ Definition get_i_type_from_opcode (o : opcode_name) : i_type :=
   | opc_MADD      => R4Type | opc_MSUB     => R4Type | opc_NMSUB    => R4Type
   | opc_NMADD     => R4Type | opc_LOAD_FP  => IType  | opc_STORE_FP => SType
   end.
+
+Definition optional_prepend :
+  forall {A : Type} (f : A -> bool) (i : A)
+  (l : {r : list A | forall v : A, In v r -> f v = true}),
+  {r : list A | forall v : A, In v r -> f v = true}.
+Proof.
+  intros.
+  remember (f i) as j.
+  destruct j.
+  - exists (i::(proj1_sig l)). destruct l. simpl. intros. destruct H.
+    + now subst.
+    + now apply (e v).
+  - assumption.
+Defined.
+
+Definition custom_filter :
+  forall {A : Type} (f : A -> bool) (input : list A),
+  {r : list A | forall v : A, In v r -> f v = true}.
+Proof.
+  refine (fun A f input =>
+    let helper := (
+      fix helper_f
+        {A : Type} (f : A -> bool)
+        (i : list A) (o : {r : list A | forall v : A, In v r -> f v = true})
+        : {r : list A | forall v : A, In v r -> f v = true}
+      :=
+        match i with
+        | []   => o
+        | h::t => helper_f f t (optional_prepend f h o)
+        end
+    ) in helper f input (exist _ [] _)
+  ). easy.
+Defined.
+
+(* Definition to_list_of_dependent *)
+
+(* Definition get_fcts3 (o : opcode_name) (instrs : list instruction) *)
+(* : list fct3_type := *)
+(*   let i2 : {r : list instruction | forall (v : instruction), In v r -> opcode_name_beq (instruction_opcode v) o = true} := *)
+(*     custom_filter (fun i => opcode_name_beq (instruction_opcode i) o) instrs *)
+(*   in *)
+(*   let i3 := filter (fun i => *)
+(*     has_fct3 (get_instruction_i_type i) *)
+(*   ) i2 in *)
+(*   map (fun i => fct3_bin _ (instruction_fct3 i)) i3 *)
+(* . *)

@@ -8,6 +8,8 @@ Inductive opcode_name :=
 | opc_MADD   | opc_MSUB   | opc_NMSUB     | opc_NMADD  | opc_LOAD_FP
 | opc_STORE_FP.
 
+Scheme Equality for opcode_name.
+
 Definition opcode_bin (o : opcode_name) :=
   match o with
   | opc_OP        => Ob~0~1~1~0~0~1~1 | opc_JALR    => Ob~1~1~0~0~1~1~1
