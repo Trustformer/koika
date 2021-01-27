@@ -21,6 +21,7 @@ Inductive fct3_type :=
 | fct3_FSW    | fct3_JALR   | fct3_AW      | fct3_AD     | fct3_RNE
 | fct3_RTZ    | fct3_RDN    | fct3_RUP     | fct3_RMM    | fct3_DYN
 | fct3_LSF    | fct3_LSD    | fct3_LSQ.
+Scheme Equality for fct3_type.
 
 Definition fct3_bin (f : fct3_type) :=
   match f with

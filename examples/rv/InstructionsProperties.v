@@ -886,27 +886,62 @@ Definition get_fcts3 (o : opcode_name) (instrs : list instruction)
   let i3 := to_list_of_dependents i_fcts3 in
   map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) i3.
 
-Definition get_fcts2 (o : opcode_name) (f3 : fct3) (instrs : list instruction)
+Definition get_fcts2 (o : opcode_name) (f3 : fct3_type) (instrs : list instruction)
   : list fct2_type
 :=
   let same_opcode :=
-    filter (fun i => (opcode_name_beq (instruction_opcode i) o) instrs
+    (filter (fun i => (opcode_name_beq (instruction_opcode i) o)) instrs)
   in
-  let same_fct3 :=
+  (* This is pointless and will be removed eventually through dependent
+     typing
+  *)
+  let same_opcode_and_fct3_present := to_list_of_dependents (
+    custom_filter (fun i => has_fct3 (get_instruction_i_type i)) same_opcode
+  ) in
+  let same_opcode_same_fct3_dependent := filter
+    (fun i => fct3_type_beq (instruction_fct3 (proj1_sig i) (proj2_sig i)) f3)
+    same_opcode_and_fct3_present
+  in
+  let same_opcode_same_fct3 :=
+    map (fun i => proj1_sig i) same_opcode_same_fct3_dependent
+  in
+  let matching_and_fct2_present_dependent := custom_filter
+    (fun i => has_fct2 (get_instruction_i_type i)) same_opcode_same_fct3
+  in
+  let matching_and_fct2_present :=
+    to_list_of_dependents matching_and_fct2_present_dependent
+  in
+  map
+    (fun x => instruction_fct2 (proj1_sig x) (proj2_sig x))
+    matching_and_fct2_present
+  .
 
-  in
-  let possible_fcts2 :=
-    custom_filter (fun i => has_fct2 (get_instruction_i_type i)) i
-  in
-  let i2 := to_list_of_dependents i_fcts2 in
-  map (fun x => instruction_fct2 (proj1_sig x) (proj2_sig x)) i2.
-
-Definition get_fcts7 (o : opcode_name) (instrs : list instruction)
+Definition get_fcts7 (o : opcode_name) (f3 : fct3_type) (instrs : list instruction)
   : list fct7_type
 :=
-  let i := filter (fun i => opcode_name_beq (instruction_opcode i) o) instrs in
-  let i_fcts7 :=
-    custom_filter (fun i => has_fct7 (get_instruction_i_type i)) i
+  let same_opcode :=
+    (filter (fun i => (opcode_name_beq (instruction_opcode i) o)) instrs)
   in
-  let i7 := to_list_of_dependents i_fcts7 in
-  map (fun x => instruction_fct7 (proj1_sig x) (proj2_sig x)) i7.
+  (* This is pointless and will be removed eventually through dependent
+     typing
+  *)
+  let same_opcode_and_fct3_present := to_list_of_dependents (
+    custom_filter (fun i => has_fct3 (get_instruction_i_type i)) same_opcode
+  ) in
+  let same_opcode_same_fct3_dependent := filter
+    (fun i => fct3_type_beq (instruction_fct3 (proj1_sig i) (proj2_sig i)) f3)
+    same_opcode_and_fct3_present
+  in
+  let same_opcode_same_fct3 :=
+    map (fun i => proj1_sig i) same_opcode_same_fct3_dependent
+  in
+  let matching_and_fct7_present_dependent := custom_filter
+    (fun i => has_fct7 (get_instruction_i_type i)) same_opcode_same_fct3
+  in
+  let matching_and_fct7_present :=
+    to_list_of_dependents matching_and_fct7_present_dependent
+  in
+  map
+    (fun x => instruction_fct7 (proj1_sig x) (proj2_sig x))
+    matching_and_fct7_present
+  .
