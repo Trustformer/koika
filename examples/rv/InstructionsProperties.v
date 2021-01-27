@@ -833,8 +833,8 @@ Proof.
   refine (fun A f input =>
     let helper := (
       fix helper_f
-        {A : Type} (f : A -> bool)
-        (i : list A) (o : {r : list A | forall v : A, In v r -> f v = true})
+        {A : Type} (f : A -> bool) (i : list A)
+        (o : {r : list A | forall v : A, In v r -> f v = true})
         : {r : list A | forall v : A, In v r -> f v = true}
       :=
         match i with
@@ -845,7 +845,28 @@ Proof.
   ). easy.
 Defined.
 
-(* Definition to_list_of_dependent *)
+Definition to_list_of_dependents :
+  forall {A : Type} (f : A -> bool)
+  (l : {r : list A | forall v : A, In v r -> f v = true}),
+  list {x : A | f x = true}.
+Proof.
+  refine (
+    fun A f l =>
+      let helper := (
+        fix helper_f {A : Type} (f : A -> bool)
+          (i : list A) (p : forall v : A, In v i -> f v = true)
+          (o : list {x : A | f x = true}) : list {x : A | f x = true}
+        := (
+        match i as m return (i = m -> list {x : A | f x = true}) with
+          | []   => fun _ => o
+          | h::t => fun _ => helper_f f t _ ((exist _ h _)::o)
+          end
+        ) (eq_refl i)
+      ) in helper f (proj1_sig l) (proj2_sig l) []
+  ); try intros; apply p; rewrite e; simpl.
+  - right. assumption.
+  - left. trivial.
+Defined.
 
 (* Definition get_fcts3 (o : opcode_name) (instrs : list instruction) *)
 (* : list fct3_type := *)
