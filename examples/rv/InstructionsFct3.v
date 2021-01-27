@@ -60,6 +60,7 @@ Definition fct3_bin (f : fct3_type) :=
 Definition instruction_fct3 :
   forall (i : instruction), has_fct3 (get_instruction_i_type i) = true
   -> fct3_type.
+Proof.
 refine (fun i =>
   match i with
   | JALR_32I           => fun _ => fct3_JALR

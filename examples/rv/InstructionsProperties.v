@@ -826,6 +826,10 @@ Proof.
   - assumption.
 Defined.
 
+(* TODO find external source for this function or create lib *)
+(* TODO {r : list A | forall v : A, In v r <-> (In v input /\ f v = true)} would
+   be a more informative return type
+*)
 Definition custom_filter :
   forall {A : Type} (f : A -> bool) (input : list A),
   {r : list A | forall v : A, In v r -> f v = true}.
@@ -846,7 +850,7 @@ Proof.
 Defined.
 
 Definition to_list_of_dependents :
-  forall {A : Type} (f : A -> bool)
+  forall {A : Type} {f : A -> bool}
   (l : {r : list A | forall v : A, In v r -> f v = true}),
   list {x : A | f x = true}.
 Proof.
@@ -864,17 +868,20 @@ Proof.
         ) (eq_refl i)
       ) in helper f (proj1_sig l) (proj2_sig l) []
   ); try intros; apply p; rewrite e; simpl.
-  - right. assumption.
+  - right. trivial.
   - left. trivial.
 Defined.
 
-(* Definition get_fcts3 (o : opcode_name) (instrs : list instruction) *)
-(* : list fct3_type := *)
-(*   let i2 : {r : list instruction | forall (v : instruction), In v r -> opcode_name_beq (instruction_opcode v) o = true} := *)
-(*     custom_filter (fun i => opcode_name_beq (instruction_opcode i) o) instrs *)
-(*   in *)
-(*   let i3 := filter (fun i => *)
-(*     has_fct3 (get_instruction_i_type i) *)
-(*   ) i2 in *)
-(*   map (fun i => fct3_bin _ (instruction_fct3 i)) i3 *)
-(* . *)
+Definition get_fcts3 (o : opcode_name) (instrs : list instruction) :=
+  let i := filter (fun i => opcode_name_beq (instruction_opcode i) o) instrs in
+  (* All instructions sharing the same opcode also share the same type, so the
+     following line might seem pointless. The thing is, Coq does not know this
+     and has to be persuaded that each instruction in the list has an fct3 field
+     for dependent typing reasons.
+  *)
+  let i_fcts3 :=
+    custom_filter (fun i => has_fct3 (get_instruction_i_type i)) i
+  in
+  let i3 := to_list_of_dependents i_fcts3 in
+  map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) i3
+.
