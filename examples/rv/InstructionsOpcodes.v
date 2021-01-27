@@ -7,7 +7,6 @@ Inductive opcode_name :=
 | opc_SYSTEM | opc_OP_32  | opc_OP_IMM_32 | opc_AMO    | opc_OP_FP
 | opc_MADD   | opc_MSUB   | opc_NMSUB     | opc_NMADD  | opc_LOAD_FP
 | opc_STORE_FP.
-
 Scheme Equality for opcode_name.
 
 Definition opcode_bin (o : opcode_name) :=
@@ -500,3 +499,17 @@ Definition instruction_opcode (i : instruction) :=
   | FCVT_RUP_Q_LU_64Q  => opc_OP_FP     | FCVT_RMM_Q_LU_64Q  => opc_OP_FP
   | FCVT_DYN_Q_LU_64Q  => opc_OP_FP
   end.
+
+Definition get_opcode_i_type (o : opcode_name) : i_type :=
+  match o with
+  | opc_OP        => RType  | opc_JALR     => IType  | opc_LOAD     => IType
+  | opc_OP_IMM    => IType  | opc_MISC_MEM => IType  | opc_STORE    => SType
+  | opc_BRANCH    => BType  | opc_LUI      => UType  | opc_AUIPC    => UType
+  | opc_JAL       => JType  | opc_SYSTEM   => IType  | opc_OP_32    => RType
+  | opc_OP_IMM_32 => IType  | opc_AMO      => RType  | opc_OP_FP    => RType
+  | opc_MADD      => R4Type | opc_MSUB     => R4Type | opc_NMSUB    => R4Type
+  | opc_NMADD     => R4Type | opc_LOAD_FP  => IType  | opc_STORE_FP => SType
+  end.
+
+Definition get_instruction_i_type (i : instruction) : i_type :=
+  get_opcode_i_type (instruction_opcode i).
