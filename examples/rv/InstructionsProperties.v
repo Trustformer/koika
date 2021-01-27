@@ -826,10 +826,7 @@ Proof.
   - assumption.
 Defined.
 
-(* TODO find external source for this function or create lib *)
-(* TODO {r : list A | forall v : A, In v r <-> (In v input /\ f v = true)} would
-   be a more informative return type
-*)
+(* TODO useless, replace with standard library equivalent *)
 Definition custom_filter :
   forall {A : Type} (f : A -> bool) (input : list A),
   {r : list A | forall v : A, In v r -> f v = true}.
@@ -872,7 +869,9 @@ Proof.
   - left. trivial.
 Defined.
 
-Definition get_fcts3 (o : opcode_name) (instrs : list instruction) :=
+Definition get_fcts3 (o : opcode_name) (instrs : list instruction)
+  : list fct3_type
+:=
   let i := filter (fun i => opcode_name_beq (instruction_opcode i) o) instrs in
   (* All instructions sharing the same opcode also share the same type, so the
      following line might seem pointless. The thing is, Coq does not know this
@@ -883,5 +882,4 @@ Definition get_fcts3 (o : opcode_name) (instrs : list instruction) :=
     custom_filter (fun i => has_fct3 (get_instruction_i_type i)) i
   in
   let i3 := to_list_of_dependents i_fcts3 in
-  map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) i3
-.
+  map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) i3.
