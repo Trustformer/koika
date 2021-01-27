@@ -215,22 +215,25 @@ Section RVHelpers.
       let opcodes := get_opcodes_from_instructions_list (
         ISA_instructions_set rv32i_ISA
       ) in
-      let merge_actions := (fun a1 a2 =>
-        UBinop (UBits2 UConcat) a1 a2
-      ) in
+      (* let generate_fct3_match (o : opcode_name) := ( *)
+      (*   UBind "__reserved__matchPattern" {{ get(fields, funct3) }} ( *)
+      (*     USugar ( *)
+      (*       USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0)) *)
+      (*       (map *)
+      (*         (fun f => (USugar (UConstBits (fct3_bin f)), {{ Ob~1 }})) *)
+      (*         (get_fcts3 o (ISA_instructions_set rv32i_ISA)) *)
+      (* )))) in *)
       UBind "fields" (USugar (UCallModule
-        (fun x : reg_t => x) (fun x : empty_ext_fn_t => x) getFields
-        [{{inst}}]
+        (fun x : reg_t => x) (fun x : empty_ext_fn_t => x) getFields [{{inst}}]
       ))
-      UBind "__reserved__matchPattern" {{ get(fields, funct3) }} (USugar (
-        (USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
-        (map (fun actions f =>
-          (
-            USugar (UConstBits (fct3_bin f)),
-            {{ Ob~1 }}
-          ) :: actions
-        ) fcts3)
-      )))
+      (
+        UBind "__reserved__matchPattern" {{ get(fields, opcode) }} (
+          USugar (
+            USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
+            (map
+              (fun o => (USugar (UConstBits (opcode_bin o)), {{ Ob~1 }}))
+              opcodes
+      ))))
   |}.
 
   (* TODO only analyze useful bits - for instance, the last two bits of the
