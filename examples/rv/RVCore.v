@@ -25,7 +25,7 @@ Require Import rv.StructsBuilding.
 Definition rv32i_ISA : ISA := {|
   ISA_memory_model  := RVWMO;
   ISA_base_standard := RV32I;
-  ISA_extensions    := [];
+  ISA_extensions    := [RVM];
 |}.
 
 Section RVHelpers.
@@ -115,97 +115,6 @@ Section RVHelpers.
       ))
   |}.
 
-  Definition isLegalInstructionB : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun isLegalInstruction (inst : bits_t 32) : bits_t 1 =>
-      let fields := getFields (inst) in
-      match get(fields, opcode) with
-      | #opcode_LOAD =>
-        match get(fields, funct3) with
-        | #funct3_LB  => Ob~1
-        | #funct3_LH  => Ob~1
-        | #funct3_LW  => Ob~1
-        | #funct3_LBU => Ob~1
-        | #funct3_LHU => Ob~1
-        return default: Ob~0
-        end
-      | #opcode_OP_IMM =>
-        match get(fields, funct3) with
-        (* ADD and SUB share the same funct3 *)
-        | #funct3_ADD  => Ob~1
-        | #funct3_SLT  => Ob~1
-        | #funct3_SLTU => Ob~1
-        | #funct3_XOR  => Ob~1
-        | #funct3_OR   => Ob~1
-        | #funct3_AND  => Ob~1
-        | #funct3_SLL  =>
-          (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0)
-          && (get(fields, funct7)[|3`d0|] == Ob~0)
-        (* All SR* instructions share the same funct3 *)
-        | #funct3_SRL =>
-          ((get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0)
-          || (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~1~0~0~0~0))
-          && get(fields, funct7)[|3`d0|] == Ob~0
-        return default: Ob~0
-        end
-      | #opcode_AUIPC => Ob~1
-      | #opcode_STORE =>
-        match get(fields, funct3) with
-        | #funct3_SB => Ob~1
-        | #funct3_SH => Ob~1
-        | #funct3_SW => Ob~1
-        return default: Ob~0
-        end
-      | #opcode_OP =>
-        match get(fields,funct3) with
-        | #funct3_ADD =>
-          (get(fields, funct7) == Ob~0~0~0~0~0~0~0)
-          || (get(fields, funct7) == Ob~0~1~0~0~0~0~0)
-          || get(fields, funct7) == Ob~0~0~0~0~0~0~1
-        | #funct3_SRL =>
-          (get(fields,funct7) == Ob~0~0~0~0~0~0~0)
-          || get(fields,funct7) == Ob~0~1~0~0~0~0~0
-        | #funct3_SLL  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_SLT  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_SLTU => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_XOR  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_OR   => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_AND  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        return default: Ob~0
-        end
-      | #opcode_LUI => Ob~1
-      | #opcode_BRANCH =>
-        match get(fields, funct3) with
-        | #funct3_BEQ  => Ob~1
-        | #funct3_BNE  => Ob~1
-        | #funct3_BLT  => Ob~1
-        | #funct3_BGE  => Ob~1
-        | #funct3_BLTU => Ob~1
-        | #funct3_BGEU => Ob~1
-        return default: Ob~0
-        end
-      | #opcode_JALR => get(fields, funct3) == Ob~0~0~0
-      | #opcode_JAL => Ob~1
-      | #opcode_SYSTEM =>
-        match get(fields, funct3) with
-        | #funct3_PRIV => (get(fields, rd) == Ob~0~0~0~0~0) && (
-          match (get(fields, funct7) ++ get(fields, rs2)) with
-          (* ECALL *)
-          | Ob~0~0~0~0~0~0~0~0~0~0~0~0 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          (* EBREAK *)
-          | Ob~0~0~0~0~0~0~0~0~0~0~0~1 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          (* MRET *)
-          | Ob~0~0~1~1~0~0~0~0~0~0~1~0 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          (* WFI *)
-          | Ob~0~0~0~1~0~0~0~0~0~1~0~1 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          return default: Ob~0
-          end
-        )
-        return default: Ob~0
-        end
-      return default: Ob~0
-      end
-  }}.
-
   (* TODO add fixed fields verification *)
   Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
@@ -279,8 +188,6 @@ Section RVHelpers.
               opcodes
       ))))
   |}.
-  Compute isLegalInstructionB.
-  Compute isLegalInstruction.
 
   (* TODO only analyze useful bits - for instance, the last two bits of the
      opcode are always 11 and can thus be safely ignored
