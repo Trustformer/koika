@@ -115,101 +115,99 @@ Section RVHelpers.
       ))
   |}.
 
-  Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun isLegalInstruction (inst : bits_t 32) : bits_t 1 =>
-      let fields := getFields (inst) in
-      match get(fields, opcode) with
-      | #opcode_LOAD =>
-        match get(fields, funct3) with
-        | #funct3_LB  => Ob~1
-        | #funct3_LH  => Ob~1
-        | #funct3_LW  => Ob~1
-        | #funct3_LBU => Ob~1
-        | #funct3_LHU => Ob~1
-        return default: Ob~0
-        end
-      | #opcode_OP_IMM =>
-        match get(fields, funct3) with
-        (* ADD and SUB share the same funct3 *)
-        | #funct3_ADD  => Ob~1
-        | #funct3_SLT  => Ob~1
-        | #funct3_SLTU => Ob~1
-        | #funct3_XOR  => Ob~1
-        | #funct3_OR   => Ob~1
-        | #funct3_AND  => Ob~1
-        | #funct3_SLL  =>
-          (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0)
-          && (get(fields, funct7)[|3`d0|] == Ob~0)
-        (* All SR* instructions share the same funct3 *)
-        | #funct3_SRL =>
-          ((get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0)
-          || (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~1~0~0~0~0))
-          && get(fields, funct7)[|3`d0|] == Ob~0
-        return default: Ob~0
-        end
-      | #opcode_AUIPC => Ob~1
-      | #opcode_STORE =>
-        match get(fields, funct3) with
-        | #funct3_SB => Ob~1
-        | #funct3_SH => Ob~1
-        | #funct3_SW => Ob~1
-        return default: Ob~0
-        end
-      | #opcode_OP =>
-        match get(fields,funct3) with
-        | #funct3_ADD =>
-          (get(fields, funct7) == Ob~0~0~0~0~0~0~0)
-          || (get(fields, funct7) == Ob~0~1~0~0~0~0~0)
-          || get(fields, funct7) == Ob~0~0~0~0~0~0~1
-        | #funct3_SRL =>
-          (get(fields,funct7) == Ob~0~0~0~0~0~0~0)
-          || get(fields,funct7) == Ob~0~1~0~0~0~0~0
-        | #funct3_SLL  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_SLT  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_SLTU => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_XOR  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_OR   => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        | #funct3_AND  => get(fields, funct7) == Ob~0~0~0~0~0~0~0
-        return default: Ob~0
-        end
-      | #opcode_LUI => Ob~1
-      | #opcode_BRANCH =>
-        match get(fields, funct3) with
-        | #funct3_BEQ  => Ob~1
-        | #funct3_BNE  => Ob~1
-        | #funct3_BLT  => Ob~1
-        | #funct3_BGE  => Ob~1
-        | #funct3_BLTU => Ob~1
-        | #funct3_BGEU => Ob~1
-        return default: Ob~0
-        end
-      | #opcode_JALR => get(fields, funct3) == Ob~0~0~0
-      | #opcode_JAL => Ob~1
-      | #opcode_SYSTEM =>
-        match get(fields, funct3) with
-        | #funct3_PRIV => (get(fields, rd) == Ob~0~0~0~0~0) && (
-          match (get(fields, funct7) ++ get(fields, rs2)) with
-          (* ECALL *)
-          | Ob~0~0~0~0~0~0~0~0~0~0~0~0 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          (* EBREAK *)
-          | Ob~0~0~0~0~0~0~0~0~0~0~0~1 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          (* MRET *)
-          | Ob~0~0~1~1~0~0~0~0~0~0~1~0 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          (* WFI *)
-          | Ob~0~0~0~1~0~0~0~0~0~1~0~1 => (get(fields, rs1) == Ob~0~0~0~0~0)
-          return default: Ob~0
-          end
-        )
-        return default: Ob~0
-        end
-      return default: Ob~0
-      end
-  }}.
-
-  Compute isLegalInstruction.
+  (* Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {{ *)
+  (*   fun isLegalInstruction (inst : bits_t 32) : bits_t 1 => *)
+  (*     let fields := getFields (inst) in *)
+  (*     match get(fields, opcode) with *)
+  (*     | #opcode_LOAD => *)
+  (*       match get(fields, funct3) with *)
+  (*       | #funct3_LB  => Ob~1 *)
+  (*       | #funct3_LH  => Ob~1 *)
+  (*       | #funct3_LW  => Ob~1 *)
+  (*       | #funct3_LBU => Ob~1 *)
+  (*       | #funct3_LHU => Ob~1 *)
+  (*       return default: Ob~0 *)
+  (*       end *)
+  (*     | #opcode_OP_IMM => *)
+  (*       match get(fields, funct3) with *)
+  (*       (1* ADD and SUB share the same funct3 *1) *)
+  (*       | #funct3_ADD  => Ob~1 *)
+  (*       | #funct3_SLT  => Ob~1 *)
+  (*       | #funct3_SLTU => Ob~1 *)
+  (*       | #funct3_XOR  => Ob~1 *)
+  (*       | #funct3_OR   => Ob~1 *)
+  (*       | #funct3_AND  => Ob~1 *)
+  (*       | #funct3_SLL  => *)
+  (*         (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0) *)
+  (*         && (get(fields, funct7)[|3`d0|] == Ob~0) *)
+  (*       (1* All SR* instructions share the same funct3 *1) *)
+  (*       | #funct3_SRL => *)
+  (*         ((get(fields, funct7)[|3`d1| :+ 6] == Ob~0~0~0~0~0~0) *)
+  (*         || (get(fields, funct7)[|3`d1| :+ 6] == Ob~0~1~0~0~0~0)) *)
+  (*         && get(fields, funct7)[|3`d0|] == Ob~0 *)
+  (*       return default: Ob~0 *)
+  (*       end *)
+  (*     | #opcode_AUIPC => Ob~1 *)
+  (*     | #opcode_STORE => *)
+  (*       match get(fields, funct3) with *)
+  (*       | #funct3_SB => Ob~1 *)
+  (*       | #funct3_SH => Ob~1 *)
+  (*       | #funct3_SW => Ob~1 *)
+  (*       return default: Ob~0 *)
+  (*       end *)
+  (*     | #opcode_OP => *)
+  (*       match get(fields,funct3) with *)
+  (*       | #funct3_ADD => *)
+  (*         (get(fields, funct7) == Ob~0~0~0~0~0~0~0) *)
+  (*         || (get(fields, funct7) == Ob~0~1~0~0~0~0~0) *)
+  (*         || get(fields, funct7) == Ob~0~0~0~0~0~0~1 *)
+  (*       | #funct3_SRL => *)
+  (*         (get(fields,funct7) == Ob~0~0~0~0~0~0~0) *)
+  (*         || get(fields,funct7) == Ob~0~1~0~0~0~0~0 *)
+  (*       | #funct3_SLL  => get(fields, funct7) == Ob~0~0~0~0~0~0~0 *)
+  (*       | #funct3_SLT  => get(fields, funct7) == Ob~0~0~0~0~0~0~0 *)
+  (*       | #funct3_SLTU => get(fields, funct7) == Ob~0~0~0~0~0~0~0 *)
+  (*       | #funct3_XOR  => get(fields, funct7) == Ob~0~0~0~0~0~0~0 *)
+  (*       | #funct3_OR   => get(fields, funct7) == Ob~0~0~0~0~0~0~0 *)
+  (*       | #funct3_AND  => get(fields, funct7) == Ob~0~0~0~0~0~0~0 *)
+  (*       return default: Ob~0 *)
+  (*       end *)
+  (*     | #opcode_LUI => Ob~1 *)
+  (*     | #opcode_BRANCH => *)
+  (*       match get(fields, funct3) with *)
+  (*       | #funct3_BEQ  => Ob~1 *)
+  (*       | #funct3_BNE  => Ob~1 *)
+  (*       | #funct3_BLT  => Ob~1 *)
+  (*       | #funct3_BGE  => Ob~1 *)
+  (*       | #funct3_BLTU => Ob~1 *)
+  (*       | #funct3_BGEU => Ob~1 *)
+  (*       return default: Ob~0 *)
+  (*       end *)
+  (*     | #opcode_JALR => get(fields, funct3) == Ob~0~0~0 *)
+  (*     | #opcode_JAL => Ob~1 *)
+  (*     | #opcode_SYSTEM => *)
+  (*       match get(fields, funct3) with *)
+  (*       | #funct3_PRIV => (get(fields, rd) == Ob~0~0~0~0~0) && ( *)
+  (*         match (get(fields, funct7) ++ get(fields, rs2)) with *)
+  (*         (1* ECALL *1) *)
+  (*         | Ob~0~0~0~0~0~0~0~0~0~0~0~0 => (get(fields, rs1) == Ob~0~0~0~0~0) *)
+  (*         (1* EBREAK *1) *)
+  (*         | Ob~0~0~0~0~0~0~0~0~0~0~0~1 => (get(fields, rs1) == Ob~0~0~0~0~0) *)
+  (*         (1* MRET *1) *)
+  (*         | Ob~0~0~1~1~0~0~0~0~0~0~1~0 => (get(fields, rs1) == Ob~0~0~0~0~0) *)
+  (*         (1* WFI *1) *)
+  (*         | Ob~0~0~0~1~0~0~0~0~0~1~0~1 => (get(fields, rs1) == Ob~0~0~0~0~0) *)
+  (*         return default: Ob~0 *)
+  (*         end *)
+  (*       ) *)
+  (*       return default: Ob~0 *)
+  (*       end *)
+  (*     return default: Ob~0 *)
+  (*     end *)
+  (* }}. *)
 
   (* TODO add fixed fields verification *)
-  Definition isLegalInstructionB : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
     int_argspec := [("inst", bits_t 32)];
     int_retSig  := bits_t 1;
@@ -217,7 +215,7 @@ Section RVHelpers.
       let opcodes := get_opcodes_from_instructions_list (
         ISA_instructions_set rv32i_ISA
       ) in
-      let generate_fct2_match (o : opcode_name)
+      let generate_fct2_match (o : opcode_name) (f3 : fct3_type)
         : uaction reg_t empty_ext_fn_t
       := (
         UBind "__reserved__matchPattern" {{ get(fields, funct2) }} (
@@ -225,7 +223,17 @@ Section RVHelpers.
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
             (map
               (fun f => (USugar (UConstBits (fct2_bin f)), {{ Ob~1 }}))
-              (get_fcts2 o (ISA_instructions_set rv32i_ISA))
+              (get_fcts2 o f3 (ISA_instructions_set rv32i_ISA))
+      )))) in
+      let generate_fct7_match (o : opcode_name) (f3 : fct3_type)
+        : uaction reg_t empty_ext_fn_t
+      := (
+        UBind "__reserved__matchPattern" {{ get(fields, funct7) }} (
+          USugar (
+            USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
+            (map
+              (fun f => (USugar (UConstBits (fct7_bin f)), {{ Ob~1 }}))
+              (get_fcts7 o f3 (ISA_instructions_set rv32i_ISA))
       )))) in
       let generate_fct3_match (o : opcode_name)
         : uaction reg_t empty_ext_fn_t
@@ -237,27 +245,16 @@ Section RVHelpers.
               (fun f =>
                 (USugar (UConstBits (fct3_bin f)),
                 (
-                  (* if (has_fct2 (get_opcode_i_type o)) then *)
-                  (*   generate_fct2_match o f *)
-                  (* (1* fct2 and fct7 are mutually exclusive. *1) *)
-                  (* else if (has_fct7 (get_opcode_i_type o)) then *)
-                  (*   generate_fct7_match o f *)
-                  (* else *)
+                  if (has_fct2 (get_opcode_i_type o)) then
+                    generate_fct2_match o f
+                  (* fct2 and fct7 are mutually exclusive. *)
+                  else if (has_fct7 (get_opcode_i_type o)) then
+                    generate_fct7_match o f
+                  else
                     {{ Ob~1 }}
-                  (* end *)
                 )
               ))
               (get_fcts3 o (ISA_instructions_set rv32i_ISA))
-      )))) in
-      let generate_fct7_match (o : opcode_name)
-        : uaction reg_t empty_ext_fn_t
-      := (
-        UBind "__reserved__matchPattern" {{ get(fields, funct7) }} (
-          USugar (
-            USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
-            (map
-              (fun f => (USugar (UConstBits (fct7_bin f)), {{ Ob~1 }}))
-              (get_fcts7 o (ISA_instructions_set rv32i_ISA))
       )))) in
       UBind "fields" (USugar (UCallModule
         (fun x : reg_t => x) (fun x : empty_ext_fn_t => x) getFields [{{inst}}]
