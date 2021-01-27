@@ -3,7 +3,8 @@ Import ListNotations.
 
 Require Import Koika.Frontend.
 
-Require Import rv.Instructions rv.IFields rv.ITypes rv.InstructionsOpcodes rv.InstructionsFct3.
+Require Import rv.Instructions rv.IFields rv.ITypes rv.InstructionsOpcodes
+rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7.
 
 (* Types for efficiently tracking the presence of elements *)
 (* TODO use sets instead *)
@@ -869,6 +870,7 @@ Proof.
   - left. trivial.
 Defined.
 
+(* TODO refactor *)
 Definition get_fcts3 (o : opcode_name) (instrs : list instruction)
   : list fct3_type
 :=
@@ -883,3 +885,28 @@ Definition get_fcts3 (o : opcode_name) (instrs : list instruction)
   in
   let i3 := to_list_of_dependents i_fcts3 in
   map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) i3.
+
+Definition get_fcts2 (o : opcode_name) (f3 : fct3) (instrs : list instruction)
+  : list fct2_type
+:=
+  let same_opcode :=
+    filter (fun i => (opcode_name_beq (instruction_opcode i) o) instrs
+  in
+  let same_fct3 :=
+
+  in
+  let possible_fcts2 :=
+    custom_filter (fun i => has_fct2 (get_instruction_i_type i)) i
+  in
+  let i2 := to_list_of_dependents i_fcts2 in
+  map (fun x => instruction_fct2 (proj1_sig x) (proj2_sig x)) i2.
+
+Definition get_fcts7 (o : opcode_name) (instrs : list instruction)
+  : list fct7_type
+:=
+  let i := filter (fun i => opcode_name_beq (instruction_opcode i) o) instrs in
+  let i_fcts7 :=
+    custom_filter (fun i => has_fct7 (get_instruction_i_type i)) i
+  in
+  let i7 := to_list_of_dependents i_fcts7 in
+  map (fun x => instruction_fct7 (proj1_sig x) (proj2_sig x)) i7.

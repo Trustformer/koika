@@ -16,6 +16,7 @@ Require Import rv.ITypes.
 Require Import rv.IFields.
 Require Import rv.InstructionsProperties.
 Require Import rv.ModuleInstructions.
+Require Import rv.InstructionsFct2.
 Require Import rv.InstructionsFct3.
 Require Import rv.InstructionsFct7.
 Require Import rv.InstructionsOpcodes.
@@ -207,6 +208,7 @@ Section RVHelpers.
 
   Compute isLegalInstruction.
 
+  (* TODO add fixed fields verification *)
   Definition isLegalInstructionB : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
     int_argspec := [("inst", bits_t 32)];
@@ -215,14 +217,48 @@ Section RVHelpers.
       let opcodes := get_opcodes_from_instructions_list (
         ISA_instructions_set rv32i_ISA
       ) in
-      (* let generate_fct3_match (o : opcode_name) := ( *)
-      (*   UBind "__reserved__matchPattern" {{ get(fields, funct3) }} ( *)
-      (*     USugar ( *)
-      (*       USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0)) *)
-      (*       (map *)
-      (*         (fun f => (USugar (UConstBits (fct3_bin f)), {{ Ob~1 }})) *)
-      (*         (get_fcts3 o (ISA_instructions_set rv32i_ISA)) *)
-      (* )))) in *)
+      let generate_fct2_match (o : opcode_name)
+        : uaction reg_t empty_ext_fn_t
+      := (
+        UBind "__reserved__matchPattern" {{ get(fields, funct2) }} (
+          USugar (
+            USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
+            (map
+              (fun f => (USugar (UConstBits (fct2_bin f)), {{ Ob~1 }}))
+              (get_fcts2 o (ISA_instructions_set rv32i_ISA))
+      )))) in
+      let generate_fct3_match (o : opcode_name)
+        : uaction reg_t empty_ext_fn_t
+      := (
+        UBind "__reserved__matchPattern" {{ get(fields, funct3) }} (
+          USugar (
+            USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
+            (map
+              (fun f =>
+                (USugar (UConstBits (fct3_bin f)),
+                (
+                  (* if (has_fct2 (get_opcode_i_type o)) then *)
+                  (*   generate_fct2_match o f *)
+                  (* (1* fct2 and fct7 are mutually exclusive. *1) *)
+                  (* else if (has_fct7 (get_opcode_i_type o)) then *)
+                  (*   generate_fct7_match o f *)
+                  (* else *)
+                    {{ Ob~1 }}
+                  (* end *)
+                )
+              ))
+              (get_fcts3 o (ISA_instructions_set rv32i_ISA))
+      )))) in
+      let generate_fct7_match (o : opcode_name)
+        : uaction reg_t empty_ext_fn_t
+      := (
+        UBind "__reserved__matchPattern" {{ get(fields, funct7) }} (
+          USugar (
+            USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
+            (map
+              (fun f => (USugar (UConstBits (fct7_bin f)), {{ Ob~1 }}))
+              (get_fcts7 o (ISA_instructions_set rv32i_ISA))
+      )))) in
       UBind "fields" (USugar (UCallModule
         (fun x : reg_t => x) (fun x : empty_ext_fn_t => x) getFields [{{inst}}]
       ))
@@ -231,7 +267,17 @@ Section RVHelpers.
           USugar (
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
             (map
-              (fun o => (USugar (UConstBits (opcode_bin o)), {{ Ob~1 }}))
+              (fun o =>
+                (USugar (UConstBits (opcode_bin o)), (
+                  (* (fct2 or fct7) implies fct3, so checking happens in
+                     generate_fct3_match
+                  *)
+                  if (has_fct3 (get_opcode_i_type o)) then
+                    generate_fct3_match o
+                  else
+                    {{ Ob~1 }}
+                ))
+              )
               opcodes
       ))))
   |}.
@@ -280,6 +326,7 @@ Section RVHelpers.
                     | opc_LOAD_FP   => {{ enum imm_type {ImmI} }}
                     | opc_STORE_FP  => {{ enum imm_type {ImmS} }}
                     (* This case is never used *)
+                    (* TODO do something cleaner *)
                     | _             => {{ enum imm_type {ImmI} }}
                     end
                   ))
