@@ -115,7 +115,7 @@ Section RVHelpers.
       ))
   |}.
 
-  Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {{
+  Definition isLegalInstructionB : UInternalFunction reg_t empty_ext_fn_t := {{
     fun isLegalInstruction (inst : bits_t 32) : bits_t 1 =>
       let fields := getFields (inst) in
       match get(fields, opcode) with
@@ -207,7 +207,7 @@ Section RVHelpers.
   }}.
 
   (* TODO add fixed fields verification *)
-  Definition isLegalInstructionB : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
     int_argspec := [("inst", bits_t 32)];
     int_retSig  := bits_t 1;
@@ -279,9 +279,8 @@ Section RVHelpers.
               opcodes
       ))))
   |}.
-
-  Compute isLegalInstruction.
   Compute isLegalInstructionB.
+  Compute isLegalInstruction.
 
   (* TODO only analyze useful bits - for instance, the last two bits of the
      opcode are always 11 and can thus be safely ignored

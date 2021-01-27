@@ -870,6 +870,18 @@ Proof.
   - left. trivial.
 Defined.
 
+Definition remove_dups {A : Set} (l : list A) (eq : A -> A -> bool) : list A :=
+  (fix helper_f i acc :=
+    match i with
+    | []   => acc
+    | h::t =>
+        if (existsb (eq h) t) then
+          helper_f t acc
+        else
+          helper_f t (h::acc)
+    end
+  ) l [].
+
 (* TODO refactor *)
 Definition get_fcts3 (o : opcode_name) (instrs : list instruction)
   : list fct3_type
@@ -884,7 +896,10 @@ Definition get_fcts3 (o : opcode_name) (instrs : list instruction)
     custom_filter (fun i => has_fct3 (get_instruction_i_type i)) i
   in
   let i3 := to_list_of_dependents i_fcts3 in
-  map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) i3.
+  remove_dups
+    (map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) i3)
+    fct3_type_beq
+.
 
 Definition get_fcts2 (o : opcode_name) (f3 : fct3_type) (instrs : list instruction)
   : list fct2_type
@@ -911,9 +926,12 @@ Definition get_fcts2 (o : opcode_name) (f3 : fct3_type) (instrs : list instructi
   let matching_and_fct2_present :=
     to_list_of_dependents matching_and_fct2_present_dependent
   in
-  map
-    (fun x => instruction_fct2 (proj1_sig x) (proj2_sig x))
-    matching_and_fct2_present
+  remove_dups
+    (
+      map (fun x => instruction_fct2 (proj1_sig x) (proj2_sig x))
+        matching_and_fct2_present
+    )
+    fct2_type_beq
   .
 
 Definition get_fcts7 (o : opcode_name) (f3 : fct3_type) (instrs : list instruction)
@@ -941,7 +959,20 @@ Definition get_fcts7 (o : opcode_name) (f3 : fct3_type) (instrs : list instructi
   let matching_and_fct7_present :=
     to_list_of_dependents matching_and_fct7_present_dependent
   in
-  map
-    (fun x => instruction_fct7 (proj1_sig x) (proj2_sig x))
-    matching_and_fct7_present
+  remove_dups
+    (
+      map (fun x => instruction_fct7 (proj1_sig x) (proj2_sig x))
+      matching_and_fct7_present
+    )
+    fct7_type_beq
   .
+
+(* Require Import rv.ISA rv.ModuleInstructions. *)
+
+(* Definition rv32i_ISA : ISA := {| *)
+(*   ISA_memory_model  := RVWMO; *)
+(*   ISA_base_standard := RV32I; *)
+(*   ISA_extensions    := []; *)
+(* |}. *)
+
+(* Compute (get_fcts3 opc_OP_IMM (ISA_instructions_set rv32i_ISA)). *)
