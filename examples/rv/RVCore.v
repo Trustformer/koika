@@ -318,22 +318,49 @@ Section RVHelpers.
       }
   }}.
 
-  Definition getImmediate : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun getImmediate (dInst: struct_t decoded_sig) : bits_t 32 =>
-      let imm_type_v := get(dInst, immediateType) in
-      if (get(imm_type_v, valid) == Ob~1) then
-        let fields := getFields (get(dInst,inst)) in
-        match (get(imm_type_v, data)) with
-        | (enum imm_type { ImmI }) => get(fields, immI)
-        | (enum imm_type { ImmS }) => get(fields, immS)
-        | (enum imm_type { ImmB }) => get(fields, immB)
-        | (enum imm_type { ImmU }) => get(fields, immU)
-        | (enum imm_type { ImmJ }) => get(fields, immJ)
-        return default: |32`d0|
-        end
-      else
-        |32`d0|
-  }}.
+  Definition getImmediate : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name := "getImmediate";
+    int_argspec := [prod_of_argsig
+      {| arg_name := "dInst"; arg_type := struct_t decoded_sig |}
+    ];
+    int_retSig := bits_t 32;
+    int_body :=
+      UBind "imm_type_v" {{ get(dInst, immediateType) }}
+      (
+        UIf
+          (UBinop (UEq false) {{ get(imm_type_v, valid) }}
+            (USugar (UConstBits Ob~1)))
+          (UBind "fields" {{ getFields(get(dInst, inst)) }}
+            (
+              UBind "__reserved__matchPattern" {{ get(imm_type_v, data) }}
+                (USugar (USwitch {{ __reserved__matchPattern  }} {{ |32`d0| }}
+                (
+                  map
+                    (fun i =>
+                      match i with
+                      | immI =>
+                        ({{ enum imm_type {ImmI} }}, {{ get(fields, immI) }})
+                      | immS =>
+                        ({{ enum imm_type {ImmS} }}, {{ get(fields, immS) }})
+                      | immB =>
+                        ({{ enum imm_type {ImmB} }}, {{ get(fields, immB) }})
+                      | immU =>
+                        ({{ enum imm_type {ImmU} }}, {{ get(fields, immU) }})
+                      | immJ =>
+                        ({{ enum imm_type {ImmJ} }}, {{ get(fields, immJ) }})
+                      (* should never happen TODO make function dependent *)
+                      | _ => ({{ Ob~0 }}, {{ Ob~0 }})
+                      end
+                    )
+                    (get_imm_fields_from_instructions
+                      (ISA_instructions_set rv32i_ISA)
+                    )
+                )))
+            )
+          )
+          {{ |32`d0| }}
+      )
+  |}.
 
   Definition alu32 : UInternalFunction reg_t empty_ext_fn_t := {{
     fun alu32 (funct3 : bits_t 3) (funct7 : bits_t 7) (a : bits_t 32)

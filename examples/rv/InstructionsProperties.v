@@ -967,12 +967,24 @@ Definition get_fcts7 (o : opcode_name) (f3 : fct3_type) (instrs : list instructi
     fct7_type_beq
   .
 
-(* Require Import rv.ISA rv.ModuleInstructions. *)
+Definition get_imm_fields_from_instructions (instrs : list instruction) :=
+  let all_present_fields := get_i_fields_list_from_instructions instrs in
+  filter (fun i =>
+    match i with
+    | immI => true
+    | immS => true
+    | immB => true
+    | immU => true
+    | immJ => true
+    | _    => false
+    end
+  ) all_present_fields
+.
+
+Require Import rv.ISA rv.ModuleInstructions.
 
 (* Definition rv32i_ISA : ISA := {| *)
 (*   ISA_memory_model  := RVWMO; *)
 (*   ISA_base_standard := RV32I; *)
 (*   ISA_extensions    := []; *)
 (* |}. *)
-
-(* Compute (get_fcts3 opc_OP_IMM (ISA_instructions_set rv32i_ISA)). *)
