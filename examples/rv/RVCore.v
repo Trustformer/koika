@@ -29,7 +29,7 @@ Definition rv32i_ISA : ISA := {|
 |}.
 
 Section RVHelpers.
-  Context {reg_t: Type}.
+  Context {reg_t : Type}.
 
   Definition imm_type := {|
     enum_name        := "immType";
@@ -176,8 +176,8 @@ Section RVHelpers.
             (map
               (fun o =>
                 (USugar (UConstBits (opcode_bin o)), (
-                  (* (fct2 or fct7) implies fct3, so checking happens in
-                     generate_fct3_match
+                  (* (fct2 or fct7) implies fct3, so checking for those happens
+                     in generate_fct3_match
                   *)
                   if (has_fct3 (get_opcode_i_type o)) then
                     generate_fct3_match o
@@ -239,7 +239,6 @@ Section RVHelpers.
                   ))
                 ]
               )
-
             )
           ) opcodes
         )
@@ -309,10 +308,10 @@ Section RVHelpers.
   Definition decode_fun : UInternalFunction reg_t empty_ext_fn_t := {{
     fun decode_fun (arg_inst : bits_t 32) : struct_t decoded_sig =>
       struct decoded_sig {
-        valid_rs1     := usesRS1 (arg_inst);
-        valid_rs2     := usesRS2 (arg_inst);
-        valid_rd      := usesRD (arg_inst);
-        legal         := isLegalInstruction (arg_inst);
+        valid_rs1     := usesRS1(arg_inst);
+        valid_rs2     := usesRS2(arg_inst);
+        valid_rd      := usesRD(arg_inst);
+        legal         := isLegalInstruction(arg_inst);
         inst          := arg_inst;
         immediateType := getImmediateType(arg_inst)
       }
@@ -362,6 +361,32 @@ Section RVHelpers.
       )
   |}.
 
+  Definition get_semantics_binop_32 (i : instruction)
+    : (bits_t 32 -> bits_t 32 -> uaction reg_t empty_ext_fn_t)
+  :=
+    match i with
+    | ADDI_32I   => (fun a b => {{ a + b }})
+    | SLTI_32I   => (fun a b => {{ zeroExtend(a <s b, 32) }})
+    | SLTIU_32I  => (fun a b => {{ zeroExtend(a < b, 32) }})
+    | XORI_32I   => (fun a b => {{ a ^ b }})
+    | ORI_32I    => (fun a b => {{ a || b }})
+    | ANDI_32I   => (fun a b => {{ a && b }})
+    | SLLI_32I   => (fun a b => {{ a << b }})
+    | SRLI_32I   => (fun a b => {{ a >> b }})
+    | SRAI_32I   => (fun a b => {{ a >>> b }})
+    | ADD_32I    => (fun a b => {{ a + b }})
+    | SUB_32I    => (fun a b => {{ a - b }})
+    | SLL_32I    => (fun a b => {{ a << b }})
+    | SLT_32I    => (fun a b => {{ zeroExtend(a <s b, 32) }})
+    | SLTU_32I   => (fun a b => {{ zeroExtend(a < b, 32) }})
+    | XOR_32I    => (fun a b => {{ a ^ b }})
+    | SRL_32I    => (fun a b => {{ a >> b }})
+    | SRA_32I    => (fun a b => {{ a >>> b }})
+    | OR_32I     => (fun a b => {{ a || b }})
+    | AND_32I    => (fun a b => {{ a && b }})
+    | _ => fun a b => USugar ((USkip)) (* TODO remove through dep. types *)
+    end.
+
   Definition alu32 : UInternalFunction reg_t empty_ext_fn_t := {{
     fun alu32 (funct3 : bits_t 3) (funct7 : bits_t 7) (a : bits_t 32)
       (b : bits_t 32) : bits_t 32
@@ -384,6 +409,17 @@ Section RVHelpers.
       return default: #(Bits.of_nat 32 0)
       end
   }}.
+
+  (* TODO number of arguments should vary depending on active options *)
+  Definition alu32B : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name := "alu32";
+    int_argspec := [
+      ("funct3", bits_t 3); ("funct7", bits_t 7); ("a", bits_t 32);
+      ("b", bits_t 32)
+    ];
+    int_retSig := bits_t 32;
+    int_body := {{ |32`d0| }}
+  |}.
 
   Definition execALU32 : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execALU32 (inst : bits_t 32) (rs1_val : bits_t 32) (rs2_val : bits_t 32)
