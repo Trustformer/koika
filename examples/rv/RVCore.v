@@ -361,30 +361,31 @@ Section RVHelpers.
       )
   |}.
 
+  (* TODO find a cleaner way to manage shamt *)
   Definition get_semantics_binop_32 (i : instruction)
-    : (bits_t 32 -> bits_t 32 -> uaction reg_t empty_ext_fn_t)
+    : uaction reg_t empty_ext_fn_t
   :=
     match i with
-    | ADDI_32I   => (fun a b => {{ a + b }})
-    | SLTI_32I   => (fun a b => {{ zeroExtend(a <s b, 32) }})
-    | SLTIU_32I  => (fun a b => {{ zeroExtend(a < b, 32) }})
-    | XORI_32I   => (fun a b => {{ a ^ b }})
-    | ORI_32I    => (fun a b => {{ a || b }})
-    | ANDI_32I   => (fun a b => {{ a && b }})
-    | SLLI_32I   => (fun a b => {{ a << b }})
-    | SRLI_32I   => (fun a b => {{ a >> b }})
-    | SRAI_32I   => (fun a b => {{ a >>> b }})
-    | ADD_32I    => (fun a b => {{ a + b }})
-    | SUB_32I    => (fun a b => {{ a - b }})
-    | SLL_32I    => (fun a b => {{ a << b }})
-    | SLT_32I    => (fun a b => {{ zeroExtend(a <s b, 32) }})
-    | SLTU_32I   => (fun a b => {{ zeroExtend(a < b, 32) }})
-    | XOR_32I    => (fun a b => {{ a ^ b }})
-    | SRL_32I    => (fun a b => {{ a >> b }})
-    | SRA_32I    => (fun a b => {{ a >>> b }})
-    | OR_32I     => (fun a b => {{ a || b }})
-    | AND_32I    => (fun a b => {{ a && b }})
-    | _ => fun a b => USugar ((USkip)) (* TODO remove through dep. types *)
+    | ADDI_32I   => {{ a + b }}
+    | SLTI_32I   => {{ zeroExtend(a <s b, 32) }}
+    | SLTIU_32I  => {{ zeroExtend(a < b, 32) }}
+    | XORI_32I   => {{ a ^ b }}
+    | ORI_32I    => {{ a || b }}
+    | ANDI_32I   => {{ a && b }}
+    | SLLI_32I   => {{ a << shamt }}
+    | SRLI_32I   => {{ a >> shamt }}
+    | SRAI_32I   => {{ a >>> shamt }}
+    | ADD_32I    => {{ a + b }}
+    | SUB_32I    => {{ a - b }}
+    | SLL_32I    => {{ a << shamt }}
+    | SLT_32I    => {{ zeroExtend(a <s b, 32) }}
+    | SLTU_32I   => {{ zeroExtend(a < b, 32) }}
+    | XOR_32I    => {{ a ^ b }}
+    | SRL_32I    => {{ a >> shamt }}
+    | SRA_32I    => {{ a >>> shamt }}
+    | OR_32I     => {{ a || b }}
+    | AND_32I    => {{ a && b }}
+    | _          => USugar (USkip) (* TODO rm through dep. types, i_type *)
     end.
 
   Definition alu32 : UInternalFunction reg_t empty_ext_fn_t := {{
@@ -410,7 +411,7 @@ Section RVHelpers.
       end
   }}.
 
-  (* TODO number of arguments should vary depending on active options *)
+  (* TODO number of required arguments could vary depending on extensions *)
   Definition alu32B : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name := "alu32";
     int_argspec := [
@@ -418,8 +419,69 @@ Section RVHelpers.
       ("b", bits_t 32)
     ];
     int_retSig := bits_t 32;
-    int_body := {{ |32`d0| }}
+    int_body := (
+      let binops := filter (fun i =>
+        (opcode_name_beq (instruction_opcode i) opc_OP)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_32)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_IMM)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_IMM_32)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_FP)
+      ) (ISA_instructions_set rv32i_ISA) in
+      let fcts3 : list fct3_type := get_fcts3_in_instructions binops in
+      (
+        UBind "shamt" (UBinop (UBits2 (UIndexedSlice 5)) {{ b }}
+          {{ Ob~0~0~0~0~0 }})
+        (
+        UBind "__reserved__matchPattern" {{ funct3 }} (
+          USugar (
+            USwitch {{ __reserved__matchPattern }} {{ |32`d0| }} (
+              map (fun i =>
+                match (filter_by_fct3 binops i) with
+                | [h]  =>
+                (
+                  USugar (UConstBits (fct3_bin i)),
+                  get_semantics_binop_32 h
+                )
+                | _::_ => (USugar (UConstBits (fct3_bin i)),
+                  (
+                  UBind "__reserved__matchPattern" {{ funct7 }} (
+                    USugar (
+                      USwitch {{ __reserved__matchPattern }} {{ |32`d0| }} (
+                        let fcts7 := get_fcts7_in_instructions binops i in
+                        map (fun j =>
+                          match (filter_by_fct3_and_fct7 binops i j) with
+                          | [h] => (USugar (UConstBits (fct7_bin j)), get_semantics_binop_32 h)
+                          | _   => (USugar (UConstBits (fct7_bin j)), {{ |32`d0| }}) (* Impossible case *)
+                          end
+                        ) fcts7
+                      )
+                  )))
+                )
+                | _    => (
+                  USugar (UConstBits (fct3_bin i)),
+                  {{ |32`d0| }}
+                ) (* Impossible case *)
+                end
+              )
+              fcts3
+            )
+          )
+        ))
+      )
+    )
   |}.
+
+  Definition binops := filter (fun i =>
+        (opcode_name_beq (instruction_opcode i) opc_OP)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_32)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_IMM)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_IMM_32)
+        || (opcode_name_beq (instruction_opcode i) opc_OP_FP)
+      ) (ISA_instructions_set rv32i_ISA).
+  Compute (filter_by_fct3 binops fct3_111).
+
+  Compute alu32B.
+  Compute alu32.
 
   Definition execALU32 : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execALU32 (inst : bits_t 32) (rs1_val : bits_t 32) (rs2_val : bits_t 32)

@@ -981,10 +981,67 @@ Definition get_imm_fields_from_instructions (instrs : list instruction) :=
   ) all_present_fields
 .
 
-Require Import rv.ISA rv.ModuleInstructions.
+Definition get_fcts3_in_instructions (instrs : list instruction)
+  : list fct3_type
+:=
+  let fct3_present_dependent :=
+    custom_filter (fun i => has_fct3 (get_instruction_i_type i)) instrs
+  in
+  let fct3_present := to_list_of_dependents fct3_present_dependent in
+  remove_dups
+    (map (fun x => instruction_fct3 (proj1_sig x) (proj2_sig x)) fct3_present)
+    fct3_type_beq
+.
 
-(* Definition rv32i_ISA : ISA := {| *)
-(*   ISA_memory_model  := RVWMO; *)
-(*   ISA_base_standard := RV32I; *)
-(*   ISA_extensions    := []; *)
-(* |}. *)
+Definition filter_by_fct3 (instrs : list instruction) (f3 : fct3_type)
+  : list instruction
+:=
+  let fct3_present_dependent :=
+    custom_filter (fun i => has_fct3 (get_instruction_i_type i)) instrs
+  in
+  let fct3_present := to_list_of_dependents fct3_present_dependent in
+  let same_fct3 := filter
+    (fun i => fct3_type_beq (instruction_fct3 (proj1_sig i) (proj2_sig i)) f3)
+    fct3_present
+  in
+  map (fun (x : {i : instruction | has_fct3 (get_instruction_i_type i) = true}) => proj1_sig x) same_fct3.
+
+Definition get_fcts7_in_instructions
+  (instrs : list instruction) (f3 : fct3_type) : list fct7_type
+:=
+  let fct3_present_dependent :=
+    custom_filter (fun i => has_fct3 (get_instruction_i_type i)) instrs
+  in
+  let fct3_present := to_list_of_dependents fct3_present_dependent in
+  let same_fct3 := map
+    (fun
+      (x : {i : instruction | has_fct3 (get_instruction_i_type i) = true}) =>
+        proj1_sig x
+    ) (
+      filter (fun x =>
+        fct3_type_beq (instruction_fct3 (proj1_sig x) (proj2_sig x)) f3
+      ) fct3_present
+    )
+  in
+  let fct7_present_dependent :=
+    custom_filter (fun i => has_fct7 (get_instruction_i_type i)) same_fct3
+  in
+  let fct7_present := to_list_of_dependents fct7_present_dependent in
+  remove_dups
+    (map (fun x => instruction_fct7 (proj1_sig x) (proj2_sig x)) fct7_present)
+    fct7_type_beq
+.
+
+Definition filter_by_fct3_and_fct7 (instrs : list instruction) (f3 : fct3_type)
+  (f7 : fct7_type) : list instruction
+:=
+  let instrs3 := filter_by_fct3 instrs f3 in
+  let fct7_present_dependent :=
+    custom_filter (fun i => has_fct7 (get_instruction_i_type i)) instrs3
+  in
+  let fct7_present := to_list_of_dependents fct7_present_dependent in
+  let same_fct7 := filter
+    (fun i => fct7_type_beq (instruction_fct7 (proj1_sig i) (proj2_sig i)) f7)
+    fct7_present
+  in
+  map (fun (x : {i : instruction | has_fct7 (get_instruction_i_type i) = true}) => proj1_sig x) same_fct7.
