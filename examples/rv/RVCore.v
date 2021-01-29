@@ -3,32 +3,24 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
 
-Require Import Koika.Frontend.
-Require Import Koika.Std.
+Require Import Koika.Frontend Koika.Std.
+Require Import rv.Multiplier rv.RVEncoding rv.Scoreboard.
 
-Require Import rv.Multiplier.
-Require Import rv.RVEncoding.
-Require Import rv.Scoreboard.
+Require Import rv.ISA rv.Instructions rv.ITypes rv.IFields rv.StructsBuilding
+               rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
+               rv.InstructionsOpcodes rv.InstructionsProperties
+               rv.ModuleInstructions.
 
-Require Import rv.ISA.
-Require Import rv.Instructions.
-Require Import rv.ITypes.
-Require Import rv.IFields.
-Require Import rv.InstructionsProperties.
-Require Import rv.ModuleInstructions.
-Require Import rv.InstructionsFct2.
-Require Import rv.InstructionsFct3.
-Require Import rv.InstructionsFct7.
-Require Import rv.InstructionsOpcodes.
-Require Import rv.StructsBuilding.
-
-Definition rv32i_ISA : ISA := {|
-  ISA_memory_model  := RVWMO;
-  ISA_base_standard := RV32I;
-  ISA_extensions    := [RVM];
+(* The ISA defined hereafter is used to parameterize the Kôika module *)
+Definition isa : ISA := {|
+  ISA_memory_model := RVWMO; ISA_base_standard := RV32I; ISA_extensions := []
 |}.
 
 Section RVHelpers.
+  (* Currently, the mul instruction is always active and supported through a
+     module, hence its artificial addition to the set of active instructions *)
+  Definition instructions := MUL_32M::(ISA_instructions_set isa).
+
   Context {reg_t : Type}.
 
   Definition imm_type := {|
@@ -44,7 +36,7 @@ Section RVHelpers.
       :: ("immediateType", maybe (enum_t imm_type)) :: nil
   |}.
 
-  Definition inst_field := get_inst_fields_struct_from_ISA rv32i_ISA.
+  Definition inst_field := get_inst_fields_struct_from_ISA isa.
 
   Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "getFields";
@@ -110,7 +102,7 @@ Section RVHelpers.
           ) in
           let field_action := manage_sign_extension (slice_actions) in
           (get_i_field_name f, field_action) :: a
-        ) (get_i_fields_list_from_instructions (ISA_instructions_set rv32i_ISA))
+        ) (get_i_fields_list_from_instructions instructions)
         []
       ))
   |}.
@@ -121,9 +113,7 @@ Section RVHelpers.
     int_argspec := [("inst", bits_t 32)];
     int_retSig  := bits_t 1;
     int_body    :=
-      let opcodes := get_opcodes_from_instructions_list (
-        ISA_instructions_set rv32i_ISA
-      ) in
+      let opcodes := get_opcodes_from_instructions_list instructions in
       let generate_fct2_match (o : opcode_name) (f3 : fct3_type)
         : uaction reg_t empty_ext_fn_t
       := (
@@ -132,7 +122,7 @@ Section RVHelpers.
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
             (map
               (fun f => (USugar (UConstBits (fct2_bin f)), {{ Ob~1 }}))
-              (get_fcts2 o f3 (ISA_instructions_set rv32i_ISA))
+              (get_fcts2 o f3 instructions)
       )))) in
       let generate_fct7_match (o : opcode_name) (f3 : fct3_type)
         : uaction reg_t empty_ext_fn_t
@@ -142,7 +132,7 @@ Section RVHelpers.
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
             (map
               (fun f => (USugar (UConstBits (fct7_bin f)), {{ Ob~1 }}))
-              (get_fcts7 o f3 (ISA_instructions_set rv32i_ISA))
+              (get_fcts7 o f3 instructions)
       )))) in
       let generate_fct3_match (o : opcode_name)
         : uaction reg_t empty_ext_fn_t
@@ -150,21 +140,15 @@ Section RVHelpers.
         UBind "__reserved__matchPattern" {{ get(fields, funct3) }} (
           USugar (
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
-            (map
-              (fun f =>
-                (USugar (UConstBits (fct3_bin f)),
-                (
+            (map (fun f =>
+                (USugar (UConstBits (fct3_bin f)), (
                   if (has_fct2 (get_opcode_i_type o)) then
                     generate_fct2_match o f
                   (* fct2 and fct7 are mutually exclusive. *)
                   else (if (has_fct7 (get_opcode_i_type o)) then
                     generate_fct7_match o f
-                  else
-                    {{ Ob~1 }}
-                  )
-                )
-              ))
-              (get_fcts3 o (ISA_instructions_set rv32i_ISA))
+                  else {{ Ob~1 }}
+              )))) (get_fcts3 o instructions)
       )))) in
       UBind "fields" (USugar (UCallModule
         (fun x : reg_t => x) (fun x : empty_ext_fn_t => x) getFields [{{inst}}]
@@ -173,20 +157,14 @@ Section RVHelpers.
         UBind "__reserved__matchPattern" {{ get(fields, opcode) }} (
           USugar (
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
-            (map
-              (fun o =>
+            (map (fun o =>
                 (USugar (UConstBits (opcode_bin o)), (
                   (* (fct2 or fct7) implies fct3, so checking for those happens
                      in generate_fct3_match
                   *)
-                  if (has_fct3 (get_opcode_i_type o)) then
-                    generate_fct3_match o
-                  else
-                    {{ Ob~1 }}
-                ))
-              )
-              opcodes
-      ))))
+                  if (has_fct3 (get_opcode_i_type o)) then generate_fct3_match o
+                  else {{ Ob~1 }}
+        ))) opcodes))))
   |}.
 
   (* TODO only analyze useful bits - for instance, the last two bits of the
@@ -202,48 +180,39 @@ Section RVHelpers.
         {{__reserved__matchPattern}}
         {{{invalid (enum_t imm_type)} ()}}
         (
-          let opcodes := get_opcodes_from_instructions_list (
-            ISA_instructions_set rv32i_ISA
-          ) in
-          map (fun o =>
-            (
-              USugar (UConstBits (opcode_bin o)),
-              USugar (UStructInit {|
-                  struct_name   := "maybe_immType";
-                  struct_fields := [
-                    ("valid", bits_t 1);
-                    ("data", enum_t imm_type)
-                  ]
-                |}
-                [
-                  ("valid", USugar (UConstBits Ob~1));
-                  ("data", (
-                    match o with
-                    | opc_JALR      => {{ enum imm_type {ImmI} }}
-                    | opc_LOAD      => {{ enum imm_type {ImmI} }}
-                    | opc_OP_IMM    => {{ enum imm_type {ImmI} }}
-                    | opc_MISC_MEM  => {{ enum imm_type {ImmI} }}
-                    | opc_STORE     => {{ enum imm_type {ImmS} }}
-                    | opc_BRANCH    => {{ enum imm_type {ImmB} }}
-                    | opc_LUI       => {{ enum imm_type {ImmU} }}
-                    | opc_AUIPC     => {{ enum imm_type {ImmU} }}
-                    | opc_JAL       => {{ enum imm_type {ImmJ} }}
-                    | opc_SYSTEM    => {{ enum imm_type {ImmI} }}
-                    | opc_OP_IMM_32 => {{ enum imm_type {ImmI} }}
-                    | opc_LOAD_FP   => {{ enum imm_type {ImmI} }}
-                    | opc_STORE_FP  => {{ enum imm_type {ImmS} }}
-                    (* This case is never used *)
-                    (* TODO do something cleaner *)
-                    | _             => {{ enum imm_type {ImmI} }}
-                    end
-                  ))
+          let opcodes := get_opcodes_from_instructions_list instructions in
+          map (fun o => (
+            USugar (UConstBits (opcode_bin o)),
+            USugar (UStructInit {|
+                struct_name   := "maybe_immType";
+                struct_fields := [
+                  ("valid", bits_t 1);
+                  ("data", enum_t imm_type)
                 ]
-              )
-            )
-          ) opcodes
-        )
-      ))
-    |}.
+            |}
+              [
+                ("valid", USugar (UConstBits Ob~1));
+                ("data", (
+                  match o with
+                  | opc_JALR      => {{ enum imm_type {ImmI} }}
+                  | opc_LOAD      => {{ enum imm_type {ImmI} }}
+                  | opc_OP_IMM    => {{ enum imm_type {ImmI} }}
+                  | opc_MISC_MEM  => {{ enum imm_type {ImmI} }}
+                  | opc_STORE     => {{ enum imm_type {ImmS} }}
+                  | opc_BRANCH    => {{ enum imm_type {ImmB} }}
+                  | opc_LUI       => {{ enum imm_type {ImmU} }}
+                  | opc_AUIPC     => {{ enum imm_type {ImmU} }}
+                  | opc_JAL       => {{ enum imm_type {ImmJ} }}
+                  | opc_SYSTEM    => {{ enum imm_type {ImmI} }}
+                  | opc_OP_IMM_32 => {{ enum imm_type {ImmI} }}
+                  | opc_LOAD_FP   => {{ enum imm_type {ImmI} }}
+                  | opc_STORE_FP  => {{ enum imm_type {ImmS} }}
+                  (* This case is never used *)
+                  (* TODO do something cleaner *)
+                  | _             => {{ enum imm_type {ImmI} }}
+                  end
+      ))]))) opcodes)))
+  |}.
 
   Definition usesRS1 : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name := "usesRS1";
@@ -255,9 +224,9 @@ Section RVHelpers.
       (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
       (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
       (
-        let rs1_opcodes := get_opcodes_from_instructions_list (get_rs1_users (
-          ISA_instructions_set rv32i_ISA
-        )) in
+        let rs1_opcodes := get_opcodes_from_instructions_list (
+          get_rs1_users instructions
+        ) in
         map (fun o =>
           (USugar (UConstBits (opcode_bin o)), {{Ob~1}})
         ) rs1_opcodes
@@ -275,9 +244,9 @@ Section RVHelpers.
       (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
       (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
       (
-        let rs2_opcodes := get_opcodes_from_instructions_list (get_rs2_users (
-          ISA_instructions_set rv32i_ISA
-        )) in
+        let rs2_opcodes := get_opcodes_from_instructions_list (
+          get_rs2_users instructions
+        ) in
         map (fun o =>
           (USugar (UConstBits (opcode_bin o)), {{Ob~1}})
         ) rs2_opcodes
@@ -295,9 +264,9 @@ Section RVHelpers.
       (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
       (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
       (
-        let rd_opcodes := get_opcodes_from_instructions_list (get_rd_users (
-          ISA_instructions_set rv32i_ISA
-        )) in
+        let rd_opcodes := get_opcodes_from_instructions_list (
+          get_rd_users instructions
+        ) in
         map (fun o =>
           (USugar (UConstBits (opcode_bin o)), {{Ob~1}})
         ) rd_opcodes
@@ -351,9 +320,7 @@ Section RVHelpers.
                       | _ => ({{ Ob~0 }}, {{ Ob~0 }})
                       end
                     )
-                    (get_imm_fields_from_instructions
-                      (ISA_instructions_set rv32i_ISA)
-                    )
+                    (get_imm_fields_from_instructions instructions)
                 )))
             )
           )
@@ -426,7 +393,7 @@ Section RVHelpers.
         || (opcode_name_beq (instruction_opcode i) opc_OP_IMM)
         || (opcode_name_beq (instruction_opcode i) opc_OP_IMM_32)
         || (opcode_name_beq (instruction_opcode i) opc_OP_FP)
-      ) (ISA_instructions_set rv32i_ISA) in
+      ) instructions in
       let fcts3 : list fct3_type := get_fcts3_in_instructions binops in
       (
         UBind "shamt" (UBinop (UBits2 (UIndexedSlice 5)) {{ b }}
@@ -470,18 +437,6 @@ Section RVHelpers.
       )
     )
   |}.
-
-  Definition binops := filter (fun i =>
-        (opcode_name_beq (instruction_opcode i) opc_OP)
-        || (opcode_name_beq (instruction_opcode i) opc_OP_32)
-        || (opcode_name_beq (instruction_opcode i) opc_OP_IMM)
-        || (opcode_name_beq (instruction_opcode i) opc_OP_IMM_32)
-        || (opcode_name_beq (instruction_opcode i) opc_OP_FP)
-      ) (ISA_instructions_set rv32i_ISA).
-  Compute (filter_by_fct3 binops fct3_111).
-
-  Compute alu32B.
-  Compute alu32.
 
   Definition execALU32 : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execALU32 (inst : bits_t 32) (rs1_val : bits_t 32) (rs2_val : bits_t 32)
