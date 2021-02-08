@@ -4,7 +4,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Koika.Frontend Koika.Std.
-Require Import rv.Multiplier rv.RVEncoding rv.Scoreboard.
+Require Import rv.Multiplier rv.RVEncoding rv.Scoreboard rv.Stack.
 
 Require Import rv.ISA rv.Instructions rv.ITypes rv.IFields rv.StructsBuilding
                rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
@@ -520,7 +520,7 @@ Module Type RVParams.
   Parameter WIDTH : nat.
 End RVParams.
 
-Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
+Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackInterface).
   Import ListNotations.
   Import RVP.
 
@@ -622,6 +622,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   | e2w (state: fromExecute.reg_t)
   | rf (state: Rf.reg_t)
   | mulState (state: Multiplier.reg_t)
+  | stack (state: Stack.reg_t)
   | scoreboard (state: Scoreboard.reg_t)
   | cycle_count
   | instr_count
@@ -642,6 +643,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
     | rf r         => Rf.R r
     | scoreboard r => Scoreboard.R r
     | mulState r   => Multiplier.R r
+    | stack r      => Stack.R r
     | pc           => bits_t 32
     | cycle_count  => bits_t 32
     | instr_count  => bits_t 32
@@ -662,6 +664,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
     | e2w s        => fromExecute.r s
     | scoreboard s => Scoreboard.r s
     | mulState s   => Multiplier.r s
+    | stack s      => Stack.r s
     | pc           => Bits.zero
     | cycle_count  => Bits.zero
     | instr_count  => Bits.zero
@@ -795,6 +798,12 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
       get(dInst,inst)[|5`d4| :+ 3] == Ob~1~1~0
   }}.
 
+  Definition isJALXInst : UInternalFunction reg_t empty_ext_fn_t := {{
+    fun isJALXInst (dInst : struct_t decoded_sig) : bits_t 1 =>
+      get(dInst, inst)[|5`d4| :+ 3] == Ob~1~1~0
+      && get(dInst, inst)[|5`d0| :+ 3] == Ob~1~1~1
+  }}.
+
   Definition step_multiplier : uaction reg_t ext_fn_t := {{
     mulState.(Multiplier.step)()
   }}.
@@ -840,7 +849,27 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
             byte_en := byte_en; addr := addr; data := data
           })
         else if (isControlInst(dInst)) then
-          set data := (pc + |32`d4|) (* For jump and link *)
+          set data := (pc + |32`d4|); (* For jump and link *)
+          (
+            if isJALXInst(dInst) then (
+              let res := Ob~0 in
+              (
+                if get(dInst, inst)[|5`d7| :+ 5] != |5`d0| then
+                  set res := stack.(Stack.push)(data)
+                else if get(dInst, inst)[|5`d7| :+ 5] != |5`d1| then
+                  set res := stack.(Stack.pop)(addr)
+                else pass
+              );
+              (
+                if (res) then
+                  let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
+                    valid := Ob~1; data := |8`d1|
+                  }) in pass
+                else pass
+              )
+            )
+            else pass
+          )
         else if (isMultiplyInst(dInst)) then
           mulState.(Multiplier.enq)(rs1_val, rs2_val)
         else
@@ -941,7 +970,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
           let char    := get(put_request, data)[|5`d0| :+ 8] in
           let may_run := get_ready && put_valid && is_uart_write in
           let ready   := extcall ext_uart_write (struct (Maybe (bits_t 8)) {
-            valid     := may_run; data                                       := char
+            valid     := may_run; data := char
           }) in
           struct mem_output {
             get_valid    := may_run && ready;
@@ -1090,6 +1119,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface).
   |}.
 
   Existing Instance Multiplier.Show_reg_t.
+  Existing Instance Stack.Show_reg_t.
   Instance Show_reg_t : Show reg_t := _.
   Instance Show_ext_fn_t : Show ext_fn_t := _.
 
@@ -1142,6 +1172,11 @@ End Core.
 Module Mul32Params <: Multiplier_sig.
   Definition n := 32.
 End Mul32Params.
+
+(* TODO reactivate *)
+(* Module StackParams <: Stack_sig. *)
+(*   Definition capacity := 32. *)
+(* End StackParams. *)
 
 (** A quick way to measure term sizes:
     Compute (uaction_size RV32I.fetch).

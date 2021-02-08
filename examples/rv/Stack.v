@@ -1,0 +1,80 @@
+(*! Implementation of an address stack module !*)
+
+Require Import Koika.Frontend Koika.Std.
+
+Module Type StackInterface.
+  Axiom reg_t            : Type.
+  Axiom R                : reg_t -> type.
+  Axiom r                : forall idx : reg_t, R idx.
+  Axiom push             : UInternalFunction reg_t empty_ext_fn_t.
+  Axiom pop              : UInternalFunction reg_t empty_ext_fn_t.
+  Axiom FiniteType_reg_t : FiniteType reg_t.
+  Axiom Show_reg_t       : Show reg_t.
+End StackInterface.
+
+(* TODO Parameterizing StackF hurts the instantiation of FiniteType_reg_t *)
+(* Module Type Stack_sig. *)
+(*   Parameter capacity : nat. *)
+(* End Stack_sig. *)
+
+Module StackF <: StackInterface.
+  Definition capacity := 128.
+
+  Notation index_sz := (log2 capacity).
+
+  (* pow2 index_sz is used instead of the equivalent capacity since Koîka's
+     UCompleteSwitch gets angry otherwise (Coq is able to figure the equivalence
+     between pow2 (log2 x) and x in most situations, but the fact that x comes
+     from Stack_sig here seems to clash with that ability) *)
+  Inductive _reg_t := size | stack (n : Vect.index (pow2 index_sz)).
+  Definition reg_t := _reg_t.
+
+  Definition R r :=
+    match r with
+    | size => bits_t index_sz
+    | stack n => bits_t 32
+    end.
+
+  Definition r reg : R reg :=
+    match reg with
+    | size => Bits.zero
+    | stack n => Bits.zero
+    end.
+
+  Definition read_vect_sequential idx : uaction reg_t empty_ext_fn_t :=
+    {{ `UCompleteSwitch (SequentialSwitch (bits_t 32) "tmp") index_sz idx
+      (fun idx => {{ read0(stack idx) }})` }}.
+
+  Definition write0_stack : UInternalFunction reg_t empty_ext_fn_t :=
+    {{ fun write0_queue (idx : bits_t index_sz) (val: bits_t 32) : unit_t =>
+         `UCompleteSwitch (SequentialSwitchTt) index_sz "idx"
+              (fun idx => {{ write0(stack idx, val) }})` }}.
+
+  Definition push : UInternalFunction reg_t empty_ext_fn_t := {{
+    fun push (address : bits_t 32) : bits_t 1 =>
+      let s0 := read0(size) in
+      if (s0 == #(Bits.of_nat index_sz capacity)) then (* overflow *)
+        Ob~1
+      else (
+        write0(size, s0 + |index_sz`d1|);
+        write0_stack(s0, address);
+        Ob~0
+      )
+  }}.
+
+  Definition pop : UInternalFunction reg_t empty_ext_fn_t := {{
+    fun push (address : bits_t 32) : bits_t 1 =>
+      let s0 := read0(size) in
+      if s0 == |index_sz`d0| then (* underflow *)
+        Ob~1
+      else if (`read_vect_sequential "s0"` != address) then (* wrong address *)
+        Ob~1
+      else (
+        write0(size, s0 - |index_sz`d1|);
+        Ob~0
+      )
+  }}.
+
+  Instance Show_reg_t : Show reg_t := _.
+  Instance FiniteType_reg_t : FiniteType reg_t := _.
+End StackF.
