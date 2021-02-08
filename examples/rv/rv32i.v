@@ -2,7 +2,7 @@
 Require Import Koika.Frontend.
 
 Require Import rv.RVCore rv.rv32.
-Require Import rv.Multiplier.
+Require Import rv.Multiplier rv.Stack.
 
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
@@ -14,7 +14,8 @@ End RVIParams.
 
 Module RV32I <: Core.
   Module Multiplier := ShiftAddMultiplier Mul32Params.
-  Include (RVCore RVIParams Multiplier).
+  Module Stack := StackF.
+  Include (RVCore RVIParams Multiplier Stack).
 
   Definition _reg_t := reg_t.
   Definition _ext_fn_t := ext_fn_t.
