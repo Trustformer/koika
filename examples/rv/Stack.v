@@ -18,9 +18,10 @@ End StackInterface.
 (* End Stack_sig. *)
 
 Module StackF <: StackInterface.
-  Definition capacity := 128.
+  Definition capacity := 64.
 
-  Notation index_sz := (log2 capacity).
+  (* The + 1 is required for situations where capacity = 2^x *)
+  Notation index_sz := (log2 (capacity + 1)).
 
   (* pow2 index_sz is used instead of the equivalent capacity since Koîka's
      UCompleteSwitch gets angry otherwise (Coq is able to figure the equivalence
@@ -66,9 +67,9 @@ Module StackF <: StackInterface.
     fun push (address : bits_t 32) : bits_t 1 =>
       let s0 := read0(size) in
       if s0 == |index_sz`d0| then (* underflow *)
-        Ob~1
+        Ob~0
       else if (`read_vect_sequential "s0"` != address) then (* wrong address *)
-        Ob~1
+        Ob~0
       else (
         write0(size, s0 - |index_sz`d1|);
         Ob~0
