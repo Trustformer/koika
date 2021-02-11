@@ -55,7 +55,7 @@ Module StackF <: StackInterface.
     fun push (address : bits_t 32) : bits_t 1 =>
       let s0 := read0(size) in
       if (s0 == #(Bits.of_nat index_sz capacity)) then (* overflow *)
-        Ob~0
+        Ob~1
       else (
         write0(size, s0 + |index_sz`d1|);
         write0_stack(s0, address);
