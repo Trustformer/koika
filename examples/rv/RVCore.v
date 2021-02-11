@@ -868,18 +868,21 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
             if isJALXInst(dInst) then (
               let res := Ob~0 in
               (
-                if get(dInst, inst)[|5`d7| :+ 5] != |5`d0| then
+                if get(dInst, inst)[|5`d7| :+ 5] == |5`d1| then
                   set res := stack.(Stack.push)(data)
-                else if get(dInst, inst)[|5`d7| :+ 5] != |5`d1| then
+                else if get(dInst, inst)[|5`d7| :+ 5] == |5`d0| then
                   set res := stack.(Stack.pop)(addr)
                 else pass
               );
               (
-                if (res) then
-                  let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
+                if (res) then (
+                  let tmp := extcall ext_finish (struct (Maybe (bits_t 8)) {
                     valid := Ob~1; data := |8`d1|
-                  }) in pass
-                else pass
+                  }) in
+                  (* This is a dirty hack required for verilator to stop
+                     optimizing the extcall out *)
+                  write0(epoch, tmp)
+                ) else pass
               )
             )
             else pass
