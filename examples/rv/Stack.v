@@ -69,7 +69,7 @@ Module StackF <: StackInterface.
       if s0 == |index_sz`d0| then (* underflow *)
         Ob~1
       else if (`read_vect_sequential "s0"` != address) then (* wrong address *)
-        Ob~4
+        Ob~1
       else (
         write0(size, s0 - |index_sz`d1|);
         Ob~0
