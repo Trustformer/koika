@@ -19,7 +19,7 @@ module ext_finish(input wire CLK, input wire RST_N, input wire[8:0] arg, output 
     	  $fwrite(`STDERR, "  [0;32mPASS[0m\n");
     	else
     	  $fwrite(`STDERR, "  [0;31mFAIL[0m (%0d)\n", exitcode);
-        $finish();
+        $stop();
      end
 `endif
 endmodule // ext_finish

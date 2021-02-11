@@ -18,7 +18,7 @@ End StackInterface.
 (* End Stack_sig. *)
 
 Module StackF <: StackInterface.
-  Definition capacity := 64.
+  Definition capacity := 6.
 
   (* The + 1 is required for situations where capacity = 2^x *)
   Notation index_sz := (log2 (capacity + 1)).
@@ -55,7 +55,7 @@ Module StackF <: StackInterface.
     fun push (address : bits_t 32) : bits_t 1 =>
       let s0 := read0(size) in
       if (s0 == #(Bits.of_nat index_sz capacity)) then (* overflow *)
-        Ob~1
+        Ob~0
       else (
         write0(size, s0 + |index_sz`d1|);
         write0_stack(s0, address);
@@ -67,9 +67,9 @@ Module StackF <: StackInterface.
     fun push (address : bits_t 32) : bits_t 1 =>
       let s0 := read0(size) in
       if s0 == |index_sz`d0| then (* underflow *)
-        Ob~0
+        Ob~1
       else if (`read_vect_sequential "s0"` != address) then (* wrong address *)
-        Ob~0
+        Ob~4
       else (
         write0(size, s0 - |index_sz`d1|);
         Ob~0
