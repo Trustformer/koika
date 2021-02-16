@@ -834,6 +834,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
       else (
         let fInst      := get(dInst, inst) in
         let funct3     := get(getFields(fInst), funct3) in
+        let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in
         let rs1_val    := get(decoded_bookkeeping, rval1) in
         let rs2_val    := get(decoded_bookkeeping, rval2) in
         (* Use the multiplier module or the ALU *)
@@ -857,35 +858,46 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
               end << offset
             else Ob~0~0~0~0 in
           set data       := rs2_val << shift_amount;
-          set addr       := addr[|5`d2| :+ 30 ] ++ |2`d0|;
+          set addr       := addr[|5`d2| :+ 30] ++ |2`d0|;
           set isUnsigned := funct3[|2`d2|];
           toDMem.(MemReq.enq)(struct mem_req {
             byte_en := byte_en; addr := addr; data := data
           })
         else if (isControlInst(dInst)) then
+          (* See table 2.1. of the unpriviledged ISA specification for
+             details *)
           set data := (pc + |32`d4|); (* For jump and link *)
           (
-            if isJALXInst(dInst) then (
-              let res := Ob~0 in
-              (
-                if get(dInst, inst)[|5`d7| :+ 5] == |5`d1| then
-                  set res := stack.(Stack.push)(data)
-                else if get(dInst, inst)[|5`d7| :+ 5] == |5`d0| then
+            let res := Ob~0 in
+            let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
+            (
+              if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
+                && (rd_val == |5`d1| || rd_val == |5`d5|))
+              then
+                set res := stack.(Stack.push)(data)
+              else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
+                if (rd_val == |5`d1| && rd_val == |5`d5|) then
+                  if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
+                    set res := stack.(Stack.push)(data)
+                  ) else (
+                    set res := stack.(Stack.pop)(addr);
+                    set res := res || stack.(Stack.push)(data)
+                  )
+                else if (rs1 == |5`d1| || rs1 == |5`d5|) then
                   set res := stack.(Stack.pop)(addr)
                 else pass
-              );
-              (
-                if (res) then (
-                  let tmp := extcall ext_finish (struct (Maybe (bits_t 8)) {
-                    valid := Ob~1; data := |8`d1|
-                  }) in
-                  (* This is a dirty hack required for verilator to stop
-                     optimizing the extcall out *)
-                  write0(epoch, tmp)
-                ) else pass
               )
-            )
-            else pass
+              else pass
+            );
+
+            if (res) then (
+              let tmp := extcall ext_finish (struct (Maybe (bits_t 8)) {
+                valid := Ob~1; data := |8`d1|
+              }) in
+              (* This is a dirty hack required for verilator to stop
+                 optimizing the extcall out *)
+              write0(epoch, tmp)
+            ) else pass
           )
         else if (isMultiplyInst(dInst)) then
           mulState.(Multiplier.enq)(rs1_val, rs2_val)
