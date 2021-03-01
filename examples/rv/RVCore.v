@@ -627,7 +627,8 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
   | cycle_count
   | instr_count
   | pc
-  | epoch.
+  | epoch
+  | halt.
 
   (* State type *)
   Definition R idx :=
@@ -648,6 +649,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     | cycle_count  => bits_t 32
     | instr_count  => bits_t 32
     | epoch        => bits_t 1
+    | halt         => bits_t 1
     end.
 
   (* Initial values *)
@@ -669,6 +671,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     | cycle_count  => Bits.zero
     | instr_count  => Bits.zero
     | epoch        => Bits.zero
+    | halt         => Bits.zero
     end.
 
   (* External functions, used to model memory *)
@@ -726,6 +729,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     end.
 
   Definition fetch : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
     let pc  := read1(pc) in
     let req := struct mem_req {
       byte_en := |4`d0|; (* Load *)
@@ -743,6 +747,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
   }}.
 
   Definition wait_imem : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
     let fetched_bookkeeping := f2d.(fromFetch.deq)() in
     f2dprim.(waitFromFetch.enq)(fetched_bookkeeping)
   }}.
@@ -757,6 +762,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
      unconditionally to avoid potential muxing on the input, TODO check if it
      changes anything. *)
   Definition decode : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
     let instr               := fromIMem.(MemResp.deq)() in
     let instr               := get(instr,data) in
     let fetched_bookkeeping := f2dprim.(waitFromFetch.deq)() in
@@ -819,10 +825,12 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
   }}.
 
   Definition step_multiplier : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
     mulState.(Multiplier.step)()
   }}.
 
   Definition execute : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
     let decoded_bookkeeping := d2e.(fromDecode.deq)() in
     if get(decoded_bookkeeping, epoch) == read0(epoch) then
       (* By then we guarantee that this instruction is correct-path *)
@@ -889,15 +897,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
               )
               else pass
             );
-
-            if (res) then (
-              let tmp := extcall ext_finish (struct (Maybe (bits_t 8)) {
-                valid := Ob~1; data := |8`d1|
-              }) in
-              (* This is a dirty hack required for verilator to stop
-                 optimizing the extcall out *)
-              write0(epoch, tmp)
-            ) else pass
+            write0(halt, res)
           )
         else if (isMultiplyInst(dInst)) then
           mulState.(Multiplier.enq)(rs1_val, rs2_val)
@@ -924,6 +924,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
   }}.
 
   Definition writeback : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
     let execute_bookkeeping := e2w.(fromExecute.deq)() in
     let dInst               := get(execute_bookkeeping, dInst) in
     let data                := get(execute_bookkeeping, newrd) in
@@ -1093,6 +1094,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
       end
     in
     {{
+      if (read0(halt) == Ob~1) then fail else pass;
       let get_ready       := fromMem.(MemResp.can_enq)() in
       let put_request_opt := toMem.(MemReq.peek)() in
       let put_request     := get(put_request_opt, data) in
@@ -1108,6 +1110,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     }}.
 
   Definition tick : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
     write0(cycle_count, read0(cycle_count) + |32`d1|)
   }}.
 
