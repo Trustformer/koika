@@ -18,15 +18,12 @@ End StackInterface.
 (* End Stack_sig. *)
 
 Module StackF <: StackInterface.
-  Definition capacity := 2.
+  Definition capacity := 4.
 
   (* The + 1 is required for situations where capacity = 2^x *)
   Notation index_sz := (log2 (capacity + 1)).
 
-  (* pow2 index_sz is used instead of the equivalent capacity since Koîka's
-     UCompleteSwitch gets angry otherwise (Coq is able to figure the equivalence
-     between pow2 (log2 x) and x in most situations, but the fact that x comes
-     from Stack_sig here seems to clash with that ability) *)
+  (* TODO in general, pow2 (log2 x) != x *)
   Inductive _reg_t := size | stack (n : Vect.index (pow2 index_sz)).
   Definition reg_t := _reg_t.
 
