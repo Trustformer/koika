@@ -191,16 +191,6 @@ Extraction \"pipeline_tutorial.ml\" pipeline_tutorial.prog."))
 
 
 ;; -*- dune -*-
-(subdir "_objects/save_restore.v"
- (rule (write-file "save_restore_extr.v"
-                   "Require Coq.extraction.Extraction examples.save_restore.
-Extraction \"save_restore.ml\" save_restore.prog."))
- (coq.extraction
-  (prelude save_restore_extr)
-  (extracted_modules save_restore)
-  (theories Koika examples)
-  (flags "-w" "-overriding-logical-loadpath")))
-
 (subdir "_objects/producer_consumer.v"
  (rule (write-file "producer_consumer_extr.v"
                    "Require Coq.extraction.Extraction examples.producer_consumer.
@@ -208,6 +198,18 @@ Extraction \"producer_consumer.ml\" producer_consumer.prog."))
  (coq.extraction
   (prelude producer_consumer_extr)
   (extracted_modules producer_consumer)
+  (theories Koika examples)
+  (flags "-w" "-overriding-logical-loadpath")))
+
+
+;; -*- dune -*-
+(subdir "_objects/save_restore.v"
+ (rule (write-file "save_restore_extr.v"
+                   "Require Coq.extraction.Extraction examples.save_restore.
+Extraction \"save_restore.ml\" save_restore.prog."))
+ (coq.extraction
+  (prelude save_restore_extr)
+  (extracted_modules save_restore)
   (theories Koika examples)
   (flags "-w" "-overriding-logical-loadpath")))
 

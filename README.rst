@@ -842,8 +842,8 @@ The following list shows the current state of the repo:
       - |examples/rv/RVCore.v|_: Implementation of our RISC-V core
       - |examples/rv/RVEncoding.v|_: Encoding-related constants
       - |examples/rv/Scoreboard.v|_: Implementation of a scoreboard
+      - |examples/rv/Stack.v|_: Implementation of an address stack module
       - |examples/rv/rv32.v|_: Definition of a pipelined schedule
-      - |examples/rv/rv32e.v|_: Pipelined instantiation of an RV32E core
       - |examples/rv/rv32i.v|_: Pipelined instantiation of an RV32I core
 
    ``uart.v.etc/``
@@ -861,7 +861,9 @@ The following list shows the current state of the repo:
    - |examples/fir.v|_: Computing a FIR (Coq version)
    - |examples/function_call.v|_: Calling external functions
    - |examples/gcd_machine.v|_: Computing GCDs
+   - |examples/invert.v|_: Move the contents of r0 to r1
    - |examples/method_call.v|_: Calling methods of internal modules
+   - |examples/nothing.v|_: Don't do anything, one register
    - |examples/pipeline.v|_: Building simple pipelines
    - |examples/pipeline_tutorial.v|_: Tutorial: Simple arithmetic pipeline
    - |examples/save_restore.v|_: Save and restore simulation state
@@ -1076,12 +1078,38 @@ The following list shows the current state of the repo:
 .. _examples/function_call.v.etc/fetch_instr.v: examples/function_call.v.etc/fetch_instr.v
 .. |examples/gcd_machine.v| replace:: ``gcd_machine.v``
 .. _examples/gcd_machine.v: examples/gcd_machine.v
+.. |examples/invert.v| replace:: ``invert.v``
+.. _examples/invert.v: examples/invert.v
 .. |examples/method_call.v| replace:: ``method_call.v``
 .. _examples/method_call.v: examples/method_call.v
+.. |examples/nothing.v| replace:: ``nothing.v``
+.. _examples/nothing.v: examples/nothing.v
 .. |examples/pipeline.v| replace:: ``pipeline.v``
 .. _examples/pipeline.v: examples/pipeline.v
 .. |examples/pipeline_tutorial.v| replace:: ``pipeline_tutorial.v``
 .. _examples/pipeline_tutorial.v: examples/pipeline_tutorial.v
+.. |examples/producer_consumer.v| replace:: ``producer_consumer.v``
+.. _examples/producer_consumer.v: examples/producer_consumer.v
+.. |examples/rv/IFields.v| replace:: ``IFields.v``
+.. _examples/rv/IFields.v: examples/rv/IFields.v
+.. |examples/rv/ISA.v| replace:: ``ISA.v``
+.. _examples/rv/ISA.v: examples/rv/ISA.v
+.. |examples/rv/ITypes.v| replace:: ``ITypes.v``
+.. _examples/rv/ITypes.v: examples/rv/ITypes.v
+.. |examples/rv/Instructions.v| replace:: ``Instructions.v``
+.. _examples/rv/Instructions.v: examples/rv/Instructions.v
+.. |examples/rv/InstructionsFct2.v| replace:: ``InstructionsFct2.v``
+.. _examples/rv/InstructionsFct2.v: examples/rv/InstructionsFct2.v
+.. |examples/rv/InstructionsFct3.v| replace:: ``InstructionsFct3.v``
+.. _examples/rv/InstructionsFct3.v: examples/rv/InstructionsFct3.v
+.. |examples/rv/InstructionsFct7.v| replace:: ``InstructionsFct7.v``
+.. _examples/rv/InstructionsFct7.v: examples/rv/InstructionsFct7.v
+.. |examples/rv/InstructionsOpcodes.v| replace:: ``InstructionsOpcodes.v``
+.. _examples/rv/InstructionsOpcodes.v: examples/rv/InstructionsOpcodes.v
+.. |examples/rv/InstructionsProperties.v| replace:: ``InstructionsProperties.v``
+.. _examples/rv/InstructionsProperties.v: examples/rv/InstructionsProperties.v
+.. |examples/rv/ModuleInstructions.v| replace:: ``ModuleInstructions.v``
+.. _examples/rv/ModuleInstructions.v: examples/rv/ModuleInstructions.v
 .. |examples/rv/Multiplier.v| replace:: ``Multiplier.v``
 .. _examples/rv/Multiplier.v: examples/rv/Multiplier.v
 .. |examples/rv/MultiplierCorrectness.v| replace:: ``MultiplierCorrectness.v``
@@ -1092,6 +1120,10 @@ The following list shows the current state of the repo:
 .. _examples/rv/RVEncoding.v: examples/rv/RVEncoding.v
 .. |examples/rv/Scoreboard.v| replace:: ``Scoreboard.v``
 .. _examples/rv/Scoreboard.v: examples/rv/Scoreboard.v
+.. |examples/rv/Stack.v| replace:: ``Stack.v``
+.. _examples/rv/Stack.v: examples/rv/Stack.v
+.. |examples/rv/StructsBuilding.v| replace:: ``StructsBuilding.v``
+.. _examples/rv/StructsBuilding.v: examples/rv/StructsBuilding.v
 .. |examples/rv/etc/cvc64.sh| replace:: ``cvc64.sh``
 .. _examples/rv/etc/cvc64.sh: examples/rv/etc/cvc64.sh
 .. |examples/rv/etc/elf.hpp| replace:: ``elf.hpp``
@@ -1124,8 +1156,6 @@ The following list shows the current state of the repo:
 .. _examples/rv/etc/testbench.v: examples/rv/etc/testbench.v
 .. |examples/rv/rv32.v| replace:: ``rv32.v``
 .. _examples/rv/rv32.v: examples/rv/rv32.v
-.. |examples/rv/rv32e.v| replace:: ``rv32e.v``
-.. _examples/rv/rv32e.v: examples/rv/rv32e.v
 .. |examples/rv/rv32i.v| replace:: ``rv32i.v``
 .. _examples/rv/rv32i.v: examples/rv/rv32i.v
 .. |examples/save_restore.v| replace:: ``save_restore.v``
