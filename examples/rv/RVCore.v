@@ -628,6 +628,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
   | instr_count
   | pc
   | epoch
+  | debug
   | halt.
 
   (* State type *)
@@ -649,6 +650,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     | cycle_count  => bits_t 32
     | instr_count  => bits_t 32
     | epoch        => bits_t 1
+    | debug        => bits_t 1
     | halt         => bits_t 1
     end.
 
@@ -671,6 +673,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     | cycle_count  => Bits.zero
     | instr_count  => Bits.zero
     | epoch        => Bits.zero
+    | debug        => Bits.zero
     | halt         => Bits.zero
     end.
 
@@ -727,6 +730,12 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     | ext_host_id    => {$ bits_t 1 ~> enum_t host_id $}
     | ext_finish     => {$ finish_input ~> bits_t 1 $}
     end.
+
+  Definition end_execution : uaction reg_t ext_fn_t := {{
+    let res := extcall ext_uart_write (struct (Maybe (bits_t 8)) {
+      valid := read0(halt); data := |8`d1|
+    }) in write0(debug, res)
+  }}.
 
   Definition fetch : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
@@ -1200,7 +1209,8 @@ Inductive rv_rules_t :=
 | Imem
 | Dmem
 | StepMultiplier
-| Tick.
+| Tick
+| EndExecution.
 
 Definition rv_external (rl: rv_rules_t) := false.
 
