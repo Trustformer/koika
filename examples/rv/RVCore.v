@@ -732,7 +732,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
     end.
 
   Definition end_execution : uaction reg_t ext_fn_t := {{
-    let res := extcall ext_uart_write (struct (Maybe (bits_t 8)) {
+    let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
       valid := read0(halt); data := |8`d1|
     }) in write0(debug, res)
   }}.

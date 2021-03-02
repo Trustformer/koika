@@ -18,7 +18,7 @@ End StackInterface.
 (* End Stack_sig. *)
 
 Module StackF <: StackInterface.
-  Definition capacity := 32.
+  Definition capacity := 2.
 
   (* The + 1 is required for situations where capacity = 2^x *)
   Notation index_sz := (log2 (capacity + 1)).
