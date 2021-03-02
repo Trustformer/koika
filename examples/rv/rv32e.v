@@ -26,6 +26,7 @@ Module RV32E <: Core.
   Definition tc_imem := tc_rule R Sigma (mem imem) <: rule R Sigma.
   Definition tc_dmem := tc_rule R Sigma (mem dmem) <: rule R Sigma.
   Definition tc_tick := tc_rule R Sigma tick.
+  Definition tc_end_execution := tc_rule R Sigma end_execution.
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with
@@ -38,6 +39,7 @@ Module RV32E <: Core.
     | Dmem => tc_dmem
     | StepMultiplier => tc_step_multiplier
     | Tick => tc_tick
+    | EndExecution => tc_end_execution
     end.
 
   Instance FiniteType_rf : FiniteType Rf.reg_t := _.

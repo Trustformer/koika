@@ -5,7 +5,7 @@ Require Import rv.RVCore.
 
 Definition rv_schedule : scheduler :=
   Writeback |> Execute |> StepMultiplier |> Decode |> WaitImem |> Fetch |> Imem
-  |> Dmem |> Tick |> done.
+  |> Dmem |> Tick |> EndExecution |> done.
 
 Module Package (C: Core).
   Import C.
