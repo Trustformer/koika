@@ -654,7 +654,6 @@ Definition get_present_opcodes_from_instructions (instrs : list instruction)
         opc_LOAD_FP_present   := opc_LOAD_FP_present   p;
         opc_STORE_FP_present  := opc_STORE_FP_present  p
       |}
-    (* TODO *)
     | opc_NMADD =>
       {|
         opc_OP_present        := opc_OP_present        p;
@@ -901,8 +900,8 @@ Definition get_fcts3 (o : opcode_name) (instrs : list instruction)
     fct3_type_beq
 .
 
-Definition get_fcts2 (o : opcode_name) (f3 : fct3_type) (instrs : list instruction)
-  : list fct2_type
+Definition get_fcts2 (o : opcode_name) (f3 : fct3_type)
+  (instrs : list instruction) : list fct2_type
 :=
   let same_opcode :=
     (filter (fun i => (opcode_name_beq (instruction_opcode i) o)) instrs)
@@ -934,8 +933,8 @@ Definition get_fcts2 (o : opcode_name) (f3 : fct3_type) (instrs : list instructi
     fct2_type_beq
   .
 
-Definition get_fcts7 (o : opcode_name) (f3 : fct3_type) (instrs : list instruction)
-  : list fct7_type
+Definition get_fcts7 (o : opcode_name) (f3 : fct3_type)
+  (instrs : list instruction) : list fct7_type
 :=
   let same_opcode :=
     (filter (fun i => (opcode_name_beq (instruction_opcode i) o)) instrs)
@@ -1004,7 +1003,10 @@ Definition filter_by_fct3 (instrs : list instruction) (f3 : fct3_type)
     (fun i => fct3_type_beq (instruction_fct3 (proj1_sig i) (proj2_sig i)) f3)
     fct3_present
   in
-  map (fun (x : {i : instruction | has_fct3 (get_instruction_i_type i) = true}) => proj1_sig x) same_fct3.
+  map (
+    fun (x : {i : instruction | has_fct3 (get_instruction_i_type i) = true})
+      => proj1_sig x
+  ) same_fct3.
 
 Definition get_fcts7_in_instructions
   (instrs : list instruction) (f3 : fct3_type) : list fct7_type
@@ -1044,4 +1046,7 @@ Definition filter_by_fct3_and_fct7 (instrs : list instruction) (f3 : fct3_type)
     (fun i => fct7_type_beq (instruction_fct7 (proj1_sig i) (proj2_sig i)) f7)
     fct7_present
   in
-  map (fun (x : {i : instruction | has_fct7 (get_instruction_i_type i) = true}) => proj1_sig x) same_fct7.
+  map (
+    fun (x : {i : instruction | has_fct7 (get_instruction_i_type i) = true})
+      => proj1_sig x
+  ) same_fct7.

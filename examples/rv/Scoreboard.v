@@ -46,15 +46,13 @@ Module Scoreboard (s:Scoreboard_sig).
   Definition sat_incr : UInternalFunction reg_t empty_ext_fn_t :=
     {{
         fun sat_incr (a: bits_t logScore) : bits_t logScore =>
-          (* if ( a == #(Bits.of_nat logScore s.maxScore)) then fail(logScore) *)
-          (* else *) a + #(Bits.of_nat logScore 1)
+          a + #(Bits.of_nat logScore 1)
     }}.
 
   Definition sat_decr : UInternalFunction reg_t empty_ext_fn_t :=
     {{
         fun sat_decr (a: bits_t logScore) : bits_t logScore =>
-          (* if (a == |logScore`d0|) then fail(logScore) *)
-          (* else *) (a - |logScore`d1|)
+          (a - |logScore`d1|)
     }}.
 
   (* Interface: *)
