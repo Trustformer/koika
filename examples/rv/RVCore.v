@@ -419,8 +419,13 @@ Section RVHelpers.
                         let fcts7 := get_fcts7_in_instructions binops i in
                         map (fun j =>
                           match (filter_by_fct3_and_fct7 binops i j) with
-                          | [h] => (USugar (UConstBits (fct7_bin j)), get_semantics_binop_32 h)
-                          | _   => (USugar (UConstBits (fct7_bin j)), {{ |32`d0| }}) (* Impossible case *)
+                          | [h] => (
+                            USugar (UConstBits (fct7_bin j)),
+                            get_semantics_binop_32 h
+                          )
+                          | _   => (
+                            USugar (UConstBits (fct7_bin j)), {{ |32`d0| }}
+                          ) (* Impossible case *)
                           end
                         ) fcts7
                       )
@@ -522,7 +527,9 @@ Module Type RVParams.
   Parameter WIDTH : nat.
 End RVParams.
 
-Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackInterface).
+Module RVCore
+  (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackInterface)
+.
   Import ListNotations.
   Import RVP.
 
@@ -1110,7 +1117,7 @@ Module RVCore (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackIn
       let put_request_opt := toMem.(MemReq.peek)() in
       let put_request     := get(put_request_opt, data) in
       let put_valid       := get(put_request_opt, valid) in
-      let mem_out         := {memoryBus m}(get_ready, put_valid, put_request) in (
+      let mem_out := {memoryBus m}(get_ready, put_valid, put_request) in (
         when (get_ready && get(mem_out, get_valid)) do
           fromMem.(MemResp.enq)(get(mem_out, get_response))
       );
