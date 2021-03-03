@@ -154,14 +154,16 @@ Section RVHelpers.
         (fun x : reg_t => x) (fun x : empty_ext_fn_t => x) getFields [{{inst}}]
       ))
       (
+        (* For each possible value of opcode, if the value is not used by any
+           instruction, return invalid, else test if the combination of the
+           opcode and the data of the funct3 field is legal *)
         UBind "__reserved__matchPattern" {{ get(fields, opcode) }} (
           USugar (
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
             (map (fun o =>
                 (USugar (UConstBits (opcode_bin o)), (
                   (* (fct2 or fct7) implies fct3, so checking for those happens
-                     in generate_fct3_match
-                  *)
+                     in generate_fct3_match *)
                   if (has_fct3 (get_opcode_i_type o)) then generate_fct3_match o
                   else {{ Ob~1 }}
         ))) opcodes))))
