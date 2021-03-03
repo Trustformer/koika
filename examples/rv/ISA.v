@@ -1,6 +1,7 @@
 (*! Definition of the elements required to fully caracterize a RISC-V
-    implementation
-!*)
+    implementation !*)
+
+(* TODO Privileged ISA *)
 
 Inductive memory_model :=
 | RVWMO (* Weak Memory Ordering *).
