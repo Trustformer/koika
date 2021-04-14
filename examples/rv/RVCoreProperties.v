@@ -47,22 +47,28 @@ Proof.
 Qed.
 
 Theorem type_eq_dec_left :
-  forall (x y : type),
-  x = y -> exists p, eq_dec x y = left p.
+  forall (x y : type) (Heq: x = y),
+    eq_dec x y = left (eq_rect x (fun y => eq x y) eq_refl _ Heq).
 Proof.
-  induction 1. exists eq_refl. destruct x.
-  - simpl. rewrite (self_implies_left sz); trivial.
-  - simpl.
-  - 
+  intros. subst.
+  destruct (eq_dec y y). simpl.
+  f_equal. apply Eqdep_dec.UIP_dec. apply eq_dec.
+  congruence.
 Qed.
 
-Lemma temp :
-  forall (T : Type) (x : type) (y : type) (A : T) (B : T), x = y ->
-    match eq_dec x y with
-    | left _ => A
-    | right _ => B
-    end = A.
-
+(* Lemma type_eq_dec_rewrite : *)
+(*   forall (T : Type) (x : type) (y : type) (A : _ -> T) (B : _ -> T) *)
+(*          (Heq: x = y), *)
+(*     match eq_dec x y with *)
+(*     | left p => A p *)
+(*     | right p => B p *)
+(*     end = A Heq . *)
+(* Proof. *)
+(*   intros. *)
+(*   destruct (type_eq_dec_left _ _ Heq) as (p & EQ). *)
+(*   rewrite EQ. *)
+(*   f_equal. apply Eqdep_dec.UIP_dec. apply eq_dec. *)
+(* Qed. *)
 
   (*
     env = contains the value of available registers at the start of the rule for
@@ -73,8 +79,33 @@ Lemma temp :
                 clock cycle,
     action_log = empty, used to accumulate the reads and writes of the rule,
     action_log_new = contains the reads and writes of the rule
-  *)
-  Theorem pop_returns_one_when_stack_empty :
+   *)
+
+Ltac destr_in H :=
+  match type of H with
+  | context[match ?a with _ => _ end] => destruct a eqn:?
+  end.
+
+Ltac destr :=
+  match goal with
+  |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
+  end.
+
+Lemma extract_success_rewrite:
+  forall {S F: Type} (res1 res2: result S F) pr1 pr2,
+    res1 = res2 ->
+    extract_success res1 pr1 = extract_success res2 pr2.
+Proof.
+  intros. subst.
+  (* Eqdep_dec.UIP_dec *)
+Admitted.
+
+
+Ltac inv H :=
+  inversion H; try subst; clear H.
+
+
+Theorem pop_returns_one_when_stack_empty :
     forall env Gamma sched_log action_log action_log_new v Gamma_new,
     interp_action env empty_sigma Gamma sched_log action_log
       (tc_function R empty_Sigma pop)
@@ -83,50 +114,37 @@ Lemma temp :
   Proof.
     intros env Gamma sched_log action_log action_log_new v Gamma_new.
     unfold desugar_action.
-    unfold desugar_action'.
-    simpl TypeInference.tc_action.
+    intros.
+    refine match desugar_action' dummy_pos (fun r : reg_t => r) (fun fn : empty_ext_fn_t => fn) (int_body pop) with
+             x => _
+           end.
+    fold x in H.
+    refine (match TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec pop) (int_retSig pop) x as r return (TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec pop) (int_retSig pop) x = r -> is_success r = true -> _) with
+             Success s => fun H1 H2 => _
+           | Failure f => fun H1 H2 => _
+            end eq_refl eq_refl).
+    2: (simpl in H2; congruence).
+    erewrite extract_success_rewrite in H. 2: apply H1. simpl in H.
+    Unshelve. 2: reflexivity.
+    revert H1.
+
     unfold TypeInference.tc_action.
-    unfold type_action.
-    simpl projT2.
-    simpl projT2.
-    simpl lift_fn1_tc_result.
-    simpl lift_fn2_tc_result.
-    unfold lift_fn1_tc_result.
-    unfold lift_fn2_tc_result.
-    cbn beta delta iota.
-    unfold projT1.
-    unfold projT2.
-    cbn beta delta iota.
-    unfold cast_action.
-    unfold cast_action'.
-    (* pose proof (eq_dec_refl (bits_t 3)). *)
-    (* rewrite H. *)
-    unfold eq_rec_r.
-    unfold eq_rec.
-    unfold Nat.eq_dec.
-    unfold eq_rec_r.
-    unfold eq_rec.
-    unfold eq_rect.
-    simpl eq_sym.
-    cbn iota.
-    cbn beta delta iota.
-    unfold eq_rec_r.
-    unfold eq_rec.
-    cbn beta delta iota.
-    unfold eq_rect_r.
-    unfold eq_rect.
-    unfold eq_sym.
-    cbn beta delta iota.
-    unfold eq_ind_r.
-    unfold eq_ind.
-    unfold eq_sym.
-    cbn beta delta iota.
-    cbn.
-    intros H1 H2.
-    rewrite H2 in H1.
-    destruct may_read in H1; cbn in H1.
-    - injection H1 as H3 H4 H5. symmetry. exact H4.
-    - discriminate H1.
+    destr. intros.
+    revert Heqr0. simpl in x. 
+    unfold desugar_action' in x. cbn in x.
+    unfold x. clear x.
+
+    intro Heqr0.
+    vm_compute in Heqr0. inv Heqr0.
+    vm_compute in H1. inv H1. simpl in H2.
+    cbn beta delta iota zeta in H.
+    revert H.
+    unfold opt_bind.
+    destruct may_read.
+    - rewrite H0.
+      rewrite (proj2 (beq_dec_iff _ _ _)). intro A; inv A. reflexivity.
+      reflexivity.
+    - congruence.
   Qed.
 
   Theorem push_returns_one_when_stack_full :
@@ -137,33 +155,32 @@ Lemma temp :
     -> is_stack_full env -> v = Ob~1.
   Proof.
     intros env Gamma sched_log action_log action_log_new v Gamma_new.
-    cbn beta delta iota.
-    unfold desugar_action'.
-    cbn beta delta iota.
-    unfold TypeInference.tc_action.
-    cbn beta delta iota.
-    simpl cast_action.
-    unfold cast_action.
-    unfold cast_action'.
-    cbn beta delta iota.
-    unfold eq_rec_r.
-    simpl eq_rec.
-    unfold eq_rec.
-    simpl type_action.
-    cbn beta delta iota.
-    unfold eq_rect_r.
-    simpl eq_rect.
-    cbn beta delta iota.
-    unfold eq_rect.
-    cbn beta delta iota.
-    unfold eq_sym.
-    cbn beta delta iota.
-    intros H1 H2.
-    rewrite H2 in H1.
+    unfold desugar_action.
+    intros.
+    refine match desugar_action' dummy_pos (fun r : reg_t => r) (fun fn : empty_ext_fn_t => fn) (int_body push) with
+             x => _
+           end.
+    fold x in H.
+    refine (match TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec push) (int_retSig push) x as r return (TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec push) (int_retSig push) x = r -> is_success r = true -> _) with
+             Success s => fun H1 H2 => _
+           | Failure f => fun H1 H2 => _
+            end eq_refl eq_refl).
+    2: (simpl in H2; congruence).
+    erewrite extract_success_rewrite in H. 2: apply H1. simpl in H.
+    Unshelve. 2: reflexivity.
+
+    vm_compute in H1. inv H1. clear H2.
+    cbn beta delta iota zeta in H.
+    revert H.
+    unfold opt_bind.
+    intro H1.
     destruct may_read in H1; cbn in H1.
-    - injection H1 as H3 H4 H5. symmetry. exact H4.
+    - rewrite H0 in H1.
+      rewrite (proj2 (beq_dec_iff _ _ _)) in H1. inv H1. reflexivity.
+      reflexivity.
     - discriminate H1.
   Qed.
+
   Theorem forall_calls :
     forall s log, interp_scheduler r sigma rules s = log ->
 
