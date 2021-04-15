@@ -11,64 +11,56 @@ Module StackProofs.
   Definition is_stack_full (reg : ContextEnv.(env_t) R) :=
     ContextEnv.(getenv) reg size = (Bits.of_nat index_sz capacity).
 
-  (* Definition cycle (r: ContextEnv.(env_t) R) := *)
-  (*   CompactSemantics.interp_cycle RV32I.Sigma RV32I.rv_rules rv_schedule r. *)
-
   Ltac unfolds :=
     unfold desugar_action, desugar_action', TypeInference.tc_action,
     TypeInference.tc_action, type_action, projT2, projT2, lift_fn1_tc_result,
     lift_fn2_tc_result, lift_fn1_tc_result, lift_fn2_tc_result, projT1, projT2,
     cast_action, cast_action' in *.
 
-  (* Theorem pop_returns_one_when_stack_empty : *)
-  (*   forall env Gamma sched_log action_log action_log_new v Gamma_new, *)
-  (*   interp_action env empty_sigma Gamma sched_log action_log *)
-  (*     (tc_function R empty_Sigma pop) *)
-  (*     = Some (action_log_new, v, Gamma_new) *)
-  (*   -> is_stack_empty env -> v = Ob~1. *)
-  (* Proof. *)
-  (*   intros env Gamma sched_log action_log action_log_new v Gamma_new. *)
-  (*   intros. *)
-  (*   eauto with SimplifyKoika. *)
-  (*   Print HintDb SimplifyKoika. *)
-  (*   eauto SimplifyKoika. *)
-  (*   (1* eauto SimplifyKoika. *1) *)
-  (*   cbv. *)
-  (*   Hint Unfold desugar_action. *)
-(*     apply desugar_action. *)
+  Theorem self_implies_left : forall (n : nat), n = n ->
+    Nat.eq_dec n n = left eq_refl.
+  Proof.
+    intros. induction n.
+    - trivial.
+    - simpl. assert (n = n) by trivial.
+      apply IHn in H0. rewrite H0. trivial.
+  Qed.
 
-Theorem self_implies_left : forall (n : nat), n = n ->
-  Nat.eq_dec n n = left eq_refl.
-Proof.
-  intros. induction n.
-  - trivial.
-  - simpl. assert (n = n) by trivial.
-    apply IHn in H0. rewrite H0. trivial.
-Qed.
+  Theorem type_eq_dec_left :
+    forall (x y : type) (Heq: x = y),
+      eq_dec x y = left (eq_rect x (fun y => eq x y) eq_refl _ Heq).
+  Proof.
+    intros. subst.
+    destruct (eq_dec y y). simpl.
+    f_equal. apply Eqdep_dec.UIP_dec. apply eq_dec.
+    congruence.
+  Qed.
 
-Theorem type_eq_dec_left :
-  forall (x y : type) (Heq: x = y),
-    eq_dec x y = left (eq_rect x (fun y => eq x y) eq_refl _ Heq).
-Proof.
-  intros. subst.
-  destruct (eq_dec y y). simpl.
-  f_equal. apply Eqdep_dec.UIP_dec. apply eq_dec.
-  congruence.
-Qed.
+  Ltac destr_in H :=
+    match type of H with
+    | context[match ?a with _ => _ end] => destruct a eqn:?
+    end.
 
-(* Lemma type_eq_dec_rewrite : *)
-(*   forall (T : Type) (x : type) (y : type) (A : _ -> T) (B : _ -> T) *)
-(*          (Heq: x = y), *)
-(*     match eq_dec x y with *)
-(*     | left p => A p *)
-(*     | right p => B p *)
-(*     end = A Heq . *)
-(* Proof. *)
-(*   intros. *)
-(*   destruct (type_eq_dec_left _ _ Heq) as (p & EQ). *)
-(*   rewrite EQ. *)
-(*   f_equal. apply Eqdep_dec.UIP_dec. apply eq_dec. *)
-(* Qed. *)
+  Ltac destr :=
+    match goal with
+    |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
+    end.
+
+  Lemma extract_success_rewrite:
+    forall {S F: Type} (res1 res2: result S F) pr1 pr2,
+    res1 = res2 -> extract_success res1 pr1 = extract_success res2 pr2.
+  Proof.
+    intros. subst.
+    refine (
+      match pr1, pr2 with
+      | eq_refl _, eq_refl _ => _
+      end
+    ).
+    destruct res2; congruence.
+  Qed.
+
+  Ltac inv H :=
+    inversion H; try subst; clear H.
 
   (*
     env = contains the value of available registers at the start of the rule for
@@ -81,48 +73,38 @@ Qed.
     action_log_new = contains the reads and writes of the rule
    *)
 
-Ltac destr_in H :=
-  match type of H with
-  | context[match ?a with _ => _ end] => destruct a eqn:?
-  end.
-
-Ltac destr :=
-  match goal with
-  |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
-  end.
-
-Lemma extract_success_rewrite:
-  forall {S F: Type} (res1 res2: result S F) pr1 pr2,
-    res1 = res2 ->
-    extract_success res1 pr1 = extract_success res2 pr2.
-Proof.
-  intros. subst.
-  (* Eqdep_dec.UIP_dec *)
-Admitted.
-
-
-Ltac inv H :=
-  inversion H; try subst; clear H.
-
-
-Theorem pop_returns_one_when_stack_empty :
+  Theorem pop_returns_one_when_stack_empty :
     forall env Gamma sched_log action_log action_log_new v Gamma_new,
     interp_action env empty_sigma Gamma sched_log action_log
-      (tc_function R empty_Sigma pop)
-      = Some (action_log_new, v, Gamma_new)
-    -> is_stack_empty env -> v = Ob~1.
+      (tc_function R empty_Sigma pop) = Some (action_log_new, v, Gamma_new)
+      -> is_stack_empty env -> v = Ob~1.
   Proof.
     intros env Gamma sched_log action_log action_log_new v Gamma_new.
     unfold desugar_action.
     intros.
-    refine match desugar_action' dummy_pos (fun r : reg_t => r) (fun fn : empty_ext_fn_t => fn) (int_body pop) with
-             x => _
-           end.
+    refine (
+      match
+        desugar_action' dummy_pos (fun r : reg_t => r)
+        (fun fn : empty_ext_fn_t => fn) (int_body pop)
+      with
+         x => _
+      end
+    ).
     fold x in H.
-    refine (match TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec pop) (int_retSig pop) x as r return (TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec pop) (int_retSig pop) x = r -> is_success r = true -> _) with
-             Success s => fun H1 H2 => _
-           | Failure f => fun H1 H2 => _
-            end eq_refl eq_refl).
+    refine ((
+      match
+        TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec pop)
+        (int_retSig pop) x
+      as r
+      return (
+        TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec pop)
+          (int_retSig pop) x = r
+        -> is_success r = true -> _
+      ) with
+      | Success s => fun H1 H2 => _
+      | Failure f => fun H1 H2 => _
+      end
+    ) eq_refl eq_refl).
     2: (simpl in H2; congruence).
     erewrite extract_success_rewrite in H. 2: apply H1. simpl in H.
     Unshelve. 2: reflexivity.
@@ -130,7 +112,7 @@ Theorem pop_returns_one_when_stack_empty :
 
     unfold TypeInference.tc_action.
     destr. intros.
-    revert Heqr0. simpl in x. 
+    revert Heqr0. simpl in x.
     unfold desugar_action' in x. cbn in x.
     unfold x. clear x.
 
@@ -157,14 +139,28 @@ Theorem pop_returns_one_when_stack_empty :
     intros env Gamma sched_log action_log action_log_new v Gamma_new.
     unfold desugar_action.
     intros.
-    refine match desugar_action' dummy_pos (fun r : reg_t => r) (fun fn : empty_ext_fn_t => fn) (int_body push) with
-             x => _
-           end.
+    refine (
+      match
+        desugar_action' dummy_pos (fun r : reg_t => r)
+        (fun fn : empty_ext_fn_t => fn) (int_body push)
+      with
+        x => _
+      end
+    ).
     fold x in H.
-    refine (match TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec push) (int_retSig push) x as r return (TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec push) (int_retSig push) x = r -> is_success r = true -> _) with
-             Success s => fun H1 H2 => _
-           | Failure f => fun H1 H2 => _
-            end eq_refl eq_refl).
+    refine ((
+      match
+        TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec push)
+        (int_retSig push) x
+      as r
+      return (
+        TypeInference.tc_action R empty_Sigma dummy_pos (int_argspec push)
+        (int_retSig push) x = r -> is_success r = true -> _
+      ) with
+      | Success s => fun H1 H2 => _
+      | Failure f => fun H1 H2 => _
+      end
+    ) eq_refl eq_refl).
     2: (simpl in H2; congruence).
     erewrite extract_success_rewrite in H. 2: apply H1. simpl in H.
     Unshelve. 2: reflexivity.
