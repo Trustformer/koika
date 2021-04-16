@@ -875,6 +875,7 @@ The following list shows the current state of the repo:
    - |examples/function_call.v|_: Calling external functions
    - |examples/gcd_machine.v|_: Computing GCDs
    - |examples/invert.v|_: Move the contents of r0 to r1
+   - |examples/loop.v|_: Loop
    - |examples/method_call.v|_: Calling methods of internal modules
    - |examples/nothing.v|_: Don't do anything, one register
    - |examples/pipeline.v|_: Building simple pipelines
@@ -1093,6 +1094,8 @@ The following list shows the current state of the repo:
 .. _examples/gcd_machine.v: examples/gcd_machine.v
 .. |examples/invert.v| replace:: ``invert.v``
 .. _examples/invert.v: examples/invert.v
+.. |examples/loop.v| replace:: ``loop.v``
+.. _examples/loop.v: examples/loop.v
 .. |examples/method_call.v| replace:: ``method_call.v``
 .. _examples/method_call.v: examples/method_call.v
 .. |examples/nothing.v| replace:: ``nothing.v``
@@ -1117,6 +1120,8 @@ The following list shows the current state of the repo:
 .. _examples/rv/InstructionsFct3.v: examples/rv/InstructionsFct3.v
 .. |examples/rv/InstructionsFct7.v| replace:: ``InstructionsFct7.v``
 .. _examples/rv/InstructionsFct7.v: examples/rv/InstructionsFct7.v
+.. |examples/rv/InstructionsFixedRs2.v| replace:: ``InstructionsFixedRs2.v``
+.. _examples/rv/InstructionsFixedRs2.v: examples/rv/InstructionsFixedRs2.v
 .. |examples/rv/InstructionsOpcodes.v| replace:: ``InstructionsOpcodes.v``
 .. _examples/rv/InstructionsOpcodes.v: examples/rv/InstructionsOpcodes.v
 .. |examples/rv/InstructionsProperties.v| replace:: ``InstructionsProperties.v``
@@ -1129,6 +1134,8 @@ The following list shows the current state of the repo:
 .. _examples/rv/MultiplierCorrectness.v: examples/rv/MultiplierCorrectness.v
 .. |examples/rv/RVCore.v| replace:: ``RVCore.v``
 .. _examples/rv/RVCore.v: examples/rv/RVCore.v
+.. |examples/rv/RVCoreProperties.v| replace:: ``RVCoreProperties.v``
+.. _examples/rv/RVCoreProperties.v: examples/rv/RVCoreProperties.v
 .. |examples/rv/RVEncoding.v| replace:: ``RVEncoding.v``
 .. _examples/rv/RVEncoding.v: examples/rv/RVEncoding.v
 .. |examples/rv/Scoreboard.v| replace:: ``Scoreboard.v``

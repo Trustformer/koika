@@ -1203,7 +1203,7 @@ Module RVCore
     efr_name     := show fn;
     efr_internal :=
       match fn with
-      | ext_host_id | ext_finish => true
+      | ext_host_id | ext_finish => true
       | _ => false
       end
   |}.
