@@ -1,5 +1,6 @@
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
-Require Import Koika.Frontend Koika.Logs Koika.Std Koika.ProgramTactics.
+Require Import Koika.CompactSemantics Koika.Frontend Koika.Logs Koika.Std
+Koika.ProgramTactics.
 
 Module StackProofs.
   Import StackF.
@@ -70,9 +71,7 @@ Module StackProofs.
     sched_log = reads and writes performed by rules executed earlier in the same
                 clock cycle,
     action_log = empty, used to accumulate the reads and writes of the rule,
-    action_log_new = contains the reads and writes of the rule
-   *)
-
+    action_log_new = contains the reads and writes of the rule *)
   Theorem pop_returns_one_when_stack_empty :
     forall env Gamma sched_log action_log action_log_new v Gamma_new,
     interp_action env empty_sigma Gamma sched_log action_log
@@ -177,8 +176,11 @@ Module StackProofs.
     - discriminate H1.
   Qed.
 
+  Require Import TypedSemantics.
+  Definition cycle (r : ContextEnv.(env_t) R) :=
+    TypedSemantics.interp_cycle empty_sigma RV32I.rv_rules rv_schedule r.
+
   Theorem forall_calls :
-    forall s log, interp_scheduler r sigma rules s = log ->
 
   .
 
