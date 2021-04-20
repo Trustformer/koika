@@ -1,13 +1,8 @@
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
-Require Import Koika.CompactSemantics Koika.Frontend Koika.Logs Koika.Std
+Require Import Koika.TypedSemantics Koika.Frontend Koika.Logs Koika.Std
 Koika.ProgramTactics.
 
 Module StackProofs.
-  Require Import TypedSemantics.
-  Check empty_Sigma.
-  (* Definition cycle (r : ContextEnv.(env_t) R) :=, O = O. *)
-  (*   TypedSemantics.interp_cycle s RV32I.rv_rules rv_schedule r. *)
-
   (*
     # Kôika
     Types:
