@@ -87,9 +87,25 @@ Module StackProofs.
     -> état des registres en fin de cycle
   *)
 
+  Definition rv_cycle
+    (r: ContextEnv.(env_t) RV32I.R)
+    (sigma : forall f, Sig_denote (RV32I.Sigma f))
+  :=
+  TypedSemantics.interp_cycle sigma RV32I.rv_rules rv_schedule r.
+
+  (*
+  Détecter dans quelles situations un write visant le registre halt a lieu.
+  Problème : impossible de détecter si l'appel à halt
+  *)
+  Theorem stack_0_implies_no_setting_halt :
+    (r: ContextEnv.(env_t) RV32I.R)
+    (sigma : forall f, Sig_denote (RV32I.Sigma f)),
+     r.(getenv) halt = 0 -> (rv_cycle r sigma).(getenv) halt = 1 ->
+
   Theorem forall_calls :
-    forall (sigma : forall f, Sig_denote (RV32I.Sigma f)) r,
-    TypedSemantics.interp_cycle sigma RV32I.rv_rules rv_schedule r.
+    forall (r : ContextEnv.(env_t) RV32I.R)
+    (sigma : forall f, Sig_denote (RV32I.Sigma f)),
+    rv_cycle r sigma.
   Proof.
     vm_compute.
   .
