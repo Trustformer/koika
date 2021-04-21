@@ -61,7 +61,7 @@ Module StackF <: StackInterface.
   }}.
 
   Definition pop : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun push (address : bits_t 32) : bits_t 1 =>
+    fun pop (address : bits_t 32) : bits_t 1 =>
       let s0 := read0(size) in
       let loc := s0 - |index_sz`d1| in
       if s0 == |index_sz`d0| then (* underflow *)
