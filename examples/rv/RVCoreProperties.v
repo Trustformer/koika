@@ -1,7 +1,115 @@
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
-Require Import Koika.Frontend Koika.Logs Koika.Std Koika.ProgramTactics.
+Require Import Koika.TypedSemantics Koika.Frontend Koika.Logs Koika.Std
+Koika.ProgramTactics.
 
 Module StackProofs.
+  (*
+    # Kôika
+    Types:
+    - type (
+      Inductive type : Type :=
+      | bits_t : nat -> type
+      | enum_t : enum_sig -> type
+      | struct_t : struct_sig -> type
+      | array_t : array_sig -> type.
+    );
+    - _Sig (
+      Record _Sig {argKind: Type} {nArgs: nat} := {
+        argSigs : vect argKind nArgs;
+        retSig : argKind
+      }.
+    );
+    - tsig : forall var_t, list (var_t * type);
+    - action (
+      Inductive action : tsig var_t -> type -> Type :=
+      | Fail {sig} tau : action sig tau
+      | Var {sig} {k : var_t} {tau : type} (m : member (k, tau) sig)
+        : action sig tau.
+      ...
+      .
+    )
+    - scheduler (
+      Inductive scheduler :=
+      | Done
+      | Cons (r: rule_name_t) (s: scheduler)
+      | Try (r: rule_name_t) (s1 s2: scheduler)
+      | SPos (p: pos_t) (s: scheduler).
+    ).
+    Rôle de Try et SPos ?
+
+    # Modèle
+    Types :
+    - reg_t : registres (Set);
+    - ext_fn_t : fonctions externes (Set);
+    - rule_name_t : règles (Set).
+    - schedule : (scheduler)
+    Fonctions :
+    - R : typage des reg_t (reg_t -> type);
+    - r : valeur initiale des reg_t ((reg : reg_t) -> R reg);
+    - Sigma : décl. des ext_fn_t (ext_fn_t -> _Sig type 1);
+    - sigma : déf. des ext_fn_t ((fn : ext_fn_t) -> Sig_denote (Sigma fn));
+    - rules : déf. des règles (rule_name_t -> action R Sigma).
+
+    # Fonctions
+    interp_action :
+    état des registres en début de cycle
+    -> déclaration des ext_fn_t [Sigma]
+    -> valeur des bindings lets de la règle à ce stade
+    -> log des règles précédentes dans le schedule
+    -> log de la règle à ce stade
+    -> action à interpréter
+    -> option (log de la règle, val de retour, nvlle val des bindings let)
+
+    interp_scheduler :
+    état des registres en début de cycle
+    -> déclaration des ext_fn_t [Sigma]
+    -> définition des règles [rules]
+    -> schedule à interpréter
+    -> log du schedule
+
+    interp_rule :
+    état des registres en début de cycle
+    -> déclaration des ext_fn_t [Sigma]
+    -> log des règles précédentes dans le schedule
+    -> règle à interpréter
+    -> option (log de la règle)
+
+    interp_cycle :
+    déclaration des ext_fn_t [Sigma]
+    -> définition des règles [rules]
+    -> schedule
+    -> état des registres en début de cycle
+    -> état des registres suite à ce cycle (càd en début du cycle suivant)
+
+    commit_update :
+    état des registres en début de cycle
+    -> log à la fin du cycle
+    -> état des registres en fin de cycle
+  *)
+
+  Definition rv_cycle
+    (r: ContextEnv.(env_t) RV32I.R)
+    (sigma : forall f, Sig_denote (RV32I.Sigma f))
+  :=
+  TypedSemantics.interp_cycle sigma RV32I.rv_rules rv_schedule r.
+
+  (*
+  Détecter dans quelles situations un write visant le registre halt a lieu.
+  Problème : impossible de détecter si l'appel à halt
+  *)
+  Theorem stack_0_implies_no_setting_halt :
+    (r: ContextEnv.(env_t) RV32I.R)
+    (sigma : forall f, Sig_denote (RV32I.Sigma f)),
+     r.(getenv) halt = 0 -> (rv_cycle r sigma).(getenv) halt = 1 ->
+
+  Theorem forall_calls :
+    forall (r : ContextEnv.(env_t) RV32I.R)
+    (sigma : forall f, Sig_denote (RV32I.Sigma f)),
+    rv_cycle r sigma.
+  Proof.
+    vm_compute.
+  .
+
   Import StackF.
   Definition default := ContextEnv.(create) r.
 
@@ -10,6 +118,8 @@ Module StackProofs.
 
   Definition is_stack_full (reg : ContextEnv.(env_t) R) :=
     ContextEnv.(getenv) reg size = (Bits.of_nat index_sz capacity).
+
+  Definition Sigma := RV32I.Sigma.
 
   Ltac unfolds :=
     unfold desugar_action, desugar_action', TypeInference.tc_action,
@@ -70,13 +180,11 @@ Module StackProofs.
     sched_log = reads and writes performed by rules executed earlier in the same
                 clock cycle,
     action_log = empty, used to accumulate the reads and writes of the rule,
-    action_log_new = contains the reads and writes of the rule
-   *)
-
+    action_log_new = contains the reads and writes of the rule *)
   Theorem pop_returns_one_when_stack_empty :
     forall env Gamma sched_log action_log action_log_new v Gamma_new,
-    interp_action env empty_sigma Gamma sched_log action_log
-      (tc_function R empty_Sigma pop) = Some (action_log_new, v, Gamma_new)
+    interp_action env Sigma Gamma sched_log action_log
+      (tc_function R Sigma pop) = Some (action_log_new, v, Gamma_new)
       -> is_stack_empty env -> v = Ob~1.
   Proof.
     intros env Gamma sched_log action_log action_log_new v Gamma_new.
@@ -176,11 +284,6 @@ Module StackProofs.
       reflexivity.
     - discriminate H1.
   Qed.
-
-  Theorem forall_calls :
-    forall s log, interp_scheduler r sigma rules s = log ->
-
-  .
 
   Definition stack_top (reg : ContextEnv.(env_t) R) :=
     let index := (ContextEnv.(getenv) reg size) in

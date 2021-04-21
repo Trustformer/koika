@@ -690,10 +690,17 @@ Module RVCore
   Inductive memory := imem | dmem.
 
   Inductive ext_fn_t :=
+  (* Send a read or write to memory *)
   | ext_mem (m: memory)
+  (* Read from host *)
   | ext_uart_read
+  (* Write to host *)
   | ext_uart_write
+  (* Set led *)
   | ext_led
+  (* Get host id *)
+  | ext_host_id
+  (* Stop execution *)
   | ext_finish.
 
   Definition mem_input := {|
@@ -717,12 +724,19 @@ Module RVCore
   Definition led_input    := maybe (bits_t 1).
   Definition finish_input := maybe (bits_t 8).
 
+  Definition host_id :=
+    {| enum_name := "hostID";
+       enum_members := ["FPGA"; "Verilator"; "Cuttlesim"];
+       enum_bitpatterns := vect_map (Bits.of_nat 8) [128; 1; 0]
+    |}%vect.
+
   Definition Sigma (fn: ext_fn_t) :=
     match fn with
     | ext_mem _      => {$ struct_t mem_input ~> struct_t mem_output $}
     | ext_uart_read  => {$ bits_t 1 ~> uart_output $}
     | ext_uart_write => {$ uart_input ~> bits_t 1 $}
     | ext_led        => {$ led_input ~> bits_t 1 $}
+    | ext_host_id    => {$ bits_t 1 ~> enum_t host_id $}
     | ext_finish     => {$ finish_input ~> bits_t 1 $}
     end.
 
@@ -970,6 +984,8 @@ Module RVCore
     Ob~0~1~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0.
   Definition MMIO_EXIT_ADDRESS :=
     Ob~0~1~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0~0~0~0~0~0~0~0~0~0~0.
+  Definition MMIO_HOST_ID_ADDRESS :=
+    Ob~0~1~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0~0~0~0~0~0~0~0~1~0~0.
 
   Definition memoryBus (m: memory) : UInternalFunction reg_t ext_fn_t := {{
     fun memoryBus (get_ready: bits_t 1) (put_valid: bits_t 1)
@@ -998,7 +1014,10 @@ Module RVCore
         let is_finish       := addr == #MMIO_EXIT_ADDRESS in
         let is_finish_write := is_finish && is_write in
 
-        let is_mem := !is_uart && !is_led && !is_finish in
+        let is_host_id := addr == #MMIO_HOST_ID_ADDRESS in
+        let is_host_id_read := is_host_id && !is_write in
+
+        let is_mem := !is_uart && !is_led && !is_finish && !is_host_id in
 
         if is_uart_write then
           let char    := get(put_request, data)[|5`d0| :+ 8] in
@@ -1055,6 +1074,18 @@ Module RVCore
               byte_en := byte_en;
               addr    := addr;
               data    := zeroExtend(response, 32)
+            }
+          }
+        else if is_host_id then
+          let may_run := get_ready && put_valid && is_host_id_read in
+          let response := pack(extcall ext_host_id (Ob~1)) in
+          let ready := Ob~1 in
+          struct mem_output {
+            get_valid := may_run && ready;
+            put_ready := may_run && ready;
+            get_response := struct mem_resp {
+              byte_en := byte_en; addr := addr;
+              data := zeroExtend(response, 32)
             }
           }
         else
@@ -1172,8 +1203,8 @@ Module RVCore
     efr_name     := show fn;
     efr_internal :=
       match fn with
-      | ext_finish => true
-      | _          => false
+      | ext_host_id | ext_finish => true
+      | _ => false
       end
   |}.
 End RVCore.
