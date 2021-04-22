@@ -2,6 +2,21 @@ Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.TypedSemantics Koika.Frontend Koika.Logs Koika.Std
 Koika.ProgramTactics.
 
+Require Import Koika.IndTypedSemantics.
+
+Ltac destr_in H :=
+  match type of H with
+  | context[match ?a with _ => _ end] => destruct a eqn:?
+  end.
+
+Ltac destr :=
+  match goal with
+    |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
+  end.
+
+Ltac inv H :=
+  inversion H; try subst; clear H.
+
 Module StackProofs.
   (*
     # Kôika
@@ -97,6 +112,150 @@ Module StackProofs.
   Détecter dans quelles situations un write visant le registre halt a lieu.
   Problème : impossible de détecter si l'appel à halt
   *)
+
+  Lemma extract_success_rewrite:
+    forall {S F: Type} (res1 res2: result S F) pr1 pr2,
+    res1 = res2 -> extract_success res1 pr1 = extract_success res2 pr2.
+  Proof.
+    intros. subst.
+    refine (
+      match pr1, pr2 with
+      | eq_refl _, eq_refl _ => _
+      end
+    ).
+    destruct res2; congruence.
+  Qed.
+
+  Lemma success_inj:
+    forall {S F: Type} (x y: S), Success x = @Success S F y -> x = y.
+  Proof.
+    intros S F x y H. inv H; auto.
+  Qed.
+
+  Lemma cast_action'_eq:
+    forall (pos_t fn_name_t var_t reg_t ext_fn_t : Type) (R : reg_t -> type)
+           (Sigma : ext_fn_t -> ExternalSignature)
+           (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
+           (a: action pos_t var_t fn_name_t R Sigma sig tau1)
+           (e: error_message var_t fn_name_t) a',
+      cast_action' R Sigma p tau2 a e = Success a' ->
+      exists p : tau1 = tau2,
+        a' = eq_rect _ _ a _ p.
+  Proof.
+    unfold cast_action'. intros.
+    destr_in H. subst.
+    unfold eq_rect_r in H. simpl in H. inv H.
+    exists eq_refl; reflexivity. inv H.
+  Qed.
+
+  Lemma cast_action_eq:
+    forall (pos_t fn_name_t var_t reg_t ext_fn_t : Type) (R : reg_t -> type)
+           (Sigma : ext_fn_t -> ExternalSignature)
+           (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
+           (a: action pos_t var_t fn_name_t R Sigma sig tau1)
+           a',
+      cast_action R Sigma p tau2 a = Success a' ->
+      exists p : tau1 = tau2,
+        a' = eq_rect _ _ a _ p.
+  Proof.
+    intros. unfold cast_action in H.
+    eapply cast_action'_eq; eauto.
+  Qed.
+ 
+  Lemma execute_overwrites_halt:
+    forall (r: ContextEnv.(env_t) RV32I.R) sigma l,
+      ind_interp_rule r sigma log_empty RV32I.tc_execute l ->
+      log_existsb l RV32I.halt (fun k p =>
+                                  match k with
+                                    LogRead => false
+                                  | LogWrite => true
+                                  end
+                               ) = true(*  -> *)
+      (* let dbk := ContextEnv.(getenv) r (RV32I.d2e RV32I.fromDecode.data0) = dbk in *)
+      (* let dInst :=  *)
+
+        (* RV32I.isControlInst *)
+  .
+  Proof.
+    intros.
+    inv H.
+    unfold RV32I.tc_execute in H0.
+    unfold desugar_action in H0.
+    intros.
+    refine (
+      match
+        desugar_action' dummy_pos (fun r : RV32I.reg_t => r)
+        (fun fn => fn) (RV32I.execute)
+      with
+         x => _
+      end
+    ).
+    fold x in H0.
+    refine ((
+      match
+        TypeInference.tc_action RV32I.R RV32I.Sigma dummy_pos [] unit_t x
+      as r
+      return (
+        TypeInference.tc_action RV32I.R RV32I.Sigma dummy_pos [] unit_t x = r
+        -> is_success r = true -> _
+      ) with
+      | Success s => fun H1 H2 => _
+      | Failure f => fun H1 H2 => _
+      end
+    ) eq_refl eq_refl).
+    2: (simpl in H2; congruence).
+    erewrite extract_success_rewrite in H0. 2: apply H1.
+    simpl (extract_success _ _) in H0.
+
+    unfold TypeInference.tc_action in H1.
+    destr_in H1. 2: congruence.
+    clear H2.
+    apply cast_action_eq in H1.
+    destruct H1 as (p & EQ). subst s.
+    revert Heqr0. simpl in x.
+    unfold eq_rect in H0.
+    destruct p.
+    unfold desugar_action' in x. cbn in x.
+    unfold x. clear x.
+    intro Heqr0.
+    vm_compute in Heqr0.
+    apply success_inj in Heqr0.
+    subst s0. simpl projT1 in v.
+    simpl projT2 in H0.
+    match type of H0 with
+      context [Seq ?a1 ?a2] => set(XX:=a2); fold XX in H0
+    end.
+    inv H0.
+
+    unfold eq_rect in Heqo.
+    destruct p.
+    assert (p = eq_refl).
+    rewrite <- Heqr0 in Heqo.
+    revert H1; rewrite <- Heqr0; clear Heqr0.
+    simpl projT2.
+    intro Hcast; vm_compute in Hcast; inv Hcast.
+
+
+    Heqr0.
+    vm_compute in H1. inv H1. simpl in H2.
+    cbn beta delta iota zeta in H.
+    revert H.
+    unfold opt_bind.
+    destruct may_read.
+    - rewrite H0.
+      rewrite (proj2 (beq_dec_iff _ _ _)). intro A; inv A. reflexivity.
+      reflexivity.
+    - congruence.
+
+    unfold x in H1. vm_compute in H1.
+
+
+
+
+
+    interp_action_t.
+  Qed.
+
   Theorem stack_0_implies_no_setting_halt :
     (r: ContextEnv.(env_t) RV32I.R)
     (sigma : forall f, Sig_denote (RV32I.Sigma f)),
@@ -145,32 +304,6 @@ Module StackProofs.
     f_equal. apply Eqdep_dec.UIP_dec. apply eq_dec.
     congruence.
   Qed.
-
-  Ltac destr_in H :=
-    match type of H with
-    | context[match ?a with _ => _ end] => destruct a eqn:?
-    end.
-
-  Ltac destr :=
-    match goal with
-    |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
-    end.
-
-  Lemma extract_success_rewrite:
-    forall {S F: Type} (res1 res2: result S F) pr1 pr2,
-    res1 = res2 -> extract_success res1 pr1 = extract_success res2 pr2.
-  Proof.
-    intros. subst.
-    refine (
-      match pr1, pr2 with
-      | eq_refl _, eq_refl _ => _
-      end
-    ).
-    destruct res2; congruence.
-  Qed.
-
-  Ltac inv H :=
-    inversion H; try subst; clear H.
 
   (*
     env = contains the value of available registers at the start of the rule for
