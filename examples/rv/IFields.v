@@ -1,3 +1,5 @@
+(*! Definitions of the instruction fields !*)
+
 Require Import List Strings.String.
 Import ListNotations.
 

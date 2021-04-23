@@ -1,5 +1,6 @@
 (*! Definition of the elements required to fully caracterize a RISC-V
-    implementation !*)
+    implementation
+!*)
 
 (* TODO Privileged ISA *)
 

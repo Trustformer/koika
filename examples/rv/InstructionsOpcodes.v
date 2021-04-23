@@ -1,3 +1,5 @@
+(*! Definitions related to the opcode instruction field !*)
+
 Require Import Koika.Frontend.
 Require Import rv.Instructions rv.IFields rv.ITypes.
 

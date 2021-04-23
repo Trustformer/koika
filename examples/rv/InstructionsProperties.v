@@ -1,3 +1,5 @@
+(*! Definition of functions helpful for filtering instructions !*)
+
 Require Import List.
 Import ListNotations.
 

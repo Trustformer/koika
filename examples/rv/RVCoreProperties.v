@@ -1,3 +1,5 @@
+(*! Proofs about our RISC-V implementation !*)
+
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.TypedSemantics Koika.Frontend Koika.Logs Koika.Std
 Koika.ProgramTactics.

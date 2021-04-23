@@ -2,7 +2,9 @@
 
 (* This file defines constants used to identify instructions.
    Of all the encondings registered in this file, only those in the RV32I
-   section are used in practice for the time being. *)
+   section are used in practice for the time being.
+   TODO remove this file
+*)
 
 Require Import Koika.Frontend.
 
