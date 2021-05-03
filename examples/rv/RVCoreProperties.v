@@ -1,8 +1,9 @@
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
-Require Import Koika.TypedSemantics Koika.Frontend Koika.Logs Koika.Std
-Koika.ProgramTactics.
+Require Import Koika.Frontend Koika.Logs Koika.Std
+        Koika.ProgramTactics.
+Require Import Koika.SimpleTypedSemantics.
 
-Require Import Koika.IndTypedSemantics.
+(* Require Import Koika.IndTypedSemantics. *)
 
 Ltac destr_in H :=
   match type of H with
@@ -161,10 +162,19 @@ Module StackProofs.
     intros. unfold cast_action in H.
     eapply cast_action'_eq; eauto.
   Qed.
- 
+
+  Definition if_halt_eq : action (ext_fn_t:=RV32I.ext_fn_t) pos_t var_t fn_name_t RV32I.R RV32I.Sigma [] unit_t :=
+    (If (Binop (PrimTyped.Eq (bits_t 1) false) (Read P0 RV32I.halt)
+               (Const (tau:= bits_t 1) {| vhd := true; vtl := _vect_nil |}))
+       (Fail unit_t) (Const (tau:=unit_t) _vect_nil)).
+
+  Context {reg_t_eq_dec: EqDec RV32I.reg_t}.
+  
   Lemma execute_overwrites_halt:
     forall (r: ContextEnv.(env_t) RV32I.R) sigma l,
-      ind_interp_rule r sigma log_empty RV32I.tc_execute l ->
+      interp_rule r sigma log_empty
+                  RV32I.tc_execute
+                  = Some l ->
       log_existsb l RV32I.halt (fun k p =>
                                   match k with
                                     LogRead => false
@@ -178,14 +188,114 @@ Module StackProofs.
   .
   Proof.
     intros.
-    inv H.
-    unfold RV32I.tc_execute in H0.
-    unfold desugar_action in H0.
-    intros.
+    unfold interp_rule in H.
+    destr_in H. 2: congruence.
+    repeat destr_in H. inv H.
+    unfold RV32I.tc_execute in Heqo.
+    unfold desugar_action in Heqo.
     refine (
       match
         desugar_action' dummy_pos (fun r : RV32I.reg_t => r)
-        (fun fn => fn) (RV32I.execute)
+        (fun fn => fn) RV32I.execute
+      with
+         x => _
+      end
+    ).
+    fold x in Heqo.
+    refine ((
+      match
+        TypeInference.tc_action RV32I.R RV32I.Sigma dummy_pos [] unit_t x
+      as r
+      return (
+        TypeInference.tc_action RV32I.R RV32I.Sigma dummy_pos [] unit_t x = r
+        -> is_success r = true -> _
+      ) with
+      | Success s => fun H1 H2 => _
+      | Failure f => fun H1 H2 => _
+      end
+    ) eq_refl eq_refl).
+    2: (simpl in H2; congruence).
+    rename Heqo into H0.
+    erewrite extract_success_rewrite in H0. 2: apply H1.
+    simpl (extract_success _ _) in H0.
+    unfold TypeInference.tc_action in H1.
+    destr_in H1. 2: congruence.
+    clear H2.
+    apply cast_action_eq in H1.
+    destruct H1 as (p & EQ). subst s.
+    revert Heqr0. simpl in x.
+    unfold eq_rect in H0.
+    destruct p.
+    unfold desugar_action' in x.
+    unfold RV32I.execute in x.
+    simpl in x.
+    unfold execALU32 in x. simpl in x.
+    unfold RV32I.fromDecode.deq in x. simpl in x.
+    unfold map_intf_body in x. vm_compute in x.
+    unfold x. clear x.
+    intro Heqr0.
+    vm_compute in Heqr0.
+    Set Printing Depth 20.
+    Set Printing All.
+    inv Heqr0.
+    apply success_inj in Heqr0.
+    subst.
+    simpl projT1 in v.
+    simpl projT2 in H0.
+
+    inversion H0.
+    apply Eqdep_dec.inj_pair2_eq_dec in H11.
+    2:{
+      apply eq_dec.
+    }
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    assert (var = "res"). eapply EqdepFacts.eq_sigT_fst; eauto. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    simpl projT1 in *.
+    apply Eqdep_dec.inj_pair2_eq_dec in H10. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H.
+    all: try apply eq_dec. clear H0.
+    subst.
+    inv H12.
+    apply Eqdep_dec.inj_pair2_eq_dec in H.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3.
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H5.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3. subst.
+    all: try apply eq_dec.
+    inv H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H6.
+    apply Eqdep_dec.inj_pair2_eq_dec in H11.
+    apply Eqdep_dec.inj_pair2_eq_dec in H12.
+    apply Eqdep_dec.inj_pair2_eq_dec in H1.
+    apply Eqdep_dec.inj_pair2_eq_dec in H6. subst.
+    all: try apply eq_dec.
+    inv H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H4.
+    apply Eqdep_dec.inj_pair2_eq_dec in H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H12.
+    apply Eqdep_dec.inj_pair2_eq_dec in H14. subst.
+    all: try apply eq_dec.
+
+
+    destruct (interp_action r sigma CtxEmpty log_empty log_empty RV32I.tc_end_execution) eqn:?.
+    2:{
+      Set Printing All.
+    }
+    destr_in H.
+    inv H.
+    unfold RV32I.tc_end_execution in H0.
+    unfold desugar_action in H0.
+    refine (
+      match
+        desugar_action' dummy_pos (fun r : RV32I.reg_t => r)
+        (fun fn => fn) RV32I.end_execution
       with
          x => _
       end
@@ -206,7 +316,120 @@ Module StackProofs.
     2: (simpl in H2; congruence).
     erewrite extract_success_rewrite in H0. 2: apply H1.
     simpl (extract_success _ _) in H0.
+    unfold TypeInference.tc_action in H1.
+    destr_in H1. 2: congruence.
+    clear H2.
+    apply cast_action_eq in H1.
+    destruct H1 as (p & EQ). subst s.
+    revert Heqr0. simpl in x.
+    unfold eq_rect in H0.
+    destruct p.
+    unfold desugar_action' in x.
+    unfold RV32I.end_execution in x.
+    simpl in x.
+    unfold x. clear x.
+    intro Heqr0.
+    simpl in Heqr0. 
+    apply success_inj in Heqr0.
+    subst.
+    simpl projT1 in v.
+    simpl projT2 in H0.
 
+    inversion H0.
+    apply Eqdep_dec.inj_pair2_eq_dec in H11.
+    2:{
+      apply eq_dec.
+    }
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    assert (var = "res"). eapply EqdepFacts.eq_sigT_fst; eauto. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    simpl projT1 in *.
+    apply Eqdep_dec.inj_pair2_eq_dec in H10. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H.
+    all: try apply eq_dec. clear H0.
+    subst.
+    inv H12.
+    apply Eqdep_dec.inj_pair2_eq_dec in H.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3.
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H5.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3. subst.
+    all: try apply eq_dec.
+    inv H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H6.
+    apply Eqdep_dec.inj_pair2_eq_dec in H11.
+    apply Eqdep_dec.inj_pair2_eq_dec in H12.
+    apply Eqdep_dec.inj_pair2_eq_dec in H1.
+    apply Eqdep_dec.inj_pair2_eq_dec in H6. subst.
+    all: try apply eq_dec.
+    inv H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H4.
+    apply Eqdep_dec.inj_pair2_eq_dec in H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H9.
+    apply Eqdep_dec.inj_pair2_eq_dec in H12.
+    apply Eqdep_dec.inj_pair2_eq_dec in H14. subst.
+    all: try apply eq_dec.
+        
+
+
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H7.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    assert (var = "res"). eapply EqdepFacts.eq_sigT_fst; eauto. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H8.
+    simpl projT1 in *.
+    apply Eqdep_dec.inj_pair2_eq_dec in H10. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H.
+    all: try apply eq_dec. clear H0.
+    subst.
+
+    2:{
+      intros. decide equality. apply EqDec_pair. 
+    }
+    inversion H11.
+    destruct H11. unfold eq_rect in e. 
+    cbn [projT1 projT2] in *.
+
+    vm_compute in H0.
+
+
+    Set Printing Depth 500.
+
+    inv H0.
+
+
+    unfold RV32I.tc_execute in H0.
+    refine (
+      match
+        desugar_action' dummy_pos (fun r : RV32I.reg_t => r)
+        (fun fn => fn) RV32I.execute
+      with
+         x => _
+      end
+    ).
+    fold x in H0.
+    refine ((
+      match
+        TypeInference.tc_action RV32I.R RV32I.Sigma dummy_pos [] unit_t x
+      as r
+      return (
+        TypeInference.tc_action RV32I.R RV32I.Sigma dummy_pos [] unit_t x = r
+        -> is_success r = true -> _
+      ) with
+      | Success s => fun H1 H2 => _
+      | Failure f => fun H1 H2 => _
+      end
+    ) eq_refl eq_refl).
+    2: (simpl in H2; congruence).
+    erewrite extract_success_rewrite in H0. 2: apply H1.
+    simpl (extract_success _ _) in H0.
     unfold TypeInference.tc_action in H1.
     destr_in H1. 2: congruence.
     clear H2.
@@ -218,8 +441,11 @@ Module StackProofs.
     unfold desugar_action' in x. cbn in x.
     unfold x. clear x.
     intro Heqr0.
+    simpl in Heqr0.
     vm_compute in Heqr0.
     apply success_inj in Heqr0.
+
+
     subst s0. simpl projT1 in v.
     simpl projT2 in H0.
     match type of H0 with
