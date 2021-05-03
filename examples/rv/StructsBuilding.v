@@ -1,3 +1,7 @@
+(*! Definition of functions used to produce the Kôika structs required to
+    specify a Kôika RISC-V processor
+!*)
+
 Require Import List.
 Import ListNotations.
 

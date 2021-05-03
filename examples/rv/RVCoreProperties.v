@@ -1,3 +1,5 @@
+(*! Proofs about our RISC-V implementation !*)
+
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.Frontend Koika.Logs Koika.Std
         Koika.ProgramTactics.
@@ -109,11 +111,6 @@ Module StackProofs.
   :=
   TypedSemantics.interp_cycle sigma RV32I.rv_rules rv_schedule r.
 
-  (*
-  Détecter dans quelles situations un write visant le registre halt a lieu.
-  Problème : impossible de détecter si l'appel à halt
-  *)
-
   Lemma extract_success_rewrite:
     forall {S F: Type} (res1 res2: result S F) pr1 pr2,
     res1 = res2 -> extract_success res1 pr1 = extract_success res2 pr2.
@@ -162,6 +159,7 @@ Module StackProofs.
     intros. unfold cast_action in H.
     eapply cast_action'_eq; eauto.
   Qed.
+
 
   Definition if_halt_eq : action (ext_fn_t:=RV32I.ext_fn_t) pos_t var_t fn_name_t RV32I.R RV32I.Sigma [] unit_t :=
     (If (Binop (PrimTyped.Eq (bits_t 1) false) (Read P0 RV32I.halt)
@@ -531,15 +529,6 @@ Module StackProofs.
     congruence.
   Qed.
 
-  (*
-    env = contains the value of available registers at the start of the rule for
-          read0 and after write0 for read1,
-    Gamma = values of the variables created by let bindings before pop,
-    Gamma_new = values of the variables created by let bindings after pop,
-    sched_log = reads and writes performed by rules executed earlier in the same
-                clock cycle,
-    action_log = empty, used to accumulate the reads and writes of the rule,
-    action_log_new = contains the reads and writes of the rule *)
   Theorem pop_returns_one_when_stack_empty :
     forall env Gamma sched_log action_log action_log_new v Gamma_new,
     interp_action env Sigma Gamma sched_log action_log
