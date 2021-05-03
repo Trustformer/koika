@@ -1,5 +1,6 @@
 (*! Language | Semantics of typed Kôika programs !*)
-Require Export Koika.Common Koika.Environments Koika.ULogs Koika.Syntax Koika.Syntax.
+Require Export Koika.Common Koika.Environments Koika.ULogs Koika.Syntax
+  Koika.Syntax.
 
 Section Interp.
   Context {pos_t var_t fn_name_t reg_t ext_fn_t: Type}.
@@ -13,7 +14,6 @@ Section Interp.
   | Array (sig: array_sig) (v: list val).
 
   Context {Sigma: ext_fn_t -> ExternalSignature}.
-
   Context {REnv: Env reg_t}.
 
   Notation Log := (@_ULog val reg_t REnv).
@@ -57,9 +57,11 @@ Section Interp.
     (*     end. *)
     (* End Args. *)
 
-    Fixpoint ucassoc {sig: tsig var_t} (Gamma: tcontext sig) (k: var_t) : option val :=
+    Fixpoint ucassoc {sig: tsig var_t} (Gamma: tcontext sig) (k: var_t)
+      : option val
+    :=
       match Gamma with
-        CtxEmpty => None
+      | CtxEmpty => None
       | CtxCons k' v Gamma => if eq_dec k (fst k') then Some v else ucassoc Gamma k
       end.
 
@@ -72,9 +74,11 @@ Section Interp.
       intros. simpl. destruct eq_dec.
       destruct k, k0; simpl in *. subst.
       inversion m; subst.
-      generalize (fun nd => member_NoDup (v0, t) (EqDec_pair _ _)
-                                         nd m (MemberHd _ _)).
-      intros. rewrite H. simpl. auto. apply NoDup_map_inv with (f:= fst). simpl; auto.
+      generalize (
+        fun nd => member_NoDup (v0, t) (EqDec_pair _ _) nd m (MemberHd _ _)
+      ).
+      intros. rewrite H. simpl. auto. apply NoDup_map_inv with (f:= fst).
+      simpl; auto.
       apply member_In in X. inversion ND. subst. exfalso; apply H1.
       apply in_map_iff. eexists; split. 2: apply X. reflexivity.
       inversion m. subst. congruence. subst.
@@ -92,7 +96,8 @@ Section Interp.
            : list val :=
              match fields return struct_denote fields -> list val with
              | [] => fun _ => []
-             | (nm, tau) :: fields => fun '(x, xs) => (val_of_value x) :: (val_of_struct_value xs)
+             | (nm, tau) :: fields => fun '(x, xs) =>
+                 (val_of_value x) :: (val_of_struct_value xs)
              end x) in
       match tau return type_denote tau -> val with
       | bits_t _ => fun bs => Bits _ bs
@@ -109,7 +114,7 @@ Section Interp.
 
     Definition val_concat (l: list val) : val :=
       fold_left (val_bits_app) l (Bits _ Ob).
-    
+
     Fixpoint ubits_of_value (v: val) : val :=
       match v with
       | Bits _ bs => Bits _ bs
@@ -128,10 +133,14 @@ Section Interp.
         apply Eqdep_dec.inj_pair2_eq_dec in H1. 2: apply eq_dec. auto.
       - inversion H.
         apply Eqdep_dec.inj_pair2_eq_dec in H1. 2: apply eq_dec. auto.
-      -
-    Admitted.
+      (*
+      - induction struct_fields.
+        + cbn in H. injection H.
+      *) Admitted.
 
-    Fixpoint replace {sig: tsig var_t} k (v: val) (Gamma: tcontext sig) : tcontext sig :=
+    Fixpoint replace {sig: tsig var_t} k (v: val) (Gamma: tcontext sig)
+      : tcontext sig
+    :=
       match Gamma with
       | CtxEmpty => CtxEmpty
       | CtxCons k0 v0 Gamma =>
@@ -140,7 +149,9 @@ Section Interp.
         else CtxCons k0 v0 (replace k v Gamma)
       end.
 
-    Definition bits_split (n: nat) {sz} (v: bits sz) : option (bits n * bits (sz - n)).
+    Definition bits_split (n: nat) {sz} (v: bits sz)
+      : option (bits n * bits (sz - n)).
+    Proof.
       destruct (lt_dec n sz). 2: exact None.
       replace sz with (n + (sz - n)) in v. 2: lia.
       destruct (Bits.split v) eqn:?.
@@ -155,7 +166,9 @@ Section Interp.
       | _ => None
       end.
 
-    Fixpoint bits_splitn {sz} (nb sz_elt: nat) (bs: bits sz) : option (list (bits sz_elt)) :=
+    Fixpoint bits_splitn {sz} (nb sz_elt: nat) (bs: bits sz)
+      : option (list (bits sz_elt))
+    :=
       match nb with
         O => Some []
       | S nb =>
@@ -169,41 +182,47 @@ Section Interp.
       exact (Some bs).
       exact None.
     Defined.
-    
-    Definition enum_of_bits (sig: enum_sig) {n} (bs: bits n) : option (bits (enum_bitsize sig)) :=
+
+    Definition enum_of_bits (sig: enum_sig) {n} (bs: bits n)
+      : option (bits (enum_bitsize sig))
+    :=
       bits_of_bits (enum_bitsize sig) bs.
-    
+
     Fixpoint value_of_bits {tau: type} (bs: val) {struct tau}: option val :=
       let value_of_struct_bits :=
-          (fix value_of_struct_bits
-               {fields: list (string * type)}
-               (bs: val)
-           : option (list val) :=
-             match fields with
-             | [] => Some []
-             | (nm, tau) :: fields =>
-               let/opt2 b0, b1 := val_split (type_sz tau) bs in
-               let/opt hd := value_of_bits (tau:=tau) b0 in
-               let/opt tl := value_of_struct_bits (fields:=fields) b1 in
-               Some (hd :: tl)
-             end) in
+        (fix value_of_struct_bits
+             {fields: list (string * type)}
+             (bs: val)
+         : option (list val) :=
+           match fields with
+           | [] => Some []
+           | (nm, tau) :: fields =>
+             let/opt2 b0, b1 := val_split (type_sz tau) bs in
+             let/opt hd := value_of_bits (tau:=tau) b0 in
+             let/opt tl := value_of_struct_bits (fields:=fields) b1 in
+             Some (hd :: tl)
+           end) in
       let value_of_list_bits tau :=
-          fix value_of_list_bits {sz} (l : list (bits sz)) : option (list val) :=
-            match l with
-            | [] => Some []
-            | hd::tl =>
-              let/opt hd := value_of_bits (tau:=tau) (Bits _ hd) in
-              let/opt tl := value_of_list_bits tl in
-              Some (hd::tl)
-            end in
+        fix value_of_list_bits {sz} (l : list (bits sz))
+          : option (list val)
+        :=
+          match l with
+          | [] => Some []
+          | hd::tl =>
+            let/opt hd := value_of_bits (tau:=tau) (Bits _ hd) in
+            let/opt tl := value_of_list_bits tl in
+            Some (hd::tl)
+          end in
       match bs with
         Bits _ bs' =>
         match tau with
         | bits_t _ => Some bs
         | enum_t sig => option_map (fun bs => Bits _ bs) (enum_of_bits sig bs')
-        | struct_t sig => option_map (fun lv => Struct sig lv) (value_of_struct_bits (fields:=struct_fields sig)bs)
+        | struct_t sig => option_map (fun lv => Struct sig lv)
+            (value_of_struct_bits (fields:=struct_fields sig) bs)
         | array_t sig =>
-          let/opt lbs := bits_splitn (array_len sig) (type_sz (array_type sig)) bs' in
+          let/opt lbs := bits_splitn (array_len sig)
+            (type_sz (array_type sig)) bs' in
           let/opt lv := value_of_list_bits (array_type sig) lbs in
           Some (Array sig lv)
         end
@@ -211,7 +230,7 @@ Section Interp.
       end.
 
 
-
+      Locate CircuitPrimSpecs.sigma1.
   Definition sigma1 (fn: PrimUntyped.ufn1) : val -> option val :=
     match fn with
     | PrimUntyped.UDisplay fn =>
@@ -265,9 +284,11 @@ Section Interp.
         let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log a1 in
         interp_action Gamma sched_log action_log a2
       | UBind k a1 a2 =>
-        let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log a1 in
-        let/opt3 action_log, v, Gamma := interp_action (CtxCons (k, bits_t 0) v Gamma) sched_log action_log a2 in
-        Some (action_log, v, ctl Gamma)
+        let/opt3 action_log, v, Gamma
+          := interp_action Gamma sched_log action_log a1 in
+        let/opt3 action_log, v, Gamma := interp_action
+          (CtxCons (k, bits_t 0) v Gamma) sched_log action_log a2
+        in Some (action_log, v, ctl Gamma)
       | UIf cond athen aelse =>
         let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log cond in
         match v with

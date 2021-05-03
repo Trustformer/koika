@@ -2,52 +2,45 @@
 Require Export Koika.Common Koika.Environments Koika.Syntax Koika.TypedSyntax.
 
 Section Logs.
-
-
   Context {reg_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {R: reg_t -> Type}.
   Context {REnv: Env reg_t}.
 
-  Inductive LogEntryKind :=
-    LogRead | LogWrite.
+  Inductive LogEntryKind := LogRead | LogWrite.
 
-  Record LogEntry :=
-    LE { reg: reg_t;
-         kind: LogEntryKind;
-         port: Port;
-         val: match kind with
-              | LogRead => unit: Type
-              | LogWrite => R reg
-              end }.
+  Record LogEntry := LE {
+    reg: reg_t;
+    kind: LogEntryKind;
+    port: Port;
+    val:
+      match kind with
+      | LogRead => unit: Type
+      | LogWrite => R reg
+      end
+  }.
 
-  Definition RLog :=
-    list (@LogEntry).
-
+  Definition RLog := list (@LogEntry).
   Definition _Log := list LogEntry.
   Notation Log := _Log.
 
   Definition log_empty : Log := [].
-
   Definition log_app (l1 l2: Log) := l1 ++ l2.
 
   Definition log_find {T} (log: Log) r (f: LogEntry -> option T) : option T :=
-    list_find_opt (fun le =>
-                     if eq_dec (reg le) r
-                     then f le
-                     else None) log.
+    list_find_opt (fun le => if eq_dec (reg le) r then f le else None) log.
 
-  Definition log_cons le (l: Log) :=
-    (le :: l).
+  Definition log_cons le (l: Log) := (le :: l).
 
   Definition log_forallb (log: Log) reg (f: LogEntryKind -> Port -> bool) :=
-    List.forallb (fun '(LE r kind prt _) =>
-                    if eq_dec r reg then f kind prt else true
-                 ) log.
+    List.forallb (
+      fun '(LE r kind prt _) => if eq_dec r reg then f kind prt else true
+    ) log.
 
   Definition log_existsb (log: Log) reg (f: LogEntryKind -> Port -> bool) :=
-    List.existsb (fun '(LE r kind prt _) =>
-                    if eq_dec r reg then f kind prt else false) log.
+    List.existsb (
+      fun '(LE r kind prt _) => if eq_dec r reg then f kind prt else false
+    ) log.
 
   Definition is_read0 kind prt :=
     match kind, prt with
@@ -77,8 +70,8 @@ Section Logs.
 
   Definition may_read (sched_log: Log) prt idx :=
     match prt with
-    | P0 => negb (log_existsb sched_log idx is_write0) &&
-           negb (log_existsb sched_log idx is_write1)
+    | P0 => negb (log_existsb sched_log idx is_write0)
+              && negb (log_existsb sched_log idx is_write1)
     | P1 => negb (log_existsb sched_log idx is_write1)
     end.
 
@@ -93,7 +86,6 @@ Section Logs.
 
   Definition latest_write0 (log: Log) idx : option (R idx) :=
     log_find log idx (log_latest_write0_fn idx).
-
 
   Definition log_latest_write1_fn idx (le: LogEntry) : option (R idx).
     destruct le. destruct kind0 eqn:?. exact None.
@@ -113,7 +105,6 @@ Section Logs.
            negb (log_existsb (log_app rule_log sched_log) idx is_write1)
     | P1 => negb (log_existsb (log_app rule_log sched_log) idx is_write1)
     end.
-
 
   Definition log_latest_write_fn idx (le: LogEntry) : option (R idx).
     destruct le. destruct kind0 eqn:?. exact None.
@@ -137,7 +128,6 @@ Section Logs.
     | [a] => latest_write log a = None
     | a::b => latest_write log a = None /\ no_latest_writes log b
     end.
-
 End Logs.
 
 Arguments LE {reg_t R} reg kind port val : assert.

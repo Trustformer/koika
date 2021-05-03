@@ -2,33 +2,31 @@
 Require Export Koika.Common Koika.Environments Koika.Syntax.
 
 Section Logs.
-  Inductive LogEntryKind :=
-    LogRead | LogWrite.
+  Inductive LogEntryKind := LogRead | LogWrite.
 
   Context {V: Type}.
 
-  Record LogEntry :=
-    LE { kind: LogEntryKind;
-         port: Port;
-         val: V }.
+  Record LogEntry := LE {
+    kind: LogEntryKind;
+    port: Port;
+    val: V
+  }.
 
-  Definition RLog :=
-    list LogEntry.
+  Definition RLog := list LogEntry.
 
   Context {reg_t: Type}.
-  Definition R : reg_t -> Type := fun _ => V.
   Context {REnv: Env reg_t}.
+  Definition R : reg_t -> Type := fun _ => V.
 
   Definition _ULog := REnv.(env_t) (fun idx => RLog).
   Notation ULog := _ULog.
 
-  Definition log_empty : ULog :=
-    REnv.(create) (fun _ => []).
+  Definition log_empty : ULog := REnv.(create) (fun _ => []).
 
   Definition log_app (l1 l2: ULog) :=
     map2 REnv (fun _ ll1 ll2 => ll1 ++ ll2) l1 l2.
 
-  Definition log_find {T} (log: ULog) reg (f: LogEntry -> option T) : option T :=
+  Definition log_find {T} (log: ULog) reg (f: LogEntry -> option T) :=
     list_find_opt f (REnv.(getenv) log reg).
 
   Definition log_cons (reg: reg_t) le (l: ULog) :=
@@ -68,8 +66,8 @@ Section Logs.
 
   Definition may_read (sched_log: ULog) prt idx :=
     match prt with
-    | P0 => negb (log_existsb sched_log idx is_write0) &&
-           negb (log_existsb sched_log idx is_write1)
+    | P0 => negb (log_existsb sched_log idx is_write0)
+            && negb (log_existsb sched_log idx is_write1)
     | P1 => negb (log_existsb sched_log idx is_write1)
     end.
 
@@ -93,9 +91,9 @@ Section Logs.
 
   Definition may_write (sched_log rule_log: ULog) prt idx :=
     match prt with
-    | P0 => negb (log_existsb (log_app rule_log sched_log) idx is_read1) &&
-           negb (log_existsb (log_app rule_log sched_log) idx is_write0) &&
-           negb (log_existsb (log_app rule_log sched_log) idx is_write1)
+    | P0 => negb (log_existsb (log_app rule_log sched_log) idx is_read1)
+            && negb (log_existsb (log_app rule_log sched_log) idx is_write0)
+            && negb (log_existsb (log_app rule_log sched_log) idx is_write1)
     | P1 => negb (log_existsb (log_app rule_log sched_log) idx is_write1)
     end.
 
@@ -109,10 +107,12 @@ Section Logs.
     log_find log idx log_latest_write_fn.
 
   Definition commit_update (r0: REnv.(env_t) R) (log: ULog) : REnv.(env_t) R :=
-    REnv.(create) (fun k => match latest_write log k with
-                         | Some v => v
-                         | None => REnv.(getenv) r0 k
-                         end).
+    REnv.(create) (fun k =>
+      match latest_write log k with
+      | Some v => v
+      | None => REnv.(getenv) r0 k
+      end
+    ).
 
   Fixpoint no_latest_writes (log: ULog) l :=
     match l with
@@ -120,7 +120,6 @@ Section Logs.
     | [a] => latest_write log a = None
     | a::b => latest_write log a = None /\ no_latest_writes log b
     end.
-
 End Logs.
 
 Arguments LE _ kind port val : assert.
@@ -138,26 +137,17 @@ Section Maps.
   Notation Log1 := (@_ULog V reg_t REnv).
   Notation Log2 := (@_ULog V reg_t REnv).
 
-  Definition LogEntry_map (f: V -> V) :=
-    fun '(LE kind prt v) =>
-      match kind with
-      | LogRead => fun v => LE LogRead prt v
-      | LogWrite => fun v => LE LogWrite prt (f v)
-      end v.
+  Definition LogEntry_map (f: V -> V) := fun '(LE kind prt v) =>
+    match kind with
+    | LogRead => fun v => LE LogRead prt v
+    | LogWrite => fun v => LE LogWrite prt (f v)
+    end v.
 
-  Definition RLog_map (f: V -> V) l :=
-    List.map (LogEntry_map f) l.
+  Definition RLog_map (f: V -> V) l := List.map (LogEntry_map f) l.
 
-  Definition log_map
-             (f: RLog V ->
-                 RLog V)
-             (log: Log1) : Log2 :=
+  Definition log_map (f: RLog V -> RLog V) (log: Log1) : Log2 :=
     Environments.map REnv (fun k l1 => f l1) log.
 
-  Definition log_map_values
-             (f: V -> V)
-             (log: Log1) : Log2 :=
+  Definition log_map_values (f: V -> V) (log: Log1) : Log2 :=
     log_map (RLog_map f) log.
 End Maps.
-
-
