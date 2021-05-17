@@ -1,7 +1,5 @@
 (*! Language | Semantics of typed Kôika programs !*)
-Require Export Koika.Common Koika.Environments Koika.ULogs Koika.Syntax
-  Koika.Syntax.
-
+Require Export Koika.Common Koika.Environments Koika.ULogs Koika.Syntax.
 
 Ltac destr_in H :=
   match type of H with
@@ -10,7 +8,7 @@ Ltac destr_in H :=
 
 Ltac destr :=
   match goal with
-    |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
+  |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
   end.
 
 Ltac inv H :=
@@ -36,8 +34,7 @@ Section Interp.
   Notation uaction := (uaction pos_t var_t fn_name_t reg_t ext_fn_t).
   (* Notation scheduler := (scheduler pos_t rule_name_t). *)
 
-  Definition tcontext (sig: tsig var_t) :=
-    context (fun k_tau => val) sig.
+  Definition tcontext (sig: tsig var_t) := context (fun k_tau => val) sig.
 
   Definition acontext (sig argspec: tsig var_t) :=
     context (fun k_tau => uaction) argspec.
@@ -76,11 +73,13 @@ Section Interp.
     :=
       match Gamma with
       | CtxEmpty => None
-      | CtxCons k' v Gamma => if eq_dec k (fst k') then Some v else ucassoc Gamma k
+      | CtxCons k' v Gamma =>
+          if eq_dec k (fst k') then Some v else ucassoc Gamma k
       end.
 
     Lemma cassoc_ucassoc:
-      forall (sig: tsig var_t) (ND: NoDup (map fst sig)) (Gamma: tcontext sig) k,
+      forall (sig: tsig var_t) (ND: NoDup (map fst sig))
+      (Gamma: tcontext sig) k,
       forall (m: member k sig), ucassoc Gamma (fst k) = Some (cassoc m Gamma).
     Proof.
       induction Gamma. simpl. intros.
@@ -199,7 +198,9 @@ Section Interp.
       exact (Some (v0, v1)).
     Defined.
 
-    Fixpoint take_drop {A: Type} (n: nat) (l: list A) : option (list A * list A) :=
+    Fixpoint take_drop {A: Type} (n: nat) (l: list A)
+      : option (list A * list A)
+    :=
       match n with
         O => Some ([], l)
       | S n =>
@@ -231,7 +232,7 @@ Section Interp.
     Lemma take_drop_succeeds:
       forall {A:Type} (n: nat) (l: list A) (LT: n <= Datatypes.length l),
       exists la lb,
-        take_drop n l = Some (la, lb).
+      take_drop n l = Some (la, lb).
     Proof.
       induction n; simpl; intros; eauto.
       destruct l; simpl in LT. lia.
@@ -242,8 +243,8 @@ Section Interp.
 
     Lemma take_drop_spec:
       forall {A:Type} (n: nat) (l la lb: list A),
-        take_drop n l = Some (la, lb) ->
-        l = la ++ lb /\ List.length la = n /\ List.length lb = List.length l - n.
+      take_drop n l = Some (la, lb) ->
+      l = la ++ lb /\ List.length la = n /\ List.length lb = List.length l - n.
     Proof.
       induction n; simpl; intros; eauto.
       inversion H; clear H; subst. repeat split; try reflexivity. lia.
@@ -266,19 +267,20 @@ Section Interp.
 
     Lemma take_drop'_spec:
       forall {A:Type} (n: nat) (l la lb: list A),
-        take_drop' n l = (la, lb) ->
-        l = la ++ lb /\ List.length la <= n /\ List.length lb = List.length l - List.length la.
+      take_drop' n l = (la, lb) ->
+      l = la ++ lb /\ List.length la <= n
+        /\ List.length lb = List.length l - List.length la.
     Proof.
       induction n; simpl; intros; eauto.
       inversion H; clear H; subst. repeat split; try reflexivity. simpl; lia.
-      destruct l; simpl in *. unfold take_drop' in H. simpl in *. inversion H; clear H.
+      destruct l; simpl in *. unfold take_drop' in H. simpl in *.
+      inversion H; clear H.
       simpl. repeat split; lia.
       destruct (take_drop' n l) as (l1 & l2) eqn:?.
       erewrite take_drop'_cons in H; eauto. inversion H; subst. simpl.
       apply IHn in Heqp. destruct Heqp as (EQ1 & EQ2 & EQ3). subst.
       repeat split; auto. lia.
     Qed.
-
 
     Lemma app_eq_inv:
       forall {A:Type} (a b c d: list A),
@@ -321,16 +323,24 @@ Section Interp.
 
     Lemma wt_val_ind':
       forall (P : type -> val -> Prop)
-       (Hbits: forall (n : nat) (bs : list bool), Datatypes.length bs = n -> P (bits_t n) (Bits n bs))
+       (Hbits: forall (n : nat) (bs : list bool),
+         Datatypes.length bs = n -> P (bits_t n) (Bits n bs)
+       )
        (Henum: forall (sig : enum_sig) (bs : list bool),
-        Datatypes.length bs = enum_bitsize sig -> P (enum_t sig) (Enum sig bs))
+         Datatypes.length bs = enum_bitsize sig ->
+         P (enum_t sig) (Enum sig bs)
+       )
        (Hstruct: forall (sig : struct_sig) (lv : list val),
-        Forall2 (fun (nt : type) (v : val) => wt_val nt v) (map snd (struct_fields sig)) lv ->
-        Forall2 (fun (nt : type) (v : val) => wt_val nt v -> P nt v) (map snd (struct_fields sig)) lv ->
-        P (struct_t sig) (Struct sig lv))
+          Forall2 (fun (nt : type) (v : val) => wt_val nt v)
+            (map snd (struct_fields sig)) lv ->
+          Forall2 (fun (nt : type) (v : val) => wt_val nt v -> P nt v)
+          (map snd (struct_fields sig)) lv ->
+        P (struct_t sig) (Struct sig lv)
+       )
        (Harray: forall (sig : array_sig) (lv : list val),
         Forall (fun v : val => wt_val (array_type sig) v) lv ->
-        Forall (fun v : val => wt_val (array_type sig) v -> P (array_type sig) v) lv ->
+        Forall (fun v : val => wt_val (array_type sig) v ->
+        P (array_type sig) v) lv ->
         Datatypes.length lv = array_len sig -> P (array_t sig) (Array sig lv)),
       forall (t : type) (v : val), wt_val t v -> P t v.
     Proof.
@@ -343,20 +353,19 @@ Section Interp.
         red. red. intros. subst. tauto.
       } 2: lia.
       intros n0 _ Plt t t0 a Heqn.
-      assert (Plt':
-                forall t v,
-                  size_type t < n0 -> wt_val t v -> P t v
-             ).
-      {
-        intros. eapply Plt. 3: reflexivity. lia. auto. auto.
-      } clear Plt.
+      assert (Plt': forall t v, size_type t < n0 -> wt_val t v -> P t v).
+        { intros. eapply Plt. 3: reflexivity. lia. auto. auto. }
+      clear Plt.
       rename Plt' into Plt.
       subst.
       inversion Heqn; subst; eauto.
       - eapply Hstruct. eauto.
         revert H.
         simpl in Plt.
-        assert (Forall (fun '(n,t) => forall v, wt_val t v -> P t v) (struct_fields sig)).
+        assert (
+          Forall (fun '(n,t) => forall v, wt_val t v -> P t v)
+          (struct_fields sig)
+        ).
         {
           revert Plt; clear. destruct sig. simpl.
           induction struct_fields; simpl; intros. constructor.
@@ -451,8 +460,9 @@ Section Interp.
       rewrite IHForall. simpl. reflexivity.
     Qed.
 
-
-    Fixpoint uvalue_of_bits {tau: type} (bs: list bool) {struct tau}: option val :=
+    Fixpoint uvalue_of_bits {tau: type} (bs: list bool) {struct tau}
+      : option val
+    :=
       let uvalue_of_struct_bits :=
         (fix uvalue_of_struct_bits
              {fields: list (string * type)}
@@ -510,7 +520,7 @@ Section Interp.
         induction struct_fields; simpl; intros.
         + inv H. reflexivity.
         + inv H. inv H0. destruct a. simpl in *.
-          rewrite concat_app, app_length. simpl. 
+          rewrite concat_app, app_length. simpl.
           rewrite app_nil_r.
           erewrite ubits_of_value_len'. 2: eauto.
           rewrite take_drop_head. 2: lia. simpl.
@@ -520,7 +530,12 @@ Section Interp.
           end; simpl in *; try congruence.
           rewrite H4. simpl. inv A; auto. auto.
       -
-        assert (Forall (fun v => wt_val (array_type sig) v /\ uvalue_of_bits (tau:= array_type sig) (ubits_of_value v) = Some v) lv).
+        assert (
+          Forall (
+            fun v =>
+              wt_val (array_type sig) v /\
+              uvalue_of_bits (tau:= array_type sig) (ubits_of_value v) = Some v
+          ) lv).
         {
           rewrite Forall_forall in *; simpl; intros.
           split; eauto.
@@ -530,13 +545,16 @@ Section Interp.
         rewrite bits_splitn_concat.
         simpl.
         rewrite rev_involutive.
-        cut ((fix uvalue_of_list_bits (l : list (list bool)) : option (list val) :=
-         match l with
-         | [] => Some []
-         | hd :: tl =>
-             let/opt hd0 := uvalue_of_bits (tau:=array_type sig) hd
-             in (let/opt tl0 := uvalue_of_list_bits tl in Some (hd0 :: tl0))
-         end) ((map ubits_of_value lv)) = Some lv).
+        cut ((
+          fix uvalue_of_list_bits (l : list (list bool)) : option (list val) :=
+          match l with
+          | [] => Some []
+          | hd :: tl =>
+            let/opt hd0 := uvalue_of_bits (tau:=array_type sig) hd in
+            (let/opt tl0 := uvalue_of_list_bits tl in Some (hd0 :: tl0))
+          end
+          ) ((map ubits_of_value lv)) = Some lv
+        ).
         intro A; rewrite A. simpl. reflexivity.
         revert H1 H2. generalize lv (array_len sig). clear.
         intros l n EQ. subst. revert l.
@@ -613,7 +631,9 @@ Section Interp.
     Compute vect_of_list [true; true; false].
 
     Import PrimUntyped.
-    Definition usigma1' (fn: PrimUntyped.ubits1) (bs: list bool) : option (list bool) :=
+    Definition usigma1' (fn: PrimUntyped.ubits1) (bs: list bool)
+      : option (list bool)
+    :=
       match fn with
       | UNot => Some (List.map negb bs)
       | USExt w =>
@@ -639,11 +659,12 @@ Section Interp.
       | _ => None
       end.
 
-    Fixpoint get_field_struct (s: list (string * type)) (lv: list val) f : option val :=
+    Fixpoint get_field_struct (s: list (string * type)) (lv: list val) f
+      : option val
+    :=
       match s, lv with
       | (n, _)::s, a::lv =>
-        if eq_dec n f
-        then Some a
+        if eq_dec n f then Some a
         else get_field_struct s lv f
       | _, _ => None
       end.
@@ -659,24 +680,19 @@ Section Interp.
     (*   | _ => None *)
     (*   end. *)
 
-
-    Fixpoint find_field_offset_right (s: list (string * type)) f : option (nat * nat) :=
+    Fixpoint find_field_offset_right (s: list (string * type)) f
+      : option (nat * nat)
+    :=
       match s with
       | (n, t)::s =>
-        if eq_dec f n
-        then
-          Some (struct_fields_sz s, type_sz t)
-        else
-          find_field_offset_right s f
+        if eq_dec f n then Some (struct_fields_sz s, type_sz t)
+        else find_field_offset_right s f
       | [] => None
       end.
 
-
-
     Definition get_field (s: val) f : option val :=
       match s with
-        Struct sig lv =>
-        get_field_struct (struct_fields sig) lv f
+      | Struct sig lv => get_field_struct (struct_fields sig) lv f
       | _ => None
       end.
 
@@ -690,10 +706,9 @@ Section Interp.
       | PrimUntyped.UConv fn =>
         match fn with
         | PrimUntyped.UPack => fun v =>
-                                 let bs := ubits_of_value v in
-                                 Some (Bits (List.length bs) bs)
-        | PrimUntyped.UUnpack tau =>
-          fun bs =>
+           let bs := ubits_of_value v in
+           Some (Bits (List.length bs) bs)
+        | PrimUntyped.UUnpack tau => fun bs =>
             match bs with
             | Bits _ bs => let/opt v := uvalue_of_bits (tau:=tau) bs in Some v
             | _ => None
@@ -701,45 +716,39 @@ Section Interp.
         | PrimUntyped.UIgnore => fun _ => Some (Bits 0 [])
         end
       | PrimUntyped.UBits1 fn => usigma1 fn
-      | PrimUntyped.UStruct1 (PrimUntyped.UGetField f) =>
-        fun v => get_field v f
-      | PrimUntyped.UStruct1 (UGetFieldBits sig f) =>
-        fun v =>
+      | PrimUntyped.UStruct1 (PrimUntyped.UGetField f) => fun v => get_field v f
+      | PrimUntyped.UStruct1 (UGetFieldBits sig f) => fun v =>
           let/opt2 ofs, sz := find_field_offset_right (struct_fields sig) f in
           usigma1 (USlice ofs sz) v
-      | PrimUntyped.UArray1 (PrimUntyped.UGetElement idx) =>
-        fun v =>
+      | PrimUntyped.UArray1 (PrimUntyped.UGetElement idx) => fun v =>
           match v with
-          | Array sig l =>
-            List.nth_error l idx
+          | Array sig l => List.nth_error l idx
           | _ => None
           end
       | PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sig idx) =>
-        fun v =>
-          usigma1 (USlice (element_sz sig * (array_len sig - S idx)) (element_sz sig)) v
+        fun v => usigma1 (
+          USlice (element_sz sig * (array_len sig - S idx)) (element_sz sig)
+        ) v
       end.
-
 
 Lemma uvalue_of_bits_val_of_value:
   forall (tau: type) (v: vect bool (type_sz tau)),
-    uvalue_of_bits (tau:=tau) (vect_to_list v) = Some (val_of_value (value_of_bits v)).
+  uvalue_of_bits (tau := tau) (vect_to_list v)
+  = Some (val_of_value (value_of_bits v)).
 Proof.
   intros; rewrite <- uvalue_of_bits_val'. f_equal.
   erewrite <- ubits_of_value_ok. 2: eauto.
   rewrite bits_of_value_of_bits. auto.
 Qed.
 
-Lemma repeat_bits_const:
-  forall x n,
-    repeat x n = vect_to_list (Bits.const n x).
+Lemma repeat_bits_const: forall x n, repeat x n = vect_to_list (Bits.const n x).
 Proof.
   induction n; simpl; auto.
   rewrite IHn. reflexivity.
 Qed.
 
 Lemma last_nth:
-  forall {A} d (l: list A),
-    last l d = nth (List.length l - 1) l d.
+  forall {A} d (l: list A), last l d = nth (List.length l - 1) l d.
 Proof.
   induction l; simpl; intros; eauto.
   destr. simpl. auto.
@@ -752,12 +761,10 @@ Lemma bits_nth_list:
 Proof.
   induction s; intros. simpl in idx; easy.
   unfold Bits.nth. destr. simpl. auto. fold @vect_nth.
-  rewrite IHs. destruct v.  simpl. reflexivity.
+  rewrite IHs. destruct v. simpl. reflexivity.
 Qed.
 
-Lemma msb_spec:
-  forall s (v: bits s),
-    Bits.msb v = last (vect_to_list v) false.
+Lemma msb_spec: forall s (v: bits s), Bits.msb v = last (vect_to_list v) false.
 Proof.
   unfold Bits.msb. intros.
   destr. destruct v. reflexivity.
@@ -770,178 +777,178 @@ Proof.
   apply index_of_nat_largest.
 Qed.
 
+Lemma vect_extend_end_firstn:
+  forall x s' (v: bits (Nat.min x s')) d,
+    vect_to_list (vect_extend_end_firstn v d) =
+    vect_to_list (vect_extend_end v x d).
+Proof.
+  unfold vect_extend_end_firstn.
+  intros. rewrite vect_to_list_eq_rect. auto.
+Qed.
 
-          Lemma vect_extend_end_firstn:
-            forall x s' (v: bits (Nat.min x s')) d,
-              vect_to_list (vect_extend_end_firstn v d) =
-              vect_to_list (vect_extend_end v x d).
-          Proof.
-            unfold vect_extend_end_firstn.
-            intros. rewrite vect_to_list_eq_rect. auto.
-          Qed.
+Lemma vect_to_list_cons:
+  forall e s (v: bits s),
+    vect_to_list (v~e) = e:: vect_to_list v.
+Proof.
+  reflexivity.
+Qed.
 
-          Lemma vect_to_list_cons:
-            forall e s (v: bits s),
-              vect_to_list (v~e) = e:: vect_to_list v.
-          Proof.
-            reflexivity.
-          Qed.
+Lemma vect_firstn_to_list:
+  forall s (v: bits s) n,
+  vect_to_list (vect_firstn n v) = fst (take_drop' n (vect_to_list v)).
+Proof.
+  induction s; simpl; intros. simpl in *. destruct v. destr; reflexivity.
+  destr. reflexivity.
+  erewrite <- vect_to_list_eq_rect.
+  Unshelve.
+  3: replace (Nat.min (S n0) (S s)) with (S (Nat.min n0 s)); reflexivity.
+  simpl.
+  rewrite vect_to_list_cons.
+  rewrite IHs.
+  destruct v. simpl.
+  cbn. unfold take_drop'. simpl. unfold vect_to_list.
+  destr. destruct p. simpl. reflexivity.
+  simpl. reflexivity.
+Qed.
 
-          Lemma vect_firstn_to_list:
-            forall s (v: bits s) n,
-              vect_to_list (vect_firstn n v) = fst (take_drop' n (vect_to_list v)).
-          Proof.
-            induction s; simpl; intros. simpl in *. destruct v. destr; reflexivity.
-            destr. reflexivity.
-            erewrite <- vect_to_list_eq_rect.
-            Unshelve.
-            3: replace (Nat.min (S n0) (S s)) with (S (Nat.min n0 s)); reflexivity.
-            simpl.
-            rewrite vect_to_list_cons.
-            rewrite IHs.
-            destruct v. simpl.
-            cbn. unfold take_drop'. simpl. unfold vect_to_list.
-            destr. destruct p. simpl. reflexivity.
-            simpl. reflexivity.
-          Qed.
+Lemma vect_skipn_to_list:
+  forall s (v: bits s) n,
+  vect_to_list (vect_skipn n v) = snd (take_drop' n (vect_to_list v)).
+Proof.
+  induction s; simpl; intros. simpl in *. destruct v. destr; reflexivity.
+  destr. reflexivity.
+  rewrite IHs.
+  unfold take_drop'.
+  destruct v. simpl.
+  cbn. unfold vect_to_list.
+  destr. destruct p. simpl. reflexivity.
+  simpl. reflexivity.
+Qed.
 
-          Lemma vect_skipn_to_list:
-            forall s (v: bits s) n,
-              vect_to_list (vect_skipn n v) = snd (take_drop' n (vect_to_list v)).
-          Proof.
-            induction s; simpl; intros. simpl in *. destruct v. destr; reflexivity.
-            destr. reflexivity.
-            rewrite IHs.
-            unfold take_drop'.
-            destruct v. simpl.
-            cbn. unfold vect_to_list.
-            destr. destruct p. simpl. reflexivity.
-            simpl. reflexivity.
-          Qed.
-
-          Lemma take_drop'_spec2:
-            forall {A:Type} (n: nat) (l la lb: list A),
-              take_drop' n l = (la, lb) ->
-              l = la ++ lb /\
-              List.length la = Nat.min n (List.length l).
-          Proof.
-            induction n; simpl; intros; eauto.
-            inversion H; clear H; subst. repeat split; try reflexivity.
-            destruct l; simpl in *. unfold take_drop' in H. simpl in *. inversion H; clear H.
-            simpl. repeat split; lia.
-            destruct (take_drop' n l) as (l1 & l2) eqn:?.
-            erewrite take_drop'_cons in H; eauto. inv H. simpl.
-            apply IHn in Heqp. destruct Heqp as (EQ1 & EQ2). subst.
-            repeat split; auto.
-          Qed.
+Lemma take_drop'_spec2:
+  forall {A:Type} (n: nat) (l la lb: list A),
+  take_drop' n l = (la, lb) ->
+  l = la ++ lb /\
+  List.length la = Nat.min n (List.length l).
+Proof.
+  induction n; simpl; intros; eauto.
+  inversion H; clear H; subst. repeat split; try reflexivity.
+  destruct l; simpl in *. unfold take_drop' in H. simpl in *.
+  inversion H; clear H.
+  simpl. repeat split; lia.
+  destruct (take_drop' n l) as (l1 & l2) eqn:?.
+  erewrite take_drop'_cons in H; eauto. inv H. simpl.
+  apply IHn in Heqp. destruct Heqp as (EQ1 & EQ2). subst.
+  repeat split; auto.
+Qed.
 
 
 Lemma usigma1_correct:
-      forall ufn fn,
-        PrimTypeInference.tc1 ufn (arg1Sig (PrimSignatures.Sigma1 fn)) = Success fn ->
-        forall (arg: arg1Sig (PrimSignatures.Sigma1 fn)) ret,
-          PrimSpecs.sigma1 fn arg = ret ->
-          sigma1 ufn (val_of_value arg) = Some (val_of_value ret).
-    Proof.
-      destruct ufn; simpl; intros.
-      - destruct fn.
-        + destr_in H; try congruence. inv H. simpl in *. inv Heqr0. subst. reflexivity.
-        + subst. inv H.
-          revert arg. rewrite <- H1. simpl. 
-          intro arg. reflexivity.
-      - destruct fn.
-        + inv H. revert arg. rewrite <- H2. simpl.
-          intros. f_equal.
-          erewrite ubits_of_value_len; eauto. f_equal.
-          erewrite ubits_of_value_ok; eauto.
-        + inv H.
-          generalize (wt_val_of_value _ arg). simpl. inversion 1; subst.
-          rewrite uvalue_of_bits_val_of_value. simpl. auto.
-        + inv H. revert arg. rewrite <- H2. simpl.
-          intros. f_equal.
-      - subst. destr_in H. inv H. simpl in *. inv Heqr0.
-        revert arg. rewrite <- H0. simpl. destruct fn; simpl in *; intros.
-        + rewrite map_length. rewrite vect_to_list_length. f_equal.
-          f_equal. rewrite <- vect_to_list_map. f_equal.
-        + f_equal. f_equal.
-          * rewrite app_length.
-            rewrite repeat_length. rewrite vect_to_list_length. lia.
-          * unfold Bits.extend_end. simpl.
-            rewrite vect_to_list_eq_rect.
-            rewrite vect_to_list_app. f_equal.
-            rewrite vect_to_list_length.
-            rewrite repeat_bits_const. f_equal. f_equal.
-            rewrite msb_spec; auto.
-        + f_equal. f_equal.
-          * rewrite app_length.
-            rewrite repeat_length. rewrite vect_to_list_length. lia.
-          * unfold Bits.extend_end. simpl.
-            unfold eq_rect.
-            refine (match vect_extend_end_cast s width with
-                    | eq_refl => _
-                    end).
-            rewrite vect_to_list_app. f_equal.
-            rewrite vect_to_list_length.
-            rewrite repeat_bits_const. f_equal.
-        + f_equal. f_equal.
-          * rewrite app_length.
-            rewrite repeat_length. rewrite vect_to_list_length. lia.
-          * unfold Bits.extend_beginning. simpl.
-            unfold eq_rect.
-            refine (match vect_extend_beginning_cast s width with
-                    | eq_refl => _
-                    end).
-            rewrite vect_to_list_app. f_equal.
-            rewrite vect_to_list_length.
-            rewrite repeat_bits_const. f_equal.
-        + f_equal. f_equal.
-          * erewrite length_concat_same.
-            rewrite repeat_length. reflexivity.
-            rewrite Forall_forall; intros x IN.
-            apply repeat_spec in IN. subst. rewrite vect_to_list_length. lia.
-          * induction times; simpl; auto.
-            rewrite vect_to_list_app. f_equal. eauto.
-        + destruct (take_drop' offset (vect_to_list arg)) as (l1 & l2) eqn:Heq1.
-          destruct (take_drop' width l2) as (l3 & l4) eqn:Heq2. simpl.
-          f_equal. f_equal.
-          apply take_drop'_spec in Heq2.
-          apply take_drop'_spec in Heq1.
-          intuition subst.
-          rewrite app_length.
-          rewrite repeat_length. lia.
-          unfold Bits.slice.
+  forall ufn fn,
+  PrimTypeInference.tc1 ufn (arg1Sig (PrimSignatures.Sigma1 fn)) = Success fn ->
+  forall (arg: arg1Sig (PrimSignatures.Sigma1 fn)) ret,
+  PrimSpecs.sigma1 fn arg = ret ->
+  sigma1 ufn (val_of_value arg) = Some (val_of_value ret).
+Proof.
+  destruct ufn; simpl; intros.
+  - destruct fn.
+    + destr_in H; try congruence. inv H. simpl in *. inv Heqr0. subst. reflexivity.
+    + subst. inv H.
+      revert arg. rewrite <- H1. simpl.
+      intro arg. reflexivity.
+  - destruct fn.
+    + inv H. revert arg. rewrite <- H2. simpl.
+      intros. f_equal.
+      erewrite ubits_of_value_len; eauto. f_equal.
+      erewrite ubits_of_value_ok; eauto.
+    + inv H.
+      generalize (wt_val_of_value _ arg). simpl. inversion 1; subst.
+      rewrite uvalue_of_bits_val_of_value. simpl. auto.
+    + inv H. revert arg. rewrite <- H2. simpl.
+      intros. f_equal.
+  - subst. destr_in H. inv H. simpl in *. inv Heqr0.
+    revert arg. rewrite <- H0. simpl. destruct fn; simpl in *; intros.
+    + rewrite map_length. rewrite vect_to_list_length. f_equal.
+      f_equal. rewrite <- vect_to_list_map. f_equal.
+    + f_equal. f_equal.
+      * rewrite app_length.
+        rewrite repeat_length. rewrite vect_to_list_length. lia.
+      * unfold Bits.extend_end. simpl.
+        rewrite vect_to_list_eq_rect.
+        rewrite vect_to_list_app. f_equal.
+        rewrite vect_to_list_length.
+        rewrite repeat_bits_const. f_equal. f_equal.
+        rewrite msb_spec; auto.
+    + f_equal. f_equal.
+      * rewrite app_length.
+        rewrite repeat_length. rewrite vect_to_list_length. lia.
+      * unfold Bits.extend_end. simpl.
+        unfold eq_rect.
+        refine (match vect_extend_end_cast s width with
+                | eq_refl => _
+                end).
+        rewrite vect_to_list_app. f_equal.
+        rewrite vect_to_list_length.
+        rewrite repeat_bits_const. f_equal.
+    + f_equal. f_equal.
+      * rewrite app_length.
+        rewrite repeat_length. rewrite vect_to_list_length. lia.
+      * unfold Bits.extend_beginning. simpl.
+        unfold eq_rect.
+        refine (match vect_extend_beginning_cast s width with
+                | eq_refl => _
+                end).
+        rewrite vect_to_list_app. f_equal.
+        rewrite vect_to_list_length.
+        rewrite repeat_bits_const. f_equal.
+    + f_equal. f_equal.
+      * erewrite length_concat_same.
+        rewrite repeat_length. reflexivity.
+        rewrite Forall_forall; intros x IN.
+        apply repeat_spec in IN. subst. rewrite vect_to_list_length. lia.
+      * induction times; simpl; auto.
+        rewrite vect_to_list_app. f_equal. eauto.
+    + destruct (take_drop' offset (vect_to_list arg)) as (l1 & l2) eqn:Heq1.
+      destruct (take_drop' width l2) as (l3 & l4) eqn:Heq2. simpl.
+      f_equal. f_equal.
+      apply take_drop'_spec in Heq2.
+      apply take_drop'_spec in Heq1.
+      intuition subst.
+      rewrite app_length.
+      rewrite repeat_length. lia.
+      unfold Bits.slice.
 
-          rewrite vect_extend_end_firstn.
-          unfold Bits.extend_end.
-          rewrite vect_to_list_eq_rect.
-          rewrite vect_to_list_app.
-          rewrite vect_firstn_to_list.
-          rewrite vect_skipn_to_list.
-          rewrite Heq1. simpl. rewrite Heq2. simpl.
-          rewrite <- repeat_bits_const.
-          f_equal. f_equal. f_equal.
+      rewrite vect_extend_end_firstn.
+      unfold Bits.extend_end.
+      rewrite vect_to_list_eq_rect.
+      rewrite vect_to_list_app.
+      rewrite vect_firstn_to_list.
+      rewrite vect_skipn_to_list.
+      rewrite Heq1. simpl. rewrite Heq2. simpl.
+      rewrite <- repeat_bits_const.
+      f_equal. f_equal. f_equal.
 
-          apply take_drop'_spec2 in Heq2. destruct Heq2 as (Heq21 & Heq22). rewrite Heq22.
-          apply take_drop'_spec2 in Heq1. destruct Heq1 as (Heq11 & Heq12).
-          cut (List.length l2 = s - List.length l1). intro A; rewrite A. rewrite Heq12.
-          rewrite vect_to_list_length. lia.
-          erewrite <- (vect_to_list_length (sz:=s)). rewrite Heq11.
-          rewrite app_length. lia.
-        + inv H.
-      - destr_in H.
-        + repeat destr_in H; inv H.
-          simpl in Heqr0. clear Heqr0. simpl in arg.
-          simpl PrimSpecs.sigma1.
-          simpl.
-          unfold PrimTypeInference.find_field in Heqr1. unfold opt_result in Heqr1.
-          destr_in Heqr1; inv Heqr1.
-          revert s0 Heqo arg. destruct s. simpl. clear.
-          induction struct_fields; intros; eauto. easy.
-          destruct a. destruct arg.
-          Opaque eq_dec.
-          simpl. simpl in Heqo.
-          destr_in Heqo. inv Heqo. simpl in *. rewrite Heqs2. auto.
-          destr.  subst. congruence.
+      apply take_drop'_spec2 in Heq2. destruct Heq2 as (Heq21 & Heq22). rewrite Heq22.
+      apply take_drop'_spec2 in Heq1. destruct Heq1 as (Heq11 & Heq12).
+      cut (List.length l2 = s - List.length l1). intro A; rewrite A. rewrite Heq12.
+      rewrite vect_to_list_length. lia.
+      erewrite <- (vect_to_list_length (sz:=s)). rewrite Heq11.
+      rewrite app_length. lia.
+    + inv H.
+  - destr_in H.
+    + repeat destr_in H; inv H.
+      simpl in Heqr0. clear Heqr0. simpl in arg.
+      simpl PrimSpecs.sigma1.
+      simpl.
+      unfold PrimTypeInference.find_field in Heqr1. unfold opt_result in Heqr1.
+      destr_in Heqr1; inv Heqr1.
+      revert s0 Heqo arg. destruct s. simpl. clear.
+      induction struct_fields; intros; eauto. easy.
+      destruct a. destruct arg.
+      Opaque eq_dec.
+      simpl. simpl in Heqo.
+      destr_in Heqo. inv Heqo. simpl in *. rewrite Heqs2. auto.
+      destr. subst. congruence.
           destr_in Heqo; inv Heqo.
           erewrite IHstruct_fields; eauto. reflexivity.
         + destr_in H; inv H.
@@ -1036,7 +1043,7 @@ Lemma usigma1_correct:
           cut (index_to_nat s < array_len sig). nia.
           apply index_to_nat_bounded.
           f_equal. f_equal.
-          rewrite app_length, repeat_length. 
+          rewrite app_length, repeat_length.
           inv Heqp0.
           apply take_drop_spec in EQ'. intuition.
           inv Heqp0.
@@ -1076,7 +1083,6 @@ Lemma usigma1_correct:
       right; intro A; inv A.
       apply Eqdep_dec.inj_pair2_eq_dec in H0. 2: apply eq_dec. congruence.
     Defined.
-
 
     Definition struct_sig_eq_dec (s1 s2: struct_sig) : {s1 = s2} + {s1 <> s2}.
     Proof.
@@ -1187,11 +1193,10 @@ Lemma usigma1_correct:
     match fn with
     | UEq false  => if val_eq_dec v1 v2 then Bits 1 [true] else Bits 1 [false]
     | UEq true  => if val_eq_dec v1 v2 then Bits 1 [false] else Bits 1 [true]
-    | UBits2 fn => 
+    | UBits2 fn =>
     | Struct2 SubstField sig idx => fun s v => subst_field sig.(struct_fields) s idx v
     | Array2 SubstElement sig idx => fun a e => vect_replace a idx e
     end.
-
 
     Fixpoint interp_action
              {sig: tsig var_t}
@@ -1208,7 +1213,7 @@ Lemma usigma1_correct:
         let/opt v := ucassoc Gamma var in
         Some (action_log, v, Gamma)
       | @UConst _ _ _ _ _ tau cst =>
-        Some (action_log, val_of_type_cst _ cst, Gamma)
+          Some (action_log, val_of_type_cst _ cst, Gamma)
       | UAssign k a =>
         let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log a in
         Some (action_log, Bits _ Ob, replace k v Gamma)
