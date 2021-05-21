@@ -1,3 +1,4 @@
+(*! Specification of the format of each instruction !*)
 Require Import Vectors.Vector Lists.List.
 Require Import rv.Instructions.
 Import ListNotations.
@@ -5,28 +6,27 @@ Import ListNotations.
 Inductive instruction_bit_value := I0 | I1 | IX.
 
 Declare Custom Entry instruction_format.
+Notation "< e >" := e  (e  custom instruction_format at level 2).
+Notation "'-'"   := I0 (in custom instruction_format at level 3).
+Notation "'!'"   := I1 (in custom instruction_format at level 3).
+Notation "'?'"   := IX (in custom instruction_format at level 3).
 
-Notation "< e >" := e (e custom instruction_format at level 2).
-Notation "'-'" := I0 (in custom instruction_format at level 3).
-Notation "'!'" := I1 (in custom instruction_format at level 3).
-Notation "'?'" := IX (in custom instruction_format at level 3).
-
-Notation "b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 b23 b24 b25 b26 b27 b28 b29 b30 b31" :=
+Notation
+  "b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 b23 b24 b25 b26 b27 b28 b29 b30 b31"
+:=
   (@Vector.of_list instruction_bit_value [
     b0; b1; b2; b3; b4; b5; b6; b7; b8; b9; b10; b11; b12; b13; b14; b15; b16;
     b17; b18; b19; b20; b21; b22; b23; b24; b25; b26; b27; b28; b29; b30; b31
-  ]) (in custom instruction_format
-    at level 99, b1 at level 98, b2 at level 97, b3 at level 96, b4 at level 95,
-    b5 at level 94, b6 at level 93, b7 at level 92, b8 at level 91,
-    b9 at level 90, b10 at level 89, b11 at level 88, b12 at level 87,
+  ]) (in custom instruction_format at level 99,
+    b1  at level 98, b2  at level 97, b3  at level 96, b4  at level 95,
+    b5  at level 94, b6  at level 93, b7  at level 92, b8  at level 91,
+    b9  at level 90, b10 at level 89, b11 at level 88, b12 at level 87,
     b13 at level 86, b14 at level 85, b15 at level 84, b16 at level 83,
     b17 at level 82, b18 at level 81, b19 at level 80, b20 at level 79,
     b21 at level 78, b22 at level 77, b23 at level 76, b24 at level 75,
     b25 at level 74, b26 at level 73, b27 at level 72, b28 at level 71,
     b29 at level 70, b30 at level 69, b31 at level 68, only parsing
   ).
-
-Compute (<!!??---!-!-!-!-!-!-!-!?!-?-!-!-!>).
 
 Definition instruction_format_specification :=
   Vector.t instruction_bit_value 32.
