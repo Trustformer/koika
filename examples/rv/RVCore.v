@@ -7,9 +7,8 @@ Require Import Koika.Frontend Koika.Std.
 Require Import rv.Multiplier rv.RVEncoding rv.Scoreboard rv.Stack.
 
 Require Import rv.ISA rv.Instructions rv.ITypes rv.IFields rv.StructsBuilding
-               rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
-               rv.InstructionsOpcodes rv.InstructionsProperties
-               rv.ModuleInstructions.
+  rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
+  rv.InstructionsOpcodes rv.InstructionsProperties rv.ModuleInstructions.
 
 (* The ISA defined hereafter is used to parameterize the Kôika module *)
 Definition isa : ISA := {|
