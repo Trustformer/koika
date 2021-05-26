@@ -1908,6 +1908,38 @@ Section Interp.
         if eq_dec k k1 then (k1,v)::l else (k1,v1) :: list_assoc_set l k v
       end.
 
+    Require Import SyntaxMacros.
+    
+    Fixpoint uvalue_of_struct_bits
+             (fields: list (string * type))
+             (bs: list bool)
+      : option (list val) :=
+      match fields with
+      | [] => Some []
+      | (nm, tau) :: fields =>
+        let/opt2 b0, b1 := take_drop (List.length bs - type_sz tau) bs in
+        let/opt tl := uvalue_of_struct_bits fields b0 in
+        let/opt hd := uvalue_of_bits (tau:=tau) b1 in
+        Some ( hd :: tl)
+      end.
+
+    Fixpoint uvalue_of_list_bits
+             {tau}
+             (bs: list (list bool))
+      : option (list val) :=
+      match bs with
+      | [] => Some []
+      | l :: bs =>
+        let/opt hd0 := uvalue_of_bits (tau:=tau) l in
+        let/opt tl0 := uvalue_of_list_bits (tau:=tau) bs in
+        Some (hd0 :: tl0)
+      end.
+
+Notation "'let/opt4' v1 ',' v2 ',' v3 ',' v4 ':=' expr 'in' body" :=
+  (opt_bind expr (fun '(v1, v2, v3, v4) => body)) (at level 200).
+
+
+
     Fixpoint interp_action
              (Gamma: list (var_t * val))
              (sched_log: Log)
@@ -1918,7 +1950,7 @@ Section Interp.
       match a with
       | UError e => None
       | UFail _ => None
-      | USugar _ => None
+      | USugar s => interp_sugar Gamma sched_log action_log s
       | UVar var =>
         let/opt v := list_assoc Gamma var in
         Some (action_log, v, Gamma)
@@ -1992,7 +2024,1138 @@ Section Interp.
         Some (action_log, v, Gamma)
       | UAPos p a =>
         interp_action Gamma sched_log action_log a
+      end
+    with interp_sugar
+           (Gamma: list (var_t * val))
+           (sched_log: Log)
+           (action_log: Log)
+           (a: usugar pos_t var_t fn_name_t reg_t ext_fn_t)
+           {struct a}
+         : option (Log * val * list (var_t * val)) :=
+           match a with
+           | UErrorInAst => None
+           | USkip => Some (action_log, Bits 0 [], Gamma)
+           | UConstBits v =>
+             let l := vect_to_list v in
+             Some (action_log, Bits (List.length l) l, Gamma)
+           | UConstString s =>
+             Some (action_log, Array {| array_type := bits_t 8; array_len := String.length s |}
+                                     (List.map (fun x => Bits 8 (vect_to_list x)) (vect_to_list (SyntaxMacros.array_of_bytes s)))
+                   , Gamma)
+           | UConstEnum sig name =>
+             match vect_index name sig.(enum_members) with
+             | Some idx =>
+               Some (action_log, val_of_value (tau:= enum_t sig) (vect_nth sig.(enum_bitpatterns) idx), Gamma)
+             | None => None
+             end
+           | UProgn aa =>
+             List.fold_left (fun acc a =>
+                               let/opt3 action_log, v, Gamma := acc in
+                               interp_action Gamma sched_log action_log a
+                            ) aa (Some (action_log, Bits 0 [], Gamma))
+           | ULet bindings body =>
+             let/opt2 action_log, Gamma' :=
+                List.fold_left (fun acc '(var, a) =>
+                                   let/opt2 action_log, Gamma' := acc in
+                                   let/opt3 action_log, v, Gamma' :=
+                                      interp_action Gamma' sched_log action_log a in
+                                   (Some (action_log, (var,v)::Gamma'))
+                                ) bindings (Some (action_log, Gamma)) in
+             let/opt3 action_log, v, Gamma :=
+                interp_action Gamma' sched_log action_log body in
+             Some (action_log, v, Nat.iter (List.length bindings) (@tl _) Gamma)
+           | UWhen cond body =>
+             let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log cond in
+             match v with
+             | Bits 1 [b] =>
+               if b then
+                 interp_action Gamma sched_log action_log body
+               else
+                 None
+             | _ => None
+             end
+           | USwitch var default branches =>
+             let/opt3 action_log, found, Gamma :=
+                List.fold_left (fun acc '(cond, body) =>
+                               let/opt3 action_log, found, Gamma := acc in
+                               match found with
+                               | Some _ => acc
+                               | _ =>
+                                 let/opt3 action_log, v0, Gamma := interp_action Gamma sched_log action_log var in
+                                 let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log cond in
+                                 if val_eq_dec v v0 then 
+                                   let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log body in
+                                   Some (action_log, Some v, Gamma)
+                                 else Some (action_log, None, Gamma)
+                               end) branches (Some (action_log, None, Gamma)) in
+             match found with
+             | Some v => Some (action_log, v, Gamma)
+             | None =>
+               interp_action Gamma sched_log action_log default
+             end
+           | UStructInit sig fields =>
+             let zeroes := repeat false (struct_fields_sz (struct_fields sig)) in
+             let/opt vs := uvalue_of_struct_bits (struct_fields sig) zeroes in
+             let/opt3 action_log, v, Gamma :=
+                List.fold_left (fun acc '(name, a) =>
+                                  let/opt3 action_log, vs, Gamma := acc in
+                                  let/opt3 action_log, v, Gamma :=
+                                     interp_action Gamma sched_log action_log a in
+                                  let/opt vs := subst_field_name (struct_fields sig) name v vs in
+                                  (Some (action_log, vs, Gamma))
+                               ) fields (Some (action_log, vs, Gamma)) in
+             Some (action_log, Struct sig v, Gamma)
+           | UArrayInit tau elements =>
+             let zeroes := repeat (repeat false (type_sz tau)) (List.length elements) in
+             let/opt vs := uvalue_of_list_bits (tau:=tau) zeroes in
+             let sig := {| array_type := tau; array_len := List.length elements |} in
+             let/opt4 pos, action_log, vs, Gamma :=
+                List.fold_left (fun acc a =>
+                                  let/opt4 pos, action_log, vs, Gamma := acc in
+                                  let/opt3 action_log, v, Gamma :=
+                                     interp_action Gamma sched_log action_log a in
+                                     let/opt2 l1, l2 := take_drop pos vs in
+                                     match l2 with
+                                       [] => None
+                                     | a::l2 => Some (S pos, action_log, l1 ++ v :: l2, Gamma)
+                                     end
+                               ) elements (Some (0, action_log, vs, Gamma)) in
+             Some (action_log, Array sig vs, Gamma)
+           | UCallModule fR fSigma fn args =>
+             None
+           end
+    .
+
+    Require Import Desugaring.
+
+    Fixpoint size_uaction {reg_t ext_fn_t: Type} (ua: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) {struct ua} : nat :=
+      match ua  with
+      | UError err => 0
+      | UFail tau => 0
+      | UVar var => 0
+      | UConst cst => 0
+      | UAssign v ex => 1 + size_uaction ex
+      | USeq a1 a2 => 1 + size_uaction a1 + size_uaction a2
+      | UBind v ex body => 1 + size_uaction ex + size_uaction body
+      | UIf cond tbranch fbranch => 1 + size_uaction cond + size_uaction tbranch + size_uaction fbranch
+      | URead port idx => 0
+      | UWrite port idx value => 1 + size_uaction value
+      | UUnop ufn1 arg1 => 1 + size_uaction arg1
+      | UBinop ufn2 arg1 arg2 => 1 + size_uaction arg1 + size_uaction arg2
+      | UExternalCall ufn arg => 1 + size_uaction arg
+      | UInternalCall ufn args => 1 + size_uaction (int_body ufn) + list_sum (map size_uaction args)
+      | UAPos p e => 1 + size_uaction e
+      | USugar s => 1 + size_sugar s
+      end
+    with size_sugar {reg_t ext_fn_t: Type} (s: usugar pos_t var_t fn_name_t reg_t ext_fn_t) {struct s}: nat :=
+           match s with
+           | UErrorInAst => 0
+           | USkip => 0
+           | UConstBits _ => 0
+           | UConstString _ => 0
+           | UConstEnum _ _ => 0
+           | UProgn l => 1 + list_sum (map size_uaction l)
+           | ULet bindings body => 1 + size_uaction body + list_sum (map (fun '(_, a) => size_uaction a) bindings)
+           | UWhen cond body => size_uaction cond + size_uaction body
+           | USwitch cond default branches =>
+             1 + size_uaction cond + size_uaction default +
+             list_sum (map (fun '(a,b) => size_uaction a + size_uaction b) branches)
+           | UStructInit sig l =>
+             1 + list_sum (map (fun '(_, a) => size_uaction a) l)
+           | UArrayInit tay l =>
+             1 + list_sum (map size_uaction l)
+           | UCallModule fR fSigma fn args =>
+             1 +  size_uaction (int_body fn) + list_sum (map size_uaction args)
+           end
+    .
+
+
+          Fixpoint uprogn2 (aa: list uaction) dft :=
+            match aa with
+            | [] => dft
+            | [a] => a
+            | a::a0 => USeq a (uprogn2 a0 dft)
+            end.
+ 
+
+          Lemma repeat_take_drop:
+            forall {A} n m (a: A),
+              n <= m ->
+              take_drop n (repeat a m) = Some (repeat a n, repeat a (m - n)).
+          Proof.
+            induction n; simpl; intros; eauto. rewrite Nat.sub_0_r. auto.
+            destruct m. lia. simpl.
+            rewrite IHn  by lia.
+            simpl. reflexivity.
+          Qed.
+
+
+                Lemma Forall_rev:
+                  forall {A: Type} (P: A -> Prop) l,
+                    Forall P l -> Forall P (rev l).
+                Proof.
+                  intros; rewrite Forall_forall in *; intros.
+                  apply in_rev in H0. eauto.
+                Qed.
+
+                Lemma bits_splitn_succeeds:
+                  forall n sz l,
+                    List.length l = n * sz ->
+                    exists l',
+                      bits_splitn n sz l = Some l' /\
+                      Forall (fun l => List.length l = sz) l' /\
+                      List.length l' = n.
+                Proof.
+                  induction n; simpl; intros; eauto.
+                  edestruct (@take_drop_succeeds) as (la & lb & EQ). 2: rewrite EQ. lia.
+                  simpl.
+                  edestruct (take_drop_spec _ _ _ _ EQ) as (EQ1 & EQ2 & EQ3). subst.
+                  edestruct IHn as (l' & EQ4 & EQ5 & EQ6). 2: rewrite EQ4. lia.
+                  simpl. eexists; split; eauto.
+                  split; simpl; auto.
+                Qed.
+
+                Lemma uvalue_of_bits_succeeds:
+                  forall t l,
+                    List.length l = type_sz t ->
+                    exists x, uvalue_of_bits (tau:=t) l = Some x.
+                Proof.
+                  intros t.
+                  pattern t.
+                  match goal with
+                    |- ?P t => set (PP:=P)
+                  end.
+                  remember (size_type t).
+                  revert t Heqn.
+                  pattern n.
+                  eapply Nat.strong_right_induction with (z:=0).
+                  {
+                    red. red. intros. subst. tauto.
+                  } 2: lia.
+                  intros n0 _ Plt t Heqn.
+                  assert (Plt':
+                            forall t,
+                              size_type t < n0 -> PP t
+                         ).
+                  {
+                    intros. eapply Plt. 3: reflexivity. lia. auto.
+                  } clear Plt.
+                  rename Plt' into Plt.
+                  subst.
+                  destruct t; simpl; intros; eauto.
+                  - unfold PP. simpl. eauto.
+                  - unfold PP; simpl. intros. rewrite take_drop_succeeds_eq. simpl. eauto. auto.
+                  - red; intros; simpl in *.
+                    assert (Plt': forall t, In t (map snd (struct_fields sig)) -> PP t).
+                    {
+                      intros; eapply Plt.
+                      revert H0. generalize (struct_fields sig).
+                      intro l0.
+                      revert l0 t.
+                      induction l0; simpl; intros; eauto. easy. destruct a. simpl in *.
+                      destruct H0; subst; eauto. lia.
+                      apply IHl0 in H0. lia.
+                    } clear Plt.
+                    revert Plt' l H.
+                    generalize (struct_fields sig).
+                    induction l; simpl; intros; eauto.
+                    destruct a; simpl in *.
+                    replace (List.length l0 - type_sz t) with (struct_fields_sz l).
+                    2:{
+                      rewrite H. unfold struct_fields_sz. simpl. lia.
+                    }
+                    edestruct @take_drop_succeeds as (la & lb & EQ). 2: rewrite EQ. rewrite H.
+                    unfold struct_fields_sz; simpl; lia.
+                    simpl.
+                    edestruct (take_drop_spec _ _ _ _ EQ) as (EQ1 & EQ2 & EQ3).
+                    subst.
+                    edestruct IHl as (x & EQ4). intros; eauto.
+                    2: unfold opt_bind in EQ4; destr_in EQ4; try congruence; rewrite Heqo. auto.
+                    inv EQ4. simpl.
+                    edestruct (Plt' t) as (x & EQ5). auto.
+                    2: rewrite EQ5.
+                    rewrite EQ3. rewrite H. unfold struct_fields_sz. simpl. lia.
+                    simpl. eauto.
+                  - red; simpl; intros.
+                    edestruct bits_splitn_succeeds as (l' & EQ & F & L). 2: rewrite EQ.
+                    rewrite Bits.rmul_correct in H. lia. simpl.
+
+                    cut (exists x, (fix uvalue_of_list_bits (l0 : list (list bool)) : option (list val) :=
+                                      match l0 with
+                                      | [] => Some []
+                                      | hd :: tl =>
+                                        let/opt hd0 := uvalue_of_bits (tau:=array_type sig) hd
+                                        in (let/opt tl0 := uvalue_of_list_bits tl in Some (hd0 :: tl0))
+                                      end) (rev l') = Some x).
+                    {
+                      intros (x & EQ'); rewrite EQ'. simpl; eauto.
+                    }
+
+                    apply Forall_rev in F.
+                    rewrite <- rev_length in L.
+                    destruct sig. simpl in *.
+                    clear H EQ.
+                    revert L F Plt.
+                    generalize (rev l').
+                    clear. induction array_len; simpl; intros; eauto.
+                    + destruct l; simpl in *; try lia. eauto.
+                    + inv F; simpl in *. lia. inv L.
+                      edestruct (Plt (array_type)). lia. eauto.
+                      rewrite H1. simpl.
+                      edestruct IHarray_len; eauto. rewrite H2.
+                      simpl; eauto.
+                Qed.
+
+          Lemma uinit_action:
+            forall Gamma sched_log action_log sig,
+            exists vs,
+              uvalue_of_struct_bits (struct_fields sig) (repeat false (struct_fields_sz (struct_fields sig))) = Some vs /\
+              interp_action Gamma sched_log action_log (uinit (struct_t sig)) =
+              Some (action_log, Struct sig vs, Gamma).
+          Proof.
+            unfold uinit. intros. simpl.
+            destruct sig. simpl.
+            induction struct_fields; simpl; intros; eauto.
+            destruct a.
+            unfold opt_bind.
+            rewrite repeat_take_drop.
+            2: rewrite repeat_length; lia.
+            rewrite vect_to_list_length.
+            replace (List.length (repeat _ _) - type_sz t) with (struct_fields_sz struct_fields).
+            2:{
+              unfold struct_fields_sz. simpl.
+              rewrite ! repeat_length. lia.
+            }
+            replace (_ - _) with (type_sz t).
+            2:{
+              unfold struct_fields_sz. simpl. lia.
+            }
+
+            destruct IHstruct_fields as ( vs & EQ4 & EQ5).
+            rewrite EQ4.
+            unfold opt_bind in EQ5.
+            repeat destr_in EQ5; try congruence.
+            destr_in Heqo; try congruence.
+            destr_in Heqo0; try congruence.
+            inv Heqo0. inv Heqo. inv EQ5.
+
+            rewrite <- repeat_bits_const.
+            rewrite repeat_take_drop by lia.
+            replace (_ - _) with (struct_fields_sz struct_fields).
+            2:{
+              unfold struct_fields_sz. simpl. lia.
+            }
+            rewrite <- repeat_bits_const in Heqo1. rewrite Heqo1.
+            clear Heqo1.
+            replace (_ - _) with (type_sz t).
+            2:{
+              unfold struct_fields_sz. simpl. lia.
+            }
+            edestruct @uvalue_of_bits_succeeds as (x & EQ). 2: rewrite EQ.
+            rewrite repeat_length. auto.
+            eexists; split; eauto.
+
+          Qed.
+
+          Lemma uprogn_eq:
+            forall aa,
+              uprogn aa = uprogn2 aa (UConst (tau:=bits_t 0) Ob).
+          Proof.
+            induction aa; simpl; intros; eauto.
+            rewrite IHaa. reflexivity.
+          Qed.
+
+          
+          
+          Lemma structinit_ok:
+            forall fields sched_log Gamma action_log u sig vs0 p
+              (IH: forall u, In u (map snd fields) ->
+                         forall (Gamma : list (var_t * val)) (action_log sched_log : Log) (p : pos_t),
+                           interp_action Gamma sched_log action_log u =
+                           interp_action Gamma sched_log action_log
+                                         (desugar_action' p (fun r : reg_t => r) (fun fn : ext_fn_t => fn) u)
+              )
+              action_log' Gamma'
+              (IA: interp_action Gamma sched_log action_log u = Some (action_log', Struct sig vs0, Gamma'))
+              (LEN: List.length vs0 = List.length (struct_fields sig)),
+
+                  (let/opt3 action_log0, v, Gamma0 :=
+                  fold_left
+                    (fun (acc : option (Log * list val * list (var_t * val))) '(name, a) =>
+                       let/opt3 action_log0, vs0, Gamma0 := acc in
+                       let/opt3 action_log1, v, Gamma1 := interp_action Gamma0 sched_log action_log0 a in
+                       let/opt vs1 := subst_field_name (struct_fields sig) name v vs0 in
+                       Some (action_log1, vs1, Gamma1)
+                    ) fields (Some (action_log', vs0, Gamma')) in
+                  Some (action_log0, Struct sig v, Gamma0))
+                  =                     interp_action Gamma sched_log action_log
+                                   (fold_left
+                                      (fun (acc : uaction) '(f, a) =>
+                                         UBinop (UStruct2 (USubstField f)) acc a)
+                                      (map (fun '(f, a) =>
+                                              (f,
+                                               desugar_action'
+                                                 p (fun r0 : reg_t => r0) (fun fn : ext_fn_t => fn) a)
+                                           )
+                                           fields)
+                                      u).
+          Proof.
+            induction fields; simpl; intros; eauto.
+            destruct a; simpl in *.
+            destruct (interp_action Gamma' sched_log action_log' u0) eqn:?.
+            - destruct p0. destruct p0. simpl.
+              destruct (subst_field_name (struct_fields sig) s v vs0) eqn:?.
+              + simpl.
+                erewrite <- IHfields. reflexivity.
+                intros; eapply IH; eauto.
+                simpl. rewrite IA. simpl.
+                rewrite <- IH; simpl; auto. rewrite Heqo. simpl. rewrite Heqo0. simpl. eauto.
+
+                Lemma subst_field_name_length:
+                  forall fields s v vs0 vs1,
+                    subst_field_name fields s v vs0 = Some vs1 ->
+                    List.length vs1 = List.length vs0.
+                Proof.
+                  induction fields; simpl; intros; eauto.
+                  destr_in H; inv H.
+                  unfold opt_bind in H.
+                  repeat destr_in H; inv H. reflexivity.
+                  simpl. f_equal; eapply IHfields; eauto.
+                Qed.
+                erewrite subst_field_name_length; eauto.
+              + Lemma subst_field_name_none:
+                  forall fields s v vs0,
+                    List.length fields = List.length vs0 ->
+                    subst_field_name fields s v vs0 = None ->
+                    ~ In s (map fst fields).
+                Proof.
+                  induction fields; simpl; intros; eauto.
+                  destruct a. destr_in H0; simpl in *; inv H.
+                  destr_in H0. inv H0.
+                  unfold opt_bind in H0. destr_in H0; inv H0.
+                  eapply IHfields in Heqo; eauto. intuition.
+                Qed.
+
+                Lemma subst_field_name_not_in_none:
+                  forall fields s v vs0,
+                    ~ In s (map fst fields) ->
+                    subst_field_name fields s v vs0 = None.
+                Proof.
+                  induction fields; simpl; intros; eauto.
+                  destr.
+                  destruct a. simpl in *.
+                  destr. destr. intuition congruence.
+                  rewrite IHfields. simpl; auto. intuition.
+                Qed.
+
+                simpl. 
+                apply subst_field_name_none in Heqo0. 
+
+                Lemma interp_action_fold:
+                  forall l u Gamma sched_log action_log,
+                  interp_action Gamma sched_log action_log u = None ->
+                  interp_action Gamma sched_log action_log
+                                (fold_left (fun acc '(f, a) => UBinop (UStruct2 (USubstField f)) acc a) l u) = None.
+                Proof.
+                  induction l; simpl; intros; eauto. destr.
+                  apply IHl.
+                  simpl. rewrite H. simpl. auto.
+                Qed.
+
+                rewrite interp_action_fold.
+                clear; induction fields; simpl; intros; eauto. destr.
+                simpl. rewrite IA. simpl. rewrite <- IH; simpl; auto.
+                rewrite Heqo. simpl.
+                rewrite subst_field_name_not_in_none. reflexivity. auto.
+                eauto.
+            - simpl.
+              rewrite interp_action_fold.
+              clear; induction fields; simpl; intros; eauto. destr.
+              simpl. rewrite IA. simpl. rewrite <- IH; simpl; auto.
+              rewrite Heqo. reflexivity.
+          Qed.
+
+
+    Lemma interp_action_desugar_ok:
+      forall a Gamma action_log sched_log p,
+        interp_action Gamma sched_log action_log a =
+        interp_action Gamma sched_log action_log (desugar_action p a).
+    Proof.
+      intros ua. pattern ua.
+      match goal with
+      | |- ?P ua => set (PP:=P)
       end.
+      remember (size_uaction ua).
+      revert ua Heqn.
+      pattern n.
+      eapply Nat.strong_right_induction with (z:=0).
+      {
+        red. red. intros. subst. tauto.
+      } 2: lia.
+      intros n0 _ Plt ua Heqn. subst.
+      assert (Plt':
+                forall a,
+                  size_uaction a < size_uaction ua -> PP a
+             ).
+      {
+        intros. eapply Plt. 3: reflexivity. lia. auto.
+      } clear Plt.
+      rename Plt' into IHua. clear n. unfold PP.
+      unfold desugar_action in *.
+      destruct ua; intros;
+        simpl;
+        fold (desugar_action'
+                (pos_t:=pos_t) (var_t:=var_t) (fn_name_t:=fn_name_t) (reg_t:=reg_t)
+                (ext_fn_t:=ext_fn_t) (reg_t':=reg_t)
+                (ext_fn_t':=ext_fn_t)
+             ); eauto.
+      - erewrite IHua by (simpl; lia).
+        unfold opt_bind. destr; rewrite Heqo; auto.
+      - erewrite IHua by (simpl; lia).
+        unfold opt_bind. destr; rewrite Heqo; auto.
+        destruct p0 as ((action_log0 & v) & Gamma0).
+        erewrite IHua with (a:=ua2) by (simpl; lia). reflexivity.
+      - erewrite (IHua ua1) by (simpl; lia).
+        unfold opt_bind.
+        destr; rewrite Heqo; auto.
+        destruct p0 as ((action_log0 & v0) & Gamma0).
+        rewrite <- IHua by (simpl; lia). auto.
+      - erewrite <- IHua by (simpl; lia).
+        unfold opt_bind.
+        repeat destr. eapply IHua. simpl; lia.
+        repeat destr. eapply IHua. simpl; lia.
+      - erewrite <- IHua by (simpl; lia).
+        unfold opt_bind.
+        repeat destr.
+      - erewrite <- IHua by (simpl; lia).
+        unfold opt_bind.
+        repeat destr.
+      - erewrite <- IHua by (simpl; lia).
+        unfold opt_bind.
+        destr. destr. destr.
+        erewrite <- IHua by (simpl; lia).
+        repeat destr.
+      - erewrite <- IHua by (simpl; lia).
+        unfold opt_bind.
+        destr.
+      - assert (
+            forall acc,
+              fold_left
+                (fun (acc : option (Log * list val * list (var_t * val))) (a : uaction) =>
+                   let/opt3 action_log0, l, Gamma0 := acc
+                   in (let/opt3 action_log1, v, Gamma1 := interp_action Gamma0 sched_log action_log0 a
+                       in Some (action_log1, v :: l, Gamma1))) args acc
+              =
+              fold_left
+                (fun (acc : option (Log * list val * list (var_t * val))) (a : uaction) =>
+                   let/opt3 action_log0, l, Gamma0 := acc
+                   in (let/opt3 action_log1, v, Gamma1 := interp_action Gamma0 sched_log action_log0 a
+                       in Some (action_log1, v :: l, Gamma1)))
+                (map (fun a : uaction => desugar_action' p (fun r0 : reg_t => r0) (fun fn : ext_fn_t => fn) a)
+                     args) acc
+          ).
+        {
+          assert (forall arg, In arg args -> PP arg).
+          {
+            intros; eapply IHua. simpl.
+            clear IHua.
+            cut (size_uaction arg <= list_sum (map size_uaction args)). lia.
+            revert arg H. induction args; simpl; intros; eauto. easy.
+            destruct H. subst. lia.
+            apply IHargs in H. lia.
+          }
+          revert H. clear.
+          induction args; simpl; intros; eauto.
+          destruct acc; simpl; auto. destruct p0 as ((l & lv) & Gamma').
+          rewrite <- H; auto.
+        }
+        rewrite <- H. unfold opt_bind. destr.
+        destruct p0 as ((l & lv) & Gamma').
+        rewrite <- IHua. reflexivity. simpl. lia.
+      - apply IHua. simpl. auto.
+      -
+        change (desugar_action' p (fun r => r) (fun fn => fn) (USugar s))
+          with (desugar p (fun r => r) (fun fn => fn) s).
+        destruct s; simpl; intros; auto.
+        + rewrite vect_to_list_length; auto.
+        + unfold desugar. destr; simpl; auto.
+        + change (desugar p _ _ (UProgn aa)) with
+              (uprogn (map (desugar_action' p (fun r => r) (fun fn => fn)) aa)).
+          simpl in IHua.
+          revert Gamma action_log sched_log p.
+          assert (forall a, In a aa -> PP a).
+          {
+            induction aa; simpl; intros; eauto. easy.
+            destruct H; subst; eauto.
+            apply IHua. simpl. lia.
+            eapply IHaa; eauto.
+            intros; eapply IHua. simpl. lia.
+          }
+          clear IHua.
+
+          Lemma uvalue_of_struct_bits_length:
+            forall sig l lv,
+              uvalue_of_struct_bits sig l = Some lv ->
+              List.length lv = List.length sig.
+          Proof.
+            induction sig; simpl; intros; eauto. inv H. reflexivity.
+            unfold opt_bind in H.
+            repeat destr_in H; inv H; simpl. f_equal. eauto.
+          Qed.
+          
+          assert (
+              forall (Gamma : list (var_t * val)) (action_log sched_log : Log) (p : pos_t) v0,
+                aa <> [] ->
+                fold_left
+                  (fun (acc : option (Log * val * list (var_t * val))) (a : uaction) =>
+                     let/opt3 action_log0, _, Gamma0 := acc in interp_action Gamma0 sched_log action_log0 a) aa
+                  (Some (action_log, v0, Gamma)) =
+                interp_action Gamma sched_log action_log
+                              (uprogn (map (desugar_action' p (fun r0 : reg_t => r0) (fun fn : ext_fn_t => fn)) aa))
+            ).
+          {
+            revert aa H.
+            induction aa; simpl; intros; eauto.
+            - easy.
+            - destruct aa; simpl in *. apply H. auto.
+              rewrite <- H; auto.
+              destruct (interp_action Gamma sched_log action_log a) eqn:?; simpl; auto.
+              destruct p0. destruct p0.
+              erewrite <- IHaa. reflexivity. intros; eauto.
+              exact v0. congruence.
+              clear. induction aa; simpl; intros; eauto.
+          } intros.
+          destruct aa. simpl. reflexivity.
+          apply H0. congruence.
+        +
+          change (desugar p _ _ (ULet bindings body)) with
+              (fold_right
+                 (fun '(var, a) (acc : Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) =>
+                    UBind var (desugar_action' p (fun r => r) (fun fn => fn) a) acc)
+                 (desugar_action' p (fun r => r) (fun fn => fn) body) bindings).
+          revert action_log Gamma p.
+          
+          induction bindings; simpl; intros; eauto.
+         * rewrite <- IHua. unfold opt_bind; destr. destr. destr. simpl; lia.
+         * destr.
+           simpl.
+           erewrite <- IHua by (simpl; lia).
+           destruct (interp_action Gamma sched_log action_log u) eqn:?; simpl; auto.
+           2:{
+             clear.
+             assert (fold_left
+        (fun (acc : option (Log * list (var_t * val))) '(var, a) =>
+         let/opt2 action_log, Gamma' := acc
+         in (let/opt3 action_log0, v, Gamma'0 := interp_action Gamma' sched_log action_log a
+             in Some (action_log0, (var, v) :: Gamma'0))) bindings None
+                     = None).
+             induction bindings; simpl; intros; eauto.
+             destruct a. rewrite IHbindings.  auto. rewrite H. simpl. auto.
+           }
+           {
+             destruct p0. destruct p0.
+             rewrite <- IHbindings. clear IHbindings.
+             unfold opt_bind. destr.
+             destr. destr. destr. destr.
+             intros; eapply IHua. simpl in *. lia.
+           }
+        +
+          fold (desugar_action'
+                (pos_t:=pos_t) (var_t:=var_t) (fn_name_t:=fn_name_t) (reg_t:=reg_t)
+                (ext_fn_t:=ext_fn_t) (reg_t':=reg_t)
+                (ext_fn_t':=ext_fn_t)
+               ); eauto.
+          rewrite <- ! IHua.
+          unfold opt_bind.
+          repeat destr. apply IHua.
+          simpl; lia.
+          simpl; lia.
+        +
+
+          change (desugar p _ _ (USwitch _ _ _)) with
+              ( let d := desugar_action' p (fun r => r) (fun fn => fn) in
+                let branches := List.map (fun '(cond, body) => (d cond, d body)) branches in
+                SyntaxMacros.uswitch (d var) (d default) branches).
+          simpl.
+          revert action_log Gamma p.
+          induction branches; simpl; intros; eauto.
+          rewrite <- IHua. auto. simpl; lia.
+          destruct a. simpl.
+          rewrite <- IHua by (simpl; lia).
+          destruct (interp_action Gamma sched_log action_log var) eqn:?.
+          2:{
+            clear.
+            simpl. induction branches; simpl; intros; eauto.
+            destruct a.
+            rewrite IHbranches. auto.
+          }
+          destruct p0. destruct p0. simpl.
+          rewrite <- IHua. 2: simpl; lia.
+          destruct (interp_action l sched_log _u u) eqn:?; simpl; auto.
+          2:{
+            clear.
+            simpl. induction branches; simpl; intros; eauto.
+            destruct a.
+            rewrite IHbranches. auto.
+          }
+          destruct p0. destruct p0. simpl.
+          rewrite <- IHbranches.
+          2: intros; eapply IHua; simpl in *; lia.
+          destruct val_eq_dec.
+          * subst. destruct val_eq_dec; try congruence.
+            rewrite <- IHua.
+            2: simpl; lia.
+            destruct (interp_action l0 sched_log _u0 u0) eqn:?; simpl.
+            destruct p0. destruct p0.
+            replace (fold_left _ _ _) with (Some (_u1, Some v0, l1)).
+            2: {
+              clear.
+              induction branches; simpl; intros; eauto.
+              destruct a; auto.
+            }
+            simpl. auto.
+            replace (fold_left _ _ _) with (@None (Log * option val * list (var_t * val))).
+            reflexivity.
+            clear.
+            induction branches; simpl; intros; eauto. destr.
+          * destruct val_eq_dec; try congruence.
+        +
+          change (desugar p _ _ _) with
+              ( let d := desugar_action' p (fun r => r) (fun fn => fn) in
+                let fields := List.map (fun '(f, a) => (f, d a)) fields in
+                SyntaxMacros.ustruct_init sig fields).
+          simpl.
+          unfold ustruct_init.
+          
+          edestruct uinit_action as (vs & UOSB & IA).
+          rewrite UOSB. simpl.
+
+          apply structinit_ok.
+          intros; eapply IHua. simpl.
+          {
+            clear - H.
+            revert u H.
+            induction fields; simpl; intros; eauto. easy.
+            destruct a; simpl in *.
+            destruct H; subst; auto. lia.
+            apply IHfields in H. lia.
+          }
+          eauto.
+          eapply uvalue_of_struct_bits_length; eauto.
+        +
+          change (desugar _ _ _ _) with
+              ( let d := desugar_action' p (fun r => r) (fun fn => fn) in
+                let sig := {| array_type := tau; array_len := List.length elements |} in
+                let usubst pos := UBinop (UArray2 (USubstElement pos)) in
+                let empty := SyntaxMacros.uinit (array_t sig) in
+                snd (List.fold_left (fun '(pos, acc) a => (S pos, (usubst pos) acc (d a))) elements (0, empty))
+              ).
+          simpl.
+            Lemma repeat_plus:
+              forall n m {A: Type} (a: A),
+                repeat a (n + m) = repeat a n ++ repeat a m.
+            Proof.
+              induction n; simpl; intros; eauto. rewrite IHn. auto.
+            Qed.
+
+          Lemma bits_splitn_repeat:
+            forall n sz a l,
+              bits_splitn n sz (repeat a (n * sz)) = Some l ->
+              Forall (fun v => v = repeat a sz) l.
+          Proof.
+            induction n; simpl; intros; eauto. inv H. constructor.
+            unfold opt_bind in H. repeat destr_in H; inv H.
+            rewrite repeat_plus in Heqo.
+            rewrite take_drop_head in Heqo. inv Heqo. constructor. auto. eauto.
+            rewrite repeat_length. auto.
+          Qed.
+
+
+          Lemma uinit_action_array:
+            forall Gamma sched_log action_log sig,
+            exists vs vl,
+              bits_splitn (array_len sig) (type_sz (array_type sig))
+                          (repeat false (array_sz sig)) = Some vs /\
+              Forall (fun v => List.length v = type_sz (array_type sig)) vs /\
+              Forall (fun v => v = repeat false (type_sz (array_type sig))) vs /\
+              List.length vs = array_len sig /\
+              Forall2 (fun b v => uvalue_of_bits (tau:=array_type sig) b = Some v) vs vl /\
+              interp_action Gamma sched_log action_log (uinit (array_t sig)) =
+              Some (action_log, Array sig (rev vl), Gamma).
+          Proof.
+            unfold uinit. intros. simpl.
+            destruct sig. simpl.
+            unfold array_sz. simpl.
+
+            edestruct bits_splitn_succeeds as (l' & EQ & F & L).
+            2: rewrite EQ.
+            rewrite repeat_length. rewrite Bits.rmul_correct; lia.
+            exists l'.
+            assert (exists vl,
+                       Forall2 (fun b v => uvalue_of_bits (tau:= array_type) b = Some v) l' vl).
+            {
+              clear - F.
+              revert F.
+              induction 1; simpl; intros; eauto.
+              destruct IHF. edestruct uvalue_of_bits_succeeds. eauto.
+              exists (x1::x0). constructor; auto.
+            }
+            destruct H.
+            exists x. repeat split; eauto.
+            eapply bits_splitn_repeat. eauto.
+            rewrite <- EQ. f_equal. rewrite Bits.rmul_correct. reflexivity.
+            rewrite <- repeat_bits_const. rewrite EQ. simpl.
+
+            Lemma Forall2_app:
+              forall {A B: Type} (P : A -> B -> Prop) la1 lb1,
+                Forall2 P (la1) (lb1) ->
+                forall la2 lb2,
+                Forall2 P (la2) (lb2) ->
+                Forall2 P (la1 ++ la2) (lb1 ++ lb2).
+            Proof.
+              induction 1; simpl; intros; eauto.
+            Qed.
+
+            Lemma Forall2_rev:
+              forall {A B: Type} (P : A -> B -> Prop) la lb,
+                Forall2 P la lb ->
+                Forall2 P (rev la) (rev lb).
+            Proof.
+              induction 1; simpl; intros; eauto.
+              apply Forall2_app; auto.
+            Qed.
+            apply Forall2_rev in H.
+            clear F L EQ.
+            revert H.
+            rewrite <- (rev_involutive x) at 2.
+            generalize (rev l') (rev x).
+            induction 1; simpl; intros; eauto.
+            unfold opt_bind in *.
+            destr_in IHForall2; try congruence. inv IHForall2.
+            destr_in Heqo;  inv Heqo.
+            destr_in Heqo0;  inv Heqo0.
+            rewrite H.
+            rewrite rev_app_distr. simpl. reflexivity.
+          Qed.
+
+
+          Lemma uvalue_of_list_bits_rew:
+            forall {tau} l,
+              (fix uvalue_of_list_bits (l : list (list bool)) : option (list val) :=
+                 match l with
+                 | [] => Some []
+                 | hd :: tl =>
+                   match uvalue_of_bits (tau:=tau) hd with
+                   | Some x =>
+                     match uvalue_of_list_bits tl with
+                     | Some x0 => Some (x :: x0)
+                     | None => None
+                     end
+                   | None => None
+                   end
+                 end) l = uvalue_of_list_bits (tau:=tau) l.
+          Proof.
+            induction l; simpl; intros; eauto.
+            rewrite IHl. destr; simpl; auto.
+          Qed.
+          edestruct (uvalue_of_bits_succeeds (array_t {| array_type := tau; array_len := Datatypes.length elements |}) (List.concat (rev (repeat (repeat false (type_sz tau)) (List.length elements))))) as (x & EQ).
+          erewrite length_concat_same. simpl. rewrite rev_length. rewrite Bits.rmul_correct.
+          rewrite repeat_length. reflexivity.
+          rewrite Forall_forall; intros x IN.
+          apply in_rev in IN.
+          apply repeat_spec in IN. subst. rewrite repeat_length. auto.
+          simpl in EQ.
+          unfold opt_bind in EQ. repeat destr_in EQ; try congruence.
+
+          rewrite uvalue_of_list_bits_rew in Heqo0. inv EQ.
+          rewrite bits_splitn_concat in Heqo. inv Heqo.
+          rewrite rev_involutive in Heqo0.
+          rewrite Heqo0. simpl.
+          2:{
+            rewrite Forall_forall; intros x IN.
+            apply in_rev in IN.
+            apply repeat_spec in IN. subst. rewrite repeat_length. auto.
+          }
+          2:{
+            rewrite rev_length.
+            rewrite repeat_length. reflexivity.
+          }
+
+
+          Lemma arrayinit_ok:
+            forall tau n elements pos action_log sched_log Gamma p
+                   u l0 action_log' Gamma',
+              let sig := {| array_type:= tau; array_len := n |} in
+              forall
+                (INIT: interp_action Gamma sched_log action_log u = Some (action_log', Array sig l0, Gamma'))
+                (LEN: List.length l0 = n)
+                (POS: pos + List.length elements = n)
+                (IH: forall u0 : uaction,
+                    In u0 elements ->
+                    forall (Gamma0 : list (var_t * val)) (action_log0 sched_log0 : Log) (p0 : pos_t),
+                      interp_action Gamma0 sched_log0 action_log0 u0 =
+                      interp_action Gamma0 sched_log0 action_log0
+                                    (desugar_action' p0 (fun r : reg_t => r) (fun fn : ext_fn_t => fn) u0)),
+
+              (let/opt4 _, action_log0, vs, Gamma0
+                  := fold_left
+                       (fun (acc : option (nat * Log * list val * list (var_t * val))) (a : uaction) =>
+                          let/opt4 pos, action_log0, vs, Gamma0 := acc
+                          in (let/opt3 action_log1, v, Gamma1 := interp_action Gamma0 sched_log action_log0 a
+                              in (let/opt pat1 := take_drop pos vs
+                                  in match pat1 with
+                                     | (l1, []) => None
+                                     | (l1, _ :: l3) => Some (S pos, action_log1, l1 ++ v :: l3, Gamma1)
+                                     end))) elements (Some (pos, action_log', l0, Gamma'))
+               in Some
+                    (action_log0, Array {| array_type := tau; array_len := n |} vs,
+                     Gamma0)) =
+              interp_action Gamma sched_log action_log
+                            (snd
+                               (fold_left
+                                  (fun '(pos, acc) (a : uaction) =>
+                                     (S pos,
+                                      UBinop (UArray2 (USubstElement pos)) acc
+                                             (desugar_action' p (fun r0 : reg_t => r0) (fun fn : ext_fn_t => fn) a))) elements
+                                  (pos, u))).
+          Proof.
+            induction elements; simpl; intros; eauto.
+            destruct (interp_action Gamma' sched_log action_log' a) as [((al' & v0) & G')|] eqn:?.
+            - simpl.
+              edestruct (@take_drop_succeeds) as (la & lb & EQ).
+              2: rewrite EQ. lia. simpl.
+              destruct (take_drop_spec _ _ _ _ EQ) as (EQ1 & EQ2 & EQ3). subst.
+              rewrite <- POS in EQ3.
+              destruct lb; simpl in *; try lia.
+              erewrite <- IHelements.
+              2:{
+                simpl. rewrite INIT. simpl.
+                rewrite <- IH; auto.
+                rewrite Heqo. simpl.
+                rewrite take_drop_head. simpl. eauto. auto.
+              } reflexivity.
+              repeat rewrite app_length; simpl; auto.
+              repeat rewrite app_length; simpl; auto. lia.
+              intros; eapply IH; eauto.
+            - transitivity (@None (Log * val * list (var_t * val))).
+              clear. simpl.
+              induction elements; simpl; intros; eauto.
+              clear - IH INIT Heqo.
+
+              Lemma interp_action_fold':
+                forall l u Gamma sched_log action_log p (f: uaction -> uaction),
+                  interp_action Gamma sched_log action_log u = None ->
+                  interp_action Gamma sched_log action_log
+                                (snd (fold_left (fun '(pos, acc) a =>
+                                                   (S pos, UBinop (UArray2 (USubstElement pos)) acc (f a))) l (p, u))) = None.
+              Proof.
+                induction l; simpl; intros; eauto.
+                apply IHl.
+                simpl. rewrite H. simpl. auto.
+              Qed.
+              symmetry. apply interp_action_fold'.
+              simpl. rewrite INIT. simpl.
+              rewrite <- IH; auto.
+              rewrite Heqo. reflexivity.
+          Qed.
+
+          apply arrayinit_ok.
+
+          edestruct uinit_action_array with (sig := {| array_type := tau; array_len := Datatypes.length elements |}) as (vs & vl & BS & F & FF & L &F2 & IA).
+          rewrite IA.
+          clear IA.
+          cut (l0 = rev vl). intros ->; auto.
+          {
+            clear BS.
+
+            Lemma uvalue_of_list_bits_inv:
+              forall tau n l l0,
+                uvalue_of_list_bits (tau:=tau) (repeat l n) = Some l0 ->
+                Forall (fun v => Some v = uvalue_of_bits (tau:=tau) l) l0 /\ List.length l0 = n.
+            Proof.
+              induction n; simpl; intros; eauto. inv H. split; constructor.
+              unfold opt_bind in H; repeat destr_in H; inv H.
+              split. constructor; eauto.
+              eapply Forall_impl. 2: eapply IHn; eauto. simpl. rewrite Heqo. auto.
+              simpl. f_equal. eapply IHn; eauto.
+            Qed.
+            apply uvalue_of_list_bits_inv in Heqo0.
+            destruct Heqo0.
+            assert (Forall (fun v => Some v = uvalue_of_bits (tau:=tau) (repeat false (type_sz tau))) vl).
+            {
+              clear - F2 FF. simpl in FF.
+              revert F2 FF.
+              induction 1; simpl; intros; eauto. inv FF.
+              constructor; eauto.
+            }
+            simpl in *.
+            
+            Lemma Forall2_length:
+              forall {A B: Type} (P : A -> B -> Prop) la lb,
+                Forall2 P la lb ->
+                List.length la = List.length lb.
+            Proof.
+              induction 1; simpl; intros; eauto.
+            Qed.
+            eapply Forall2_length in F2.
+
+            Lemma same_lists:
+              forall {A: Type} (l1 l2: list A) y,
+                Forall (fun x => Some x = y) l1 ->
+                Forall (fun x => Some x = y) l2 ->
+                List.length l1 = List.length l2 ->
+                l1 = l2.
+            Proof.
+              induction l1; simpl; intros; eauto.
+              - destruct l2; simpl in *; try lia. auto.
+              - destruct l2; simpl in *; try lia. auto.
+                inv H1. inv H. inv H0. inv H2. f_equal. eauto.
+            Qed.
+            eapply same_lists. eauto.
+            rewrite Forall_forall. intros x IN. apply in_rev in IN.
+            revert x IN. rewrite <-Forall_forall; auto.
+            rewrite rev_length; lia.
+          }
+          apply uvalue_of_list_bits_inv in Heqo0. intuition. lia.
+          intros; eapply IHua. simpl.
+          revert H. clear.
+          induction elements; simpl; intros; eauto. easy. destruct H; subst. lia. apply IHelements in H. lia.
+        + 
+
+
+
+
+            simpl in *. unfold array_sz in BS. simpl in BS.
+            rewrite Bits.rmul_correct in BS.
+            apply bits_splitn_repeat in BS.
+          }
+          simpl.
+          rewrite <- repeat_bits_const. simpl in *.
+          unfold array_sz in BS. simpl in *.
+          rewrite BS. simpl.
+          setoid_rewrite uvalue_of_list_bits_rew.
+          apply Forall_rev in FF.
+          apply Forall2_rev in F2.
+          assert (uvalue_of_list_bits (tau:=tau)(rev vs) = Some (rev vl)).
+          {
+            clear - FF F2.
+            revert F2 FF.
+            generalize (rev vs) (rev vl).
+            induction 1; simpl; intros; eauto.
+            rewrite H. simpl. rewrite IHF2; simpl; auto. inv FF; auto.
+          }
+          rewrite H. simpl.
+
+          simpl.
+
+              revert action_log'
+              induction elements; simpl; intros; eauto.
+          Qed.
+
+
+          destr_in EQ; try congruence.
+          setoid_rewrite EQ.
+
+          induction elements; simpl; intros; eauto.
+
+
+          edestruct 
+            induction array_len; simpl; intros; eauto.
+            exists [], []; repeat split; eauto.
+            rewrite Nat.add_comm.
+
+            rewrite repeat_plus.
+            rewrite take_drop_head. 2: rewrite repeat_length; reflexivity.
+            simpl.
+            edestruct bits_splitn_succeeds as (l' & EQ & F & L).
+            2: rewrite EQ.
+            rewrite repeat_length. rewrite Bits.rmul_correct; lia. simpl.
+            induction struct_fields; simpl; intros; eauto.
+            destruct a.
+            unfold opt_bind.
+            rewrite repeat_take_drop.
+            2: rewrite repeat_length; lia.
+            rewrite vect_to_list_length.
+            replace (List.length (repeat _ _) - type_sz t) with (struct_fields_sz struct_fields).
+            2:{
+              unfold struct_fields_sz. simpl.
+              rewrite ! repeat_length. lia.
+            }
+            replace (_ - _) with (type_sz t).
+            2:{
+              unfold struct_fields_sz. simpl. lia.
+            }
+
+            destruct IHstruct_fields as ( vs & EQ4 & EQ5).
+            rewrite EQ4.
+            unfold opt_bind in EQ5.
+            repeat destr_in EQ5; try congruence.
+            destr_in Heqo; try congruence.
+            destr_in Heqo0; try congruence.
+            inv Heqo0. inv Heqo. inv EQ5.
+
+            rewrite <- repeat_bits_const.
+            rewrite repeat_take_drop by lia.
+            replace (_ - _) with (struct_fields_sz struct_fields).
+            2:{
+              unfold struct_fields_sz. simpl. lia.
+            }
+            rewrite <- repeat_bits_const in Heqo1. rewrite Heqo1.
+            clear Heqo1.
+            replace (_ - _) with (type_sz t).
+            2:{
+              unfold struct_fields_sz. simpl. lia.
+            }
+            edestruct @uvalue_of_bits_succeeds as (x & EQ). 2: rewrite EQ.
+            rewrite repeat_length. auto.
+            eexists; split; eauto.
+
+          Qed.
+
+
+
+          setoid_rewrite <- IA.
+
+          revert action_log p Gamma.
+          
+
+            edestruct @take_drop_succeeds as (la & lb & EQ). 2: rewrite EQ. lia.
+            edestruct (take_drop_spec _ _ _ _ EQ) as (EQ1 & EQ2 & EQ3).
+            simpl in EQ1.
+
+            assert (la = repeat false (struct_fields_sz struct_fields) /\
+                   lb = repeat false (type_sz t)).
+            {
+              Lemma repeat_plus:
+                forall n m {A: Type} (a: A),
+                  repeat a (n + m) = repeat a n ++ repeat a m.
+              Proof.
+                induction n; simpl; intros; eauto. rewrite IHn. auto.
+              Qed.
+              replace (struct_fields_sz (_)) with (struct_fields_sz struct_fields + type_sz t) in EQ1.
+              rewrite repeat_plus in EQ1.
+              apply app_eq_inv in EQ1. intuition.
+              rewrite EQ2. unfold struct_fields_sz. simpl.
+              rewrite ! repeat_length. lia.
+              unfold struct_fields_sz. simpl. lia.
+            }
+            destruct H.
+            subst.
+            destruct IHstruct_fields as ( vs & EQ4 & EQ5).
+            rewrite EQ4.
+            unfold opt_bind in EQ5.
+            repeat destr_in EQ5; try congruence.
+            destr_in Heqo; try congruence.
+            destr_in Heqo0; try congruence.
+            inv Heqo0. inv Heqo. inv EQ5.
+            rewrite vect_to_list_length.
+
+
+            destr.
+          Qed.
+
+          induction fields; simpl; intros; eauto.
+    Qed.
 
     Definition interp_rule (sched_log: Log) (rl: uaction) : option Log :=
       match interp_action nil sched_log log_empty rl with
