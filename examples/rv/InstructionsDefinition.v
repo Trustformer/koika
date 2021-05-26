@@ -1020,21 +1020,24 @@ Definition get_bits (i : instruction) (lb : list (Fin.t 32)) :=
 
 Scheme Equality for list.
 Scheme Equality for instruction_bit_value.
+Scheme Equality for prod.
 
-(* Definition partition_on_bits (l : list instruction) (b : list (Fin.t 32)) := *)
-(*   List.fold_left (fun acc i => *)
-(*     match *)
-(*       List.find (fun x => list_beq *)
-(*         (instruction_bit_value) (instruction_bit_value_beq) (get_bits i b) x *)
-(*       ) (fst acc) *)
-(*     with *)
-(*     | None => ([i], (get_bits i b))::acc *)
-(*     | Some n => *)
-(*         let temp := List.nth acc n in *)
-(*         List.remove n acc *)
-(*         add_to_nth acc n *)
-(*     end *)
-(*   ) l (nil). *)
+Definition partition_on_bits (l : list instruction) (b : list (Fin.t 32)) :=
+  List.fold_left (fun acc i =>
+    match
+      (* Compare bits b of each instruction to the ones present in acc *)
+      List.find (fun x =>
+        list_beq (instruction_bit_value) (instruction_bit_value_beq)
+          (get_bits i b) (snd x)
+      ) acc
+    with
+    | None => ([i], (get_bits i b))::acc
+    | Some (is, v) =>
+      (i::is, v)::(List.filter (fun p => negb (
+        list_beq instruction_bit_value (instruction_bit_value_beq) (snd p) v
+      )) acc)
+    end
+  ) l (nil).
 
 Require Import rv.ISA rv.ModuleInstructions.
 Definition test_ISA : ISA := {|
@@ -1045,8 +1048,8 @@ Definition inst_list := ISA_instructions_set test_ISA.
 
 Compute List.map (fun x => proj1_sig (Fin.to_nat x))
   (get_comparison_bits (inst_list)).
-(* Compute *)
-(*   partition_on_bits inst_list (get_comparison_bits (inst_list)). *)
+Compute
+  partition_on_bits inst_list (get_comparison_bits (inst_list)).
 
 (* Definition generate_identify_instruction_function := *)
 (*   let helper = *)
