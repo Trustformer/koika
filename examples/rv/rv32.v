@@ -4,8 +4,8 @@ Require Import Koika.Frontend.
 Require Import rv.RVCore.
 
 Definition rv_schedule : scheduler :=
-  Writeback |> Execute |> StepMultiplier |> Decode |> WaitImem |> Fetch |> Imem
-  |> Dmem |> Tick |> EndExecution |> done.
+  Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem |> Dmem |> Tick
+  |> EndExecution |> done.
 
 Module Package (C: Core).
   Import C.

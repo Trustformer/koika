@@ -22,12 +22,12 @@ RISCVOBJDUMP32_ARGS := --disassemble --source --full-contents
 
 cc := $(RISCVCC32) $(RISCVCC32_ARGS)
 objdump := $(RISCVOBJDUMP32) $(RISCVOBJDUMP32_ARGS)
-iarch = $(if $(findstring riscv_tests/rv32ui,$1),rv32i,rv32im)
+iarch = $(if $(findstring riscv_tests/rv32ui,$1),rv32i)
 cc32i = $(cc) -T$(build)/rv32i/link.ld -mabi=ilp32
 
 all: $(rv32_targets) $(vmh_targets) $(dump_targets);
 
-dirpatterns := %/rv32i/ %/rv32i/riscv_tests/rv32ui/ %/rv32i/riscv_tests/rv32um/ %/rv32i/unit/ %/rv32i/integ/
+dirpatterns := %/rv32i/ %/rv32i/riscv_tests/rv32ui/ %/rv32i/unit/ %/rv32i/integ/
 dirs := $(patsubst \%%,$(build)%,$(dirpatterns))
 
 $(dirpatterns):

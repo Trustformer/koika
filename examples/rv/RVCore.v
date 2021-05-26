@@ -4,7 +4,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Koika.Frontend Koika.Std.
-Require Import rv.Multiplier rv.RVEncoding rv.Scoreboard rv.Stack.
+Require Import rv.RVEncoding rv.Scoreboard rv.Stack.
 
 Require Import rv.ISA rv.Instructions rv.ITypes rv.IFields rv.StructsBuilding
   rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
@@ -16,9 +16,7 @@ Definition isa : ISA := {|
 |}.
 
 Section RVHelpers.
-  (* Currently, the mul instruction is always active and supported through a
-     module, hence its artificial addition to the set of active instructions *)
-  Definition instructions := MUL_32M::(ISA_instructions_set isa).
+  Definition instructions := (ISA_instructions_set isa).
 
   Context {reg_t : Type}.
 
@@ -526,9 +524,7 @@ Module Type RVParams.
   Parameter WIDTH : nat.
 End RVParams.
 
-Module RVCore
-  (RVP: RVParams) (Multiplier: MultiplierInterface) (Stack : StackInterface)
-.
+Module RVCore (RVP: RVParams) (Stack : StackInterface).
   Import ListNotations.
   Import RVP.
 
@@ -629,7 +625,6 @@ Module RVCore
   | d2e (state: fromDecode.reg_t)
   | e2w (state: fromExecute.reg_t)
   | rf (state: Rf.reg_t)
-  | mulState (state: Multiplier.reg_t)
   | stack (state: Stack.reg_t)
   | scoreboard (state: Scoreboard.reg_t)
   | cycle_count
@@ -652,7 +647,6 @@ Module RVCore
     | e2w r        => fromExecute.R r
     | rf r         => Rf.R r
     | scoreboard r => Scoreboard.R r
-    | mulState r   => Multiplier.R r
     | stack r      => Stack.R r
     | pc           => bits_t 32
     | cycle_count  => bits_t 32
@@ -675,7 +669,6 @@ Module RVCore
     | d2e s        => fromDecode.r s
     | e2w s        => fromExecute.r s
     | scoreboard s => Scoreboard.r s
-    | mulState s   => Multiplier.r s
     | stack s      => Stack.r s
     | pc           => Bits.zero
     | cycle_count  => Bits.zero
@@ -819,17 +812,6 @@ Module RVCore
       && (get(dInst,inst)[|5`d3| :+ 2] == Ob~0~0)
   }}.
 
-  Definition isMultiplyInst : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun isMultiplyInst (dInst: struct_t decoded_sig) : bits_t 1 =>
-      mulState.(Multiplier.enabled)()
-      && (
-        let fields := getFields(get(dInst, inst)) in
-        (get(fields, funct7) == #funct7_MUL)
-        && (get(fields, funct3) == #funct3_MUL)
-        && (get(fields, opcode) == #opcode_OP)
-      )
-  }}.
-
   Definition isControlInst : UInternalFunction reg_t empty_ext_fn_t := {{
     fun isControlInst (dInst: struct_t decoded_sig) : bits_t 1 =>
       get(dInst,inst)[|5`d4| :+ 3] == Ob~1~1~0
@@ -841,11 +823,6 @@ Module RVCore
       && get(dInst, inst)[|5`d0| :+ 3] == Ob~1~1~1
   }}.
 
-  Definition step_multiplier : uaction reg_t ext_fn_t := {{
-    if (read0(halt) == Ob~1) then fail else pass;
-    mulState.(Multiplier.step)()
-  }}.
-
   Definition execute_1 : uaction reg_t ext_fn_t := {{
 (
         let fInst      := get(dInst, inst) in
@@ -853,7 +830,6 @@ Module RVCore
         let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in
         let rs1_val    := get(decoded_bookkeeping, rval1) in
         let rs2_val    := get(decoded_bookkeeping, rval2) in
-        (* Use the multiplier module or the ALU *)
         let imm        := getImmediate(dInst) in
         let pc         := get(decoded_bookkeeping, pc) in
         let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in
@@ -907,8 +883,6 @@ Module RVCore
             );
             write0(halt, res)
           )
-        else if (isMultiplyInst(dInst)) then
-          mulState.(Multiplier.enq)(rs1_val, rs2_val)
         else
           pass;
         let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
@@ -960,7 +934,6 @@ Module RVCore
   (*       let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in *)
   (*       let rs1_val    := get(decoded_bookkeeping, rval1) in *)
   (*       let rs2_val    := get(decoded_bookkeeping, rval2) in *)
-  (*       (* Use the multiplier module or the ALU *) *)
   (*       let imm        := getImmediate(dInst) in *)
   (*       let pc         := get(decoded_bookkeeping, pc) in *)
   (*       let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in *)
@@ -1014,8 +987,6 @@ Module RVCore
   (*           ); *)
   (*           write0(halt, res) *)
   (*         ) *)
-  (*       else if (isMultiplyInst(dInst)) then *)
-  (*         mulState.(Multiplier.enq)(rs1_val, rs2_val) *)
   (*       else *)
   (*         pass; *)
   (*       let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in *)
@@ -1061,8 +1032,6 @@ Module RVCore
       | Ob~0~1~0 => set data := mem_data (* Load Word *)
       return default: fail (* Load Double or Signed Word *)
       end
-    else if isMultiplyInst(dInst) then
-      set data := mulState.(Multiplier.deq)()[|6`d0| :+ 32]
     else
       pass;
     if get(dInst,valid_rd) then
@@ -1283,7 +1252,6 @@ Module RVCore
     show '(Scoreboard.Scores (Scoreboard.Rf.rData v)) := rv_register_name v
   |}.
 
-  Existing Instance Multiplier.Show_reg_t.
   Existing Instance Stack.Show_reg_t.
   Instance Show_reg_t : Show reg_t := _.
   Instance Show_ext_fn_t : Show ext_fn_t := _.
@@ -1315,7 +1283,6 @@ Inductive rv_rules_t :=
 | WaitImem
 | Imem
 | Dmem
-| StepMultiplier
 | Tick
 | EndExecution.
 
@@ -1335,10 +1302,6 @@ Module Type Core.
   Parameter rv_ext_fn_rtl_specs : _ext_fn_t -> ext_fn_rtl_spec.
 End Core.
 
-Module Mul32Params <: Multiplier_sig.
-  Definition n := 32.
-End Mul32Params.
-
 (* TODO reactivate *)
 (* Module StackParams <: Stack_sig. *)
 (*   Definition capacity := 32. *)
@@ -1352,7 +1315,6 @@ End Mul32Params.
     Compute (uaction_size RV32I.wait_imem).
     Compute (uaction_size (RV32I.mem RV32I.imem)).
     Compute (uaction_size (RV32I.mem RV32I.dmem)).
-    Compute (uaction_size RV32I.step_multiplier).
     Compute (uaction_size RV32I.tick).
 
     Compute (action_size RV32I.tc_fetch).
@@ -1362,5 +1324,4 @@ End Mul32Params.
     Compute (action_size RV32I.tc_wait_imem).
     Compute (action_size RV32I.tc_imem).
     Compute (action_size RV32I.tc_dmem).
-    Compute (action_size RV32I.tc_step_multiplier).
     Compute (action_size RV32I.tc_tick). **)

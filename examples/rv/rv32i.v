@@ -2,7 +2,7 @@
 Require Import Koika.Frontend.
 
 Require Import rv.RVCore rv.rv32.
-Require Import rv.Multiplier rv.Stack.
+Require Import rv.Stack.
 
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
@@ -13,9 +13,8 @@ Module RVIParams <: RVParams.
 End RVIParams.
 
 Module RV32I <: Core.
-  Module Multiplier := ShiftAddMultiplier Mul32Params.
   Module Stack := StackF.
-  Include (RVCore RVIParams Multiplier Stack).
+  Include (RVCore RVIParams Stack).
 
   Definition _reg_t := reg_t.
   Definition _ext_fn_t := ext_fn_t.
@@ -25,7 +24,6 @@ Module RV32I <: Core.
   Definition tc_decode := tc_rule R Sigma decode.
   Definition tc_execute := tc_rule R Sigma execute.
   Definition tc_writeback := tc_rule R Sigma writeback.
-  Definition tc_step_multiplier := tc_rule R Sigma step_multiplier.
   Definition tc_imem := tc_rule R Sigma (mem imem).
   Definition tc_dmem := tc_rule R Sigma (mem dmem).
   Definition tc_tick := tc_rule R Sigma tick.
@@ -40,7 +38,6 @@ Module RV32I <: Core.
     | WaitImem => tc_wait_imem
     | Imem => tc_imem
     | Dmem => tc_dmem
-    | StepMultiplier => tc_step_multiplier
     | Tick => tc_tick
     | EndExecution => tc_end_execution
     end.
