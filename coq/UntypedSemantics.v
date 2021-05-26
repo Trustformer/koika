@@ -483,7 +483,7 @@ Section Interp.
         induction struct_fields; simpl; intros.
         + inv H. reflexivity.
         + inv H. inv H0. destruct a. simpl in *.
-          rewrite concat_app, app_length. simpl. 
+          rewrite concat_app, app_length. simpl.
           rewrite app_nil_r.
           erewrite ubits_of_value_len'. 2: eauto.
           rewrite take_drop_head. 2: lia. simpl.
@@ -803,7 +803,6 @@ Section Interp.
         f_equal.
     Qed.
 
-    
     Lemma usigma1_correct:
       forall ufn fn,
         PrimTypeInference.tc1 ufn (arg1Sig (PrimSignatures.Sigma1 fn)) = Success fn ->
@@ -815,7 +814,7 @@ Section Interp.
       - destruct fn.
         + destr_in H; try congruence. inv H. simpl in *. inv Heqr. subst. reflexivity.
         + subst. inv H.
-          revert arg. rewrite <- H1. simpl. 
+          revert arg. rewrite <- H1. simpl.
           intro arg. reflexivity.
       - destruct fn.
         + inv H. revert arg. rewrite <- H2. simpl.
@@ -968,7 +967,7 @@ Section Interp.
           cut (index_to_nat s < array_len sig). nia.
           apply index_to_nat_bounded.
           f_equal. f_equal.
-          rewrite app_length, repeat_length. 
+          rewrite app_length, repeat_length.
           inv Heqp0.
           apply take_drop_spec in EQ'. intuition.
           inv Heqp0.
@@ -1307,7 +1306,7 @@ Section Interp.
       induction n; simpl; intros; eauto.
       rewrite IHn. auto.
     Qed.
-    
+
     Lemma vect_dotimes_spec:
       forall {A:Type} (f: A -> A) n x,
         vect_dotimes f n x = Nat.iter n f x.
@@ -1324,7 +1323,7 @@ Section Interp.
       rewrite vect_to_list_cons. f_equal.
       rewrite IHsz. reflexivity.
     Qed.
-    
+
     Lemma lsr1:
       forall sz (v: bits sz),
         sz <> 0 ->
@@ -1345,7 +1344,7 @@ Section Interp.
       rewrite vect_to_list_snoc. f_equal.
       rewrite msb_spec. auto.
     Qed.
-    
+
     Lemma iter_list_vect:
       forall sz (v: bits sz) (f: list bool -> list bool) (g: bits sz -> bits sz),
         (forall x, f (vect_to_list x) = vect_to_list (g x)) ->
@@ -2024,7 +2023,7 @@ Section Interp.
       Definition interp_scheduler (s: scheduler pos_t rule_name_t) :=
         interp_scheduler' log_empty s.
 
-      Definition interp_cycle 
+      Definition interp_cycle
                  (s: scheduler pos_t rule_name_t) :=
         commit_update r (interp_scheduler s).
 
@@ -2125,7 +2124,6 @@ Section Eq.
         inv H0.
       Qed.
 
-      
       Lemma cast_action'_eq:
         forall (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
                (a: TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau1)
@@ -2357,9 +2355,6 @@ Section Eq.
         - rewrite ! get_put_neq; eauto.
       Qed.
 
-
-      
-
       Fixpoint assert_argtypes' {sig}
                (args_desc: tsig var_t)
                (args: list (pos_t * {tau : type & TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau}))
@@ -2480,7 +2475,6 @@ Section Eq.
           rewrite IHla1 by lia. auto.
       Qed.
 
-      
       Lemma combine_rev:
         forall {A B : Type} (la : list A) (lb: list B),
           List.length la = List.length lb ->
@@ -2506,7 +2500,6 @@ Section Eq.
         induction l1; simpl; intros; eauto.
         destr. reflexivity. simpl. f_equal; eauto. destruct a; eauto.
       Qed.
-      
 
       Hypothesis r_eq:
         forall i,
@@ -2531,7 +2524,7 @@ Section Eq.
       | UAPos p e => 1 + size_uaction e
       | USugar s => 0
       end.
-      
+
       Lemma interp_action_correct:
         forall ua p sig tau a
                (TA: TypeInference.type_action TR Sigma p sig ua = Success (existT _ tau a))
@@ -2785,7 +2778,7 @@ Section Eq.
           apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
           unfold opt_bind in H.
           destr_in H; [|inv H].
-          destruct p0. destruct p0. 
+          destruct p0. destruct p0.
           destr_in H; [|inv H].
           destruct p0. destruct p0.
           inv H.
@@ -2797,13 +2790,13 @@ Section Eq.
           unfold TypeInference.assert_argtypes in Heqr1.
 
     rewrite assert_argtypes'_eq in Heqr1.
-    
+
     assert (List.length args = List.length (rev s)).
     {
       apply result_list_map_length in Heqr0. rewrite <- Heqr0.
       rewrite rev_length; auto.
     }
-    
+
           assert (
               forall (p : pos_t) (sig : tsig var_t) s,
                 result_list_map (TypeInference.type_action TR Sigma p sig) args = Success s ->
@@ -2815,7 +2808,7 @@ Section Eq.
          log_eq REnv uaction_log action_log ->
          forall (s0 : context
          (fun k_tau : var_t * type =>
-          TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau)) 
+          TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau))
          (rev (int_argspec ufn))),
            assert_argtypes' (rev (int_argspec ufn))
                             (rev (combine (map (TypeInference.actpos p) args) s)) = Success s0 ->
@@ -2823,7 +2816,7 @@ Section Eq.
          forall v (Gamma' : TypedSemantics.tcontext sig),
            TypedSemantics.interp_args'
              (@TypedSemantics.interp_action pos_t var_t fn_name_t reg_t ext_fn_t TR Sigma REnv tr tsigma)
-             Gamma sched_log action_log s0 = 
+             Gamma sched_log action_log s0 =
          Some (action_log', v, Gamma') ->
          exists (uaction_log' : Log) res (UGamma' : list (var_t * val)),
            fold_right
@@ -3171,13 +3164,13 @@ Section Eq.
           unfold TypeInference.assert_argtypes in Heqr1.
 
           rewrite assert_argtypes'_eq in Heqr1.
-          
+
           assert (List.length args = List.length (rev s)).
           {
             apply result_list_map_length in Heqr0. rewrite <- Heqr0.
             rewrite rev_length; auto.
           }
-          
+
           assert (
               forall (p : pos_t) (sig : tsig var_t) s,
                 result_list_map (TypeInference.type_action TR Sigma p sig) args = Success s ->
@@ -3189,7 +3182,7 @@ Section Eq.
          log_eq REnv uaction_log action_log ->
          forall (s0 : context
          (fun k_tau : var_t * type =>
-          TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau)) 
+          TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau))
          (rev (int_argspec ufn))),
            assert_argtypes' (rev (int_argspec ufn))
                             (rev (combine (map (TypeInference.actpos p) args) s)) = Success s0 ->
@@ -3264,7 +3257,7 @@ Section Eq.
             rewrite combine_rev in Heqr1.
             rewrite <- map_rev in Heqr1.
             edestruct interp_args_correct as (ual' & res & ug' & FR & Geq & Leq & Geq2).
-            intros arg IN. intros; eapply interp_action_correct. 10:eauto.  
+            intros arg IN. intros; eapply interp_action_correct. 10:eauto.
             6: apply result_list_map_rev; eauto. 5: eauto. 9: eauto. all: eauto.
             rewrite rev_length; auto.
             rewrite <- fold_left_rev_right. setoid_rewrite FR. simpl.
@@ -3272,7 +3265,7 @@ Section Eq.
             erewrite combine_map. eauto. reflexivity.
             rewrite map_length. rewrite H0.
             rewrite rev_length; auto.
-          * rewrite <- fold_left_rev_right. 
+          * rewrite <- fold_left_rev_right.
             erewrite H1. reflexivity. 6: eauto. eauto. eauto. all: eauto.
         - destr_in TA; [|inv TA].
           inv TA.
@@ -3355,7 +3348,6 @@ Section Eq.
         apply log_eq_empty.
       Qed.
 
-      
       Context {rule_name_t: Type}.
       Lemma interp_scheduler'_correct:
         forall (urules: rule_name_t -> uaction)
@@ -3408,9 +3400,6 @@ Section Eq.
         eapply interp_scheduler'_correct; eauto.
         apply log_eq_empty.
       Qed.
-
-       
-      
       End Eq.
 
 Section Final.
@@ -3432,8 +3421,6 @@ Section Final.
     forall f v,
       sigma f (val_of_value v) = val_of_value (tsigma f v).
 
-  
-
       Lemma latest_write_eq:
         forall ulog log,
           log_eq (TR:=TR) REnv ulog log ->
@@ -3451,7 +3438,7 @@ Section Final.
       Qed.
 
 Lemma log_eq_commit_update:
-  forall 
+  forall
          ul l,
     log_eq REnv ul l ->
     env_t_R (fun (i : reg_t) (uv : val) (v : TR i) => uv = val_of_value v) REnv

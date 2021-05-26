@@ -167,7 +167,7 @@ Module StackProofs.
        (Fail unit_t) (Const (tau:=unit_t) _vect_nil)).
 
   Context {reg_t_eq_dec: EqDec RV32I.reg_t}.
-  
+
   Lemma execute_overwrites_halt:
     forall (r: ContextEnv.(env_t) RV32I.R) sigma l,
       interp_rule r sigma log_empty
@@ -327,7 +327,7 @@ Module StackProofs.
     simpl in x.
     unfold x. clear x.
     intro Heqr0.
-    simpl in Heqr0. 
+    simpl in Heqr0.
     apply success_inj in Heqr0.
     subst.
     simpl projT1 in v.
@@ -372,8 +372,6 @@ Module StackProofs.
     apply Eqdep_dec.inj_pair2_eq_dec in H12.
     apply Eqdep_dec.inj_pair2_eq_dec in H14. subst.
     all: try apply eq_dec.
-        
-
 
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
@@ -389,10 +387,10 @@ Module StackProofs.
     subst.
 
     2:{
-      intros. decide equality. apply EqDec_pair. 
+      intros. decide equality. apply EqDec_pair.
     }
     inversion H11.
-    destruct H11. unfold eq_rect in e. 
+    destruct H11. unfold eq_rect in e.
     cbn [projT1 projT2] in *.
 
     vm_compute in H0.
