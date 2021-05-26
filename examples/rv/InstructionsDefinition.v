@@ -1007,20 +1007,25 @@ Definition varies_bit (l : list instruction) (n : Fin.t 32) : bool :=
 Definition comparable_bit (l : list instruction) (n : Fin.t 32) : bool :=
   andb (is_fixed_bit l n) (varies_bit l n).
 
-Definition get_comparison_bits (l : list instruction) : list (Fin.t 32) :=
+Scheme Equality for list.
+Scheme Equality for instruction_bit_value.
+
+Definition get_comparison_bits
+  (l : list instruction) (i : list (Fin.t 32)) : list (Fin.t 32)
+:=
   let lb :=
     IB.0::IB.1::IB.2::IB.3::IB.4::IB.5::IB.6::IB.7::IB.8::IB.9::IB.10::IB.11
     ::IB.12::IB.13::IB.14::IB.15::IB.16::IB.17::IB.18::IB.19::IB.20::IB.21
     ::IB.22::IB.23::IB.24::IB.25::IB.26::IB.27::IB.28::IB.29::IB.30::IB.31::nil
-  in List.filter (comparable_bit l) lb.
+  in
+    List.filter (comparable_bit l)
+      (List.filter (
+        fun x => negb (List.existsb (fun y => Fin.eqb x y) i)
+      ) lb).
 
 Definition get_bits (i : instruction) (lb : list (Fin.t 32)) :=
   List.fold_left (fun acc b => (Vector.nth (instruction_format i) b)::acc) lb
   nil.
-
-Scheme Equality for list.
-Scheme Equality for instruction_bit_value.
-Scheme Equality for prod.
 
 Definition partition_on_bits (l : list instruction) (b : list (Fin.t 32)) :=
   List.fold_left (fun acc i =>
@@ -1047,11 +1052,24 @@ Definition test_ISA : ISA := {|
 Definition inst_list := ISA_instructions_set test_ISA.
 
 Compute List.map (fun x => proj1_sig (Fin.to_nat x))
-  (get_comparison_bits (inst_list)).
+  (get_comparison_bits (inst_list) (nil)).
 Compute
-  partition_on_bits inst_list (get_comparison_bits (inst_list)).
+  partition_on_bits inst_list (get_comparison_bits (inst_list) (nil)).
 
-(* Definition generate_identify_instruction_function := *)
-(*   let helper = *)
-(*     fix filter_list (l : list instruction) : list instruction := *)
-(*       match filter *)
+(* Fixpoint generate_identify_instruction_function *)
+(*   (il : list instruction) (ignored_bits : list (Fin.t 32)) *)
+(*   : uaction *)
+(* := *)
+(*   let comparison_bits := get_comparison_bits il ignored_bits in *)
+(*   let new_ignored := List.app ignored_bits comparison_bits in *)
+(*   let partition := partition_on_bits il comparison_bits in *)
+(*   UBind "__reserved__matchPattern" {{ get(fields, funct) }} *)
+(*   List.map (fun (x, y) => *)
+(*     USugar (UConstBits ( *)
+(*   ) partition *)
+(* . *)
+
+(* Compute *)
+(*   List.map (fun x => proj1_sig (Fin.to_nat x)) *)
+(*   (generate_identify_instruction_function inst_list (nil)) *)
+(* . *)
