@@ -1,13 +1,13 @@
 (*! Language | Logs of reads and writes !*)
 Require Export Koika.Common Koika.Environments Koika.Syntax.
+Require Logs.
 
 Section Logs.
-  Inductive LogEntryKind := LogRead | LogWrite.
 
   Context {V: Type}.
 
   Record LogEntry := LE {
-    kind: LogEntryKind;
+    kind: Logs.LogEntryKind;
     port: Port;
     val: V
   }.
@@ -32,33 +32,33 @@ Section Logs.
   Definition log_cons (reg: reg_t) le (l: ULog) :=
     REnv.(putenv) l reg (le :: REnv.(getenv) l reg).
 
-  Definition log_forallb (log: ULog) reg (f: LogEntryKind -> Port -> bool) :=
+  Definition log_forallb (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool) :=
     List.forallb (fun '(LE kind prt _) => f kind prt) (REnv.(getenv) log reg).
 
-  Definition log_existsb (log: ULog) reg (f: LogEntryKind -> Port -> bool) :=
+  Definition log_existsb (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool) :=
     List.existsb (fun '(LE kind prt _) => f kind prt) (REnv.(getenv) log reg).
 
   Definition is_read0 kind prt :=
     match kind, prt with
-    | LogRead, P0 => true
+    | Logs.LogRead, P0 => true
     | _, _ => false
     end.
 
   Definition is_read1 kind prt :=
     match kind, prt with
-    | LogRead, P1 => true
+    | Logs.LogRead, P1 => true
     | _, _ => false
     end.
 
   Definition is_write0 kind prt :=
     match kind, prt with
-    | LogWrite, P0 => true
+    | Logs.LogWrite, P0 => true
     | _, _ => false
     end.
 
   Definition is_write1 kind prt :=
     match kind, prt with
-    | LogWrite, P1 => true
+    | Logs.LogWrite, P1 => true
     | _, _ => false
     end.
 
@@ -73,7 +73,7 @@ Section Logs.
 
   Definition log_latest_write0_fn (le: LogEntry) :=
     match le with
-    | LE LogWrite P0 v => Some v
+    | LE Logs.LogWrite P0 v => Some v
     | _ => None
     end.
 
@@ -82,7 +82,7 @@ Section Logs.
 
   Definition log_latest_write1_fn (le: LogEntry) :=
     match le with
-    | LE LogWrite P1 v => Some v
+    | LE Logs.LogWrite P1 v => Some v
     | _ => None
     end.
 
@@ -99,7 +99,7 @@ Section Logs.
 
   Definition log_latest_write_fn (le: LogEntry) :=
     match le with
-    | LE LogWrite _ v => Some v
+    | LE Logs.LogWrite _ v => Some v
     | _ => None
     end.
 
@@ -139,8 +139,8 @@ Section Maps.
 
   Definition LogEntry_map (f: V -> V) := fun '(LE kind prt v) =>
     match kind with
-    | LogRead => fun v => LE LogRead prt v
-    | LogWrite => fun v => LE LogWrite prt (f v)
+    | Logs.LogRead => fun v => LE Logs.LogRead prt v
+    | Logs.LogWrite => fun v => LE Logs.LogWrite prt (f v)
     end v.
 
   Definition RLog_map (f: V -> V) l := List.map (LogEntry_map f) l.
