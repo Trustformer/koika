@@ -1,6 +1,7 @@
 (*! Language | Semantics of typed Kôika programs !*)
 Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
 Import PrimTyped PrimUntyped.
+Require TypedSemantics TypeInference.
 
 Ltac destr_in H :=
   match type of H with
@@ -882,7 +883,8 @@ Section Interp.
           simpl in Heqr. clear Heqr. simpl in arg.
           simpl PrimSpecs.sigma1.
           simpl.
-          unfold PrimTypeInference.find_field in Heqr0. unfold opt_result in Heqr0.
+          unfold PrimTypeInference.find_field in Heqr0.
+          unfold opt_result in Heqr0.
           destr_in Heqr0; inv Heqr0.
           revert s0 Heqo arg. destruct s. simpl. clear.
           induction struct_fields; intros; eauto. easy.
@@ -1579,26 +1581,29 @@ Section Interp.
 
     Lemma val_of_struct_value_rew:
       forall fields x,
-        (fix
-           val_of_struct_value (fields : list (string * type)) (x : struct_denote fields) {struct
-                                                                                             fields} : list val :=
-           match fields as fields0 return (struct_denote fields0 -> list val) with
-           | [] => fun _ : unit => []
-           | p :: fields0 =>
-             let (_, tau) as p0 return (snd p0 * struct_denote fields0 -> list val) := p in
-             fun '(x0, xs) => val_of_value x0 :: val_of_struct_value fields0 xs
-           end x) fields x =
-        val_of_struct_value' fields x.
+        (fix val_of_struct_value
+          (fields : list (string * type)) (x : struct_denote fields)
+          {struct fields}
+          : list val
+        :=
+          match fields as fields0
+          return (struct_denote fields0 -> list val) with
+          | [] => fun _ : unit => []
+          | p :: fields0 =>
+            let (_, tau)
+              as p0 return (snd p0 * struct_denote fields0 -> list val) := p in
+            fun '(x0, xs) => val_of_value x0 :: val_of_struct_value fields0 xs
+          end x
+        ) fields x = val_of_struct_value' fields x.
     Proof.
       induction fields; simpl; intros; eauto.
     Qed.
 
     Lemma subst_field_ok':
       forall flds idx v s,
-        subst_field (index_to_nat idx) (val_of_value v)
-                    (val_of_struct_value' flds s) =
-        Some (val_of_struct_value' flds
-                                   (BitFuns.subst_field flds s idx v)).
+      subst_field (index_to_nat idx) (val_of_value v)
+        (val_of_struct_value' flds s)
+      = Some (val_of_struct_value' flds (BitFuns.subst_field flds s idx v)).
     Proof.
       induction flds; simpl; intros; eauto. easy.
       repeat destr. simpl in *. auto.
@@ -1606,14 +1611,13 @@ Section Interp.
     Qed.
 
     Lemma subst_field_ok:
-      forall sig idx (s: struct_t sig) v,
-        exists s',
-          val_of_value s = Struct sig s' /\
-          exists s'',
-          subst_field (index_to_nat idx) (val_of_value v) s' = Some s'' /\
-          Struct sig s'' =
-          val_of_value (tau:=struct_t sig) (BitFuns.subst_field (struct_fields sig) s idx v)
-    .
+      forall sig idx (s: struct_t sig) v, exists s',
+      val_of_value s = Struct sig s'
+      /\ exists s'',
+        subst_field (index_to_nat idx) (val_of_value v) s' = Some s''
+      /\ Struct sig s'' = val_of_value (tau := struct_t sig) (
+        BitFuns.subst_field (struct_fields sig) s idx v
+      ).
     Proof.
       intros.
       simpl in s.
@@ -1624,8 +1628,10 @@ Section Interp.
       eexists; split; eauto.
     Qed.
 
-    Fixpoint subst_field_name (flds: list (string * type)) (n: string)
-             (v: val) (s: list val) : option (list val) :=
+    Fixpoint subst_field_name
+      (flds: list (string * type)) (n: string) (v: val) (s: list val)
+      : option (list val)
+    :=
       match flds, s with
       | _, [] => None
       | [], _ => None
@@ -1634,14 +1640,14 @@ Section Interp.
         else let/opt s := subst_field_name flds n v r in Some (a::s)
       end.
 
-
     Lemma subst_field_name_ok':
       forall flds x idx fname v s,
-            PrimTypeInference.find_field {| struct_name := x; struct_fields := flds|} fname = Success idx ->
-        subst_field_name flds fname (val_of_value v)
-                    (val_of_struct_value' flds s) =
-        Some (val_of_struct_value' flds
-                                   (BitFuns.subst_field flds s idx v)).
+      PrimTypeInference.find_field
+        {| struct_name := x; struct_fields := flds|} fname = Success idx
+      ->
+        subst_field_name
+          flds fname (val_of_value v) (val_of_struct_value' flds s)
+        = Some (val_of_struct_value' flds (BitFuns.subst_field flds s idx v)).
     Proof.
       induction flds; simpl; intros; eauto. easy.
       destr_in v.
@@ -1654,20 +1660,22 @@ Section Interp.
         unfold PrimTypeInference.find_field in H. simpl in H.
         destr_in H.
         + subst. simpl in H. inv H.
-        + destr_in H; inv H. simpl in *. erewrite IHflds with (x:=x). simpl. auto.
+        + destr_in H; inv H. simpl in *. erewrite IHflds with (x:=x).
+          simpl. auto.
           unfold PrimTypeInference.find_field. simpl. rewrite Heqo. simpl. auto.
     Qed.
 
     Lemma subst_field_name_ok:
       forall sig fname idx (s: struct_t sig) v,
-        PrimTypeInference.find_field sig fname = Success idx ->
-        exists s',
-          val_of_value s = Struct sig s' /\
-          exists s'',
-          subst_field_name (struct_fields sig) fname (val_of_value v) s' = Some s'' /\
-          Struct sig s'' =
-          val_of_value (tau:=struct_t sig) (BitFuns.subst_field (struct_fields sig) s idx v)
-    .
+      PrimTypeInference.find_field sig fname = Success idx ->
+      exists s',
+        val_of_value s = Struct sig s' /\
+        exists s'',
+        subst_field_name (struct_fields sig) fname (val_of_value v) s'
+        = Some s''
+        /\ Struct sig s''
+        = val_of_value
+          (tau:=struct_t sig) (BitFuns.subst_field (struct_fields sig) s idx v).
     Proof.
       intros.
       simpl in s.
@@ -1682,9 +1690,9 @@ Section Interp.
 
     Lemma vect_replace_to_list:
       forall {A: Type} sz (v: vect A sz) l1 (a: A) l2 x idx,
-        vect_to_list v = l1 ++ a :: l2 ->
-        List.length l1 = index_to_nat idx ->
-        vect_to_list (vect_replace v idx x) = l1 ++ x :: l2.
+      vect_to_list v = l1 ++ a :: l2 ->
+      List.length l1 = index_to_nat idx ->
+      vect_to_list (vect_replace v idx x) = l1 ++ x :: l2.
     Proof.
       induction sz; simpl; intros; eauto. easy.
       destr.
@@ -1702,11 +1710,10 @@ Section Interp.
 
     Lemma take_drop_map:
       forall {A B: Type} (f: A -> B) n l l1 l2,
-        take_drop n (map f l) = Some (l1, l2) ->
-        exists l1' l2',
-          take_drop n l = Some (l1', l2') /\
-          l1 = List.map f l1' /\
-          l2 = List.map f l2'.
+      take_drop n (map f l) = Some (l1, l2) ->
+      exists l1' l2',
+        take_drop n l = Some (l1', l2') /\
+        l1 = List.map f l1' /\ l2 = List.map f l2'.
     Proof.
       induction n; simpl; intros; eauto.
       - inv H. exists [], l; repeat split; eauto.
@@ -1739,7 +1746,8 @@ Section Interp.
       | UStruct2 (USubstFieldBits sig fname) =>
         match v1, v2 with
           Bits sz v1, Bits _ v2 =>
-          let/opt2 ofs, w := find_field_offset_right (struct_fields sig) fname in
+          let/opt2 ofs, w :=
+            find_field_offset_right (struct_fields sig) fname in
           let res := ubits2_sigma (USliceSubst ofs w) v1 v2 in
           Some (Bits sz res)
         | _, _ => None
@@ -1757,21 +1765,21 @@ Section Interp.
       | UArray2 (USubstElementBits sig n) =>
         match v1, v2 with
           Bits sz v1, Bits _ v2 =>
-          let res := ubits2_sigma (USliceSubst ((array_len sig - S n) * element_sz sig) (element_sz sig)) v1 v2 in
+          let res := ubits2_sigma (USliceSubst (
+            (array_len sig - S n) * element_sz sig
+          ) (element_sz sig)) v1 v2 in
           Some (Bits sz res)
         | _, _ => None
         end
       end.
 
-
     Lemma sigma2_correct:
-          forall ufn fn ty1 ty2,
-            PrimTypeInference.tc2
-              ufn
-              ty1 ty2 = Success fn ->
-            forall (arg1: arg1Sig (PrimSignatures.Sigma2 fn))
-                   (arg2: arg2Sig (PrimSignatures.Sigma2 fn)),
-              sigma2 ufn (val_of_value arg1) (val_of_value arg2) = Some (val_of_value (PrimSpecs.sigma2 fn arg1 arg2)).
+      forall ufn fn ty1 ty2, PrimTypeInference.tc2 ufn ty1 ty2 = Success fn ->
+        forall
+          (arg1: arg1Sig (PrimSignatures.Sigma2 fn))
+          (arg2: arg2Sig (PrimSignatures.Sigma2 fn)),
+        sigma2 ufn (val_of_value arg1) (val_of_value arg2)
+        = Some (val_of_value (PrimSpecs.sigma2 fn arg1 arg2)).
     Proof.
       destruct ufn; simpl; intros.
       - inv H. simpl in *. destr; f_equal; f_equal.
@@ -1815,7 +1823,8 @@ Section Interp.
           assert (pos < array_len s).
           {
             destruct (lt_dec pos (array_len s)). auto.
-            unfold PrimTypeInference.check_index in Heqr0. unfold opt_result in Heqr0.
+            unfold PrimTypeInference.check_index in Heqr0.
+            unfold opt_result in Heqr0.
             destr_in Heqr0; inv Heqr0.
             rewrite index_of_nat_ge_none in Heqo. congruence. lia.
           }
@@ -1827,18 +1836,19 @@ Section Interp.
 
           edestruct (@take_drop_spec) as (EQ1 & EQ2 & EQ3). apply EQ4.
           rewrite vect_to_list_length in EQ3.
-          destr. erewrite <- map_length in EQ3. rewrite <- EQ6 in EQ3. simpl in EQ3. lia.
-
+          destr. erewrite <- map_length in EQ3. rewrite <- EQ6 in EQ3.
+          simpl in EQ3. lia.
           destruct l2'; simpl in *; try congruence. inv EQ6.
           erewrite vect_replace_to_list; eauto.
           rewrite map_app. reflexivity.
-          unfold PrimTypeInference.check_index in Heqr0. unfold opt_result in Heqr0.
+          unfold PrimTypeInference.check_index in Heqr0.
+          unfold opt_result in Heqr0.
           destr_in Heqr0; inv Heqr0.
           symmetry; eapply index_to_nat_of_nat; eauto.
-
         + destr_in H; try congruence. inv H. simpl in *.
           rewrite slice_subst.
-          unfold PrimTypeInference.check_index in Heqr. unfold opt_result in Heqr.
+          unfold PrimTypeInference.check_index in Heqr.
+          unfold opt_result in Heqr.
           destr_in Heqr; inv Heqr.
           unfold element_offset_right.
           erewrite index_to_nat_of_nat; eauto.
@@ -1851,63 +1861,60 @@ Section Interp.
 
     Section Args.
       Context (interp_action:
-                 forall (Gamma: list (var_t * val))
-                        (sched_log: Log) (action_log: Log)
-                        (a: uaction),
-                   option (Log * val * (list (var_t * val)))).
+        forall
+          (Gamma: list (var_t * val)) (sched_log: Log) (action_log: Log)
+          (a: uaction), option (Log * val * (list (var_t * val)))
+      ).
 
       Fixpoint interp_args'
-               (Gamma: list (var_t * val))
-               (sched_log: Log)
-               (action_log: Log)
-               (argspec: tsig var_t)
-               (args: list uaction)
-        : option (Log * list (var_t * val) * list (var_t * val)) :=
+        (Gamma: list (var_t * val)) (sched_log: Log) (action_log: Log)
+        (argspec: tsig var_t) (args: list uaction)
+      : option (Log * list (var_t * val) * list (var_t * val)) :=
         match argspec, args with
         | [], [] => Some (action_log, [], Gamma)
         | argspec:: argspecs, arg :: args =>
-          let/opt3 action_log, ctx, Gamma := interp_args' Gamma sched_log action_log argspecs args in
-          let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log arg in
+          let/opt3 action_log, ctx, Gamma :=
+            interp_args' Gamma sched_log action_log argspecs args in
+          let/opt3 action_log, v, Gamma :=
+            interp_action Gamma sched_log action_log arg in
           Some (action_log, (fst argspec,v)::ctx, Gamma)
         | _, _ => None
         end.
     End Args.
 
-    Fixpoint list_assoc {K V: Type} {eq: EqDec K} (l: list (K * V)) (k: K): option V :=
-      match l with
-        [] => None
-      | (k1,v1)::l =>
-        if eq_dec k k1 then Some v1 else list_assoc  l k
+    Fixpoint list_assoc {K V: Type} {eq: EqDec K} (l: list (K * V)) (k: K)
+      : option V
+    :=
+      match l with [] => None
+      | (k1,v1)::l => if eq_dec k k1 then Some v1 else list_assoc  l k
       end.
 
-    Fixpoint list_assoc_set {K V: Type} {eq: EqDec K} (l: list (K * V)) (k: K) (v: V): list (K * V) :=
-      match l with
-        [] => [(k,v)]
+    Fixpoint list_assoc_set
+      {K V: Type} {eq: EqDec K} (l: list (K * V)) (k: K) (v: V)
+    : list (K * V) :=
+      match l with [] => [(k,v)]
       | (k1,v1)::l =>
         if eq_dec k k1 then (k1,v)::l else (k1,v1) :: list_assoc_set l k v
       end.
 
     Fixpoint interp_action
-             (Gamma: list (var_t * val))
-             (sched_log: Log)
-             (action_log: Log)
-             (a: uaction)
-             {struct a}
-      : option (Log * val * list (var_t * val)) :=
+      (Gamma: list (var_t * val)) (sched_log: Log) (action_log: Log)
+      (a: uaction) {struct a}
+    : option (Log * val * list (var_t * val)) :=
       match a with
       | UError e => None
       | UFail _ => None
       | USugar _ => None
       | UVar var =>
-        let/opt v := list_assoc Gamma var in
-        Some (action_log, v, Gamma)
-      | @UConst _ _ _ _ _ tau cst =>
-        Some (action_log, val_of_value cst, Gamma)
+        let/opt v := list_assoc Gamma var in Some (action_log, v, Gamma)
+      | @UConst _ _ _ _ _ tau cst => Some (action_log, val_of_value cst, Gamma)
       | UAssign k a =>
-        let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log a in
+        let/opt3 action_log, v, Gamma :=
+          interp_action Gamma sched_log action_log a in
         Some (action_log, Bits 0 [], list_assoc_set Gamma k v)
       | USeq a1 a2 =>
-        let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log a1 in
+        let/opt3 action_log, v, Gamma :=
+          interp_action Gamma sched_log action_log a1 in
         interp_action Gamma sched_log action_log a2
       | UBind k a1 a2 =>
         let/opt3 action_log, v, Gamma :=
@@ -1916,61 +1923,72 @@ Section Interp.
            interp_action ((k, v):: Gamma) sched_log action_log a2
         in Some (action_log, v, tl Gamma)
       | UIf cond athen aelse =>
-        let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log cond in
+        let/opt3 action_log, v, Gamma :=
+          interp_action Gamma sched_log action_log cond in
         match v with
         | Bits 1 [b] =>
-          if b then
-            interp_action Gamma sched_log action_log athen
-          else
-            interp_action Gamma sched_log action_log aelse
+          if b then interp_action Gamma sched_log action_log athen
+          else interp_action Gamma sched_log action_log aelse
         | _ => None
         end
       | URead prt idx =>
         if may_read sched_log prt idx then
           Some (log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log,
-                match prt with
-                | P0 => REnv.(getenv) r idx
-                | P1 => match latest_write0 (V:=val) (log_app action_log sched_log) idx with
-                        | Some v => v
-                        | None => REnv.(getenv) r idx
-                        end
-                end,
-                Gamma)
+            match prt with
+            | P0 => REnv.(getenv) r idx
+            | P1 =>
+              match
+                latest_write0 (V:=val) (log_app action_log sched_log) idx
+              with
+              | Some v => v
+              | None => REnv.(getenv) r idx
+              end
+            end
+          , Gamma)
         else None
       | UWrite prt idx v =>
-        let/opt3 action_log, val, Gamma := interp_action Gamma sched_log action_log v in
+        let/opt3 action_log, val, Gamma :=
+          interp_action Gamma sched_log action_log v in
         if may_write sched_log action_log prt idx then
-          Some (log_cons idx (LE Logs.LogWrite prt val) action_log, Bits 0 [], Gamma)
+          Some (
+            log_cons idx (LE Logs.LogWrite prt val) action_log, Bits 0 [], Gamma
+          )
         else None
       | UUnop fn arg =>
-        let/opt3 action_log, arg1, Gamma := interp_action Gamma sched_log action_log arg in
+        let/opt3 action_log, arg1, Gamma :=
+          interp_action Gamma sched_log action_log arg in
         let/opt v := sigma1 fn arg1 in
         Some (action_log, v, Gamma)
       | UBinop fn arg1 arg2 =>
-        let/opt3 action_log, arg1, Gamma := interp_action Gamma sched_log action_log arg1 in
-        let/opt3 action_log, arg2, Gamma := interp_action Gamma sched_log action_log arg2 in
+        let/opt3 action_log, arg1, Gamma :=
+          interp_action Gamma sched_log action_log arg1 in
+        let/opt3 action_log, arg2, Gamma :=
+          interp_action Gamma sched_log action_log arg2 in
         let/opt v := sigma2 fn arg1 arg2 in
         Some (action_log, v, Gamma)
       | UExternalCall fn arg1 =>
-        let/opt3 action_log, arg1, Gamma := interp_action Gamma sched_log action_log arg1 in
+        let/opt3 action_log, arg1, Gamma :=
+          interp_action Gamma sched_log action_log arg1 in
         Some (action_log, sigma fn arg1, Gamma)
       | UInternalCall f args =>
         let body := int_body f in
         let/opt3 action_log, results, Gamma :=
-           fold_left (fun acc a =>
-                        let/opt3 action_log, l, Gamma := acc in
-                        let/opt3 action_log, v, Gamma :=
-                           interp_action Gamma sched_log action_log a in
-                        Some (action_log, v::l, Gamma))
-                     args
-                     (Some (action_log, [], Gamma)) in
+          fold_left (
+            fun acc a =>
+              let/opt3 action_log, l, Gamma := acc in
+              let/opt3 action_log, v, Gamma :=
+                interp_action Gamma sched_log action_log a in
+              Some (action_log, v::l, Gamma))
+                args (Some (action_log, [], Gamma))
+            in
         let/opt3 action_log, v, _ :=
-           interp_action
-             (map (fun '(name, _, v) => (name, v))
-                  (combine (rev (int_argspec f)) results)) sched_log action_log body in
+          interp_action
+            (map
+              (fun '(name, _, v) => (name, v))
+              (combine (rev (int_argspec f)) results)
+            ) sched_log action_log body in
         Some (action_log, v, Gamma)
-      | UAPos p a =>
-        interp_action Gamma sched_log action_log a
+      | UAPos p a => interp_action Gamma sched_log action_log a
       end.
 
     Definition interp_rule (sched_log: Log) (rl: uaction) : option Log :=
@@ -1985,14 +2003,13 @@ Section Interp.
       Context (rules: rule_name_t -> uaction).
 
       Fixpoint interp_scheduler'
-               (sched_log: Log)
-               (s: scheduler pos_t rule_name_t)
-               {struct s} :=
+        (sched_log: Log) (s: scheduler pos_t rule_name_t) {struct s}
+      :=
         let interp_try rl s1 s2 :=
-            match interp_rule sched_log (rules rl) with
-            | Some l => interp_scheduler' (log_app l sched_log) s1
-            | None => interp_scheduler' sched_log s2
-            end in
+          match interp_rule sched_log (rules rl) with
+          | Some l => interp_scheduler' (log_app l sched_log) s1
+          | None => interp_scheduler' sched_log s2
+          end in
         match s with
         | Done => sched_log
         | Cons r s => interp_try r s s
@@ -2003,16 +2020,12 @@ Section Interp.
       Definition interp_scheduler (s: scheduler pos_t rule_name_t) :=
         interp_scheduler' log_empty s.
 
-      Definition interp_cycle
-                 (s: scheduler pos_t rule_name_t) :=
+      Definition interp_cycle (s: scheduler pos_t rule_name_t) :=
         commit_update r (interp_scheduler s).
 
     End Scheduler.
-
     End Action.
 End Interp.
-Require TypedSemantics.
-Require TypeInference.
 
 Section Eq.
 
@@ -2043,14 +2056,17 @@ Section Eq.
     forall k,
       R k (getenv e e1 k) (getenv e e2 k).
 
-  Definition logentry_eq {V:type} (ule: LogEntry val) (le: Logs.LogEntry V) : Prop :=
+  Definition logentry_eq
+    {V:type} (ule: LogEntry val) (le: Logs.LogEntry V)
+  : Prop :=
     (kind ule) = (Logs.kind le) /\
     port ule = Logs.port le /\
-    match Logs.kind le as l return
-          (match l return Type with
-           | Logs.LogRead => unit
-           | Logs.LogWrite => type_denote V
-           end -> Prop) with
+    match Logs.kind le as l return (
+      match l return Type with
+      | Logs.LogRead => unit
+      | Logs.LogWrite => type_denote V
+      end -> Prop
+    ) with
     | Logs.LogRead => fun _ => ULogs.val ule = Bits 0 []
     | Logs.LogWrite => fun v => ULogs.val ule = val_of_value v
     end (Logs.val le).
@@ -2062,775 +2078,721 @@ Section Eq.
 
   Notation uaction := (uaction pos_t var_t fn_name_t reg_t ext_fn_t).
 
-
-  Definition log_eq REnv (ul: env_t REnv (fun _ => RLog val)) (l: Logs.Log TR REnv) : Prop :=
-    env_t_R (V1:= fun k => Logs.RLog (TR k))
-            (V2:= fun k => RLog val)
-            (fun k v1 v2 => rlog_eq v2 v1) REnv l ul.
+  Definition log_eq
+    REnv (ul: env_t REnv (fun _ => RLog val)) (l: Logs.Log TR REnv)
+  : Prop :=
+    env_t_R
+      (V1:= fun k => Logs.RLog (TR k)) (V2:= fun k => RLog val)
+      (fun k v1 v2 => rlog_eq v2 v1) REnv l ul.
 
   Inductive gamma_eq :
-    forall (sig: tsig var_t), list (var_t * val) -> TypedSemantics.tcontext sig -> Prop :=
-  | gamma_eq_nil:
-      gamma_eq [] [] (CtxEmpty)
-  | gamma_eq_cons:
-      forall sig k t v ug g,
-        gamma_eq sig ug g ->
-        gamma_eq ((k,t)::sig) ((k,val_of_value v)::ug) (@CtxCons _ _ _ (k,t) v g)
+    forall (sig: tsig var_t),
+    list (var_t * val) -> TypedSemantics.tcontext sig -> Prop
+  :=
+    | gamma_eq_nil: gamma_eq [] [] (CtxEmpty)
+    | gamma_eq_cons:
+        forall sig k t v ug g,
+          gamma_eq sig ug g ->
+            gamma_eq
+              ((k,t)::sig)
+              ((k,val_of_value v)::ug) (@CtxCons _ _ _ (k,t) v g)
   .
 
-      (* Definition gamma_eq {sig} (UGamma: list (var_t * val)) *)
-      (*            (Gamma: TypedSemantics.tcontext sig) : Prop := *)
-      (*   forall k t (m: member _ sig), *)
-      (*     assoc k sig = Some (existT _ t m) -> *)
-      (*     Some (val_of_value (cassoc m Gamma)) =  (list_assoc UGamma k). *)
+  Lemma gamma_eq' {sig} (UGamma: list (var_t * val))
+             (Gamma: TypedSemantics.tcontext sig) :
+    gamma_eq sig UGamma Gamma ->
+    forall k t (m: member _ sig),
+      assoc k sig = Some (existT _ t m) ->
+      Some (val_of_value (cassoc m Gamma)) =  (list_assoc UGamma k).
+  Proof.
+    induction 1; simpl; intros; eauto. congruence. simpl in *.
+    repeat destr_in H0; simpl in *; subst.
+    unfold eq_rect_r in H0; simpl in H0.
+    inv H0.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3. subst. 2: apply eq_dec.
+    simpl. auto.
+    inv H0.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3. subst. 2: apply eq_dec.
+    simpl. eauto.
+    inv H0.
+  Qed.
+
+  Lemma cast_action'_eq:
+    forall
+      (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
+      (a: TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau1)
+      (e: error_message var_t fn_name_t) a',
+    TypeInference.cast_action' TR Sigma p tau2 a e = Success a' ->
+    exists p : tau1 = tau2, a' = eq_rect _ _ a _ p.
+  Proof.
+    unfold TypeInference.cast_action'. intros.
+    destr_in H. subst.
+    unfold eq_rect_r in H. simpl in H. inv H.
+    exists eq_refl; reflexivity. inv H.
+  Qed.
+
+  Lemma cast_action_eq:
+    forall
+      (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
+      (a: TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau1) a',
+    TypeInference.cast_action TR Sigma p tau2 a = Success a' ->
+    exists p : tau1 = tau2, a' = eq_rect _ _ a _ p.
+  Proof.
+    intros. unfold TypeInference.cast_action in H.
+    eapply cast_action'_eq; eauto.
+  Qed.
+
+  Lemma list_assoc_gss:
+    forall {K V: Type} (eq: EqDec K) (l: list (K * V)) k v,
+      list_assoc (list_assoc_set l k v) k = Some v.
+  Proof.
+    induction l; simpl; intros; eauto.
+    destr.
+    repeat destr; eauto.
+    simpl. rewrite Heqs. auto.
+    simpl. rewrite Heqs. eauto.
+  Qed.
+
+  Lemma list_assoc_gso:
+    forall {K V: Type} (eq: EqDec K) (l: list (K * V)) k k' v (d: k <> k'),
+      list_assoc (list_assoc_set l k v) k' = list_assoc l k'.
+  Proof.
+    induction l; simpl; intros; eauto.
+    destr.
+    repeat destr; simpl; eauto.
+    - rewrite Heqs0. auto.
+    - rewrite Heqs0. auto.
+    - rewrite Heqs0. eauto.
+  Qed.
+
+  Lemma gamma_eq_replace:
+    forall
+      sig g1 g2 (Geq: gamma_eq sig g1 g2) k t v (m: member (k, t) sig) (ASSOC
+        : assoc k sig = Some (existT (fun k2 : type => member (k, k2) sig) t m)
+      ), gamma_eq sig (list_assoc_set g1 k (val_of_value v)) (creplace m v g2).
+  Proof.
+    induction 1; simpl; intros; eauto. congruence.
+    repeat destr_in ASSOC; simpl in *; try congruence.
+    - subst. unfold eq_rect_r in ASSOC; simpl in ASSOC.
+      inv ASSOC.
+      apply Eqdep_dec.inj_pair2_eq_dec in H1. subst. 2: apply eq_dec.
+      simpl.
+      constructor. auto.
+    - inv ASSOC.
+      apply Eqdep_dec.inj_pair2_eq_dec in H1. subst. 2: apply eq_dec.
+      simpl.
+      constructor. eauto.
+  Qed.
+
+  Lemma log_eq_existsb:
+    forall usched_log sched_log, log_eq REnv usched_log sched_log ->
+      forall idx f uf, (forall ule idx le, ule = le -> uf ule idx = f le idx) ->
+        Logs.log_existsb sched_log idx f = log_existsb usched_log idx uf.
+  Proof.
+    unfold Logs.log_existsb, log_existsb. intros.
+    unfold log_eq in H. red in H.
+    red in H.
+    generalize (H idx).
+    generalize (@getenv _ REnv (fun x => Logs.RLog (TR x)) sched_log idx).
+    generalize (getenv REnv usched_log idx).
+    clear - H0.
+    induction 1; simpl; intros. auto.
+    red in H. intuition.
+    destruct x, y; simpl in *. subst.
+    erewrite H0; eauto. f_equal. eauto.
+  Qed.
+
+  Lemma may_read_eq:
+    forall usched_log sched_log, log_eq REnv usched_log sched_log ->
+      forall port idx,
+      Logs.may_read sched_log port idx = may_read usched_log port idx.
+  Proof.
+    unfold Logs.may_read, may_read.
+    intros.
+    rewrite ! log_eq_existsb
+      with (f:=Logs.is_write0) (uf:=is_write0) (usched_log:=usched_log); auto.
+    rewrite ! log_eq_existsb
+      with (f:=Logs.is_write1) (uf:=is_write1) (usched_log:=usched_log); auto.
+    destruct ule, le; simpl; auto; try easy.
+    destruct ule, le; simpl; auto; try easy.
+  Qed.
 
 
-      Lemma gamma_eq' {sig} (UGamma: list (var_t * val))
-                 (Gamma: TypedSemantics.tcontext sig) :
-        gamma_eq sig UGamma Gamma ->
-        forall k t (m: member _ sig),
-          assoc k sig = Some (existT _ t m) ->
-          Some (val_of_value (cassoc m Gamma)) =  (list_assoc UGamma k).
-      Proof.
-        induction 1; simpl; intros; eauto. congruence. simpl in *.
-        repeat destr_in H0; simpl in *; subst.
-        unfold eq_rect_r in H0; simpl in H0.
-        inv H0.
-        apply Eqdep_dec.inj_pair2_eq_dec in H3. subst. 2: apply eq_dec.
-        simpl. auto.
-        inv H0.
-        apply Eqdep_dec.inj_pair2_eq_dec in H3. subst. 2: apply eq_dec.
-        simpl. eauto.
-        inv H0.
-      Qed.
+  Lemma log_eq_app:
+    forall ul1 ul2 l1 l2,
+      log_eq REnv ul1 l1 ->
+      log_eq REnv ul2 l2 ->
+      log_eq REnv (log_app ul1 ul2) (Logs.log_app l1 l2).
+  Proof.
+    unfold log_app, Logs.log_app.
+    unfold log_eq. unfold env_t_R.
+    simpl. intros.
+    rewrite ! getenv_map2.
+    apply Forall2_app; eauto.
+    apply H. apply H0.
+  Qed.
 
-      Lemma cast_action'_eq:
-        forall (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
-               (a: TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau1)
-               (e: error_message var_t fn_name_t) a',
-          TypeInference.cast_action' TR Sigma p tau2 a e = Success a' ->
-          exists p : tau1 = tau2,
-            a' = eq_rect _ _ a _ p.
-      Proof.
-        unfold TypeInference.cast_action'. intros.
-        destr_in H. subst.
-        unfold eq_rect_r in H. simpl in H. inv H.
-        exists eq_refl; reflexivity. inv H.
-      Qed.
+  Lemma may_write_eq:
+    forall usched_log sched_log, log_eq REnv usched_log sched_log ->
+      forall urule_log rule_log, log_eq REnv urule_log rule_log ->
+        forall port idx,
+          Logs.may_write sched_log rule_log port idx
+          = may_write usched_log urule_log port idx.
+  Proof.
+    unfold Logs.may_write, may_write.
+    intros.
+    generalize (log_eq_app _ _ _ _ H0 H).
+    intros.
+    rewrite ! log_eq_existsb
+      with (f:=Logs.is_write0) (uf:=is_write0)
+        (usched_log:=log_app urule_log usched_log)
+    ; auto.
+    rewrite ! log_eq_existsb
+      with (f:=Logs.is_write1) (uf:=is_write1)
+        (usched_log:=log_app urule_log usched_log)
+    ; auto.
+    rewrite ! log_eq_existsb
+      with (f:=Logs.is_read1) (uf:=is_read1)
+      (usched_log:=log_app urule_log usched_log)
+    ; auto.
+    destruct ule, le; simpl; auto; try easy.
+    destruct ule, le; simpl; auto; try easy.
+    destruct ule, le; simpl; auto; try easy.
+  Qed.
 
-      Lemma cast_action_eq:
-        forall (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
-               (a: TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau1)
-               a',
-          TypeInference.cast_action TR Sigma p tau2 a = Success a' ->
-          exists p : tau1 = tau2,
-            a' = eq_rect _ _ a _ p.
-      Proof.
-        intros. unfold TypeInference.cast_action in H.
-        eapply cast_action'_eq; eauto.
-      Qed.
+  Lemma log_find_eq:
+    forall ulog log, log_eq REnv ulog log -> forall idx, forall f uf,
+    (forall ule (le: Logs.LogEntry (TR idx)),
+      logentry_eq ule le -> uf ule = option_map (val_of_value) (f le)
+    ) ->
+      option_map (val_of_value (tau:=TR idx)) (Logs.log_find log idx f)
+      = (log_find ulog idx uf).
+  Proof.
+    unfold Logs.log_find, log_find.
+    intros.
+    red in H. red in H. red in H.
+    generalize (H idx).
+    generalize (@getenv _ REnv (fun x => Logs.RLog (TR x)) log idx).
+    generalize (getenv REnv ulog idx).
+    clear - H0.
+    induction 1; simpl; intros. auto.
+    erewrite H0; eauto. destr; simpl; eauto.
+  Qed.
 
+  Lemma latest_write0_eq:
+    forall ulog log, log_eq REnv ulog log ->
+      forall idx,
+        option_map (val_of_value (tau:=TR idx)) (Logs.latest_write0 log idx)
+        = (latest_write0 ulog idx).
+  Proof.
+    unfold Logs.latest_write0, latest_write0.
+    intros.
+    eapply log_find_eq. auto.
+    intros. red in H0. intuition.
+    destruct ule, le; simpl in *. subst.
+    destr_in val1.
+    - subst. reflexivity.
+    - subst.
+      destr; auto.
+  Qed.
 
+  Lemma log_eq_cons:
+    forall idx ulog (log: Logs._Log) ule le, log_eq REnv ulog log ->
+      logentry_eq ule le ->
+        log_eq REnv (log_cons idx ule ulog) (Logs.log_cons idx le log).
+  Proof.
+    unfold log_eq. unfold env_t_R.
+    unfold rlog_eq.
+    intros. unfold log_cons, Logs.log_cons.
+    destruct (eq_dec idx k).
+    - subst.
+      rewrite ! get_put_eq.
+      constructor; eauto.
+    - rewrite ! get_put_neq; eauto.
+  Qed.
 
-      Lemma list_assoc_gss:
-        forall {K V: Type} (eq: EqDec K) (l: list (K * V)) k v,
-          list_assoc (list_assoc_set l k v) k = Some v.
-      Proof.
-        induction l; simpl; intros; eauto.
-        destr.
-        repeat destr; eauto.
-        simpl. rewrite Heqs. auto.
-        simpl. rewrite Heqs. eauto.
-      Qed.
+  Fixpoint assert_argtypes'
+    {sig} (args_desc: tsig var_t)
+    (args: list (
+      pos_t
+      * {tau : type & TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau}
+    ))
+  : result (context (K := (var_t * type)) (fun k_tau =>
+      TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau)
+    ) args_desc) unit
+  :=
+    match args_desc, args with
+    | [], [] => Success CtxEmpty
+    | [], _ => Failure tt
+    | _, [] => Failure tt
+    | (name1, tau1) :: fn_sig, (pos1, arg1) :: args =>
+      match TypeInference.cast_action TR Sigma pos1 tau1 (projT2 arg1) with
+        Success arg1 =>
+        let/res ctx := assert_argtypes' fn_sig args in
+        Success (CtxCons (name1, tau1) arg1 ctx)
+      | _ => Failure tt
+      end
+    end.
 
-      Lemma list_assoc_gso:
-        forall {K V: Type} (eq: EqDec K) (l: list (K * V)) k k' v (d: k <> k'),
-          list_assoc (list_assoc_set l k v) k' = list_assoc l k'.
-      Proof.
-        induction l; simpl; intros; eauto.
-        destr.
-        repeat destr; simpl; eauto.
-        - rewrite Heqs0. auto.
-        - rewrite Heqs0. auto.
-        - rewrite Heqs0. eauto.
-      Qed.
-
-      Lemma gamma_eq_replace:
-        forall sig g1 g2
-               (Geq: gamma_eq sig g1 g2)
-               k t v
-               (m: member (k, t) sig)
-               (ASSOC: assoc k sig = Some (existT (fun k2 : type => member (k, k2) sig) t m)),
-
-          gamma_eq sig (list_assoc_set g1 k (val_of_value v))
-                   (creplace m v g2).
-      Proof.
-        induction 1; simpl; intros; eauto. congruence.
-        repeat destr_in ASSOC; simpl in *; try congruence.
-        - subst. unfold eq_rect_r in ASSOC; simpl in ASSOC.
-          inv ASSOC.
-          apply Eqdep_dec.inj_pair2_eq_dec in H1. subst. 2: apply eq_dec.
-          simpl.
-          constructor. auto.
-        - inv ASSOC.
-          apply Eqdep_dec.inj_pair2_eq_dec in H1. subst. 2: apply eq_dec.
-          simpl.
-          constructor. eauto.
-      Qed.
-
-
-      (*       Lemma gamma_eq_replace: *)
-      (*   forall sig (* (ND: NoDup (map fst sig)) *) g1 g2 k t v *)
-      (*          (m: member (k, t) sig) *)
-      (*          (ASSOC: assoc k sig = Some (existT (fun k2 : type => member (k, k2) sig) t m)), *)
-      (*     gamma_eq g1 g2 -> *)
-      (*     gamma_eq (list_assoc_set g1 k (val_of_value v)) *)
-      (*              (creplace m v g2). *)
-      (* Proof. *)
-      (*   unfold gamma_eq. simpl. intros. *)
-      (*   destruct (eq_dec k k0). *)
-      (*   - subst. *)
-      (*     rewrite H0 in ASSOC; inv ASSOC. *)
-      (*     apply Eqdep_dec.inj_pair2_eq_dec in H3. subst. 2: apply eq_dec. *)
-      (*     rewrite cassoc_creplace_eq. *)
-      (*     rewrite list_assoc_gss. auto. *)
-      (*   - rewrite cassoc_creplace_neq_k; auto. *)
-      (*     rewrite list_assoc_gso. eauto. auto. intro A; inv A. congruence. *)
-      (* Qed. *)
-
-
-
-      Lemma log_eq_existsb:
-        forall usched_log sched_log,
-          log_eq REnv usched_log sched_log ->
-          forall idx f uf,
-            (forall ule idx le,
-                ule = le ->
-                uf ule idx = f le idx
-            ) ->
-            Logs.log_existsb sched_log idx f =
-            log_existsb usched_log idx uf.
-      Proof.
-        unfold Logs.log_existsb, log_existsb. intros.
-        unfold log_eq in H. red in H.
-        red in H.
-        generalize (H idx).
-        generalize (@getenv _ REnv (fun x => Logs.RLog (TR x)) sched_log idx).
-        generalize (getenv REnv usched_log idx).
-        clear - H0.
-        induction 1; simpl; intros. auto.
-        red in H. intuition.
-        destruct x, y; simpl in *. subst.
-        erewrite H0; eauto. f_equal. eauto.
-      Qed.
-
-      Lemma may_read_eq:
-        forall usched_log sched_log,
-          log_eq REnv usched_log sched_log ->
-          forall port idx,
-            Logs.may_read sched_log port idx =
-            may_read usched_log port idx.
-      Proof.
-        unfold Logs.may_read, may_read.
-        intros.
-        rewrite ! log_eq_existsb with (f:=Logs.is_write0) (uf:=is_write0) (usched_log:=usched_log); auto.
-        rewrite ! log_eq_existsb with (f:=Logs.is_write1) (uf:=is_write1) (usched_log:=usched_log); auto.
-        destruct ule, le; simpl; auto; try easy.
-        destruct ule, le; simpl; auto; try easy.
-      Qed.
-
-
-      Lemma log_eq_app:
-        forall ul1 ul2 l1 l2,
-          log_eq REnv ul1 l1 ->
-          log_eq REnv ul2 l2 ->
-          log_eq REnv (log_app ul1 ul2) (Logs.log_app l1 l2).
-      Proof.
-        unfold log_app, Logs.log_app.
-        unfold log_eq. unfold env_t_R.
-        simpl. intros.
-        rewrite ! getenv_map2.
-        apply Forall2_app; eauto.
-        apply H. apply H0.
-      Qed.
-
-      Lemma may_write_eq:
-        forall usched_log sched_log,
-          log_eq REnv usched_log sched_log ->
-          forall urule_log rule_log,
-            log_eq REnv urule_log rule_log ->
-            forall port idx,
-              Logs.may_write sched_log rule_log port idx =
-              may_write usched_log urule_log port idx.
-      Proof.
-        unfold Logs.may_write, may_write.
-        intros.
-        generalize (log_eq_app _ _ _ _ H0 H).
-        intros.
-        rewrite ! log_eq_existsb with (f:=Logs.is_write0) (uf:=is_write0) (usched_log:=log_app urule_log usched_log); auto.
-        rewrite ! log_eq_existsb with (f:=Logs.is_write1) (uf:=is_write1) (usched_log:=log_app urule_log usched_log); auto.
-        rewrite ! log_eq_existsb with (f:=Logs.is_read1) (uf:=is_read1) (usched_log:=log_app urule_log usched_log); auto.
-        destruct ule, le; simpl; auto; try easy.
-        destruct ule, le; simpl; auto; try easy.
-        destruct ule, le; simpl; auto; try easy.
-      Qed.
-
-
-
-      Lemma log_find_eq:
-        forall ulog log,
-          log_eq REnv ulog log ->
-          forall idx,
-          forall f uf,
-            (forall ule (le: Logs.LogEntry (TR idx)),
-                logentry_eq ule le ->
-                uf ule = option_map (val_of_value) (f le)
-            ) ->
-
-            option_map (val_of_value (tau:=TR idx)) (Logs.log_find log idx f) =
-            (log_find ulog idx uf).
-      Proof.
-        unfold Logs.log_find, log_find.
-        intros.
-        red in H. red in H. red in H.
-        generalize (H idx).
-        generalize (@getenv _ REnv (fun x => Logs.RLog (TR x)) log idx).
-        generalize (getenv REnv ulog idx).
-        clear - H0.
-        induction 1; simpl; intros. auto.
-        erewrite H0; eauto. destr; simpl; eauto.
-      Qed.
-
-      Lemma latest_write0_eq:
-        forall ulog log,
-          log_eq REnv ulog log ->
-          forall idx,
-            option_map (val_of_value (tau:=TR idx)) (Logs.latest_write0 log idx) =
-            (latest_write0 ulog idx).
-      Proof.
-        unfold Logs.latest_write0, latest_write0.
-        intros.
-        eapply log_find_eq. auto.
-        intros. red in H0. intuition.
-        destruct ule, le; simpl in *. subst.
-        destr_in val1.
-        - subst. reflexivity.
-        - subst.
-          destr; auto.
-      Qed.
-
-      Lemma log_eq_cons:
-        forall idx ulog (log: Logs._Log) ule le,
-          log_eq REnv ulog log ->
-          logentry_eq ule le ->
-          log_eq REnv (log_cons idx ule ulog) (Logs.log_cons idx le log).
-      Proof.
-        unfold log_eq. unfold env_t_R.
-        unfold rlog_eq.
-        intros. unfold log_cons, Logs.log_cons.
-        destruct (eq_dec idx k).
-        - subst.
-          rewrite ! get_put_eq.
-          constructor; eauto.
-        - rewrite ! get_put_neq; eauto.
-      Qed.
-
-      Fixpoint assert_argtypes' {sig}
-               (args_desc: tsig var_t)
-               (args: list (pos_t * {tau : type & TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau}))
-        : result (context (K := (var_t * type)) (fun k_tau => TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau)) args_desc) unit :=
-        match args_desc, args with
-        | [], [] => Success CtxEmpty
-        | [], _ => Failure tt
-        | _, [] => Failure tt
-        | (name1, tau1) :: fn_sig, (pos1, arg1) :: args =>
-          match TypeInference.cast_action TR Sigma pos1 tau1 (projT2 arg1) with
-            Success arg1 =>
-            let/res ctx := assert_argtypes' fn_sig args in
-            Success (CtxCons (name1, tau1) arg1 ctx)
-          | _ => Failure tt
-          end
-        end.
-
-      Lemma assert_argtypes'_eq : forall {T:Type} (sig: tsig var_t) args_desc args s ufn fname n p,
-          TypeInference.assert_argtypes'
-            (T:=T) TR Sigma ufn n fname p args_desc args = Success s <->
-          assert_argtypes' (sig:=sig) args_desc args = Success s.
-      Proof.
-        induction args_desc; simpl; intros; eauto.
-        - destr; split; intuition congruence.
-        - destruct a. split. intros.
-          + destr_in H; [inv H|]. destr_in H.
-            destr_in H; [|inv H].
-            destr_in H; [|inv H]. inv H.
-            erewrite (proj1 (IHargs_desc _ _ _ _ _ _)). eauto. eauto.
-          + intros. destr_in H; [inv H|]. destr_in H.
-            destr_in H; [|inv H].
-            destr_in H; [|inv H]. inv H.
-            erewrite (proj2 (IHargs_desc _ _ _ _ _ _)). eauto. eauto.
-      Qed.
-
-      Lemma result_list_map_length {A B F: Type} (f: A -> result B F):
-        forall la lb,
-          result_list_map f la = Success lb ->
-          List.length lb = List.length la.
-      Proof.
-        induction la; simpl; intros; eauto. inv H; reflexivity.
+  Lemma assert_argtypes'_eq :
+    forall {T:Type} (sig: tsig var_t) args_desc args s ufn fname n p,
+    TypeInference.assert_argtypes'
+      (T:=T) TR Sigma ufn n fname p args_desc args = Success s <->
+    assert_argtypes' (sig:=sig) args_desc args = Success s.
+  Proof.
+    induction args_desc; simpl; intros; eauto.
+    - destr; split; intuition congruence.
+    - destruct a. split. intros.
+      + destr_in H; [inv H|]. destr_in H.
         destr_in H; [|inv H].
         destr_in H; [|inv H]. inv H.
-        simpl.
-        erewrite IHla; eauto.
-      Qed.
-
-      Lemma result_list_map_app1 {A B F: Type} (f: A -> result B F):
-        forall la1 la2 lb1 lb2,
-          result_list_map f la1 = Success lb1 ->
-          result_list_map f la2 = Success lb2 ->
-          result_list_map f (la1 ++ la2) = Success (lb1 ++ lb2).
-      Proof.
-        induction la1; simpl; intros; eauto. inv H. simpl; auto.
+        erewrite (proj1 (IHargs_desc _ _ _ _ _ _)). eauto. eauto.
+      + intros. destr_in H; [inv H|]. destr_in H.
         destr_in H; [|inv H].
         destr_in H; [|inv H]. inv H.
-        erewrite IHla1; eauto. simpl; auto.
-      Qed.
+        erewrite (proj2 (IHargs_desc _ _ _ _ _ _)). eauto. eauto.
+  Qed.
 
-      Lemma result_list_map_app2 {A B F: Type} (f: A -> result B F):
-        forall la1 la2 lb,
-          result_list_map f (la1 ++ la2) = Success lb ->
-          exists lb1 lb2,
-            result_list_map f la1 = Success lb1 /\
-            result_list_map f la2 = Success lb2 /\
-            lb = lb1 ++ lb2.
-      Proof.
-        induction la1; simpl; intros; eauto.
-        destr_in H; [|inv H].
-        destr_in H; [|inv H]. inv H.
-        edestruct IHla1 as (lb1 & lb2 & EQ1 & EQ2 & EQl). eauto. subst.
-        rewrite EQ1, EQ2.
+  Lemma result_list_map_length {A B F: Type} (f: A -> result B F):
+    forall la lb, result_list_map f la = Success lb ->
+      List.length lb = List.length la.
+  Proof.
+    induction la; simpl; intros; eauto. inv H; reflexivity.
+    destr_in H; [|inv H].
+    destr_in H; [|inv H]. inv H.
+    simpl.
+    erewrite IHla; eauto.
+  Qed.
+
+  Lemma result_list_map_app1 {A B F: Type} (f: A -> result B F):
+    forall la1 la2 lb1 lb2, result_list_map f la1 = Success lb1 ->
+      result_list_map f la2 = Success lb2 ->
+        result_list_map f (la1 ++ la2) = Success (lb1 ++ lb2).
+  Proof.
+    induction la1; simpl; intros; eauto. inv H. simpl; auto.
+    destr_in H; [|inv H].
+    destr_in H; [|inv H]. inv H.
+    erewrite IHla1; eauto. simpl; auto.
+  Qed.
+
+  Lemma result_list_map_app2 {A B F: Type} (f: A -> result B F):
+    forall la1 la2 lb,
+    result_list_map f (la1 ++ la2) = Success lb -> exists lb1 lb2,
+      result_list_map f la1 = Success lb1
+      /\ result_list_map f la2 = Success lb2 /\ lb = lb1 ++ lb2.
+  Proof.
+    induction la1; simpl; intros; eauto.
+    destr_in H; [|inv H].
+    destr_in H; [|inv H]. inv H.
+    edestruct IHla1 as (lb1 & lb2 & EQ1 & EQ2 & EQl). eauto. subst.
+    rewrite EQ1, EQ2.
+    eexists; eexists; repeat split; eauto.
+  Qed.
+
+  Lemma result_list_map_rev {A B F: Type} (f: A -> result B F):
+    forall la lb, result_list_map f la = Success lb ->
+      result_list_map f (rev la) = Success (rev lb).
+  Proof.
+    induction la; simpl; intros; eauto. inv H; reflexivity.
+    destr_in H; [|inv H].
+    destr_in H; [|inv H]. inv H.
+    simpl.
+    erewrite result_list_map_app1; eauto. simpl. rewrite Heqr0. auto.
+  Qed.
+
+  Lemma combine_nil_inv:
+    forall {A B: Type} (la: list A) (lb: list B),
+    List.length la = List.length lb ->
+      combine la lb = [] -> la = [] /\ lb = [].
+  Proof.
+    induction la; simpl; intros.
+    - destruct lb; simpl in *; auto. lia.
+    - destruct lb. simpl in H. lia. inv H0.
+  Qed.
+
+  Lemma rev_nil_inv: forall {A:Type} (l: list A), rev l = [] -> l = [].
+  Proof.
+    destruct l; simpl in *. auto.
+    intros.
+    apply (f_equal (@List.length _)) in H.
+    rewrite app_length in H; simpl in H; lia.
+  Qed.
+
+  Lemma combine_app:
+    forall {A B : Type} (la1 la2 : list A) (lb1 lb2: list B),
+    List.length la1 = List.length lb1 ->
+      List.length la2 = List.length lb2 ->
+        combine (la1 ++ la2) (lb1 ++ lb2) = combine la1 lb1 ++ combine la2 lb2.
+  Proof.
+    induction la1; simpl; intros; eauto.
+    - destruct lb1; simpl in *; try lia. auto.
+    - destruct lb1; simpl in *; try lia.
+      rewrite IHla1 by lia. auto.
+  Qed.
+
+  Lemma combine_rev:
+    forall {A B : Type} (la : list A) (lb: list B),
+    List.length la = List.length lb ->
+      rev (combine la lb) = combine (rev la) (rev lb).
+  Proof.
+    induction la; simpl; intros; eauto.
+    destr. simpl in *; lia. simpl in *.
+    rewrite IHla by lia.
+    rewrite combine_app. simpl. auto.
+    rewrite ! rev_length; lia.
+    simpl; lia.
+  Qed.
+
+  Lemma combine_map:
+    forall
+      {A B C: Type} (f: A * B * C -> A * C) (g: A * B -> A)
+      (FG: forall x y z, f (x,y,z) = (g (x,y), z))
+      (l1: list (A * B)) (l2: list C),
+    map f (combine l1 l2) = combine (map g l1) l2.
+  Proof.
+    induction l1; simpl; intros; eauto.
+    destr. reflexivity. simpl. f_equal; eauto. destruct a; eauto.
+  Qed.
+
+  Hypothesis r_eq: forall i, getenv REnv r i = val_of_value (getenv REnv tr i).
+
+  Fixpoint size_uaction (ua: uaction) : nat :=
+    match ua  with
+    | UError err => 0
+    | UFail tau => 0
+    | UVar var => 0
+    | UConst cst => 0
+    | UAssign v ex => 1 + size_uaction ex
+    | USeq a1 a2 => 1 + size_uaction a1 + size_uaction a2
+    | UBind v ex body => 1 + size_uaction ex + size_uaction body
+    | UIf cond tbranch fbranch =>
+      1 + size_uaction cond + size_uaction tbranch + size_uaction fbranch
+    | URead port idx => 0
+    | UWrite port idx value => 1 + size_uaction value
+    | UUnop ufn1 arg1 => 1 + size_uaction arg1
+    | UBinop ufn2 arg1 arg2 => 1 + size_uaction arg1 + size_uaction arg2
+    | UExternalCall ufn arg => 1 + size_uaction arg
+    | UInternalCall ufn args =>
+      1 + size_uaction (int_body ufn) + list_sum (map size_uaction args)
+    | UAPos p e => 1 + size_uaction e
+    | USugar s => 0
+    end.
+
+  Lemma interp_action_correct:
+    forall
+      ua p sig tau a
+      (TA:
+        TypeInference.type_action TR Sigma p sig ua = Success (existT _ tau a)
+      ) (Gamma: TypedSemantics.tcontext sig) (UGamma: list (var_t * val))
+      (GammaEq: gamma_eq sig UGamma Gamma) sched_log action_log action_log'
+      usched_log uaction_log (SL: log_eq REnv usched_log sched_log)
+      (AL: log_eq REnv uaction_log action_log) v Gamma',
+    TypedSemantics.interp_action tr tsigma Gamma sched_log action_log a
+    = Some (action_log', v, Gamma') ->
+      exists uaction_log' UGamma',
+        interp_action
+          (pos_t:=pos_t) (fn_name_t := fn_name_t) r sigma UGamma usched_log
+          uaction_log ua
+        = Some (uaction_log', val_of_value v, UGamma')
+        /\ log_eq REnv uaction_log' action_log' /\ gamma_eq sig UGamma' Gamma'.
+  Proof.
+    intros ua. pattern ua.
+    match goal with
+    | |- ?P ua => set (PP:=P)
+    end.
+    remember (size_uaction ua).
+    revert ua Heqn.
+    pattern n.
+    eapply Nat.strong_right_induction with (z:=0).
+    { red. red. intros. subst. tauto.  }
+    2: lia.
+    intros n0 _ Plt ua Heqn. subst.
+    assert (Plt': forall a, size_uaction a < size_uaction ua -> PP a).
+    { intros. eapply Plt. 3: reflexivity. lia. auto.  }
+    clear Plt. rename Plt' into IHua. clear n. unfold PP.
+    destruct ua; simpl; intros.
+    - inv TA.
+    - inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. subst.
+      simpl in H. inv H.
+      apply eq_dec.
+    - destr_in TA; inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst.
+      simpl in H. inv H.
+      unfold opt_result in Heqr0; destr_in Heqr0; inv Heqr0. destruct s.
+      simpl.
+      setoid_rewrite <- gamma_eq'. simpl.
+      exists uaction_log, UGamma; split; eauto. eauto. eauto.
+    - inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst.
+      simpl in H. inv H.
+      exists uaction_log, UGamma; split; eauto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA]. inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destr_in H. destr_in H. inv H.
+      unfold opt_result in Heqr0; destr_in Heqr0; inv Heqr0.
+      destruct s. simpl in *.
+      destruct s0. simpl in *.
+      apply cast_action_eq in Heqr2.
+      destruct Heqr2 as (pf & EQ). subst.
+      simpl in Heqo.
+      edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      eexists; eexists; repeat split; eauto.
+      apply gamma_eq_replace; eauto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA]. inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destr_in H. destr_in H.
+      destruct s. simpl in *.
+      apply cast_action_eq in Heqr1.
+      destruct Heqr1 as (pf & EQ). subst.
+      simpl in Heqo.
+      edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      destruct s1. simpl in *.
+      edestruct (IHua ua2) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
+      4: apply H. eauto. eauto. eauto.
+      rewrite IA2'.
+      eexists; eexists; repeat split; eauto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destr_in H. destr_in H. destr_in H; [|inv H].
+      destruct p2. destruct p2. inv H.
+      destruct s, s0. simpl in *.
+      edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      edestruct (IHua ua2) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
+      4: apply Heqo0. 2-3: eauto.
+      constructor; eauto.
+      setoid_rewrite IA2'. simpl.
+      eexists; eexists; repeat split; eauto. inv Geq2.
+      apply Eqdep_dec.inj_pair2_eq_dec in H4. 2: apply eq_dec.
+      subst. simpl. auto.
+    - destr_in TA; [|inv TA]. destr_in TA; [|inv TA]. destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA]. destr_in TA; [|inv TA]. inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0.
+      destruct s. simpl in *.
+      apply cast_action_eq in Heqr1.
+      destruct Heqr1 as (pf & EQ). subst.
+      simpl in Heqo.
+      edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      destruct s1, s2. simpl in *.
+      apply cast_action_eq in Heqr4.
+      destruct Heqr4 as (pf & EQ). subst.
+      simpl in H.
+      destr.
+      + edestruct (IHua ua2) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
+        4: apply H. eauto. eauto. eauto.
+        rewrite IA2'. simpl.
         eexists; eexists; repeat split; eauto.
-      Qed.
-
-      Lemma result_list_map_rev {A B F: Type} (f: A -> result B F):
-        forall la lb,
-          result_list_map f la = Success lb ->
-          result_list_map f (rev la) = Success (rev lb).
-      Proof.
-        induction la; simpl; intros; eauto. inv H; reflexivity.
-        destr_in H; [|inv H].
-        destr_in H; [|inv H]. inv H.
-        simpl.
-        erewrite result_list_map_app1; eauto. simpl. rewrite Heqr0. auto.
-      Qed.
-
-      Lemma combine_nil_inv:
-        forall {A B: Type} (la: list A) (lb: list B),
-          List.length la = List.length lb ->
-          combine la lb = [] ->
-          la = [] /\ lb = [].
-      Proof.
-        induction la; simpl; intros.
-        - destruct lb; simpl in *; auto. lia.
-        - destruct lb. simpl in H. lia. inv H0.
-      Qed.
-
-      Lemma rev_nil_inv:
-        forall {A:Type} (l: list A),
-          rev l = [] -> l = [].
-      Proof.
-        destruct l; simpl in *. auto.
-        intros.
-        apply (f_equal (@List.length _)) in H.
-        rewrite app_length in H; simpl in H; lia.
-      Qed.
-
-      Lemma combine_app:
-        forall {A B : Type} (la1 la2 : list A) (lb1 lb2: list B),
-          List.length la1 = List.length lb1 ->
-          List.length la2 = List.length lb2 ->
-          combine (la1 ++ la2) (lb1 ++ lb2) = combine la1 lb1 ++ combine la2 lb2.
-      Proof.
-        induction la1; simpl; intros; eauto.
-        - destruct lb1; simpl in *; try lia. auto.
-        - destruct lb1; simpl in *; try lia.
-          rewrite IHla1 by lia. auto.
-      Qed.
-
-      Lemma combine_rev:
-        forall {A B : Type} (la : list A) (lb: list B),
-          List.length la = List.length lb ->
-          rev (combine la lb) = combine (rev la) (rev lb).
-      Proof.
-        induction la; simpl; intros; eauto.
-        destr. simpl in *; lia. simpl in *.
-        rewrite IHla by lia.
-        rewrite combine_app. simpl. auto.
-        rewrite ! rev_length; lia.
-        simpl; lia.
-      Qed.
-
-      Lemma combine_map:
-        forall {A B C: Type}
-               (f: A * B * C -> A * C)
-               (g: A * B -> A)
-               (FG: forall x y z, f (x,y,z) = (g (x,y), z))
-               (l1: list (A * B))
-               (l2: list C),
-          map f (combine l1 l2) = combine (map g l1) l2.
-      Proof.
-        induction l1; simpl; intros; eauto.
-        destr. reflexivity. simpl. f_equal; eauto. destruct a; eauto.
-      Qed.
-
-      Hypothesis r_eq:
-        forall i,
-          getenv REnv r i = val_of_value (getenv REnv tr i).
-
-      Fixpoint size_uaction (ua: uaction) : nat :=
-        match ua  with
-      | UError err => 0
-      | UFail tau => 0
-      | UVar var => 0
-      | UConst cst => 0
-      | UAssign v ex => 1 + size_uaction ex
-      | USeq a1 a2 => 1 + size_uaction a1 + size_uaction a2
-      | UBind v ex body => 1 + size_uaction ex + size_uaction body
-      | UIf cond tbranch fbranch => 1 + size_uaction cond + size_uaction tbranch + size_uaction fbranch
-      | URead port idx => 0
-      | UWrite port idx value => 1 + size_uaction value
-      | UUnop ufn1 arg1 => 1 + size_uaction arg1
-      | UBinop ufn2 arg1 arg2 => 1 + size_uaction arg1 + size_uaction arg2
-      | UExternalCall ufn arg => 1 + size_uaction arg
-      | UInternalCall ufn args => 1 + size_uaction (int_body ufn) + list_sum (map size_uaction args)
-      | UAPos p e => 1 + size_uaction e
-      | USugar s => 0
-      end.
-
-      Lemma interp_action_correct:
-        forall ua p sig tau a
-               (TA: TypeInference.type_action TR Sigma p sig ua = Success (existT _ tau a))
-               (Gamma: TypedSemantics.tcontext sig)
-               (UGamma: list (var_t * val))
-               (GammaEq: gamma_eq sig UGamma Gamma)
-               sched_log action_log action_log'
-               usched_log uaction_log
-               (SL: log_eq REnv usched_log sched_log)
-               (AL: log_eq REnv uaction_log action_log)
-               v Gamma'
-        ,
-          TypedSemantics.interp_action
-            tr tsigma
-            Gamma sched_log action_log a = Some (action_log', v, Gamma') ->
-          exists uaction_log' UGamma',
-            interp_action
-              (pos_t:=pos_t)
-              (fn_name_t := fn_name_t)
-              r sigma UGamma usched_log uaction_log ua = Some (uaction_log', val_of_value v, UGamma')
-            /\ log_eq REnv uaction_log' action_log'
-            /\ gamma_eq sig UGamma' Gamma'
-      .
-      Proof.
-        intros ua. pattern ua.
-        match goal with
-        | |- ?P ua => set (PP:=P)
-        end.
-        remember (size_uaction ua).
-        revert ua Heqn.
-        pattern n.
-        eapply Nat.strong_right_induction with (z:=0).
+      + edestruct (IHua ua3) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
+        4: apply H. eauto. eauto. eauto.
+        rewrite IA2'. simpl.
+        eexists; eexists; repeat split; eauto.
+    - inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      erewrite may_read_eq in H; eauto.
+      destr_in H; [|inv H]. inv H.
+      eexists; eexists; repeat split; eauto.
+      f_equal. f_equal. f_equal.
+      rewrite ! r_eq.
+      destr.
+      erewrite <- latest_write0_eq; eauto.
+      2: apply log_eq_app; eauto.
+      destruct (Logs.latest_write0) eqn:?; simpl; auto.
+      apply log_eq_cons; auto.
+      red. simpl. auto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0.
+      destruct s. simpl in *.
+      apply cast_action_eq in Heqr1.
+      destruct Heqr1 as (pf & EQ). subst.
+      simpl in Heqo.
+      edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      erewrite may_write_eq in H; eauto.
+      destr_in H; [|inv H]. inv H.
+      eexists; eexists; repeat split; eauto.
+      apply log_eq_cons; auto.
+      red. simpl. auto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0. inv H.
+      destruct s. simpl in *.
+      apply cast_action_eq in Heqr2.
+      destruct Heqr2 as (pf & EQ). subst.
+      simpl in Heqo.
+      edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      unfold TypeInference.lift_fn1_tc_result in Heqr1.
+      unfold result_map_failure in Heqr1. destr_in Heqr1; inv Heqr1.
+      erewrite usigma1_correct; eauto. simpl.
+      eexists; eexists; repeat split; eauto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0.
+      inv H.
+      destruct s, s0. simpl in *.
+      apply cast_action_eq in Heqr3.
+      destruct Heqr3 as (pf & EQ). subst.
+      simpl in Heqo.
+      apply cast_action_eq in Heqr4.
+      destruct Heqr4 as (pf & EQ). subst.
+      simpl in Heqo0.
+      edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      edestruct (IHua ua2) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
+      4: apply Heqo0. eauto. eauto. eauto.
+      rewrite IA2'. simpl.
+      unfold TypeInference.lift_fn2_tc_result in Heqr2.
+      unfold result_map_failure in Heqr2. destr_in Heqr2; inv Heqr2.
+      erewrite sigma2_correct; eauto. simpl.
+      eexists; eexists; repeat split; eauto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0. inv H.
+      destruct s. simpl in *.
+      apply cast_action_eq in Heqr1.
+      destruct Heqr1 as (pf & EQ). subst.
+      simpl in Heqo.
+      edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
+      4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl.
+      eexists; eexists; repeat split; eauto.
+      rewrite tsigma_correct. eauto.
+    - destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA].
+      inv TA.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
+      unfold opt_bind in H.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0.
+      destr_in H; [|inv H].
+      destruct p0. destruct p0.
+      inv H.
+      destruct s1. simpl in *.
+      apply cast_action_eq in Heqr3.
+      destruct Heqr3 as (pf & EQ). subst.
+      simpl in Heqo0.
+      unfold TypeInference.assert_argtypes in Heqr1.
+      rewrite assert_argtypes'_eq in Heqr1.
+      assert (List.length args = List.length (rev s)).
+      {
+        apply result_list_map_length in Heqr0. rewrite <- Heqr0.
+        rewrite rev_length; auto.
+      }
+      assert (
+          forall (p : pos_t) (sig : tsig var_t) s,
+            result_list_map (TypeInference.type_action TR Sigma p sig) args = Success s ->
+            forall (Gamma : TypedSemantics.tcontext sig) (UGamma : list (var_t * val)),
+              gamma_eq sig UGamma Gamma ->
+     forall (sched_log action_log action_log' : Logs.Log TR REnv)
+       (usched_log uaction_log : env_t REnv (fun _ : reg_t => RLog val)),
+     log_eq REnv usched_log sched_log ->
+     log_eq REnv uaction_log action_log ->
+     forall (s0 : context
+     (fun k_tau : var_t * type =>
+      TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau))
+     (rev (int_argspec ufn))),
+       assert_argtypes' (rev (int_argspec ufn))
+                        (rev (combine (map (TypeInference.actpos p) args) s)) = Success s0 ->
+       List.length args = List.length (rev s) ->
+     forall v (Gamma' : TypedSemantics.tcontext sig),
+       TypedSemantics.interp_args'
+         (@TypedSemantics.interp_action pos_t var_t fn_name_t reg_t ext_fn_t TR Sigma REnv tr tsigma)
+         Gamma sched_log action_log s0 =
+     Some (action_log', v, Gamma') ->
+     exists (uaction_log' : Log) res (UGamma' : list (var_t * val)),
+       fold_right
+      (fun a0 (acc : option (Log * list val * list (var_t * val))) =>
+       let/opt3 action_log0, l0, Gamma0 := acc
+       in (let/opt3 action_log1, v0, Gamma1
+           := interp_action r sigma Gamma0 usched_log action_log0 a0
+           in Some (action_log1, v0 :: l0, Gamma1))) (Some (uaction_log, [], UGamma)) (rev args) =
+       Some (uaction_log', res, UGamma') /\
+       gamma_eq _ (combine (map fst (rev (int_argspec ufn))) (res)) v /\
+       log_eq REnv uaction_log' action_log' /\ gamma_eq sig UGamma' Gamma').
+      {
+        clear - IHua.
+        rewrite <- (rev_involutive args).
+        assert (IHua': forall arg, In arg (rev args) -> PP arg).
         {
-          red. red. intros. subst. tauto.
-        } 2: lia.
-        intros n0 _ Plt ua Heqn. subst.
-        assert (Plt':
-                  forall a,
-                    size_uaction a < size_uaction ua -> PP a
-               ).
-        {
-          intros. eapply Plt. 3: reflexivity. lia. auto.
-        } clear Plt.
-        rename Plt' into IHua. clear n. unfold PP.
-        destruct ua; simpl; intros.
-        - inv TA.
-        - inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. subst.
-          simpl in H. inv H.
-          apply eq_dec.
-        - destr_in TA; inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst.
-          simpl in H. inv H.
-          unfold opt_result in Heqr0; destr_in Heqr0; inv Heqr0. destruct s.
-          simpl.
-          setoid_rewrite <- gamma_eq'. simpl.
-          exists uaction_log, UGamma; split; eauto. eauto. eauto.
-        - inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst.
-          simpl in H. inv H.
-          exists uaction_log, UGamma; split; eauto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA]. inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destr_in H. destr_in H. inv H.
-          unfold opt_result in Heqr0; destr_in Heqr0; inv Heqr0. destruct s. simpl in *.
-          destruct s0. simpl in *.
-          apply cast_action_eq in Heqr2.
-          destruct Heqr2 as (pf & EQ). subst.
-          simpl in Heqo.
-          edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          eexists; eexists; repeat split; eauto.
-          apply gamma_eq_replace; eauto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA]. inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destr_in H. destr_in H.
-          destruct s. simpl in *.
-          apply cast_action_eq in Heqr1.
-          destruct Heqr1 as (pf & EQ). subst.
-          simpl in Heqo.
-          edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          destruct s1. simpl in *.
-          edestruct (IHua ua2) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
-          4: apply H. eauto. eauto. eauto.
-          rewrite IA2'.
-          eexists; eexists; repeat split; eauto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destr_in H. destr_in H. destr_in H; [|inv H].
-          destruct p2. destruct p2. inv H.
-          destruct s, s0. simpl in *.
-          edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          edestruct (IHua ua2) (* (CtxCons (v,x) t0 t) ((v,val_of_value t0)::g')) *) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
-          4: apply Heqo0. 2-3: eauto.
-          constructor; eauto.
-          setoid_rewrite IA2'. simpl.
-          eexists; eexists; repeat split; eauto. inv Geq2.
-          apply Eqdep_dec.inj_pair2_eq_dec in H4. 2: apply eq_dec. subst. simpl. auto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0.
-          destruct s. simpl in *.
-          apply cast_action_eq in Heqr1.
-          destruct Heqr1 as (pf & EQ). subst.
-          simpl in Heqo.
-          edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          destruct s1, s2. simpl in *.
-          apply cast_action_eq in Heqr4.
-          destruct Heqr4 as (pf & EQ). subst.
-          simpl in H.
-          destr.
-          + edestruct (IHua ua2) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
-            4: apply H. eauto. eauto. eauto.
-            rewrite IA2'. simpl.
-            eexists; eexists; repeat split; eauto.
-          + edestruct (IHua ua3) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
-            4: apply H. eauto. eauto. eauto.
-            rewrite IA2'. simpl.
-            eexists; eexists; repeat split; eauto.
-        - inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          erewrite may_read_eq in H; eauto.
-          destr_in H; [|inv H]. inv H.
-          eexists; eexists; repeat split; eauto.
-          f_equal. f_equal. f_equal.
-          rewrite ! r_eq.
-          destr.
-
-          erewrite <- latest_write0_eq; eauto.
-          2: apply log_eq_app; eauto.
-          destruct (Logs.latest_write0) eqn:?; simpl; auto.
-
-          apply log_eq_cons; auto.
-          red. simpl. auto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0.
-
-          destruct s. simpl in *.
-          apply cast_action_eq in Heqr1.
-          destruct Heqr1 as (pf & EQ). subst.
-          simpl in Heqo.
-          edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          erewrite may_write_eq in H; eauto.
-          destr_in H; [|inv H]. inv H.
-          eexists; eexists; repeat split; eauto.
-          apply log_eq_cons; auto.
-          red. simpl. auto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0. inv H.
-          destruct s. simpl in *.
-          apply cast_action_eq in Heqr2.
-          destruct Heqr2 as (pf & EQ). subst.
-          simpl in Heqo.
-          edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          unfold TypeInference.lift_fn1_tc_result in Heqr1.
-          unfold result_map_failure in Heqr1. destr_in Heqr1; inv Heqr1.
-          erewrite usigma1_correct; eauto. simpl.
-          eexists; eexists; repeat split; eauto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0.
-          inv H.
-          destruct s, s0. simpl in *.
-          apply cast_action_eq in Heqr3.
-          destruct Heqr3 as (pf & EQ). subst.
-          simpl in Heqo.
-          apply cast_action_eq in Heqr4.
-          destruct Heqr4 as (pf & EQ). subst.
-          simpl in Heqo0.
-          edestruct (IHua ua1) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          edestruct (IHua ua2) as (ual2' & g2' & IA2' & ALeq2 & Geq2). lia. eauto.
-          4: apply Heqo0. eauto. eauto. eauto.
-          rewrite IA2'. simpl.
-          unfold TypeInference.lift_fn2_tc_result in Heqr2.
-          unfold result_map_failure in Heqr2. destr_in Heqr2; inv Heqr2.
-          erewrite sigma2_correct; eauto. simpl.
-          eexists; eexists; repeat split; eauto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0. inv H.
-          destruct s. simpl in *.
-          apply cast_action_eq in Heqr1.
-          destruct Heqr1 as (pf & EQ). subst.
-          simpl in Heqo.
-          edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
-          4: apply Heqo. eauto. eauto. eauto.
-          rewrite IA'. simpl.
-          eexists; eexists; repeat split; eauto.
-          rewrite tsigma_correct. eauto.
-        - destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          destr_in TA; [|inv TA].
-          inv TA.
-          apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-          unfold opt_bind in H.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0.
-          destr_in H; [|inv H].
-          destruct p0. destruct p0.
-          inv H.
-          destruct s1. simpl in *.
-          apply cast_action_eq in Heqr3.
-          destruct Heqr3 as (pf & EQ). subst.
-          simpl in Heqo0.
-
-          unfold TypeInference.assert_argtypes in Heqr1.
-
-    rewrite assert_argtypes'_eq in Heqr1.
-
-    assert (List.length args = List.length (rev s)).
-    {
-      apply result_list_map_length in Heqr0. rewrite <- Heqr0.
-      rewrite rev_length; auto.
-    }
-
-          assert (
-              forall (p : pos_t) (sig : tsig var_t) s,
-                result_list_map (TypeInference.type_action TR Sigma p sig) args = Success s ->
-                forall (Gamma : TypedSemantics.tcontext sig) (UGamma : list (var_t * val)),
-                  gamma_eq sig UGamma Gamma ->
-         forall (sched_log action_log action_log' : Logs.Log TR REnv)
-           (usched_log uaction_log : env_t REnv (fun _ : reg_t => RLog val)),
-         log_eq REnv usched_log sched_log ->
-         log_eq REnv uaction_log action_log ->
-         forall (s0 : context
-         (fun k_tau : var_t * type =>
-          TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau))
-         (rev (int_argspec ufn))),
-           assert_argtypes' (rev (int_argspec ufn))
-                            (rev (combine (map (TypeInference.actpos p) args) s)) = Success s0 ->
-           List.length args = List.length (rev s) ->
-         forall v (Gamma' : TypedSemantics.tcontext sig),
-           TypedSemantics.interp_args'
-             (@TypedSemantics.interp_action pos_t var_t fn_name_t reg_t ext_fn_t TR Sigma REnv tr tsigma)
-             Gamma sched_log action_log s0 =
-         Some (action_log', v, Gamma') ->
-         exists (uaction_log' : Log) res (UGamma' : list (var_t * val)),
-           fold_right
-          (fun a0 (acc : option (Log * list val * list (var_t * val))) =>
-           let/opt3 action_log0, l0, Gamma0 := acc
-           in (let/opt3 action_log1, v0, Gamma1
-               := interp_action r sigma Gamma0 usched_log action_log0 a0
-               in Some (action_log1, v0 :: l0, Gamma1))) (Some (uaction_log, [], UGamma)) (rev args) =
-           Some (uaction_log', res, UGamma') /\
-           gamma_eq _ (combine (map fst (rev (int_argspec ufn))) (res)) v /\
-           log_eq REnv uaction_log' action_log' /\ gamma_eq sig UGamma' Gamma').
-          {
-            clear - IHua.
-            rewrite <- (rev_involutive args).
-            assert (IHua': forall arg, In arg (rev args) -> PP arg).
-            {
-              intros.
-              eapply IHua.
-              apply In_rev in H.
-              revert arg H.
-              induction args; simpl; intros; eauto. easy.
-              destruct H. subst. lia.
-              eapply IHargs in H. lia. intros. eapply IHua. simpl. lia.
-            } clear IHua. revert IHua'.
-            generalize (rev args) as args'.
-            intros args' IHua' p sig s RLM.
-            apply result_list_map_rev in RLM.
-            rewrite combine_rev.
-            rewrite map_rev. rewrite rev_involutive.
-            revert RLM. rewrite rev_involutive.
-            generalize (rev s) as s'. clear s.
-            rewrite rev_length.
-            revert args' IHua' p sig.
-            generalize (rev (int_argspec ufn)). clear args.
+          intros.
+          eapply IHua.
+          apply In_rev in H.
+          revert arg H.
+          induction args; simpl; intros; eauto. easy.
+          destruct H. subst. lia.
+          eapply IHargs in H. lia. intros. eapply IHua. simpl. lia.
+        } clear IHua. revert IHua'.
+        generalize (rev args) as args'.
+        intros args' IHua' p sig s RLM.
+        apply result_list_map_rev in RLM.
+        rewrite combine_rev.
+        rewrite map_rev. rewrite rev_involutive.
+        revert RLM. rewrite rev_involutive.
+        generalize (rev s) as s'. clear s.
+        rewrite rev_length.
+        revert args' IHua' p sig.
+        generalize (rev (int_argspec ufn)). clear args.
 
             Lemma interp_args_correct:
               let PP := fun u : uaction =>
@@ -3418,8 +3380,7 @@ Section Final.
       Qed.
 
 Lemma log_eq_commit_update:
-  forall
-         ul l,
+  forall ul l,
     log_eq REnv ul l ->
     env_t_R (fun (i : reg_t) (uv : val) (v : TR i) => uv = val_of_value v) REnv
             (create REnv
@@ -3443,28 +3404,26 @@ Proof.
   apply rtr.
 Qed.
 
-
-      Lemma interp_cycle_correct:
-        forall
-
-          (urules: rule_name_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-               (rules: rule_name_t -> TypedSyntax.rule pos_t var_t fn_name_t TR Sigma)
-               (TC: forall rnt,
-                   exists p,
-                     TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
-               ),
-        forall s,
-          env_t_R
-            (fun i uv v => uv = val_of_value (tau:=TR i) v)
-            REnv
-            (interp_cycle r sigma urules s)
-            (TypedSemantics.interp_cycle tsigma rules s tr).
-      Proof.
-        unfold interp_cycle, TypedSemantics.interp_cycle. intros.
-        unfold commit_update, Logs.commit_update.
-        apply log_eq_commit_update.
-        edestruct @interp_scheduler_correct as (l2 & EQ & LEQ); eauto.
-        subst.  eauto.
-      Qed.
+Lemma interp_cycle_correct:
+  forall
+    (urules: rule_name_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+         (rules: rule_name_t -> TypedSyntax.rule pos_t var_t fn_name_t TR Sigma)
+         (TC: forall rnt,
+             exists p,
+               TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
+         ),
+  forall s,
+    env_t_R
+      (fun i uv v => uv = val_of_value (tau:=TR i) v)
+      REnv
+      (interp_cycle r sigma urules s)
+      (TypedSemantics.interp_cycle tsigma rules s tr).
+Proof.
+  unfold interp_cycle, TypedSemantics.interp_cycle. intros.
+  unfold commit_update, Logs.commit_update.
+  apply log_eq_commit_update.
+  edestruct @interp_scheduler_correct as (l2 & EQ & LEQ); eauto.
+  subst.  eauto.
+Qed.
 
 End Final.
