@@ -441,9 +441,7 @@ Section Interp.
       match tau with
       | bits_t _ => Some (Bits (Datatypes.length bs) bs)
       | enum_t sig =>
-        let/opt2 b0, b1 := take_drop (enum_bitsize sig) bs in
-        (* TODO check b1 is empty ? *)
-        Some (Enum sig b0)
+        let/opt2 b0, b1 := take_drop (enum_bitsize sig) bs in Some (Enum sig b0)
       | struct_t sig =>
         let/opt lv := uvalue_of_struct_bits (fields:=struct_fields sig) bs in
         Some (Struct sig lv)
@@ -1933,7 +1931,7 @@ Section Interp.
         end
       | URead prt idx =>
         if may_read sched_log prt idx then
-          Some (log_cons idx (LE LogRead prt (Bits 0 [])) action_log,
+          Some (log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log,
             match prt with
             | P0 => REnv.(getenv) r idx
             | P1 =>
@@ -1951,7 +1949,7 @@ Section Interp.
           interp_action Gamma sched_log action_log v in
         if may_write sched_log action_log prt idx then
           Some (
-            log_cons idx (LE LogWrite prt val) action_log, Bits 0 [], Gamma
+            log_cons idx (LE Logs.LogWrite prt val) action_log, Bits 0 [], Gamma
           )
         else None
       | UUnop fn arg =>
@@ -2059,8 +2057,8 @@ Section Eq.
       | Logs.LogWrite => type_denote V
       end -> Prop
     ) with
-    | Logs.LogRead => fun _ => ULogs.val ule = Bits 0 []
-    | Logs.LogWrite => fun v => ULogs.val ule = val_of_value v
+    | Logs.LogRead => fun _ => UntypedLogs.val ule = Bits 0 []
+    | Logs.LogWrite => fun v => UntypedLogs.val ule = val_of_value v
     end (Logs.val le).
 
   Definition rlog_eq {V:type} (url: RLog val) (rl: Logs.RLog V) :=
@@ -2918,15 +2916,16 @@ Section Eq.
       rewrite fold_left_rev_right in FR.
       setoid_rewrite FR. simpl.
       clear H0 FR.
-      edestruct (IHua (int_body ufn)) as (ual' & g' & IA' & ALeq2 & Geq). lia. eauto.
-      eauto. 3: eauto. eauto. eauto.
+      edestruct (IHua (int_body ufn)) as (ual' & g' & IA' & ALeq2 & Geq). lia.
+      eauto. eauto. 3: eauto. eauto. eauto.
       erewrite combine_map.
       rewrite IA'. simpl.
       eexists; eexists; repeat split; eauto.
       simpl; reflexivity.
     - destr_in TA; [|inv TA].
       inv TA.
-      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
       destruct s. simpl in *.
       edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
       4: apply H. eauto. eauto. eauto.

@@ -1,5 +1,6 @@
 (*! Language | Logs of reads and writes !*)
-Require Export Koika.Common Koika.Environments Koika.Logs Koika.Syntax.
+Require Export Koika.Common Koika.Environments Koika.Syntax.
+Require Logs.
 
 Section Logs.
   Context {V: Type}.
@@ -30,10 +31,14 @@ Section Logs.
   Definition log_cons (reg: reg_t) le (l: ULog) :=
     REnv.(putenv) l reg (le :: REnv.(getenv) l reg).
 
-  Definition log_forallb (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool) :=
+  Definition log_forallb
+    (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool)
+  :=
     List.forallb (fun '(LE kind prt _) => f kind prt) (REnv.(getenv) log reg).
 
-  Definition log_existsb (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool) :=
+  Definition log_existsb
+    (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool)
+  :=
     List.existsb (fun '(LE kind prt _) => f kind prt) (REnv.(getenv) log reg).
 
   Definition is_read0 kind prt :=
@@ -64,8 +69,9 @@ Section Logs.
 
   Definition may_read (sched_log: ULog) prt idx :=
     match prt with
-    | P0 => negb (log_existsb sched_log idx is_write0)
-            && negb (log_existsb sched_log idx is_write1)
+    | P0 =>
+      negb (log_existsb sched_log idx is_write0)
+      && negb (log_existsb sched_log idx is_write1)
     | P1 => negb (log_existsb sched_log idx is_write1)
     end.
 
@@ -89,9 +95,10 @@ Section Logs.
 
   Definition may_write (sched_log rule_log: ULog) prt idx :=
     match prt with
-    | P0 => negb (log_existsb (log_app rule_log sched_log) idx is_read1)
-            && negb (log_existsb (log_app rule_log sched_log) idx is_write0)
-            && negb (log_existsb (log_app rule_log sched_log) idx is_write1)
+    | P0 =>
+      negb (log_existsb (log_app rule_log sched_log) idx is_read1)
+      && negb (log_existsb (log_app rule_log sched_log) idx is_write0)
+      && negb (log_existsb (log_app rule_log sched_log) idx is_write1)
     | P1 => negb (log_existsb (log_app rule_log sched_log) idx is_write1)
     end.
 
