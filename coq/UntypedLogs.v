@@ -1,9 +1,7 @@
 (*! Language | Logs of reads and writes !*)
-Require Export Koika.Common Koika.Environments Koika.Syntax.
-Require Logs.
+Require Export Koika.Common Koika.Environments Koika.Logs Koika.Syntax.
 
 Section Logs.
-
   Context {V: Type}.
 
   Record LogEntry := LE {
