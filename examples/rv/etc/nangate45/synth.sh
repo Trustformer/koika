@@ -28,7 +28,7 @@ echo "In directory $PWD"
 
 echo "== Using Nangate Open Cell Library (v1_3_v2010_12) =="
 
-YOSYS_DEFINES="-DMEM_FILENAME=\"../../../../tests/_build/$DUT/integ/primes.vmh\""
+YOSYS_DEFINES="-DMEM_FILENAME=\"../../../../tests/_build/$DUT/riscv_tests/rv32ui/add.vmh\""
 
 echo "----------------------------------------"
 echo "-- Running synthesis for Kôika design --"

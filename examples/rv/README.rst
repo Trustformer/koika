@@ -2,7 +2,7 @@
  ``RVCore.v``
 ==============
 
-This is our Kôika implementation of a pipelined CPU core implementing RV32I.
+This is a Kôika implementation of a simple pipelined CPU.
 
 Dependencies
 ============
