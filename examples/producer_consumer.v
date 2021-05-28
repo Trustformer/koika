@@ -50,68 +50,58 @@ Module ProducerConsumer.
   (* Rules *)
   (* 3. Rules description *)
   (* 3.1. Names *)
-  Inductive rule_name_t :=
-  | produce
-  | consume.
+  Inductive rule_name_t := produce | consume.
 
   (* 3.2. Definitions *)
-  Definition write0_queue : UInternalFunction reg_t empty_ext_fn_t :=
-    {{ fun write0_queue (idx : bits_t q_id_sz) (val: bits_t r_sz) : unit_t =>
-         `UCompleteSwitch (SequentialSwitchTt) q_id_sz "idx"
-              (fun idx => {{ write0(queue_data idx, val) }})` }}.
-
-  Definition read1_queue idx : uaction reg_t empty_ext_fn_t :=
-    {{ `UCompleteSwitch (SequentialSwitch (bits_t r_sz) "tmp") q_id_sz idx
-           (fun idx => {{ read1(queue_data idx) }})` }}.
-
-  Check Bits.of_nat.
-  Check (index q_cap).
-
-  Definition _produce : uaction reg_t empty_ext_fn_t :=
-    {{
-      let qs := read0(queue_size) in
-      let qh := read0(queue_head) in
-      if (qs + #(Bits.of_nat q_id_sz 1)) != #(Bits.of_nat q_id_sz q_cap) then
-        let v := read0(producer_counter) in
-        write0_queue(qh, qs);
-        write0(producer_counter, v + |r_sz`d1|);
-        write0(queue_size, qs + |q_id_sz`d1|)
-      else
-        fail
+  Definition write0_queue : UInternalFunction reg_t empty_ext_fn_t := {{
+    fun write0_queue (idx : bits_t q_id_sz) (val: bits_t r_sz) : unit_t =>
+      `UCompleteSwitch (SequentialSwitchTt) q_id_sz "idx"
+        (fun idx => {{ write0(queue_data idx, val) }})`
     }}.
 
-  Definition _consume : uaction reg_t empty_ext_fn_t :=
-    {{
-      let qs := read1(queue_size) in
-      let qh := read1(queue_head) in
-      if qs != |q_id_sz`d0| then
-        let v := `read1_queue("qh")` in
-        write1(queue_size, qs - |q_id_sz`d1|);
-        let next_qh :=
-          if ((qh + |q_id_sz`d1|) == #(Bits.of_nat q_id_sz q_cap)) then
-            |q_id_sz`d0|
-          else
-            qs + |q_id_sz`d1|
-        in
-        write1(queue_head, next_qh);
-        write1(data_sink, v)
-      else
-        fail
-    }}.
+  Definition read1_queue idx : uaction reg_t empty_ext_fn_t := {{
+    `UCompleteSwitch (SequentialSwitch (bits_t r_sz) "tmp") q_id_sz idx
+      (fun idx => {{ read1(queue_data idx) }})`
+  }}.
+
+  Definition _produce : uaction reg_t empty_ext_fn_t := {{
+    let qs := read0(queue_size) in
+    let qh := read0(queue_head) in
+    if (qs + #(Bits.of_nat q_id_sz 1)) != #(Bits.of_nat q_id_sz q_cap) then
+      let v := read0(producer_counter) in
+      write0_queue(qh, qs);
+      write0(producer_counter, v + |r_sz`d1|);
+      write0(queue_size, qs + |q_id_sz`d1|)
+    else fail
+  }}.
+
+  Definition _consume : uaction reg_t empty_ext_fn_t := {{
+    let qs := read1(queue_size) in
+    let qh := read1(queue_head) in
+    if qs != |q_id_sz`d0| then
+      let v := `read1_queue("qh")` in
+      write1(queue_size, qs - |q_id_sz`d1|);
+      let next_qh :=
+        if ((qh + |q_id_sz`d1|) == #(Bits.of_nat q_id_sz q_cap)) then
+          |q_id_sz`d0|
+        else qs + |q_id_sz`d1|
+      in
+      write1(queue_head, next_qh);
+      write1(data_sink, v)
+    else fail
+  }}.
 
   (* 3.3. Rule name to definition mapping *)
   Definition rules :=
-    tc_rules R empty_Sigma
-      (fun r =>
-        match r with
-        | produce => _produce
-        | consume => _consume
-        end
-      ).
+    tc_rules R empty_Sigma (fun r =>
+      match r with
+      | produce => _produce
+      | consume => _consume
+      end
+    ).
 
   (* 4. Scheduler definition *)
-  Definition pc_scheduler : scheduler :=
-    produce |> consume |> done.
+  Definition pc_scheduler : scheduler := produce |> consume |> done.
 
   (* 5. Misc. *)
   Definition cr := ContextEnv.(create) r.
@@ -136,27 +126,24 @@ Module ProducerConsumer.
 
   Definition circuits := compile_scheduler rules external pc_scheduler.
 
-  Definition package :=
-    {|
-      ip_koika := {|
-        koika_reg_types := R;
-        koika_reg_init reg := r reg;
-        koika_ext_fn_types := empty_Sigma;
-        koika_rules := rules;
-        koika_rule_external := external;
-        koika_scheduler := pc_scheduler;
-        koika_module_name := "vector"
-      |};
-
-      ip_sim := {|
-        sp_ext_fn_specs := empty_ext_fn_props;
-        sp_prelude := None
-      |};
-
-      ip_verilog := {|
-        vp_ext_fn_specs := empty_ext_fn_props
-      |}
-    |}.
+  Definition package := {|
+    ip_koika := {|
+      koika_reg_types := R;
+      koika_reg_init reg := r reg;
+      koika_ext_fn_types := empty_Sigma;
+      koika_rules := rules;
+      koika_rule_external := external;
+      koika_scheduler := pc_scheduler;
+      koika_module_name := "vector"
+    |};
+    ip_sim := {|
+      sp_ext_fn_specs := empty_ext_fn_props;
+      sp_prelude := None
+    |};
+    ip_verilog := {|
+      vp_ext_fn_specs := empty_ext_fn_props
+    |}
+  |}.
 End ProducerConsumer.
 
 Definition prog := Interop.Backends.register ProducerConsumer.package.
