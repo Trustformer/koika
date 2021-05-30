@@ -38,6 +38,7 @@ Section Syntax.
   | UStructInit (sig: struct_sig) (fields: list (string * uaction))
   | UArrayInit (tau: type) (elements: list uaction)
   | UCallModule {module_reg_t module_ext_fn_t: Type}
+                `{finite_reg: FiniteType module_reg_t}
                 (fR: module_reg_t -> reg_t)
                 (fSigma: @Lift module_ext_fn_t ext_fn_t)
                 (fn: InternalFunction var_t fn_name_t (@uaction module_reg_t module_ext_fn_t))
