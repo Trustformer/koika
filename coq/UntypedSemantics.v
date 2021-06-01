@@ -7,51 +7,7 @@ Require TypedSemantics.
 Require TypeInference.
 Require Import BitsToLists.
 
-Fixpoint size_uaction {pos_t var_t fn_name_t reg_t ext_fn_t: Type} (ua: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) {struct ua} : nat :=
-  match ua  with
-  | UError err => 0
-  | UFail tau => 0
-  | UVar var => 0
-  | UConst cst => 0
-  | UAssign v ex => 1 + size_uaction ex
-  | USeq a1 a2 => 1 + size_uaction a1 + size_uaction a2
-  | UBind v ex body => 1 + size_uaction ex + size_uaction body
-  | UIf cond tbranch fbranch => 1 + size_uaction cond + size_uaction tbranch + size_uaction fbranch
-  | URead port idx => 0
-  | UWrite port idx value => 1 + size_uaction value
-  | UUnop ufn1 arg1 => 1 + size_uaction arg1
-  | UBinop ufn2 arg1 arg2 => 1 + size_uaction arg1 + size_uaction arg2
-  | UExternalCall ufn arg => 1 + size_uaction arg
-  | UInternalCall ufn args => 1 + size_uaction (int_body ufn) + list_sum (map size_uaction args)
-  | UAPos p e => 1 + size_uaction e
-  | USugar s => 1 + size_sugar s
-  end
-with size_sugar {pos_t var_t fn_name_t reg_t ext_fn_t: Type} (s: usugar pos_t var_t fn_name_t reg_t ext_fn_t) {struct s}: nat :=
-       match s with
-       | UErrorInAst => 0
-       | USkip => 0
-       | UConstBits _ => 0
-       | UConstString _ => 0
-       | UConstEnum _ _ => 0
-       | UProgn l => 1 + list_sum (map size_uaction l)
-       | ULet bindings body => 1 + size_uaction body + list_sum (map (fun '(_, a) => size_uaction a) bindings)
-       | UWhen cond body => size_uaction cond + size_uaction body
-       | USwitch cond default branches =>
-         1 + size_uaction cond + size_uaction default +
-         list_sum (map (fun '(a,b) => size_uaction a + size_uaction b) branches)
-       | UStructInit sig l =>
-         1 + list_sum (map (fun '(_, a) => size_uaction a) l)
-       | UArrayInit tay l =>
-         1 + list_sum (map size_uaction l)
-       | UCallModule fR fSigma fn args =>
-         1 +  size_uaction (int_body fn) + list_sum (map size_uaction args)
-       end
-.
-
-Import PrimUntyped.
-Definition usigma1' (fn: PrimUntyped.ubits1) (bs: list bool) : option (list bool) :=
-  match fn with
-  | UNot => Some (List.map negb bs)
+Fixpoint size_uactio| UNot => Some (List.map negb bs)
   | USExt w =>
     let msb := List.last bs false in
     Some (bs ++ List.repeat msb (w - List.length bs))
