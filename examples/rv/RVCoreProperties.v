@@ -3,7 +3,9 @@
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.Frontend Koika.Logs Koika.Std
         Koika.ProgramTactics.
-Require Import Koika.SimpleTypedSemantics.
+(* Require Import Koika.SimpleTypedSemantics. *)
+Require Import UntypedSemantics.
+Require Import BitsToLists.
 
 (* Require Import Koika.IndTypedSemantics. *)
 
@@ -105,11 +107,27 @@ Module StackProofs.
     -> état des registres en fin de cycle
   *)
 
+  Definition rv_urules :=
+    fun rl : rv_rules_t =>
+      match rl with
+      | Fetch => RV32I.fetch
+      | Decode => RV32I.decode
+      | Execute => RV32I.execute
+      | Writeback => RV32I.writeback
+      | WaitImem => RV32I.wait_imem
+      | Imem => RV32I.mem RV32I.imem
+      | Dmem => RV32I.mem RV32I.dmem
+      | StepMultiplier => RV32I.step_multiplier
+      | Tick => RV32I.tick
+      | EndExecution => RV32I.end_execution
+      end.
+
   Definition rv_cycle
-    (r: ContextEnv.(env_t) RV32I.R)
-    (sigma : forall f, Sig_denote (RV32I.Sigma f))
+             (REnv: Env RV32I.reg_t)
+             (r: env_t REnv (fun _ => val))
+      (sigma : RV32I.ext_fn_t -> val -> val)
   :=
-  TypedSemantics.interp_cycle sigma RV32I.rv_rules rv_schedule r.
+  UntypedSemantics.interp_cycle r sigma rv_urules rv_schedule.
 
   Lemma extract_success_rewrite:
     forall {S F: Type} (res1 res2: result S F) pr1 pr2,
@@ -130,36 +148,158 @@ Module StackProofs.
     intros S F x y H. inv H; auto.
   Qed.
 
-  Lemma cast_action'_eq:
-    forall (pos_t fn_name_t var_t reg_t ext_fn_t : Type) (R : reg_t -> type)
-           (Sigma : ext_fn_t -> ExternalSignature)
-           (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
-           (a: action pos_t var_t fn_name_t R Sigma sig tau1)
-           (e: error_message var_t fn_name_t) a',
-      cast_action' R Sigma p tau2 a e = Success a' ->
-      exists p : tau1 = tau2,
-        a' = eq_rect _ _ a _ p.
-  Proof.
-    unfold cast_action'. intros.
-    destr_in H. subst.
-    unfold eq_rect_r in H. simpl in H. inv H.
-    exists eq_refl; reflexivity. inv H.
-  Qed.
+  (* Lemma cast_action'_eq: *)
+  (*   forall (pos_t fn_name_t var_t reg_t ext_fn_t : Type) (R : reg_t -> type) *)
+  (*          (Sigma : ext_fn_t -> ExternalSignature) *)
+  (*          (p: pos_t) (sig: tsig var_t) (tau1 tau2: type) *)
+  (*          (a: action pos_t var_t fn_name_t R Sigma sig tau1) *)
+  (*          (e: error_message var_t fn_name_t) a', *)
+  (*     cast_action' R Sigma p tau2 a e = Success a' -> *)
+  (*     exists p : tau1 = tau2, *)
+  (*       a' = eq_rect _ _ a _ p. *)
+  (* Proof. *)
+  (*   unfold cast_action'. intros. *)
+  (*   destr_in H. subst. *)
+  (*   unfold eq_rect_r in H. simpl in H. inv H. *)
+  (*   exists eq_refl; reflexivity. inv H. *)
+  (* Qed. *)
 
-  Lemma cast_action_eq:
-    forall (pos_t fn_name_t var_t reg_t ext_fn_t : Type) (R : reg_t -> type)
-           (Sigma : ext_fn_t -> ExternalSignature)
-           (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
-           (a: action pos_t var_t fn_name_t R Sigma sig tau1)
-           a',
-      cast_action R Sigma p tau2 a = Success a' ->
-      exists p : tau1 = tau2,
-        a' = eq_rect _ _ a _ p.
-  Proof.
-    intros. unfold cast_action in H.
-    eapply cast_action'_eq; eauto.
-  Qed.
+  (* Lemma cast_action_eq: *)
+  (*   forall (pos_t fn_name_t var_t reg_t ext_fn_t : Type) (R : reg_t -> type) *)
+  (*          (Sigma : ext_fn_t -> ExternalSignature) *)
+  (*          (p: pos_t) (sig: tsig var_t) (tau1 tau2: type) *)
+  (*          (a: action pos_t var_t fn_name_t R Sigma sig tau1) *)
+  (*          a', *)
+  (*     cast_action R Sigma p tau2 a = Success a' -> *)
+  (*     exists p : tau1 = tau2, *)
+  (*       a' = eq_rect _ _ a _ p. *)
+  (* Proof. *)
+  (*   intros. unfold cast_action in H. *)
+  (*   eapply cast_action'_eq; eauto. *)
+  (* Qed. *)
 
+
+  Definition fold_desugar:
+    forall reg_t' ext_fn_t',
+      (fix
+         desugar_action' (reg_t' ext_fn_t' : Type) (pos : unit) (fR : reg_t' -> RV32I.reg_t)
+         (fSigma : ext_fn_t' -> RV32I.ext_fn_t)
+         (a0 : uaction unit var_t fn_name_t reg_t' ext_fn_t') {struct a0} :
+         uaction unit var_t fn_name_t RV32I.reg_t RV32I.ext_fn_t :=
+         match a0 with
+         | UError err => UError err
+         | {{
+               fail@(tau)
+           }} => {{
+                     fail@(tau)
+                 }}
+         | UVar var => UVar var
+         | @UConst _ _ _ _ _ tau cst => UConst cst
+         | UAssign v ex => UAssign v (desugar_action' reg_t' ext_fn_t' pos fR fSigma ex)
+         | USeq a1 a2 =>
+           USeq (desugar_action' reg_t' ext_fn_t' pos fR fSigma a1)
+                (desugar_action' reg_t' ext_fn_t' pos fR fSigma a2)
+         | UBind v ex body0 =>
+           UBind v (desugar_action' reg_t' ext_fn_t' pos fR fSigma ex)
+                 (desugar_action' reg_t' ext_fn_t' pos fR fSigma body0)
+         | UIf cond tbranch fbranch =>
+           UIf (desugar_action' reg_t' ext_fn_t' pos fR fSigma cond)
+               (desugar_action' reg_t' ext_fn_t' pos fR fSigma tbranch)
+               (desugar_action' reg_t' ext_fn_t' pos fR fSigma fbranch)
+         | URead port idx => URead port (fR idx)
+         | UWrite port idx value =>
+           UWrite port (fR idx) (desugar_action' reg_t' ext_fn_t' pos fR fSigma value)
+         | UUnop fn arg => UUnop fn (desugar_action' reg_t' ext_fn_t' pos fR fSigma arg)
+         | UBinop fn arg1 arg2 =>
+           UBinop fn (desugar_action' reg_t' ext_fn_t' pos fR fSigma arg1)
+                  (desugar_action' reg_t' ext_fn_t' pos fR fSigma arg2)
+         | UExternalCall fn arg =>
+           UExternalCall (fSigma fn) (desugar_action' reg_t' ext_fn_t' pos fR fSigma arg)
+         | UInternalCall fn args =>
+           UInternalCall
+             (map_intf_body
+                (fun a1 : uaction unit var_t fn_name_t reg_t' ext_fn_t' =>
+                   desugar_action' reg_t' ext_fn_t' pos fR fSigma a1) fn)
+             (map
+                (fun a1 : uaction unit var_t fn_name_t reg_t' ext_fn_t' =>
+                   desugar_action' reg_t' ext_fn_t' pos fR fSigma a1) args)
+         | UAPos p e => UAPos p (desugar_action' reg_t' ext_fn_t' pos fR fSigma e)
+         | USugar s => desugar reg_t' ext_fn_t' pos fR fSigma s
+         end
+             with
+               desugar (reg_t' ext_fn_t' : Type) (pos : unit) (fR : reg_t' -> RV32I.reg_t)
+               (fSigma : ext_fn_t' -> RV32I.ext_fn_t)
+               (s : usugar unit var_t fn_name_t reg_t' ext_fn_t') {struct s} :
+                 uaction unit var_t fn_name_t RV32I.reg_t RV32I.ext_fn_t :=
+           match s with
+           | UErrorInAst =>
+             UError {| epos := pos; emsg := ExplicitErrorInAst; esource := ErrSrc s |}
+           | USkip => uskip
+           | @UConstBits _ _ _ _ _ sz bs => UConst (tau:=bits_t sz) bs
+           | UConstString s0 => UConst (tau:=array_t {|array_type:=bits_t 8; array_len := length s0 |})
+                                       (array_of_bytes s0)
+           | UConstEnum sig name =>
+             match vect_index name (enum_members sig) with
+             | Some idx => UConst (tau:=enum_t sig)(vect_nth (enum_bitpatterns sig) idx)
+             | None =>
+               UError
+                 {| epos := pos; emsg := UnboundEnumMember name sig; esource := ErrSrc s |}
+             end
+           | UProgn aa =>
+             uprogn
+               (map
+                  (fun a0 : uaction unit var_t fn_name_t reg_t' ext_fn_t' =>
+                     desugar_action' reg_t' ext_fn_t' pos fR fSigma a0) aa)
+           | ULet bindings body0 =>
+             fold_right
+               (fun '(var, a0) (acc : uaction unit var_t fn_name_t RV32I.reg_t RV32I.ext_fn_t)
+                => UBind var (desugar_action' reg_t' ext_fn_t' pos fR fSigma a0) acc)
+               (desugar_action' reg_t' ext_fn_t' pos fR fSigma body0) bindings
+           | UWhen cond body0 =>
+             UIf (desugar_action' reg_t' ext_fn_t' pos fR fSigma cond)
+                 (desugar_action' reg_t' ext_fn_t' pos fR fSigma body0) {{
+                       fail@(unit_t)
+                       }}
+                 | USwitch var default branches =>
+                     uswitch (desugar_action' reg_t' ext_fn_t' pos fR fSigma var)
+                       (desugar_action' reg_t' ext_fn_t' pos fR fSigma default)
+                       (map
+                          (fun '(cond, body0) =>
+                           (desugar_action' reg_t' ext_fn_t' pos fR fSigma cond,
+                           desugar_action' reg_t' ext_fn_t' pos fR fSigma body0)) branches)
+                 | UStructInit sig fields =>
+                     ustruct_init sig
+                       (map (fun '(f, a0) => (f, desugar_action' reg_t' ext_fn_t' pos fR fSigma a0))
+                          fields)
+                 | UArrayInit tau elements =>
+                     snd
+                       (fold_left
+                          (fun '(pos0, acc) (a0 : uaction unit var_t fn_name_t reg_t' ext_fn_t') =>
+                           (S pos0,
+                           UBinop (UArray2 (USubstElement pos0)) acc
+                             (desugar_action' reg_t' ext_fn_t' pos fR fSigma a0))) elements
+                          (0,
+                          uinit
+                            (array_t {| array_type := tau; array_len := Datatypes.length elements |})))
+                 | @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t fR' fSigma' fn args =>
+                     UInternalCall
+                       (map_intf_body
+                          (fun body0 : uaction unit var_t fn_name_t module_reg_t module_ext_fn_t =>
+                           desugar_action' module_reg_t module_ext_fn_t pos
+                             (fun r : module_reg_t => fR (fR' r))
+                             (fun fn0 : module_ext_fn_t => fSigma (fSigma' fn0)) body0) fn)
+                       (map
+                          (fun a0 : uaction unit var_t fn_name_t reg_t' ext_fn_t' =>
+                           desugar_action' reg_t' ext_fn_t' pos fR fSigma a0) args)
+                 end
+                   for desugar_action') reg_t' ext_fn_t' tt =
+    desugar_action'
+      (pos_t:=unit) (var_t:=string) (fn_name_t:=string)
+      (reg_t:=RV32I.reg_t) (ext_fn_t:=RV32I.ext_fn_t)
+      (reg_t':=reg_t') (ext_fn_t' := ext_fn_t') tt.
+  Proof.
+    reflexivity.
+  Qed.
 
   Definition if_halt_eq : action (ext_fn_t:=RV32I.ext_fn_t) pos_t var_t fn_name_t RV32I.R RV32I.Sigma [] unit_t :=
     (If (Binop (PrimTyped.Eq (bits_t 1) false) (Read P0 RV32I.halt)
@@ -167,11 +307,28 @@ Module StackProofs.
        (Fail unit_t) (Const (tau:=unit_t) _vect_nil)).
 
   Context {reg_t_eq_dec: EqDec RV32I.reg_t}.
-  
+
+  (* Goal forall a, a = desugar_action tt RV32I.execute. *)
+  (* Proof. *)
+  (*   unfold RV32I.execute. simpl. *)
+  (*   generalize RV32I.execute_1. *)
+  (*   cbn. *)
+  (*   rewrite fold_desugar. *)
+  (*     fold (desugar_action' *)
+  (*             (pos_t:=unit) (var_t:=string) (fn_name_t:=string) *)
+  (*             (reg_t:=RV32I.reg_t) (ext_fn_t:=RV32I.ext_fn_t) *)
+  (*             (reg_t':=RV32I.fromDecode.reg_t) (ext_fn_t' := empty_ext_fn_t) *)
+              
+  (*          ); eauto. *)
+
+  (*   unfold desugar *)
+  (*   Set Printing All. *)
+  (* Qed. *)
+
   Lemma execute_overwrites_halt:
-    forall (r: ContextEnv.(env_t) RV32I.R) sigma l,
+    forall REnv (r: env_t REnv _) sigma l,
       interp_rule r sigma log_empty
-                  RV32I.tc_execute
+                  (desugar_action tt RV32I.execute)
                   = Some l ->
       log_existsb l RV32I.halt (fun k p =>
                                   match k with
@@ -189,6 +346,13 @@ Module StackProofs.
     unfold interp_rule in H.
     destr_in H. 2: congruence.
     repeat destr_in H. inv H.
+    unfold RV32I.execute in Heqo.
+    cbn in Heqo.
+    rewrite fold_desugar
+    unfold RV32I.execute in Heqo.
+    simpl in Heqo.
+    unfold opt_bind in Heqo. 
+    repeat destr_in Heqo. congruence. try congruence. 2: congruence.
     unfold RV32I.tc_execute in Heqo.
     unfold desugar_action in Heqo.
     refine (
