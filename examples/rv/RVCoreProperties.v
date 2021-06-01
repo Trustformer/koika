@@ -308,23 +308,6 @@ Module StackProofs.
 
   Context {reg_t_eq_dec: EqDec RV32I.reg_t}.
 
-  (* Goal forall a, a = desugar_action tt RV32I.execute. *)
-  (* Proof. *)
-  (*   unfold RV32I.execute. simpl. *)
-  (*   generalize RV32I.execute_1. *)
-  (*   cbn. *)
-  (*   rewrite fold_desugar. *)
-  (*     fold (desugar_action' *)
-  (*             (pos_t:=unit) (var_t:=string) (fn_name_t:=string) *)
-  (*             (reg_t:=RV32I.reg_t) (ext_fn_t:=RV32I.ext_fn_t) *)
-  (*             (reg_t':=RV32I.fromDecode.reg_t) (ext_fn_t' := empty_ext_fn_t) *)
-              
-  (*          ); eauto. *)
-
-  (*   unfold desugar *)
-  (*   Set Printing All. *)
-  (* Qed. *)
-
   Lemma execute_overwrites_halt:
     forall REnv (r: env_t REnv _) sigma l,
       interp_rule r sigma log_empty
@@ -491,7 +474,7 @@ Module StackProofs.
     simpl in x.
     unfold x. clear x.
     intro Heqr0.
-    simpl in Heqr0. 
+    simpl in Heqr0.
     apply success_inj in Heqr0.
     subst.
     simpl projT1 in v.
@@ -536,8 +519,6 @@ Module StackProofs.
     apply Eqdep_dec.inj_pair2_eq_dec in H12.
     apply Eqdep_dec.inj_pair2_eq_dec in H14. subst.
     all: try apply eq_dec.
-        
-
 
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
@@ -553,10 +534,10 @@ Module StackProofs.
     subst.
 
     2:{
-      intros. decide equality. apply EqDec_pair. 
+      intros. decide equality. apply EqDec_pair.
     }
     inversion H11.
-    destruct H11. unfold eq_rect in e. 
+    destruct H11. unfold eq_rect in e.
     cbn [projT1 projT2] in *.
 
     vm_compute in H0.
