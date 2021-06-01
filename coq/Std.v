@@ -1,6 +1,11 @@
 (*! Stdlib | Standard library !*)
 Require Import Koika.Frontend.
 
+Instance id_injective {A: Type}: Inj (@id A).
+Proof.
+  red. intros. unfold id. auto.
+Defined.
+
 Section Maybe.
   Context (tau: type).
 
