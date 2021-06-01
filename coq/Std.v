@@ -136,6 +136,19 @@ Module RfPow2 (s: RfPow2_sig).
   Definition sz := pow2 s.idx_sz.
   Inductive reg_t := rData (n: Vect.index sz).
 
+
+  Instance finite_rf_reg: FiniteType reg_t.
+  Proof.
+    destruct (@FiniteType_index (sz)).
+    refine
+      {|
+        finite_index:=fun r => match r with rData idx => finite_index idx end;
+        finite_elements:=map (fun i => rData i) finite_elements
+      |}.
+    - intros. destruct a. erewrite map_nth_error. eauto. eauto.
+    - rewrite map_map. auto.
+  Defined.
+
   Definition R r :=
     match r with
     | rData _ => s.T

@@ -55,6 +55,35 @@ Module Scoreboard (s:Scoreboard_sig).
           (a - |logScore`d1|)
     }}.
 
+  Instance finite_rf_reg: FiniteType Rf.reg_t.
+  Proof.
+    destruct (@FiniteType_index (Rf.sz)).
+    refine
+      {|
+        finite_index:=fun r => match r with Rf.rData idx => finite_index idx end;
+        finite_elements:=map (fun i => Rf.rData i) finite_elements
+      |}.
+    - intros. destruct a. erewrite map_nth_error. eauto. eauto.
+    - rewrite map_map. auto.
+  Defined.
+
+  Instance finite_reg: FiniteType reg_t.
+  Proof.
+    destruct finite_rf_reg.
+    refine
+      {|
+        finite_index:=fun r => match r with Scores idx => finite_index idx end;
+        finite_elements:=map (fun i => Scores i) finite_elements
+      |}.
+    - intros. destruct a. erewrite map_nth_error. eauto. eauto.
+    - rewrite map_map. auto.
+  Defined.
+
+  Instance inj_scores: Inj Scores.
+  Proof.
+    red. intros; congruence.
+  Defined.
+
   (* Interface: *)
   Definition insert : UInternalFunction reg_t empty_ext_fn_t :=
     {{

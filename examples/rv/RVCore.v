@@ -16,12 +16,17 @@ Definition isa : ISA := {|
   ISA_memory_model := RVWMO; ISA_base_standard := RV32I; ISA_extensions := []
 |}.
 
+Instance inj_id {A: Type} : Inj (fun x : A => x).
+red. auto.
+Defined.
+
 Section RVHelpers.
   (* Currently, the mul instruction is always active and supported through a
      module, hence its artificial addition to the set of active instructions *)
   Definition instructions := MUL_32M::(ISA_instructions_set isa).
 
   Context {reg_t : Type}.
+  Context `{FiniteType reg_t}.
 
   Definition imm_type := {|
     enum_name        := "immType";
@@ -640,6 +645,339 @@ Module RVCore
   | debug
   | halt.
 
+
+  Instance FiniteType_toIMem   : FiniteType MemReq.reg_t      := _.
+  Instance FiniteType_fromIMem : FiniteType MemResp.reg_t     := _.
+  Instance FiniteType_toDMem   : FiniteType MemReq.reg_t      := _.
+  Instance FiniteType_fromDMem : FiniteType MemResp.reg_t     := _.
+  Instance FiniteType_f2d      : FiniteType fromFetch.reg_t   := _.
+  Instance FiniteType_d2e      : FiniteType fromDecode.reg_t  := _.
+  Instance FiniteType_e2w      : FiniteType fromExecute.reg_t := _.
+  Existing Instance Scoreboard.finite_rf_reg.
+  Existing Instance Multiplier.FiniteType_reg_t.
+  Existing Instance Stack.FiniteType_reg_t.
+
+  Definition ofs_toIMem := 0.
+  Definition ofs_fromIMem := ofs_toIMem + List.length (@finite_elements MemReq.reg_t _).
+  Definition ofs_toDMem := ofs_fromIMem + List.length (@finite_elements MemResp.reg_t _).
+  Definition ofs_fromDMem := ofs_toDMem + List.length (@finite_elements MemReq.reg_t _).
+  Definition ofs_f2d := ofs_fromDMem + List.length (@finite_elements MemResp.reg_t _).
+  Definition ofs_f2dprim := ofs_f2d + List.length (@finite_elements fromFetch.reg_t _).
+  Definition ofs_d2e := ofs_f2dprim + List.length (@finite_elements waitFromFetch.reg_t _).
+  Definition ofs_e2w := ofs_d2e + List.length (@finite_elements fromDecode.reg_t _).
+  Definition ofs_rf := ofs_e2w + List.length (@finite_elements fromExecute.reg_t _).
+  Definition ofs_mulState := ofs_rf + List.length (@finite_elements Rf.reg_t _).
+  Definition ofs_stack := ofs_mulState + List.length (@finite_elements Multiplier.reg_t _).
+  Definition ofs_scoreboard := ofs_stack + List.length (@finite_elements Stack.reg_t _).
+  Definition ofs_cycle_count := ofs_scoreboard + List.length (@finite_elements Scoreboard.reg_t _).
+  Definition ofs_instr_count := ofs_cycle_count + 1.
+  Definition ofs_pc := ofs_instr_count + 1.
+  Definition ofs_epoch := ofs_pc + 1.
+  Definition ofs_debug := ofs_epoch + 1.
+  Definition ofs_halt := ofs_debug + 1.
+
+  Lemma index_bounded {A} `{FiniteType A} (state: A):
+    finite_index state < Datatypes.length finite_elements.
+  Proof.
+    eapply nth_error_Some.
+    rewrite finite_surjective. congruence.
+  Qed.
+
+  Lemma nth_error_app_r:
+    forall {A} (l1 l2: list A) n,
+      nth_error (l1 ++ l2) (List.length l1 + n) = nth_error l2 n.
+  Proof.
+    intros.
+    rewrite nth_error_app2. f_equal. lia. lia.
+  Qed.
+
+Ltac unfolds := unfold ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. 
+  
+  Instance FiniteType_reg : FiniteType reg_t.
+  Proof.
+    refine
+      {|
+        finite_index:=
+          fun r => match r with
+                     toIMem s => finite_index s
+                   | fromIMem s => ofs_fromIMem + finite_index s
+                   | toDMem s => ofs_toDMem + finite_index s
+                   | fromDMem s => ofs_fromDMem + finite_index s
+                   | f2d s => ofs_f2d + finite_index s
+                   | f2dprim s => ofs_f2dprim + finite_index s
+                   | d2e s => ofs_d2e + finite_index s
+                   | e2w s => ofs_e2w + finite_index s
+                   | rf s => ofs_rf + finite_index s
+                   | mulState s => ofs_mulState + finite_index s
+                   | stack s => ofs_stack + finite_index s
+                   | scoreboard s => ofs_scoreboard + finite_index s
+                   | cycle_count => ofs_cycle_count
+                   | instr_count => ofs_instr_count
+                   | pc => ofs_pc
+                   | epoch => ofs_epoch
+                   | debug => ofs_debug
+                   | halt => ofs_halt
+                   end;
+        finite_elements:=
+          map (fun i => toIMem i) finite_elements
+              ++ map (fun i => fromIMem i) finite_elements
+              ++ map (fun i => toDMem i) finite_elements
+              ++ map (fun i => fromDMem i) finite_elements
+              ++ map (fun i => f2d i) finite_elements
+              ++ map (fun i => f2dprim i) finite_elements
+              ++ map (fun i => d2e i) finite_elements
+              ++ map (fun i => e2w i) finite_elements
+              ++ map (fun i => rf i) finite_elements
+              ++ map (fun i => mulState i) finite_elements
+              ++ map (fun i => stack i) finite_elements
+              ++ map (fun i => scoreboard i) finite_elements
+              ++ [cycle_count; instr_count; pc; epoch; debug; halt]
+      |}.
+    - intros.
+      destruct a.
+      + rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_toDMem. rewrite <- Nat.add_assoc. rewrite nth_error_app_r.
+        erewrite <- map_length. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        erewrite <- map_length. rewrite nth_error_app_r.
+        erewrite <- map_length. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+        rewrite map_length. apply index_bounded.
+      + unfold ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        rewrite <- (Nat.add_0_r (List.length finite_elements)).
+        erewrite <- map_length at 1. rewrite nth_error_app_r.
+        reflexivity.
+      + unfold ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        reflexivity.
+      + unfold ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        reflexivity.
+      + unfold ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        reflexivity.
+      + unfold ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        reflexivity.
+      + unfold ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+        rewrite nth_error_app_r.
+        repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+        reflexivity.
+    -
+      rewrite ! map_app.
+      rewrite ! map_map.
+
+      Lemma NoDup_app_sorted:
+        forall l1,
+          NoDup l1 ->
+          forall l2,
+          NoDup l2 ->
+          forall n,
+            (forall x, In x l1 -> x < n) ->
+            (forall x, In x l2 -> x >= n) ->
+            NoDup (l1 ++ l2).
+      Proof.
+        induction 1; simpl; intros; eauto.
+        constructor; eauto. intro IN. apply in_app_or in IN.
+        destruct IN. eauto. apply H3 in H4.
+        specialize (H2 _ (or_introl eq_refl)); lia.
+      Qed.
+
+      Lemma NoDup_map_transl':
+        forall {A} (l: list A) y f,
+          NoDup (map (fun x => y + f x) l) ->
+          NoDup (map (fun x => f x) l).
+      Proof.
+        induction l; simpl; intros; eauto. inversion H. clear H. subst.
+        constructor; eauto. rewrite in_map_iff in *.
+        intros (x & EQ & IN); apply H2.
+        exists x; eauto.
+      Qed.
+      Lemma NoDup_map_transl:
+        forall {A} (l: list A) y f,
+          NoDup (map (fun x => f x) l) ->
+          NoDup (map (fun x => y + f x) l).
+      Proof.
+        induction l; simpl; intros; eauto. inversion H. clear H. subst.
+        constructor; eauto. rewrite in_map_iff in *.
+        intros (x & EQ & IN); apply H2.
+        exists x; split; eauto. lia.
+      Qed.
+
+      Lemma map_transl:
+        forall {A} y f (l: list A),
+          map (fun x => y + f x) l = map (Nat.add y) (map f l).
+      Proof.
+        intros; rewrite map_map. auto.
+      Qed.
+
+      Lemma map_add:
+        forall n m (l: list nat),
+          map (Nat.add (n + m)) l = map (Nat.add n) (map (Nat.add m) l).
+      Proof.
+        intros; rewrite map_map. apply map_ext. intros; lia.
+      Qed.
+
+      rewrite ! app_assoc.
+      Opaque finite_index finite_elements.
+      simpl map.
+      replace [ofs_cycle_count; ofs_instr_count; ofs_pc; ofs_epoch; ofs_debug; ofs_halt]
+        with (map (Nat.add ofs_cycle_count) [0;1;2;3;4;5]).
+      2:{
+        unfold ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count.
+        generalize ofs_cycle_count. intros.
+        simpl. repeat (f_equal;[try lia|]).
+        f_equal. f_equal. lia.
+        f_equal. lia.
+        f_equal. lia.
+        f_equal. lia.
+      }
+        unfolds.
+        repeat match goal with
+                 |- context [map (fun x => ?y + _) ?l] =>
+                 rewrite (map_transl y _ l)
+               end.
+        repeat rewrite map_add.
+        rewrite <- ! app_assoc.
+        rewrite <- ! map_app.
+        (* apply NoDup_app_sorted with (n := ofs_fromIMem). apply finite_injective. *)
+        (* apply FinFun.Injective_map_NoDup. red.  intros; lia. *)
+
+        Lemma nodup_map_add:
+          forall {A} f (l: list A) l',
+            (forall x, In x l -> f x < List.length l) ->
+            NoDup (map f l) ->
+            NoDup l' ->
+            NoDup (map f l ++ map (Nat.add (List.length l)) l').
+        Proof.
+          intros.
+          apply NoDup_app_sorted with (n := List.length l). auto.
+          apply FinFun.Injective_map_NoDup. red.  intros; lia.
+          auto.
+          intros x IN; rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst. eauto.
+          intros x IN; rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst. lia.
+        Qed.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
+        repeat constructor;  simpl; intuition lia.
+  Defined.
+
+  Instance inj_toImem: Inj toIMem.
+  Proof. red. intros; congruence. Defined.
+
+  Instance inj_fromImem: Inj fromIMem.
+  Proof. red. intros; congruence. Defined.
+
+
+  Instance inj_f2d: Inj f2d.
+  Proof. red. intros; congruence. Defined.
+
+  Instance inj_f2dprim: Inj f2dprim.
+  Proof. red. intros; congruence. Defined.
+
+
+  Instance inj_scoreboard: Inj scoreboard.
+  Proof. red. intros; congruence. Defined.
+
+  Instance inj_rf: Inj rf.
+  Proof. red. intros; congruence. Defined.
+
+
+  Instance inj_d2e: Inj d2e.
+  Proof. red. intros; congruence. Defined.
+
+  (* XXX *)
+
   (* State type *)
   Definition R idx :=
     match idx with
@@ -820,6 +1158,10 @@ Module RVCore
       && (get(dInst,inst)[|5`d3| :+ 2] == Ob~0~0)
   }}.
 
+
+  Instance inj_mulstate : Inj mulState.
+  Proof. red; intros; congruence. Defined.
+  
   Definition isMultiplyInst : UInternalFunction reg_t empty_ext_fn_t := {{
     fun isMultiplyInst (dInst: struct_t decoded_sig) : bits_t 1 =>
       mulState.(Multiplier.enabled)()
@@ -846,6 +1188,17 @@ Module RVCore
     if (read0(halt) == Ob~1) then fail else pass;
     mulState.(Multiplier.step)()
   }}.
+
+  Instance inj_dmem : Inj toDMem.
+  Proof. red; intros; congruence. Defined.
+
+  Existing Instance Stack.FiniteType_reg_t.
+
+  Instance inj_stack : Inj stack.
+  Proof. red; intros; congruence. Defined.
+
+  Instance inj_e2w : Inj e2w.
+  Proof. red; intros; congruence. Defined.
 
   Definition execute_1 : uaction reg_t ext_fn_t := {{
 (
@@ -1039,6 +1392,8 @@ Module RVCore
   (*     pass *)
   (* }}. *)
 
+  Instance inj_fromDMem : Inj fromDMem.
+  Proof. red; intros; congruence. Defined.
 
   Definition writeback : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
@@ -1197,6 +1552,18 @@ Module RVCore
       end`
   }}.
 
+  Instance inj_fromMem m : Inj match m with
+      | imem => fromIMem
+      | dmem => fromDMem
+      end.
+  Proof. destruct m; typeclasses eauto. Defined.
+
+  Instance inj_toMem m : Inj match m with
+      | imem => toIMem
+      | dmem => toDMem
+      end.
+  Proof. destruct m; typeclasses eauto. Defined.
+
   Definition mem (m: memory) : uaction reg_t ext_fn_t :=
     let fromMem :=
       match m with
@@ -1267,14 +1634,6 @@ Module RVCore
     | 31 => "x31_t6"    (* caller-saved, temporary registers *)
     | _  => ""
     end.
-
-  Instance FiniteType_toIMem   : FiniteType MemReq.reg_t      := _.
-  Instance FiniteType_fromIMem : FiniteType MemResp.reg_t     := _.
-  Instance FiniteType_toDMem   : FiniteType MemReq.reg_t      := _.
-  Instance FiniteType_fromDMem : FiniteType MemResp.reg_t     := _.
-  Instance FiniteType_f2d      : FiniteType fromFetch.reg_t   := _.
-  Instance FiniteType_d2e      : FiniteType fromDecode.reg_t  := _.
-  Instance FiniteType_e2w      : FiniteType fromExecute.reg_t := _.
 
   Instance Show_rf : Show (Rf.reg_t) := {|
     show '(Rf.rData v) := rv_register_name v
