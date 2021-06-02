@@ -17,7 +17,6 @@ module top_uart(input CLK, input RST_N, output LED, input uart_line_in, output u
    wire led_wr_data;
 
    reg led = 1'b0;
-   assign LED = led;
 
    uart comms(.CLK(CLK), .RST_N(RST_N),
               .read_byte_arg(uart_wr_ready),
@@ -50,6 +49,8 @@ module top_uart(input CLK, input RST_N, output LED, input uart_line_in, output u
    always @(posedge CLK)
      if (led_wr_valid)
        led <= led_wr_data;
+
+   assign LED = led;
 
 `ifndef STDERR
  `define STDERR 32'h80000002

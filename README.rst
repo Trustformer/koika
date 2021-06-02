@@ -766,14 +766,19 @@ The following list shows the current state of the repo:
       - |coq/CPS.v|_: Continuation-passing semantics and weakest precondition calculus
       - |coq/CompactLogs.v|_: Alternative implementation of logs
       - |coq/CompactSemantics.v|_: Semantics of typed |koika| programs with compact logs
+      - |coq/IndTypedSemantics.v|_: Semantics of typed |koika| programs
       - |coq/Logs.v|_: Logs of reads and writes
       - |coq/LoweredSemantics.v|_: Semantics of Lowered |koika| programs
       - |coq/LoweredSyntax.v|_: Lowered ASTs (weakly-typed)
       - |coq/Lowering.v|_: Compilation from typed ASTs to lowered ASTs
       - |coq/Primitives.v|_: Combinational primitives available in all |koika| programs
+      - |coq/SimpleLogs.v|_: Logs of reads and writes
+      - |coq/SimpleTypedSemantics.v|_: Simple semantics of typed |koika| programs
       - |coq/TypedSemantics.v|_: Semantics of typed |koika| programs
       - |coq/TypedSyntax.v|_: Typed ASTs
       - |coq/Types.v|_: Types used by |koika| programs
+      - |coq/UntypedLogs.v|_: Logs of reads and writes
+      - |coq/UntypedSemantics.v|_: Semantics of typed |koika| programs
 
    (ORAAT)
       - |coq/OneRuleAtATime.v|_: Proof of the One-rule-at-a-time theorem
@@ -784,7 +789,6 @@ The following list shows the current state of the repo:
 
    (Tools)
       - |coq/LoweredSyntaxFunctions.v|_: Functions defined on lowered ASTs
-      - |coq/Magic.v|_: Universal axiom to replace the ‘admit’ tactic
       - |coq/TypedSyntaxFunctions.v|_: Functions defined on typed ASTs
       - |coq/TypedSyntaxProperties.v|_: Lemmas pertaining to tools on typed syntax
 
@@ -849,9 +853,16 @@ The following list shows the current state of the repo:
          - |examples/rv/etc/testbench.v|_: Testbench used with CVC and Icarus Verilog
          - |examples/rv/etc/top_ulx3s.v|_: Verilog wrapper for the |koika| core (for use in FPGA synthesis, with a UART interface)
 
-      - |examples/rv/Multiplier.v|_: Implementation of a multiplier module
-      - |examples/rv/MultiplierCorrectness.v|_: Proof of correctness of the multiplier module
+      - |examples/rv/IFields.v|_: Definitions of the instruction fields
+      - |examples/rv/ITypes.v|_: Definition of the available instruction types
+      - |examples/rv/Instructions.v|_: Definition of the instructions introduced in the RISC-V specification
+      - |examples/rv/InstructionsFct2.v|_: Definitions related to the fct2 instruction field
+      - |examples/rv/InstructionsFct3.v|_: Definitions related to the fct3 instruction field
+      - |examples/rv/InstructionsFct7.v|_: Definitions related to the fct7 instruction field
+      - |examples/rv/InstructionsFixedRs2.v|_: Definitions related to the rs2 instruction field
+      - |examples/rv/InstructionsProperties.v|_: Definition of functions helpful for filtering instructions
       - |examples/rv/RVCore.v|_: Implementation of our RISC-V core
+      - |examples/rv/RVCoreProperties.v|_: Proofs about our RISC-V implementation
       - |examples/rv/RVEncoding.v|_: Encoding-related constants
       - |examples/rv/Scoreboard.v|_: Implementation of a scoreboard
       - |examples/rv/Stack.v|_: Implementation of an address stack module
@@ -995,6 +1006,8 @@ The following list shows the current state of the repo:
 .. _coq/Frontend.v: coq/Frontend.v
 .. |coq/IdentParsing.v| replace:: ``IdentParsing.v``
 .. _coq/IdentParsing.v: coq/IdentParsing.v
+.. |coq/IndTypedSemantics.v| replace:: ``IndTypedSemantics.v``
+.. _coq/IndTypedSemantics.v: coq/IndTypedSemantics.v
 .. |coq/IndexUtils.v| replace:: ``IndexUtils.v``
 .. _coq/IndexUtils.v: coq/IndexUtils.v
 .. |coq/Interop.v| replace:: ``Interop.v``
@@ -1009,8 +1022,6 @@ The following list shows the current state of the repo:
 .. _coq/LoweredSyntaxFunctions.v: coq/LoweredSyntaxFunctions.v
 .. |coq/Lowering.v| replace:: ``Lowering.v``
 .. _coq/Lowering.v: coq/Lowering.v
-.. |coq/Magic.v| replace:: ``Magic.v``
-.. _coq/Magic.v: coq/Magic.v
 .. |coq/Member.v| replace:: ``Member.v``
 .. _coq/Member.v: coq/Member.v
 .. |coq/OneRuleAtATime.v| replace:: ``OneRuleAtATime.v``
@@ -1027,6 +1038,10 @@ The following list shows the current state of the repo:
 .. _coq/SemanticProperties.v: coq/SemanticProperties.v
 .. |coq/Show.v| replace:: ``Show.v``
 .. _coq/Show.v: coq/Show.v
+.. |coq/SimpleLogs.v| replace:: ``SimpleLogs.v``
+.. _coq/SimpleLogs.v: coq/SimpleLogs.v
+.. |coq/SimpleTypedSemantics.v| replace:: ``SimpleTypedSemantics.v``
+.. _coq/SimpleTypedSemantics.v: coq/SimpleTypedSemantics.v
 .. |coq/Std.v| replace:: ``Std.v``
 .. _coq/Std.v: coq/Std.v
 .. |coq/Syntax.v| replace:: ``Syntax.v``
@@ -1047,6 +1062,10 @@ The following list shows the current state of the repo:
 .. _coq/TypedSyntaxProperties.v: coq/TypedSyntaxProperties.v
 .. |coq/Types.v| replace:: ``Types.v``
 .. _coq/Types.v: coq/Types.v
+.. |coq/UntypedLogs.v| replace:: ``UntypedLogs.v``
+.. _coq/UntypedLogs.v: coq/UntypedLogs.v
+.. |coq/UntypedSemantics.v| replace:: ``UntypedSemantics.v``
+.. _coq/UntypedSemantics.v: coq/UntypedSemantics.v
 .. |coq/Vect.v| replace:: ``Vect.v``
 .. _coq/Vect.v: coq/Vect.v
 .. |etc/configure| replace:: ``configure``
@@ -1127,10 +1146,6 @@ The following list shows the current state of the repo:
 .. _examples/rv/InstructionsProperties.v: examples/rv/InstructionsProperties.v
 .. |examples/rv/ModuleInstructions.v| replace:: ``ModuleInstructions.v``
 .. _examples/rv/ModuleInstructions.v: examples/rv/ModuleInstructions.v
-.. |examples/rv/Multiplier.v| replace:: ``Multiplier.v``
-.. _examples/rv/Multiplier.v: examples/rv/Multiplier.v
-.. |examples/rv/MultiplierCorrectness.v| replace:: ``MultiplierCorrectness.v``
-.. _examples/rv/MultiplierCorrectness.v: examples/rv/MultiplierCorrectness.v
 .. |examples/rv/RVCore.v| replace:: ``RVCore.v``
 .. _examples/rv/RVCore.v: examples/rv/RVCore.v
 .. |examples/rv/RVCoreProperties.v| replace:: ``RVCoreProperties.v``
