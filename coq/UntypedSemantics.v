@@ -1640,8 +1640,6 @@ Section Desugar.
       Forall (fun x => x) (map (check_ucall_module_inj) elements)
     end.
 
-  Context {reg_t' ext_fn_t': Type}.
-
   Lemma interp_action_desugar_ok:
     forall
       (a: Syntax.uaction pos_t var_t fn_name_t reg_t' ext_fn_t')
@@ -1801,7 +1799,8 @@ Section Desugar.
         rewrite IHargs; auto.
         destruct acc; simpl; auto. destruct p0 as ((l & lv) & Gamma').
         rewrite <- H with (REnv':=REnv'); auto. simpl.
-        destruct (interp_action _ _ _ _ _ a) as [((? & ?) & ?)|] eqn:?; simpl; auto.
+        destruct (interp_action _ _ _ _ _ a) as [((? & ?) & ?)|] eqn:?;
+          simpl; auto.
         rewrite fLog_fLog'; auto.
         unfold opt_bind. destr; auto.
         destruct p0, p0.
