@@ -637,7 +637,8 @@ Section Interp.
   Definition fLog {reg_t reg_t'} (fR: reg_t' -> reg_t) REnv REnv' (l: Log REnv)
   : Log REnv' := REnv'.(create) (fun r => REnv.(getenv) l (fR r)).
 
-  Definition fRinv {reg_t reg_t'} (fR: reg_t' -> reg_t) REnv REnv' (r: reg_t) : option reg_t' :=
+  Definition fRinv {reg_t reg_t'} (fR: reg_t' -> reg_t) REnv REnv' (r: reg_t)
+  : option reg_t' :=
     let l := filter (
       fun r' =>
         if Nat.eq_dec
@@ -1933,19 +1934,23 @@ Section Desugar.
         ); eauto.
         revert action_log Gamma p.
         induction branches; simpl; intros; eauto.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia). auto.
-        destruct a. cbn.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
+        rewrite <- IHua with (REnv':=REnv')
+          by (auto; simpl in *; try tauto; lia).
+        auto. destruct a. cbn.
+        rewrite <- IHua with (REnv':=REnv')
+          by (auto; simpl in *; try tauto; lia).
         destruct (interp_action _ _ _ _ _ var) eqn:?.
         2:{ clear. simpl. rewrite fold_left_none; simpl; auto. intros; destr. }
         destruct p0. destruct p0. simpl.
         simpl in CUMI. destruct CUMI as (CUMI0 & CUMI1 & CUMI2). inv CUMI1.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
+        rewrite <- IHua with (REnv':=REnv')
+          by (auto; simpl in *; try tauto; lia).
         rewrite fLog_fLog'; auto.
         destruct (interp_action _ _ _ _ _ u) eqn:?; simpl; auto.
         2:{ clear. rewrite fold_left_none; simpl; auto. intros; destr. }
         destruct p0. destruct p0. simpl.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
+        rewrite <- IHua with (REnv':=REnv')
+          by (auto; simpl in *; try tauto; lia).
         rewrite fLog_fLog'; auto.
         rewrite fLog'_fLog'; auto.
         rewrite <- IHbranches; auto.
@@ -2033,7 +2038,6 @@ Section Desugar.
               rewrite fLog_fLog'; auto.
               rewrite Heqo. simpl. rewrite Heqo0. simpl.
               rewrite fLog'_fLog'; auto.
-
               Lemma subst_field_name_length:
                 forall fields s v vs0 vs1,
                   subst_field_name fields s v vs0 = Some vs1 ->
@@ -2046,74 +2050,73 @@ Section Desugar.
                 simpl. f_equal; eapply IHfields; eauto.
               Qed.
               erewrite subst_field_name_length; eauto.
-        + Lemma subst_field_name_none:
-            forall fields s v vs0,
-              List.length fields = List.length vs0 ->
-              subst_field_name fields s v vs0 = None ->
-              ~ In s (map fst fields).
-          Proof.
-            induction fields; simpl; intros; eauto.
-            destruct a. destr_in H0; simpl in *; inv H.
-            destr_in H0. inv H0.
-            unfold opt_bind in H0. destr_in H0; inv H0.
-            eapply IHfields in Heqo; eauto. intuition.
-          Qed.
-
-          Lemma subst_field_name_not_in_none:
-            forall fields s v vs0,
-              ~ In s (map fst fields) ->
-              subst_field_name fields s v vs0 = None.
-          Proof.
-            induction fields; simpl; intros; eauto.
-            destr.
-            destruct a. simpl in *.
-            destr. destr. intuition congruence.
-            rewrite IHfields. simpl; auto. intuition.
-          Qed.
-
-          simpl.
-          apply subst_field_name_none in Heqo0.
-
-          Lemma interp_action_fold:
-            forall reg_t ext_fn_t REnv r sigma l (u: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) Gamma sched_log action_log,
-              interp_action (REnv:=REnv) r sigma Gamma sched_log action_log u = None ->
-              interp_action (REnv:=REnv) r sigma Gamma sched_log action_log
-                            (fold_left (fun acc '(f, a) => UBinop (PrimUntyped.UStruct2 (PrimUntyped.USubstField f)) acc a) l u) = None.
-          Proof.
-            induction l; simpl; intros; eauto. destr.
-            apply IHl.
-            simpl. rewrite H. simpl. auto.
-          Qed.
-
-          rewrite interp_action_fold.
-          rewrite fold_left_none; simpl; auto. intros; destr. auto.
-          simpl. rewrite IA. simpl.
-          rewrite <- IH with (REnv':=REnv') by (auto; simpl; lia).
-          rewrite fLog_fLog'. rewrite Heqo. simpl.
-          rewrite subst_field_name_not_in_none. reflexivity. auto.
-          eauto. auto.
-      - simpl.
-        rewrite interp_action_fold.
-        rewrite fold_left_none. simpl. auto.
-        intros; destr. simpl. auto.
-        simpl. rewrite IA. simpl.
-        erewrite <- IH. rewrite fLog_fLog'; auto.
-        rewrite Heqo. simpl. auto. auto. auto.
+            + Lemma subst_field_name_none:
+                forall fields s v vs0,
+                  List.length fields = List.length vs0 ->
+                  subst_field_name fields s v vs0 = None ->
+                  ~ In s (map fst fields).
+              Proof.
+                induction fields; simpl; intros; eauto.
+                destruct a. destr_in H0; simpl in *; inv H.
+                destr_in H0. inv H0.
+                unfold opt_bind in H0. destr_in H0; inv H0.
+                eapply IHfields in Heqo; eauto. intuition.
+              Qed.
+              Lemma subst_field_name_not_in_none:
+                forall fields s v vs0,
+                  ~ In s (map fst fields) ->
+                  subst_field_name fields s v vs0 = None.
+              Proof.
+                induction fields; simpl; intros; eauto.
+                destr.
+                destruct a. simpl in *.
+                destr. destr. intuition congruence.
+                rewrite IHfields. simpl; auto. intuition.
+              Qed.
+              simpl.
+              apply subst_field_name_none in Heqo0.
+              Lemma interp_action_fold:
+                forall
+                  reg_t ext_fn_t REnv r sigma l
+                  (u: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+                  Gamma sched_log action_log,
+                interp_action (REnv:=REnv) r sigma Gamma sched_log action_log u
+                = None
+                -> interp_action
+                  (REnv:=REnv) r sigma Gamma sched_log action_log
+                  (fold_left (fun acc '(f, a) =>
+                    UBinop
+                      (PrimUntyped.UStruct2 (PrimUntyped.USubstField f)) acc a
+                  ) l u) = None.
+              Proof.
+                induction l; simpl; intros; eauto. destr.
+                apply IHl. simpl. rewrite H. simpl. auto.
+              Qed.
+              rewrite interp_action_fold.
+              rewrite fold_left_none; simpl; auto. intros; destr. auto.
+              simpl. rewrite IA. simpl.
+              rewrite <- IH with (REnv':=REnv') by (auto; simpl; lia).
+              rewrite fLog_fLog'. rewrite Heqo. simpl.
+              rewrite subst_field_name_not_in_none. reflexivity. auto.
+              eauto. auto.
+          - simpl.
+            rewrite interp_action_fold.
+            rewrite fold_left_none. simpl. auto.
+            intros; destr. simpl. auto.
+            simpl. rewrite IA. simpl.
+            erewrite <- IH. rewrite fLog_fLog'; auto.
+            rewrite Heqo. simpl. auto. auto. auto.
         }
         apply structinit_ok.
         red; intros; eapply IHua. simpl.
-        {
-          clear - H.
-          revert u H.
+        { clear - H. revert u H.
           induction fields; simpl; intros; eauto. easy.
           destruct a; simpl in *.
           destruct H; subst; auto. lia.
           apply IHfields in H. lia.
         }
         simpl in CUMI.
-        {
-          clear - H CUMI.
-          revert u H CUMI.
+        { clear - H CUMI. revert u H CUMI.
           induction fields; simpl; intros; eauto. easy.
           destruct a; simpl in *. inv CUMI.
           destruct H; subst; auto.
@@ -2123,14 +2126,22 @@ Section Desugar.
         rewrite fLog'_fLog; auto.
         eapply uvalue_of_struct_bits_length; eauto.
       + cbn.
-        fold (desugar_action'
-                (pos_t:=pos_t) (var_t:=var_t) (fn_name_t:=fn_name_t) (reg_t:=reg_t)
-                (ext_fn_t:=ext_fn_t) (reg_t':=reg_t')
-                (ext_fn_t':=ext_fn_t')
-             ); eauto.
-        simpl.
-        edestruct (uvalue_of_bits_succeeds (array_t {| array_type := tau; array_len := Datatypes.length elements |}) (List.concat (rev (repeat (repeat false (type_sz tau)) (List.length elements))))) as (x & EQ).
-        erewrite length_concat_same. simpl. rewrite rev_length. rewrite Bits.rmul_correct.
+        fold (
+          desugar_action'
+            (pos_t:=pos_t) (var_t:=var_t) (fn_name_t:=fn_name_t) (reg_t:=reg_t)
+            (ext_fn_t:=ext_fn_t) (reg_t':=reg_t') (ext_fn_t':=ext_fn_t')
+        ); eauto. simpl.
+        edestruct (
+          uvalue_of_bits_succeeds
+            (array_t
+              {| array_type := tau; array_len := Datatypes.length elements |}
+            )
+            (List.concat
+              (rev (repeat (repeat false (type_sz tau)) (List.length elements)))
+            )
+        ) as (x & EQ).
+        erewrite length_concat_same. simpl. rewrite rev_length.
+        rewrite Bits.rmul_correct.
         rewrite repeat_length. reflexivity.
         rewrite Forall_forall; intros x IN.
         apply in_rev in IN.
@@ -2146,53 +2157,71 @@ Section Desugar.
           apply in_rev in IN.
           apply repeat_spec in IN. subst. rewrite repeat_length. auto.
         }
-        2:{
-          rewrite rev_length.
-          rewrite repeat_length. reflexivity.
-        }
-
-
-
+        2:{ rewrite rev_length. rewrite repeat_length. reflexivity. }
         assert (arrayinit_ok:
-      forall tau n elements pos action_log sched_log Gamma p
-             u l0 action_log' Gamma',
-        let sig := {| array_type:= tau; array_len := n |} in
-        forall
-          (INIT: (interp_action
-                                         r sigma
-                                         Gamma sched_log action_log u) =
-                 Some (fLog' fR REnv REnv' action_log' action_log, Array sig l0, Gamma'))
-          (LEN: List.length l0 = n)
-          (POS: pos + List.length elements = n)
-          (IH: forall u0, In u0 elements -> desugar_ok _ _ u0),
-
-          fState' fR REnv REnv' (let/opt4 _, action_log0, vs, Gamma0
-              := fold_left
-                   (fun (acc : option (nat * _ULog * list val * list (var_t * val))) a =>
-                      let/opt4 pos, action_log0, vs, Gamma0 := acc
-                      in (let/opt3 action_log1, v, Gamma1 :=
-                             interp_action(create REnv' (fun idx : reg_t' => getenv REnv r (fR idx)))
-                  (fun f : ext_fn_t' => sigma (fSigma f)) Gamma0 (fLog fR REnv REnv' sched_log) action_log0 a
-                          in (let/opt pat1 := take_drop pos vs
-                              in match pat1 with
-                                 | (l1, []) => None
-                                 | (l1, _ :: l3) => Some (S pos, action_log1, l1 ++ v :: l3, Gamma1)
-                                 end))) elements (Some (pos, action_log', l0, Gamma'))
-           in Some
-                (action_log0, Array {| array_type := tau; array_len := n |} vs,
-                 Gamma0)) action_log =
-          (interp_action r sigma  Gamma sched_log action_log
-                        (snd
-                           (fold_left
-                              (fun '(pos, acc) a =>
-                                 (S pos,
-                                  UBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement pos)) acc
-                                         (desugar_action' p fR fSigma a))) elements
-                              (pos, u))))).
-        {
-          clear - inj.
+          forall tau n elements pos action_log sched_log Gamma p
+            u l0 action_log' Gamma',
+            let sig := {| array_type:= tau; array_len := n |} in
+            forall
+              (INIT:
+                (interp_action r sigma Gamma sched_log action_log u)
+                = Some (
+                  fLog' fR REnv REnv' action_log' action_log, Array sig l0,
+                  Gamma'
+                )
+              )
+              (LEN: List.length l0 = n)
+              (POS: pos + List.length elements = n)
+              (IH: forall u0, In u0 elements -> desugar_ok _ _ u0),
+            fState'
+              fR REnv REnv'
+              (
+                let/opt4 _, action_log0, vs, Gamma0 :=
+                fold_left (
+                  fun
+                    (acc : option (nat * _ULog * list val * list (var_t * val)))
+                    a
+                  =>
+                    let/opt4 pos, action_log0, vs, Gamma0 := acc in (
+                      let/opt3 action_log1, v, Gamma1
+                      := interp_action
+                        (create REnv'
+                          (fun idx : reg_t' => getenv REnv r (fR idx))
+                        )
+                        (fun f : ext_fn_t' => sigma (fSigma f)) Gamma0
+                        (fLog fR REnv REnv' sched_log) action_log0 a
+                      in (
+                        let/opt pat1 := take_drop pos vs
+                          in match pat1 with
+                          | (l1, []) => None
+                          | (l1, _ :: l3) =>
+                            Some (S pos, action_log1, l1 ++ v :: l3, Gamma1)
+                          end
+                      )
+                    )
+                )
+                elements (Some (pos, action_log', l0, Gamma'))
+                in Some (
+                  action_log0, Array {| array_type := tau; array_len := n |} vs,
+                  Gamma0
+                )
+              )
+              action_log
+            = (
+              interp_action
+                r sigma Gamma sched_log action_log (
+                  snd (fold_left (fun '(pos, acc) a => (
+                    S pos,
+                    UBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement pos))
+                      acc (desugar_action' p fR fSigma a)
+                  )) elements (pos, u))
+                )
+            )
+        ).
+        { clear - inj.
           induction elements; simpl; intros; eauto.
-          destruct (interp_action _ _ _ _ action_log' a) as [((al' & v0) & G')|] eqn:?.
+          destruct (interp_action _ _ _ _ action_log' a)
+            as [((al' & v0) & G')|] eqn:?.
           - simpl.
             edestruct (@take_drop_succeeds) as (la & lb & EQ).
             2: rewrite EQ. lia. simpl.
@@ -2201,42 +2230,50 @@ Section Desugar.
             destruct lb; simpl in *; try lia.
             generalize IH as IH'. intro.
             specialize (IH _ (or_introl eq_refl)). red in IH.
-            specialize (IH _ _ _ r sigma _ inj fSigma REnv' Gamma' (fLog' fR REnv REnv' action_log' action_log) sched_log p).
+            specialize (
+              IH _ _ _ r sigma _ inj fSigma REnv' Gamma'
+              (fLog' fR REnv REnv' action_log' action_log) sched_log p
+            ).
             rewrite fLog_fLog' in IH; auto.
             rewrite Heqo in IH. simpl in IH.
             erewrite <- IHelements.
             2:{
-              simpl.
-              rewrite INIT. simpl. rewrite <- IH.
-              simpl.
-              rewrite fLog'_fLog'.
+              simpl. rewrite INIT. simpl. rewrite <- IH.
+              simpl. rewrite fLog'_fLog'.
               rewrite take_drop_head. simpl. eauto. auto.
             } reflexivity.
             repeat rewrite app_length; simpl; auto.
             repeat rewrite app_length; simpl; auto. lia.
             intros; eapply IH'; eauto.
-      - transitivity (@None (Log REnv * val * list (var_t * val))).
-        clear. simpl.
-        rewrite fold_left_none; simpl; auto.
-        cut ( interp_action r sigma Gamma sched_log action_log
-                            (UBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement pos)) u
-                                    (desugar_action' p fR fSigma a)) = None).
-        clear.
-        generalize (S pos).
-        generalize (UBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement pos)) u
-                           (desugar_action' p fR fSigma a)).
-
-        induction elements; simpl; intros; eauto.
-        apply IHelements. intros; eauto.
-        simpl. rewrite H. simpl. auto.
-        simpl.
-        rewrite INIT. simpl.
-        rewrite <- IH; auto. rewrite fLog_fLog'; auto.
-        rewrite Heqo. simpl. auto.
+          - transitivity (@None (Log REnv * val * list (var_t * val))).
+            clear. simpl.
+            rewrite fold_left_none; simpl; auto.
+            cut (
+              interp_action r sigma Gamma sched_log action_log (
+                UBinop
+                  (PrimUntyped.UArray2 (PrimUntyped.USubstElement pos)) u
+                  (desugar_action' p fR fSigma a)
+              ) = None
+            ).
+            clear.
+            generalize (S pos).
+            generalize (
+              UBinop
+                (PrimUntyped.UArray2 (PrimUntyped.USubstElement pos)) u
+                (desugar_action' p fR fSigma a)
+            ).
+            induction elements; simpl; intros; eauto.
+            apply IHelements. intros; eauto.
+            simpl. rewrite H. simpl. auto. simpl.
+            rewrite INIT. simpl. rewrite <- IH; auto. rewrite fLog_fLog'; auto.
+            rewrite Heqo. simpl. auto.
         }
         apply arrayinit_ok.
         clear arrayinit_ok.
-        edestruct @uinit_action_array with (sig := {| array_type := tau; array_len := Datatypes.length elements |}) as (vs & vl & BS & F & FF & L &F2 & IA).
+        edestruct @uinit_action_array with (
+          sig :=
+            {| array_type := tau; array_len := Datatypes.length elements |}
+        ) as (vs & vl & BS & F & FF & L &F2 & IA).
         rewrite IA.
         clear IA.
         cut (l0 = rev vl). intros ->; auto.
@@ -2331,60 +2368,8 @@ Section Desugar.
         - clear -CUMI.
           simpl in *; intuition. inv H1; auto.
       }
-
-      (*    assert ( *)
-      (*        forall acc, *)
-      (*          fold_left *)
-      (*       (fun (acc : option (Log _ * list val * list (var_t * val))) (a : uaction  reg_t ext_fn_t) => *)
-      (*          let/opt3 action_log0, l, Gamma0 := acc *)
-      (*          in (let/opt3 action_log1, v, Gamma1 := interp_action r sigma Gamma0 sched_log action_log0 a *)
-      (*              in Some (action_log1, v :: l, Gamma1))) *)
-      (*       (map (fun a  => desugar_action' p fR fSigma a) *)
-      (*            args) acc *)
-      (*     = *)
-      (*     let/opt3 al, lv, g := *)
-      (*       fold_left *)
-      (*         (fun (acc : option (Log _ * list val * list (var_t * val))) (a : uaction reg_t' ext_fn_t') => *)
-      (*            let/opt3 action_log0, l, Gamma0 := acc *)
-      (*            in (let/opt3 action_log1, v, Gamma1 := *)
-      (*                   interp_action *)
-      (*                     (create REnv' (fun idx : reg_t' => getenv REnv r (fR idx))) *)
-      (*                     (fun f : ext_fn_t' => sigma (fSigma f)) *)
-      (*                     Gamma0 (fLog fR REnv REnv' sched_log) action_log0 a *)
-      (*                in Some (action_log1, v :: l, Gamma1))) args *)
-      (*         (let/opt3 al, l, g := acc in Some (fLog fR REnv REnv' al, l, g)) *)
-      (*     in *)
-      (*   let/opt3 l0, _, _ := acc in *)
-      (*   Some (fLog' fR REnv REnv' al l0, lv, g) *)
-      (*   ). *)
-      (* { *)
-      (*   assert (forall arg, In arg args -> PP _ _ arg). *)
-      (*   { *)
-      (*     intros; eapply IHua. simpl. *)
-      (*     clear IHua. *)
-      (*     cut (size_uaction arg <= list_sum (map size_uaction args)). cbn. lia. *)
-      (*     revert arg H. induction args; simpl; intros; eauto. easy. *)
-      (*     destruct H. subst. lia. *)
-      (*     apply IHargs in H. lia. *)
-      (*   } *)
-      (*   revert H. clear -inj. *)
-      (*   induction args; simpl; intros; eauto. *)
-      (*   destruct acc; simpl; auto. destruct p0, p0; simpl. *)
-      (*   rewrite fLog'_fLog3; auto. *)
-      (*   erewrite IHargs; auto. *)
-      (*   destruct acc; simpl; auto. destruct p0 as ((l & lv) & Gamma'). *)
-      (*   rewrite <- H with (REnv':=REnv'); auto. simpl. *)
-      (*   destruct (interp_action _ _ _ _ _ a) as [((? & ?) & ?)|] eqn:?; simpl; auto. *)
-      (*   rewrite fLog_fLog'; auto. *)
-      (*   unfold opt_bind. destr; auto. *)
-      (*   destruct p0, p0. *)
-      (*   rewrite fLog'_fLog'. auto. *)
-      (*   rewrite fold_left_none. reflexivity. simpl. auto. *)
-      (* } *)
       assert (Inj fR0).
-      {
-        clear - CUMI. simpl in CUMI. intuition.
-      }
+      { clear - CUMI. simpl in CUMI. intuition. }
       erewrite H. simpl.
       destruct (fold_left _ _ _) eqn:?; simpl; auto.
       destruct p0, p0. simpl.
@@ -3483,29 +3468,19 @@ Section Eq.
       unfold opt_bind in H.
       repeat destr_in H; inv H.
       erewrite IHua; eauto.
-    - destr_in TA; [|inv TA].
-      destr_in TA; [|inv TA].
-      destr_in TA; [|inv TA].
-      destr_in TA; [|inv TA].
-      destr_in TA; [|inv TA].
-      inv TA.
+    - destr_in TA; [|inv TA]. destr_in TA; [|inv TA]. destr_in TA; [|inv TA].
+      destr_in TA; [|inv TA]. destr_in TA; [|inv TA]. inv TA.
       apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
       destruct s, s0. simpl in *.
       apply cast_action_eq in Heqr3.
       destruct Heqr3 as (pf & EQ). subst.
       apply cast_action_eq in Heqr4.
       destruct Heqr4 as (pf & EQ). subst.
-      simpl in H.
-      unfold opt_bind in H.
-      repeat destr_in H; inv H.
-      edestruct (interp_action_correct ua1) as (ual' & g' & IA' & ALeq & Geq). eauto.
-      4: apply Heqo. eauto. eauto. eauto.
-      rewrite IA'. simpl.
-      erewrite IHua; eauto. lia.
-      erewrite IHua; eauto. lia.
-    - destr_in TA; [|inv TA].
-      destr_in TA; [|inv TA].
-      inv TA.
+      simpl in H. unfold opt_bind in H. repeat destr_in H; inv H.
+      edestruct (interp_action_correct ua1) as (ual' & g' & IA' & ALeq & Geq).
+      eauto. 4: apply Heqo. eauto. eauto. eauto.
+      rewrite IA'. simpl. erewrite IHua; eauto. lia. erewrite IHua; eauto. lia.
+    - destr_in TA; [|inv TA]. destr_in TA; [|inv TA]. inv TA.
       apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
       destruct s. simpl in *.
       apply cast_action_eq in Heqr1.
@@ -3564,11 +3539,7 @@ Section Eq.
         clear - IHua IAC.
         rewrite <- (rev_involutive args).
         assert (IHua': forall arg, In arg (rev args) -> PP arg).
-        {
-          intros.
-          eapply IHua.
-          apply In_rev in H.
-          revert arg H.
+        { intros. eapply IHua. apply In_rev in H. revert arg H.
           induction args; simpl; intros; eauto. easy.
           destruct H. subst. lia.
           eapply IHargs in H. lia. intros. eapply IHua. simpl. lia.
@@ -3600,11 +3571,14 @@ Section Eq.
             destr_in RLM; [|inv RLM].
             destr_in RLM; [|inv RLM]. inv RLM. simpl in *.
             destr_in H4. destruct p0. destruct p0.
-            * edestruct interp_args_correct as (ual' & res & ug' & FR & Geq & Leq & Geq2).
-              intros arg IN. intros; eapply IAC.  12: eauto. all:eauto. rewrite FR. simpl.
+            * edestruct interp_args_correct
+                as (ual' & res & ug' & FR & Geq & Leq & Geq2).
+              intros arg IN. intros; eapply IAC.  12: eauto. all:eauto.
+              rewrite FR. simpl.
               repeat destr_in H4. inv H4.
               destruct s. simpl in *. erewrite IHua'; simpl; eauto.
-              apply cast_action_eq in Heqr0. destruct Heqr0 as (pf & EQ). subst. simpl in *. eauto.
+              apply cast_action_eq in Heqr0. destruct Heqr0 as (pf & EQ). subst.
+              simpl in *. eauto.
             * erewrite IHl; simpl; eauto.
         - rewrite map_length.
           apply result_list_map_length in RLM.
@@ -3613,10 +3587,10 @@ Section Eq.
       move H at bottom.
       unfold opt_bind in H.
       repeat destr_in H; try inv H.
-      *
-        rewrite combine_rev in Heqr1.
+      * rewrite combine_rev in Heqr1.
         rewrite <- map_rev in Heqr1.
-        edestruct interp_args_correct as (ual' & res & ug' & FR & Geq & Leq & Geq2).
+        edestruct interp_args_correct
+          as (ual' & res & ug' & FR & Geq & Leq & Geq2).
         intros arg IN. intros; eapply interp_action_correct. 10:eauto.
         6: apply result_list_map_rev; eauto. 5: eauto. 9: eauto. all: eauto.
         rewrite rev_length; auto.
@@ -3629,14 +3603,13 @@ Section Eq.
         erewrite H1. reflexivity. 6: eauto. eauto. eauto. all: eauto.
     - destr_in TA; [|inv TA].
       inv TA.
-      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
-      destruct s. simpl in *.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst.
+      simpl in H. destruct s. simpl in *.
       eapply IHua; eauto.
     - inv TA.
   Qed.
 
-  Lemma log_eq_empty:
-    log_eq REnv log_empty Logs.log_empty.
+  Lemma log_eq_empty: log_eq REnv log_empty Logs.log_empty.
   Proof.
     repeat red.
     unfold log_empty, Logs.log_empty.
@@ -3644,23 +3617,15 @@ Section Eq.
   Qed.
 
   Lemma interp_rule_correct:
-    forall ua p rl
-           (TA: TypeInference.tc_rule TR Sigma p ua = Success rl)
-           sched_log
-           usched_log
-           (SL: log_eq REnv usched_log sched_log)
-           action_log
-    ,
-      TypedSemantics.interp_rule
-        tr tsigma
-        sched_log rl = Some (action_log) ->
-      exists uaction_log,
-        interp_rule
-          (pos_t:=pos_t)
-          (fn_name_t := fn_name_t)
-          r sigma usched_log ua = Some (uaction_log)
-        /\ log_eq REnv uaction_log action_log
-  .
+    forall
+      ua p rl (TA: TypeInference.tc_rule TR Sigma p ua = Success rl) sched_log
+      usched_log (SL: log_eq REnv usched_log sched_log) action_log,
+    TypedSemantics.interp_rule tr tsigma sched_log rl = Some (action_log)
+    -> exists uaction_log,
+    interp_rule
+      (pos_t:=pos_t) (fn_name_t := fn_name_t) r sigma usched_log ua
+    = Some (uaction_log)
+    /\ log_eq REnv uaction_log action_log.
   Proof.
     intros.
     unfold TypeInference.tc_rule in TA.
@@ -3681,19 +3646,12 @@ Section Eq.
   Qed.
 
   Lemma interp_rule_none:
-    forall ua p rl
-           (TA: TypeInference.tc_rule TR Sigma p ua = Success rl)
-           sched_log
-           usched_log
-           (SL: log_eq REnv usched_log sched_log)
-    ,
-      TypedSemantics.interp_rule
-        tr tsigma
-        sched_log rl = None ->
-      interp_rule
-        (pos_t:=pos_t)
-        (fn_name_t := fn_name_t)
-        r sigma usched_log ua = None.
+    forall
+      ua p rl (TA: TypeInference.tc_rule TR Sigma p ua = Success rl)
+      sched_log usched_log (SL: log_eq REnv usched_log sched_log),
+    TypedSemantics.interp_rule tr tsigma sched_log rl = None
+    -> interp_rule (pos_t:=pos_t) (fn_name_t := fn_name_t) r sigma usched_log ua
+    = None.
   Proof.
     intros.
     unfold TypeInference.tc_rule in TA.
@@ -3711,33 +3669,35 @@ Section Eq.
 
   Context {rule_name_t: Type}.
   Lemma interp_scheduler'_correct:
-    forall (urules: rule_name_t -> Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-           (rules: rule_name_t -> TypedSyntax.rule pos_t var_t fn_name_t TR Sigma)
-           (TC: forall rnt,
-               exists p,
-                 TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
-           ),
+    forall
+      (urules:
+        rule_name_t -> Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t
+      )
+      (rules: rule_name_t -> TypedSyntax.rule pos_t var_t fn_name_t TR Sigma)
+      (TC:
+        forall rnt, exists p,
+        TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
+      ),
     forall s l1 ul1 l2,
-      log_eq REnv ul1 l1 ->
-      TypedSemantics.interp_scheduler' tr tsigma rules l1 s = l2 ->
-      exists ul2,
-        interp_scheduler' urules r sigma ul1 s = ul2 /\
-        log_eq REnv ul2 l2.
+    log_eq REnv ul1 l1
+    -> TypedSemantics.interp_scheduler' tr tsigma rules l1 s = l2
+    -> exists ul2,
+    interp_scheduler' urules r sigma ul1 s = ul2 /\ log_eq REnv ul2 l2.
   Proof.
     induction s; simpl; intros; eauto.
     - subst. eexists; split; eauto.
     - destr_in H0.
       + destruct (TC r0) as (p & TCR).
-        edestruct interp_rule_correct as (l' & EQ1 & EQ2). eauto. 2: eauto. eauto.
-        rewrite EQ1.
+        edestruct interp_rule_correct as (l' & EQ1 & EQ2). eauto. 2: eauto.
+        eauto. rewrite EQ1.
         eapply IHs; eauto.
         apply log_eq_app; auto.
       + destruct (TC r0) as (p & TCR).
         erewrite interp_rule_none; eauto.
     - destr_in H0.
       + destruct (TC r0) as (p & TCR).
-        edestruct interp_rule_correct as (l' & EQ1 & EQ2). eauto. 2: eauto. eauto.
-        rewrite EQ1.
+        edestruct interp_rule_correct as (l' & EQ1 & EQ2). eauto. 2: eauto.
+        eauto. rewrite EQ1.
         eapply IHs1; eauto.
         apply log_eq_app; auto.
       + destruct (TC r0) as (p & TCR).
@@ -3745,23 +3705,23 @@ Section Eq.
   Qed.
 
   Lemma interp_scheduler_correct:
-    forall (urules: rule_name_t -> Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-           (rules: rule_name_t -> TypedSyntax.rule pos_t var_t fn_name_t TR Sigma)
-           (TC: forall rnt,
-               exists p,
-                 TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
-           ),
+    forall
+      (urules:
+        rule_name_t -> Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t
+      )
+      (rules: rule_name_t -> TypedSyntax.rule pos_t var_t fn_name_t TR Sigma)
+      (TC:
+        forall rnt, exists p,
+        TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
+       ),
     forall s l2,
-      TypedSemantics.interp_scheduler tr tsigma rules s = l2 ->
-      exists ul2,
-        interp_scheduler urules r sigma s = ul2 /\
-        log_eq REnv ul2 l2.
+    TypedSemantics.interp_scheduler tr tsigma rules s = l2
+    -> exists ul2,
+    interp_scheduler urules r sigma s = ul2 /\ log_eq REnv ul2 l2.
   Proof.
     intros. unfold interp_scheduler, TypedSemantics.interp_scheduler.
-    eapply interp_scheduler'_correct; eauto.
-    apply log_eq_empty.
+    eapply interp_scheduler'_correct; eauto. apply log_eq_empty.
   Qed.
-
 End Eq.
 
 Section Final.
@@ -3780,15 +3740,14 @@ Section Final.
   Variable (tsigma: forall f, Sig_denote (Sigma f)).
 
   Hypothesis tsigma_correct:
-    forall f v,
-      sigma f (val_of_value v) = val_of_value (tsigma f v).
+    forall f v, sigma f (val_of_value v) = val_of_value (tsigma f v).
 
   Lemma latest_write_eq:
     forall ulog log,
-      log_eq (TR:=TR) REnv ulog log ->
-      forall idx,
-        option_map val_of_value (Logs.latest_write log idx) =
-        latest_write ulog idx.
+    log_eq (TR:=TR) REnv ulog log
+    -> forall idx,
+    option_map val_of_value (Logs.latest_write log idx) =
+    latest_write ulog idx.
   Proof.
     unfold Logs.latest_write, latest_write.
     intros.
@@ -3801,20 +3760,21 @@ Section Final.
 
   Lemma log_eq_commit_update:
     forall ul l,
-      log_eq REnv ul l ->
-      env_t_R (fun (i : reg_t) (uv : val) (v : TR i) => uv = val_of_value v) REnv
-              (create REnv
-                      (fun k : reg_t =>
-                         match latest_write ul k with
-                         | Some v => v
-                         | None => getenv REnv r k
-                         end))
-              (create REnv
-                      (fun k : reg_t =>
-                         match Logs.latest_write l k with
-                         | Some v => v
-                         | None => getenv REnv tr k
-                         end)).
+    log_eq REnv ul l ->
+    env_t_R
+      (fun (i : reg_t) (uv : val) (v : TR i) => uv = val_of_value v) REnv
+      (create REnv (fun k : reg_t =>
+        match latest_write ul k with
+        | Some v => v
+        | None => getenv REnv r k
+        end)
+      )
+      (create REnv (fun k : reg_t =>
+        match Logs.latest_write l k with
+        | Some v => v
+        | None => getenv REnv tr k
+        end)
+      ).
   Proof.
     intros.
     red. intros.
@@ -3824,22 +3784,21 @@ Section Final.
     apply rtr.
   Qed.
 
-
   Lemma interp_cycle_correct:
     forall
-
-      (urules: rule_name_t -> Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (urules:
+        rule_name_t -> Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t
+      )
       (rules: rule_name_t -> TypedSyntax.rule pos_t var_t fn_name_t TR Sigma)
-      (TC: forall rnt,
-          exists p,
-            TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
+      (TC:
+        forall rnt, exists p,
+        TypeInference.tc_rule TR Sigma p (urules rnt) = Success (rules rnt)
       ),
     forall s,
-      env_t_R
-        (fun i uv v => uv = val_of_value (tau:=TR i) v)
-        REnv
-        (interp_cycle urules r sigma s)
-        (TypedSemantics.interp_cycle tsigma rules s tr).
+    env_t_R
+      (fun i uv v => uv = val_of_value (tau:=TR i) v) REnv
+      (interp_cycle urules r sigma s)
+      (TypedSemantics.interp_cycle tsigma rules s tr).
   Proof.
     unfold interp_cycle, TypedSemantics.interp_cycle. intros.
     unfold commit_update, Logs.commit_update.
@@ -3847,5 +3806,4 @@ Section Final.
     edestruct @interp_scheduler_correct as (l2 & EQ & LEQ); eauto.
     subst.  eauto.
   Qed.
-
 End Final.
