@@ -1,11 +1,7 @@
 (*! Language | Semantics of typed Kôika programs !*)
-Require Export Koika.Common Koika.Environments Koika.ULogs Koika.Syntax
-        Koika.Syntax.
-Require Import Desugaring.
-Require Import SyntaxMacros.
-Require TypedSemantics.
-Require TypeInference.
-Require Import BitsToLists.
+Require Export Koika.Common Koika.Environments Koika.Syntax Koika.ULogs.
+Require Import BitsToLists Desugaring SyntaxMacros.
+Require TypeInference TypedSemantics.
 
 Fixpoint size_uaction {pos_t var_t fn_name_t reg_t ext_fn_t: Type} (ua: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) {struct ua} : nat :=
   match ua  with
@@ -125,7 +121,7 @@ Proof.
   - destruct fn.
     + destr_in H; try congruence. inv H. simpl in *. inv Heqr. subst. reflexivity.
     + subst. inv H.
-      revert arg. rewrite <- H1. simpl. 
+      revert arg. rewrite <- H1. simpl.
       intro arg. reflexivity.
   - destruct fn.
     + inv H. revert arg. rewrite <- H2. simpl.
@@ -278,7 +274,7 @@ Proof.
       cut (index_to_nat s < array_len sig). nia.
       apply index_to_nat_bounded.
       f_equal. f_equal.
-      rewrite app_length, repeat_length. 
+      rewrite app_length, repeat_length.
       inv Heqp0.
       apply take_drop_spec in EQ'. intuition.
       inv Heqp0.
@@ -622,26 +618,6 @@ Section Interp.
   Definition Log {reg_t: Type} REnv := (@_ULog val reg_t REnv).
   Definition uaction reg_t ext_fn_t := (uaction pos_t var_t fn_name_t reg_t ext_fn_t).
 
-  (* Definition tcontext (sig: tsig var_t) := *)
-  (*   context (fun k_tau => val) sig. *)
-
-  (* Definition acontext (sig argspec: tsig var_t) := *)
-  (*   context (fun k_tau => uaction) argspec. *)
-
-
-
-    (* Fixpoint replace {sig: tsig var_t} k (v: val) (Gamma: tcontext sig) *)
-    (*   : tcontext sig *)
-    (*   := *)
-    (*     match Gamma with *)
-    (*     | CtxEmpty => CtxEmpty *)
-    (*     | CtxCons k0 v0 Gamma => *)
-    (*       if eq_dec k (fst k0) *)
-    (*       then CtxCons k0 v Gamma *)
-    (*       else CtxCons k0 v0 (replace k v Gamma) *)
-    (*     end. *)
- 
-
     Notation "'let/opt4' v1 ',' v2 ',' v3 ',' v4 ':=' expr 'in' body" :=
       (opt_bind expr (fun '(v1, v2, v3, v4) => body)) (at level 200).
 
@@ -954,7 +930,7 @@ Section Interp.
                              | _ =>
                                let/opt3 action_log, v0, Gamma := interp_action r sigma Gamma sched_log action_log var in
                                let/opt3 action_log, v, Gamma := interp_action r sigma Gamma sched_log action_log cond in
-                               if val_eq_dec v v0 then 
+                               if val_eq_dec v v0 then
                                  let/opt3 action_log, v, Gamma := interp_action r sigma Gamma sched_log action_log body in
                                  Some (action_log, Some v, Gamma)
                                else Some (action_log, None, Gamma)
@@ -993,7 +969,6 @@ Section Interp.
                           ) elements (Some (0, action_log, vs, Gamma)) in
         Some (action_log, Array sig vs, Gamma)
       | USugar (UCallModule fR fSigma fn args) =>
-         
         let/opt3 action_log, results, Gamma0 :=
            fold_left
                  (fun (acc : option (_ULog * list val * list (var_t * val)))
@@ -1015,204 +990,12 @@ Section Interp.
          Some (fLog' fR REnv REnv' action_log1 action_log, v, Gamma0)
       end.
 
-
-    (* 
-    Fixpoint interp_action
-             (Gamma: list (var_t * val))
-             (sched_log: Log)
-             (action_log: Log)
-             (a: uaction)
-             {struct a}
-      : option (Log * val * list (var_t * val)) :=
-      match a with
-      | UError e => None
-      | UFail _ => None
-      | UVar var =>
-        let/opt v := list_assoc Gamma var in
-        Some (action_log, v, Gamma)
-      | @UConst _ _ _ _ _ tau cst =>
-        Some (action_log, val_of_value cst, Gamma)
-      | UAssign k a =>
-        let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log a in
-        Some (action_log, Bits 0 [], list_assoc_set Gamma k v)
-      | USeq a1 a2 =>
-        let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log a1 in
-        interp_action Gamma sched_log action_log a2
-      | UBind k a1 a2 =>
-        let/opt3 action_log, v, Gamma :=
-           interp_action Gamma sched_log action_log a1 in
-        let/opt3 action_log, v, Gamma :=
-           interp_action ((k, v):: Gamma) sched_log action_log a2
-        in Some (action_log, v, tl Gamma)
-      | UIf cond athen aelse =>
-        let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log cond in
-        match v with
-        | Bits 1 [b] =>
-          if b then
-            interp_action Gamma sched_log action_log athen
-          else
-            interp_action Gamma sched_log action_log aelse
-        | _ => None
-        end
-      | URead prt idx =>
-        if may_read sched_log prt idx then
-          Some (log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log,
-                match prt with
-                | P0 => REnv.(getenv) r idx
-                | P1 => match latest_write0 (V:=val) (log_app action_log sched_log) idx with
-                        | Some v => v
-                        | None => REnv.(getenv) r idx
-                        end
-                end,
-                Gamma)
-        else None
-      | UWrite prt idx v =>
-        let/opt3 action_log, val, Gamma := interp_action Gamma sched_log action_log v in
-        if may_write sched_log action_log prt idx then
-          Some (log_cons idx (LE Logs.LogWrite prt val) action_log, Bits 0 [], Gamma)
-        else None
-      | UUnop fn arg =>
-        let/opt3 action_log, arg1, Gamma := interp_action Gamma sched_log action_log arg in
-        let/opt v := sigma1 fn arg1 in
-        Some (action_log, v, Gamma)
-      | UBinop fn arg1 arg2 =>
-        let/opt3 action_log, arg1, Gamma := interp_action Gamma sched_log action_log arg1 in
-        let/opt3 action_log, arg2, Gamma := interp_action Gamma sched_log action_log arg2 in
-        let/opt v := sigma2 fn arg1 arg2 in
-        Some (action_log, v, Gamma)
-      | UExternalCall fn arg1 =>
-        let/opt3 action_log, arg1, Gamma := interp_action Gamma sched_log action_log arg1 in
-        Some (action_log, sigma fn arg1, Gamma)
-      | UInternalCall f args =>
-        let body := int_body f in
-        let/opt3 action_log, results, Gamma :=
-           fold_left (fun acc a =>
-                        let/opt3 action_log, l, Gamma := acc in
-                        let/opt3 action_log, v, Gamma :=
-                           interp_action Gamma sched_log action_log a in
-                        Some (action_log, v::l, Gamma))
-                     args
-                     (Some (action_log, [], Gamma)) in
-        let/opt3 action_log, v, _ :=
-           interp_action
-             (map (fun '(name, _, v) => (name, v))
-                  (combine (rev (int_argspec f)) results)) sched_log action_log body in
-        Some (action_log, v, Gamma)
-      | UAPos p a =>
-        interp_action Gamma sched_log action_log a
-
-      | USugar s => interp_sugar Gamma sched_log action_log s
-      end
-    with interp_sugar
-           (Gamma: list (var_t * val))
-           (sched_log: Log)
-           (action_log: Log)
-           (a: usugar pos_t var_t fn_name_t reg_t ext_fn_t)
-           {struct a}
-         : option (Log * val * list (var_t * val)) :=
-           match a with
-           | UErrorInAst => None
-           | USkip => Some (action_log, Bits 0 [], Gamma)
-           | UConstBits v =>
-             let l := vect_to_list v in
-             Some (action_log, Bits (List.length l) l, Gamma)
-           | UConstString s =>
-             Some (action_log, Array {| array_type := bits_t 8; array_len := String.length s |}
-                                     (List.map (fun x => Bits 8 (vect_to_list x)) (vect_to_list (SyntaxMacros.array_of_bytes s)))
-                   , Gamma)
-           | UConstEnum sig name =>
-             match vect_index name sig.(enum_members) with
-             | Some idx =>
-               Some (action_log, val_of_value (tau:= enum_t sig) (vect_nth sig.(enum_bitpatterns) idx), Gamma)
-             | None => None
-             end
-           | UProgn aa =>
-             List.fold_left (fun acc a =>
-                               let/opt3 action_log, v, Gamma := acc in
-                               interp_action Gamma sched_log action_log a
-                            ) aa (Some (action_log, Bits 0 [], Gamma))
-           | ULet bindings body =>
-             let/opt2 action_log, Gamma' :=
-                List.fold_left (fun acc '(var, a) =>
-                                  let/opt2 action_log, Gamma' := acc in
-                                  let/opt3 action_log, v, Gamma' :=
-                                     interp_action Gamma' sched_log action_log a in
-                                  (Some (action_log, (var,v)::Gamma'))
-                               ) bindings (Some (action_log, Gamma)) in
-             let/opt3 action_log, v, Gamma :=
-                interp_action Gamma' sched_log action_log body in
-             Some (action_log, v, Nat.iter (List.length bindings) (@tl _) Gamma)
-           | UWhen cond body =>
-             let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log cond in
-             match v with
-             | Bits 1 [b] =>
-               if b then
-                 interp_action Gamma sched_log action_log body
-               else
-                 None
-             | _ => None
-             end
-           | USwitch var default branches =>
-             let/opt3 action_log, found, Gamma :=
-                List.fold_left (fun acc '(cond, body) =>
-                                  let/opt3 action_log, found, Gamma := acc in
-                                  match found with
-                                  | Some _ => acc
-                                  | _ =>
-                                    let/opt3 action_log, v0, Gamma := interp_action Gamma sched_log action_log var in
-                                    let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log cond in
-                                    if val_eq_dec v v0 then 
-                                      let/opt3 action_log, v, Gamma := interp_action Gamma sched_log action_log body in
-                                      Some (action_log, Some v, Gamma)
-                                    else Some (action_log, None, Gamma)
-                                  end) branches (Some (action_log, None, Gamma)) in
-             match found with
-             | Some v => Some (action_log, v, Gamma)
-             | None =>
-               interp_action Gamma sched_log action_log default
-             end
-           | UStructInit sig fields =>
-             let zeroes := repeat false (struct_fields_sz (struct_fields sig)) in
-             let/opt vs := uvalue_of_struct_bits (struct_fields sig) zeroes in
-             let/opt3 action_log, v, Gamma :=
-                List.fold_left (fun acc '(name, a) =>
-                                  let/opt3 action_log, vs, Gamma := acc in
-                                  let/opt3 action_log, v, Gamma :=
-                                     interp_action Gamma sched_log action_log a in
-                                  let/opt vs := subst_field_name (struct_fields sig) name v vs in
-                                  (Some (action_log, vs, Gamma))
-                               ) fields (Some (action_log, vs, Gamma)) in
-             Some (action_log, Struct sig v, Gamma)
-           | UArrayInit tau elements =>
-             let zeroes := repeat (repeat false (type_sz tau)) (List.length elements) in
-             let/opt vs := uvalue_of_list_bits (tau:=tau) zeroes in
-             let sig := {| array_type := tau; array_len := List.length elements |} in
-             let/opt4 pos, action_log, vs, Gamma :=
-                List.fold_left (fun acc a =>
-                                  let/opt4 pos, action_log, vs, Gamma := acc in
-                                  let/opt3 action_log, v, Gamma :=
-                                     interp_action Gamma sched_log action_log a in
-                                  let/opt2 l1, l2 := take_drop pos vs in
-                                  match l2 with
-                                    [] => None
-                                  | a::l2 => Some (S pos, action_log, l1 ++ v :: l2, Gamma)
-                                  end
-                               ) elements (Some (0, action_log, vs, Gamma)) in
-             Some (action_log, Array sig vs, Gamma)
-           | UCallModule fR fSigma fn args =>
-             None
-           end
-    .
- *)
-
-
     Fixpoint uprogn2 {reg_t ext_fn_t} (aa: list (uaction reg_t ext_fn_t)) dft :=
       match aa with
       | [] => dft
       | [a] => a
       | a::a0 => USeq a (uprogn2 a0 dft)
       end.
-    
 
     Lemma repeat_take_drop:
       forall {A} n m (a: A),
@@ -1224,7 +1007,6 @@ Section Interp.
       rewrite IHn  by lia.
       simpl. reflexivity.
     Qed.
-
 
     Lemma Forall_rev:
       forall {A: Type} (P: A -> Prop) l,
@@ -2038,50 +1820,6 @@ Section Desugar.
         rewrite fLog'_fLog'; auto.
         rewrite fold_left_none. simpl. auto. simpl. auto.
       }
-      
-
-      (* assert ( *)
-      (*     forall acc, *)
-      (*       fold_left *)
-      (*         (fun (acc : option (Log _ * list val * list (var_t * val))) (a : uaction reg_t' ext_fn_t') => *)
-      (*            let/opt3 action_log0, l, Gamma0 := acc *)
-      (*            in (let/opt3 action_log1, v, Gamma1 := *)
-      (*                   interp_action *)
-      (*                     (create REnv' (fun idx : reg_t' => getenv REnv r (fR idx))) *)
-      (*                     (fun f : ext_fn_t' => sigma (fSigma f)) *)
-      (*                     Gamma0 (fLog fR REnv REnv' sched_log) action_log0 a *)
-      (*                in Some (action_log1, v :: l, Gamma1))) args *)
-      (*         (let/opt3 al, l, g := acc in Some (fLog fR REnv REnv' al, l, g)) *)
-      (*       = *)
-      (*       let/opt3 al, lv, g := *)
-      (*     fold_left *)
-      (*       (fun (acc : option (Log _ * list val * list (var_t * val))) (a : uaction  reg_t ext_fn_t) => *)
-      (*          let/opt3 action_log0, l, Gamma0 := acc *)
-      (*          in (let/opt3 action_log1, v, Gamma1 := interp_action r sigma Gamma0 sched_log action_log0 a *)
-      (*              in Some (action_log1, v :: l, Gamma1))) *)
-      (*       (map (fun a  => desugar_action' p fR fSigma a) *)
-      (*            args) acc *)
-      (*     in Some (fLog fR REnv REnv' al, lv, g) *)
-      (*   ). *)
-      (* { *)
-      (*   assert (forall arg, In arg args -> PP arg). *)
-      (*   { *)
-      (*     intros; eapply IHua. simpl. *)
-      (*     clear IHua. *)
-      (*     cut (size_uaction arg <= list_sum (map size_uaction args)). cbn. lia. *)
-      (*     revert arg H. induction args; simpl; intros; eauto. easy. *)
-      (*     destruct H. subst. lia. *)
-      (*     apply IHargs in H. lia. *)
-      (*   } *)
-      (*   revert H. clear -inj. *)
-      (*   induction args; simpl; intros; eauto. *)
-      (*   rewrite <- IHargs; auto. *)
-      (*   destruct acc; simpl; auto. destruct p0 as ((l & lv) & Gamma'). *)
-      (*   f_equal. simpl. *)
-      (*   rewrite <- H with (REnv':=REnv'); auto. *)
-      (*   destruct (interp_action _ _ _ _ _ a) as [((? & ?) & ?)|] eqn:?; simpl; auto. *)
-      (*   rewrite fLog_fLog'; auto. *)
-      (* } *)
       rewrite H. clear H. simpl.
       unfold opt_bind at 1. unfold Log. destr; setoid_rewrite Heqo; simpl; auto.
       destruct p0, p0. simpl.
@@ -2390,7 +2128,7 @@ Section Desugar.
         simpl. rewrite IA. simpl.
         erewrite <- IH. rewrite fLog_fLog'; auto.
         rewrite Heqo. simpl. auto. auto. auto.
-        } 
+        }
         apply structinit_ok.
         intros; eapply IHua. simpl.
         {
@@ -2684,7 +2422,6 @@ Section Desugar.
         rewrite getenv_create. auto.
       Qed.
       rewrite ! fLog_fLog.
-      
       replace (fLog (fun r0 : module_reg_t => fR (fR0 r0)) REnv ContextEnv
                     (fLog' fR REnv REnv' l0 _))
         with
@@ -2800,7 +2537,7 @@ Section Eq.
     simpl. eauto.
     inv H0.
   Qed.
-  
+
   Lemma cast_action'_eq:
     forall (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
            (a: TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau1)
@@ -3013,9 +2750,6 @@ Section Eq.
     - rewrite ! get_put_neq; eauto.
   Qed.
 
-
-  
-
   Fixpoint assert_argtypes' {sig}
            (args_desc: tsig var_t)
            (args: list (pos_t * {tau : type & TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau}))
@@ -3136,7 +2870,6 @@ Section Eq.
       rewrite IHla1 by lia. auto.
   Qed.
 
-  
   Lemma combine_rev:
     forall {A B : Type} (la : list A) (lb: list B),
       List.length la = List.length lb ->
@@ -3162,12 +2895,11 @@ Section Eq.
     induction l1; simpl; intros; eauto.
     destr. reflexivity. simpl. f_equal; eauto. destruct a; eauto.
   Qed.
-  
 
   Hypothesis r_eq:
     forall i,
       getenv REnv r i = val_of_value (getenv REnv tr i).
- 
+
   Lemma interp_action_correct:
     forall ua p sig tau a
            (TA: TypeInference.type_action TR Sigma p sig ua = Success (existT _ tau a))
@@ -3421,7 +3153,7 @@ Section Eq.
       apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
       unfold opt_bind in H.
       destr_in H; [|inv H].
-      destruct p0. destruct p0. 
+      destruct p0. destruct p0.
       destr_in H; [|inv H].
       destruct p0. destruct p0.
       inv H.
@@ -3429,17 +3161,13 @@ Section Eq.
       apply cast_action_eq in Heqr3.
       destruct Heqr3 as (pf & EQ). subst.
       simpl in Heqo0.
-
       unfold TypeInference.assert_argtypes in Heqr1.
-
       rewrite assert_argtypes'_eq in Heqr1.
-      
       assert (List.length args = List.length (rev s)).
       {
         apply result_list_map_length in Heqr0. rewrite <- Heqr0.
         rewrite rev_length; auto.
       }
-      
       assert (
         forall (p : pos_t) (sig : tsig var_t) s,
           result_list_map (TypeInference.type_action TR Sigma p sig) args = Success s ->
@@ -3451,7 +3179,7 @@ Section Eq.
               log_eq REnv uaction_log action_log ->
               forall (s0 : context
                              (fun k_tau : var_t * type =>
-                                TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau)) 
+                                TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau))
                              (rev (int_argspec ufn))),
                 assert_argtypes' (rev (int_argspec ufn))
                                  (rev (combine (map (TypeInference.actpos p) args) s)) = Success s0 ->
@@ -3459,7 +3187,7 @@ Section Eq.
                 forall v (Gamma' : TypedSemantics.tcontext sig),
                   TypedSemantics.interp_args'
                     (@TypedSemantics.interp_action pos_t var_t fn_name_t reg_t ext_fn_t TR Sigma REnv tr tsigma)
-                    Gamma sched_log action_log s0 = 
+                    Gamma sched_log action_log s0 =
                   Some (action_log', v, Gamma') ->
                   exists (uaction_log' : Log) res (UGamma' : list (var_t * val)),
                     fold_right
@@ -3802,18 +3530,13 @@ Section Eq.
       apply cast_action_eq in Heqr3.
       destruct Heqr3 as (pf & EQ). subst.
       simpl in H.
-
-
       unfold TypeInference.assert_argtypes in Heqr1.
-
       rewrite assert_argtypes'_eq in Heqr1.
-      
       assert (List.length args = List.length (rev s)).
       {
         apply result_list_map_length in Heqr0. rewrite <- Heqr0.
         rewrite rev_length; auto.
       }
-      
       assert (
         forall (p : pos_t) (sig : tsig var_t) s,
           result_list_map (TypeInference.type_action TR Sigma p sig) args = Success s ->
@@ -3825,7 +3548,7 @@ Section Eq.
               log_eq REnv uaction_log action_log ->
               forall (s0 : context
                              (fun k_tau : var_t * type =>
-                                TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau)) 
+                                TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau))
                              (rev (int_argspec ufn))),
                 assert_argtypes' (rev (int_argspec ufn))
                                  (rev (combine (map (TypeInference.actpos p) args) s)) = Success s0 ->
@@ -3900,7 +3623,7 @@ Section Eq.
         rewrite combine_rev in Heqr1.
         rewrite <- map_rev in Heqr1.
         edestruct interp_args_correct as (ual' & res & ug' & FR & Geq & Leq & Geq2).
-        intros arg IN. intros; eapply interp_action_correct. 10:eauto.  
+        intros arg IN. intros; eapply interp_action_correct. 10:eauto.
         6: apply result_list_map_rev; eauto. 5: eauto. 9: eauto. all: eauto.
         rewrite rev_length; auto.
         rewrite <- fold_left_rev_right. setoid_rewrite FR. simpl.
@@ -3908,7 +3631,7 @@ Section Eq.
         erewrite combine_map. eauto. reflexivity.
         rewrite map_length. rewrite H0.
         rewrite rev_length; auto.
-      * rewrite <- fold_left_rev_right. 
+      * rewrite <- fold_left_rev_right.
         erewrite H1. reflexivity. 6: eauto. eauto. eauto. all: eauto.
     - destr_in TA; [|inv TA].
       inv TA.
@@ -3992,7 +3715,6 @@ Section Eq.
     apply log_eq_empty.
   Qed.
 
-  
   Context {rule_name_t: Type}.
   Lemma interp_scheduler'_correct:
     forall (urules: rule_name_t -> Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
@@ -4084,8 +3806,7 @@ Section Final.
   Qed.
 
   Lemma log_eq_commit_update:
-    forall 
-      ul l,
+    forall ul l,
       log_eq REnv ul l ->
       env_t_R (fun (i : reg_t) (uv : val) (v : TR i) => uv = val_of_value v) REnv
               (create REnv
