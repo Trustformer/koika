@@ -38,7 +38,7 @@ with size_sugar {pos_t var_t fn_name_t reg_t ext_fn_t: Type} (s: usugar pos_t va
        | UWhen cond body => size_uaction cond + size_uaction body
        | USwitch cond default branches =>
          1 + size_uaction cond + size_uaction default +
-         list_sum (map (fun '(a,b) => size_uaction a + size_uaction b) branches)
+         list_sum (map (fun '(a,b) => S (size_uaction a + size_uaction b)) branches)
        | UStructInit sig l =>
          1 + list_sum (map (fun '(_, a) => size_uaction a) l)
        | UArrayInit tay l =>
@@ -1872,10 +1872,62 @@ Section Desugar.
     Qed.
 
 
+    Fixpoint check_ucall_module_inj {reg_t ext_fn_t}
+             (a: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) {struct a} : Prop :=
+      match a with
+      | USugar (UCallModule fR fSigma fn args) =>
+        Inj fR /\
+        Forall (fun x => x) (map (check_ucall_module_inj) args) /\
+        check_ucall_module_inj (int_body fn)
+      | UError e => True
+      | UFail _ => True
+      | UVar var => True
+      | @UConst _ _ _ _ _ tau cst => True
+      | UAssign k a => check_ucall_module_inj a
+      | USeq a1 a2 => check_ucall_module_inj a1 /\ check_ucall_module_inj a2
+      | UBind k a1 a2 => check_ucall_module_inj a1 /\ check_ucall_module_inj a2
+      | UIf cond athen aelse =>
+        check_ucall_module_inj cond /\ check_ucall_module_inj athen /\ check_ucall_module_inj aelse
+      | URead prt idx => True
+      | UWrite prt idx v => check_ucall_module_inj v
+      | UUnop fn arg =>
+        check_ucall_module_inj arg
+      | UBinop fn arg1 arg2 =>
+        check_ucall_module_inj arg1 /\ check_ucall_module_inj arg2
+      | UExternalCall fn arg1 =>
+        check_ucall_module_inj arg1
+      | UInternalCall f args =>
+        Forall (fun x => x) (map (@check_ucall_module_inj reg_t ext_fn_t) args) /\
+        check_ucall_module_inj (int_body f)
+      | UAPos p a =>
+        check_ucall_module_inj a
+      | USugar UErrorInAst => True
+      | USugar USkip => True
+      | USugar (UConstBits v) => True
+      | USugar (UConstString s) => True
+      | USugar (UConstEnum sig name) => True
+      | USugar (UProgn aa) =>
+        Forall (fun x => x) (map check_ucall_module_inj aa)
+      | USugar (ULet bindings body) =>
+        Forall (fun x => x) (map (fun '(_, a) => check_ucall_module_inj a) bindings) /\
+        check_ucall_module_inj body
+      | USugar (UWhen cond body) =>
+        check_ucall_module_inj cond /\ check_ucall_module_inj body
+      | USugar (USwitch var default branches) =>
+        check_ucall_module_inj var /\
+        Forall (fun x => x) (map (fun '(cond, body) => check_ucall_module_inj cond /\ check_ucall_module_inj body)
+               branches) /\ check_ucall_module_inj default
+      | USugar (UStructInit sig fields) =>
+        Forall (fun x => x) (map (fun '(_, a) => check_ucall_module_inj a) fields)
+      | USugar (UArrayInit tau elements) =>
+        Forall (fun x => x) (map (check_ucall_module_inj) elements)
+      end.
+
       Context {reg_t' ext_fn_t': Type}.
       (* Context `{ed': EqDec reg_t'}. *)
   Lemma interp_action_desugar_ok:
-    forall (a: Syntax.uaction pos_t var_t fn_name_t reg_t' ext_fn_t'),
+    forall (a: Syntax.uaction pos_t var_t fn_name_t reg_t' ext_fn_t')
+           (CUMI: check_ucall_module_inj a),
       desugar_ok _ _ a.
   Proof.
     red.
@@ -1917,7 +1969,7 @@ Section Desugar.
     - cbn. rewrite <- (IHua) with (REnv':=REnv').
       unfold opt_bind.
       destr. destruct p0.  destruct p0. simpl. auto. simpl. auto.
-      simpl. lia. auto.
+      simpl. lia. auto. auto.
     - cbn. rewrite <- (IHua) with (REnv':=REnv').
       unfold opt_bind.
       destr. destruct p0.  destruct p0. simpl.
@@ -1925,7 +1977,8 @@ Section Desugar.
       rewrite fLog_fLog'; auto.
       unfold fState'. unfold opt_bind. destr.
       destruct p0. destruct p0.
-      rewrite fLog'_fLog'. auto. simpl. lia. auto. reflexivity. simpl. lia. auto.
+      rewrite fLog'_fLog'. auto. simpl. lia. simpl in *. tauto. auto. reflexivity. simpl. lia.
+      simpl in *; tauto. auto.
     - rewrite <- (IHua) with (REnv':=REnv').
       unfold opt_bind.
       destr; auto. destruct p0. destruct p0. simpl.
@@ -1933,8 +1986,8 @@ Section Desugar.
       rewrite fLog_fLog'.
       destr; auto. destruct p0. destruct p0. simpl.
       rewrite fLog'_fLog'. auto.
-      auto. simpl; lia.
-      auto. simpl; lia. auto.
+      auto. simpl; lia. simpl in *; tauto.
+      auto. simpl; lia. simpl in *; tauto. auto.
     - rewrite <- (IHua) with (REnv':=REnv').
       unfold opt_bind.
       destr; auto. destruct p0. destruct p0. simpl.
@@ -1943,13 +1996,14 @@ Section Desugar.
       destr; auto.
       destr; auto.
       destr; auto.
-      rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl; lia).
-      rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl; lia).
+      rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
+      rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
       rewrite fLog_fLog'; auto.
       unfold fState'. repeat destr.
       unfold opt_bind; repeat destr; auto. rewrite fLog'_fLog'; auto.
       unfold opt_bind; repeat destr; auto. rewrite fLog'_fLog'; auto.
       simpl; lia.
+      simpl in *. tauto.
       auto.
     - rewrite may_read_flog. destr; auto.
       simpl.
@@ -1977,15 +2031,15 @@ Section Desugar.
       destruct (interp_action) as [((al & vv) & g)|] eqn:?; simpl; auto.
       unfold opt_bind.
       destr; auto.
-    - rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl; lia).
+    - rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
       destruct (interp_action) as [((al & vv) & g)|] eqn:?; simpl; auto.
-      rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl; lia).
+      rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
       rewrite fLog_fLog'; auto.
       destruct (interp_action _ _ _ _ _ ua2) as [((al' & vv') & g')|] eqn:?; simpl; auto.
       unfold opt_bind.
       destr; auto.
       rewrite fLog'_fLog'; auto.
-    - rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl; lia).
+    - rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
       destruct (interp_action) as [((al & vv) & g)|] eqn:?; simpl; auto.
     - cbn.
 
@@ -2023,8 +2077,9 @@ Section Desugar.
           revert arg H. induction args; simpl; intros; eauto. easy.
           destruct H. subst. lia.
           apply IHargs in H. lia.
+          simpl in *. intuition. inv H0; auto.
         }
-        revert H. clear -inj.
+        revert H. clear - CUMI inj.
         induction args; simpl; intros; eauto.
         destruct acc; simpl; auto. destruct p0, p0; simpl.
         rewrite fLog'_fLog; auto.
@@ -2037,6 +2092,9 @@ Section Desugar.
         destruct p0, p0.
         rewrite fLog'_fLog'; auto.
         rewrite fold_left_none. simpl. auto. simpl. auto.
+        simpl in CUMI; destruct CUMI. inv H0; auto.
+        simpl in CUMI; destruct CUMI. inv H0; auto.
+        simpl; intuition.
       }
       
 
@@ -2090,7 +2148,8 @@ Section Desugar.
       unfold opt_bind.
       destr; simpl; auto.
       destruct p0. destruct p0. simpl. rewrite fLog'_fLog'. auto.
-    - cbn. apply IHua. cbn; lia. auto.
+      simpl in CUMI. tauto.
+    - cbn. apply IHua. cbn; lia. auto. auto.
     - change (desugar_action' p fR fSigma (USugar s))
         with (desugar p fR fSigma s).
       destruct s; simpl; intros; auto.
@@ -2107,6 +2166,7 @@ Section Desugar.
           eapply IHaa; eauto.
           intros; eapply IHua.
           cbn in *. clear - H0. unfold list_sum, list_sum' in H0. lia.
+          clear - CUMI. simpl in *. inv CUMI; auto.
         }
         clear IHua.
         change (desugar p fR fSigma (UProgn aa))
@@ -2142,10 +2202,10 @@ Section Desugar.
                                      (uprogn (map (desugar_action' p fR fSigma) aa))
           ).
         {
-          revert aa H.
+          revert aa H CUMI. simpl.
           induction aa; simpl; intros; eauto.
           - easy.
-          - destruct aa; simpl in *. apply H. auto.
+          - destruct aa; simpl in *. apply H. auto. inv CUMI; auto.
             auto.
             rewrite <-  H with (REnv':=REnv'); auto.
             destruct (interp_action _ _ _ _ _ a) eqn:?; simpl; auto.
@@ -2155,8 +2215,10 @@ Section Desugar.
             unfold fState'. unfold opt_bind. destr; auto.
             destruct p1, p1; simpl; auto.
             rewrite fLog'_fLog'. auto. intros; eauto.
+            inv CUMI. auto.
             exact v0. congruence.
             rewrite fold_left_none. reflexivity. simpl. auto.
+            inv CUMI; auto.
         } intros.
         destruct aa. simpl. rewrite fLog'_fLog; auto.
         apply H0. congruence.
@@ -2170,10 +2232,12 @@ Section Desugar.
         induction bindings; simpl; intros; eauto.
         * rewrite <- IHua with (REnv':=REnv').
           unfold opt_bind; destr. destr. destr.
-          simpl. lia. auto.
+          simpl. lia. simpl in CUMI. tauto. auto.
         * destr.
           cbn.
-          rewrite <- IHua with (REnv':=REnv') by (auto; simpl; lia).
+          simpl in CUMI.
+          rewrite <- IHua with (REnv':=REnv'); try (auto; simpl in *; lia).
+          2: destruct CUMI as [CUMI0 _]; inv CUMI0; auto.
           destruct (interp_action _ _ _ _ _ u) eqn:?; simpl; auto.
           2:{
             rewrite fold_left_none. simpl; auto.
@@ -2189,6 +2253,7 @@ Section Desugar.
             destruct (interp_action _ _ _ _ _ body) eqn:?; simpl; auto.
             destruct p0, p0. simpl.
             rewrite fLog'_fLog'; auto. simpl; intros. eapply IHua; eauto. simpl. lia.
+            clear - CUMI. simpl. intuition. inv H; auto.
           }
       +
         fold (desugar_action'
@@ -2196,10 +2261,10 @@ Section Desugar.
                 (ext_fn_t:=ext_fn_t) (reg_t':=reg_t')
                 (ext_fn_t':=ext_fn_t')
              ); eauto.
-        rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl; lia).
+        rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
         destruct (interp_action _ _ _ _ _ cond)
           as [((? & ?) & ?)|] eqn:?; simpl; auto.
-        rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl; lia).
+        rewrite <- (IHua) with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
         unfold fState'; repeat destr; simpl; auto.
         rewrite fLog_fLog'; auto.
         unfold opt_bind; destr; auto.
@@ -2213,16 +2278,17 @@ Section Desugar.
            ); eauto.
         revert action_log Gamma p.
         induction branches; simpl; intros; eauto.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl; lia). auto.
+        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia). auto.
         destruct a. cbn.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl; lia).
+        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
         destruct (interp_action _ _ _ _ _ var) eqn:?.
         2:{
           clear.
           simpl. rewrite fold_left_none; simpl; auto. intros; destr.
         }
         destruct p0. destruct p0. simpl.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl; lia).
+        simpl in CUMI. destruct CUMI as (CUMI0 & CUMI1 & CUMI2). inv CUMI1.
+        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
         rewrite fLog_fLog'; auto.
         destruct (interp_action _ _ _ _ _ u) eqn:?; simpl; auto.
         2:{
@@ -2230,7 +2296,7 @@ Section Desugar.
           rewrite fold_left_none; simpl; auto. intros; destr.
         }
         destruct p0. destruct p0. simpl.
-        rewrite <- IHua with (REnv':=REnv') by (auto; simpl; lia).
+        rewrite <- IHua with (REnv':=REnv') by (auto; simpl in *; try tauto; lia).
         rewrite fLog_fLog'; auto.
         rewrite fLog'_fLog'; auto.
 
@@ -2263,6 +2329,8 @@ Section Desugar.
           unfold fState'. unfold opt_bind.
           repeat destr.
           rewrite fLog'_fLog'; auto.
+        * clear - CUMI0 H1 H2 CUMI2.
+          simpl. intuition.
       + cbn.
       fold (desugar_action'
               (pos_t:=pos_t) (var_t:=var_t) (fn_name_t:=fn_name_t) (reg_t:=reg_t)
@@ -2309,7 +2377,7 @@ Section Desugar.
                                                   fields)
                                              u))).
         {
-          clear UOSB IA IHua fields sig sched_log Gamma action_log p vs.
+          clear CUMI UOSB IA IHua fields sig sched_log Gamma action_log p vs.
           induction fields; simpl; intros; eauto.
           destruct a; simpl in *.
           destruct (interp_action _ _ Gamma' _ _ u0) eqn:?.
@@ -2392,7 +2460,7 @@ Section Desugar.
         rewrite Heqo. simpl. auto. auto. auto.
         } 
         apply structinit_ok.
-        intros; eapply IHua. simpl.
+        red; intros; eapply IHua. simpl.
         {
           clear - H.
           revert u H.
@@ -2401,6 +2469,15 @@ Section Desugar.
           destruct H; subst; auto. lia.
           apply IHfields in H. lia.
         }
+        simpl in CUMI.
+        {
+          clear - H CUMI.
+          revert u H CUMI.
+          induction fields; simpl; intros; eauto. easy.
+          destruct a; simpl in *. inv CUMI.
+          destruct H; subst; auto.
+        }
+        auto.
         rewrite IA.
         rewrite fLog'_fLog; auto.
         eapply uvalue_of_struct_bits_length; eauto.
@@ -2543,9 +2620,13 @@ Section Desugar.
           rewrite rev_length; lia.
         }
         apply uvalue_of_list_bits_inv in Heqo0. intuition. reflexivity.
-        intros; eapply IHua. simpl.
+        red; intros; eapply IHua. simpl.
         revert H. clear.
         induction elements; simpl; intros; eauto. easy. destruct H; subst. lia. apply IHelements in H. lia.
+        clear - CUMI H.
+        revert H CUMI. clear.
+        induction elements; simpl; intros; eauto. easy. inv CUMI. destruct H; subst; auto.
+        auto.
       + fold (desugar_action'
                 (pos_t:=pos_t) (var_t:=var_t) (fn_name_t:=fn_name_t) (reg_t:=reg_t)
                 (ext_fn_t:=ext_fn_t) (reg_t':=module_reg_t)
@@ -2588,9 +2669,10 @@ Section Desugar.
           cut (size_uaction arg <= list_sum (map size_uaction args)). cbn. lia.
           revert arg H. induction args; simpl; intros; eauto. easy.
           destruct H. subst. lia.
-          apply IHargs in H. lia.
+          apply IHargs in H. lia. clear - CUMI.
+          simpl in *. intuition. inv H1; auto.
         }
-        revert H. clear -inj.
+        revert H. clear -CUMI inj.
         induction args; simpl; intros; eauto.
         destruct acc; simpl; auto. destruct p0, p0; simpl.
         rewrite fLog'_fLog; auto.
@@ -2603,6 +2685,10 @@ Section Desugar.
           destruct p0, p0.
           rewrite fLog'_fLog'. auto.
         - rewrite fold_left_none. reflexivity. simpl. auto.
+        - clear -CUMI.
+          simpl in *; intuition. inv H1; auto.
+        - clear -CUMI.
+          simpl in *; intuition. inv H1; auto.
       }
 
       (*    assert ( *)
@@ -2654,6 +2740,10 @@ Section Desugar.
       (*   rewrite fLog'_fLog'. auto. *)
       (*   rewrite fold_left_none. reflexivity. simpl. auto. *)
       (* } *)
+      assert (Inj fR0).
+      {
+        clear - CUMI. simpl in CUMI. intuition.
+      }
       erewrite H. simpl.
       destruct (fold_left _ _ _) eqn:?; simpl; auto.
       destruct p0, p0. simpl.
@@ -2714,6 +2804,7 @@ Section Desugar.
           subst.
           rewrite fRinv_correct in Heqo0. easy. auto.
       }
+      clear - CUMI. simpl in CUMI. intuition.
       intros; eapply inj; eauto.
   Qed.
 End Desugar.

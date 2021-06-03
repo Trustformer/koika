@@ -966,6 +966,8 @@ The following list shows the current state of the repo:
 
 .. |coq/BitTactics.v| replace:: ``BitTactics.v``
 .. _coq/BitTactics.v: coq/BitTactics.v
+.. |coq/BitsToLists.v| replace:: ``BitsToLists.v``
+.. _coq/BitsToLists.v: coq/BitsToLists.v
 .. |coq/CPS.v| replace:: ``CPS.v``
 .. _coq/CPS.v: coq/CPS.v
 .. |coq/CircuitGeneration.v| replace:: ``CircuitGeneration.v``
