@@ -3188,55 +3188,90 @@ Section Eq.
         generalize (rev (int_argspec ufn)). clear args.
         Lemma interp_args_correct:
           let PP := fun u  =>
-                      forall (p : pos_t) (sig : tsig var_t) (tau : type)
-                             (a : TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau),
-                        TypeInference.type_action TR Sigma p sig u =
-                        Success
-                          (existT (fun tau0 : type => TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau0) tau
-                                  a) ->
-                        forall (Gamma : TypedSemantics.tcontext sig) (UGamma : list (var_t * val)),
-                          gamma_eq sig UGamma Gamma ->
-                          forall (sched_log action_log action_log' : Logs.Log TR REnv)
-                                 (usched_log uaction_log : env_t REnv (fun _ : reg_t => RLog val)),
-                            log_eq REnv usched_log sched_log ->
-                            log_eq REnv uaction_log action_log ->
-                            forall (v : tau) (Gamma' : TypedSemantics.tcontext sig),
-                              TypedSemantics.interp_action tr tsigma Gamma sched_log action_log a =
-                              Some (action_log', v, Gamma') ->
-                              exists (uaction_log' : Log) (UGamma' : list (var_t * val)),
-                                interp_action r sigma UGamma usched_log uaction_log u =
-                                Some (uaction_log', val_of_value v, UGamma') /\
-                                log_eq REnv uaction_log' action_log' /\ gamma_eq sig UGamma' Gamma'  in
-          forall (l : list (var_t * type)) args',
-            (forall arg , In arg args' -> PP arg) ->
-            forall (p : pos_t) (sig : tsig var_t)
-                   (s' : list {tau : type & TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau}),
-              result_list_map (TypeInference.type_action TR Sigma p sig) args' = Success s' ->
-              forall (Gamma : TypedSemantics.tcontext sig) (UGamma : list (var_t * val)),
-                gamma_eq sig UGamma Gamma ->
-                forall (sched_log action_log action_log' : Logs.Log TR REnv)
-                       (usched_log uaction_log : env_t REnv (fun _ : reg_t => RLog val)),
-                  log_eq REnv usched_log sched_log ->
-                  log_eq REnv uaction_log action_log ->
-                  forall
-                    s0 : context
-                           (fun k_tau : var_t * type =>
-                              TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig (snd k_tau)) l,
-                    assert_argtypes' l (combine (map (TypeInference.actpos p) args') s') = Success s0 ->
-                    Datatypes.length args' = Datatypes.length s' ->
-                    forall (v : TypedSemantics.tcontext l) (Gamma' : TypedSemantics.tcontext sig),
-                      TypedSemantics.interp_args'
-                        (@TypedSemantics.interp_action pos_t var_t fn_name_t reg_t ext_fn_t TR Sigma REnv tr tsigma) Gamma
-                        sched_log action_log s0 = Some (action_log', v, Gamma') ->
-                      exists (uaction_log' : Log) (res : list val) (UGamma' : list (var_t * val)),
-                        fold_right
-                          (fun a0 (acc : option (Log * list val * list (var_t * val))) =>
-                             let/opt3 action_log0, l0, Gamma0 := acc
-                             in (let/opt3 action_log1, v0, Gamma1 := interp_action r sigma Gamma0 usched_log action_log0 a0
-                                 in Some (action_log1, v0 :: l0, Gamma1))) (Some (uaction_log, [], UGamma)) args' =
-                        Some (uaction_log', res, UGamma') /\
-                        gamma_eq l (combine (map fst l) res) v /\
-                        log_eq REnv uaction_log' action_log' /\ gamma_eq sig UGamma' Gamma'.
+            forall
+              (p : pos_t) (sig : tsig var_t) (tau : type)
+              (a : TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau),
+            TypeInference.type_action TR Sigma p sig u
+            = Success
+              (existT (fun tau0 : type =>
+                TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig tau0) tau
+                a
+              )
+            -> forall
+              (Gamma : TypedSemantics.tcontext sig)
+              (UGamma : list (var_t * val)),
+            gamma_eq sig UGamma Gamma
+            -> forall
+              (sched_log action_log action_log' : Logs.Log TR REnv)
+              (usched_log uaction_log : env_t REnv (fun _ : reg_t => RLog val)),
+            log_eq REnv usched_log sched_log
+            -> log_eq REnv uaction_log action_log
+            -> forall (v : tau) (Gamma' : TypedSemantics.tcontext sig),
+            TypedSemantics.interp_action tr tsigma Gamma sched_log action_log a
+            = Some (action_log', v, Gamma')
+            -> exists (uaction_log' : Log) (UGamma' : list (var_t * val)),
+            interp_action r sigma UGamma usched_log uaction_log u
+            =
+            Some (uaction_log', val_of_value v, UGamma')
+            /\ log_eq REnv uaction_log' action_log'
+            /\ gamma_eq sig UGamma' Gamma'
+            in forall (l : list (var_t * type)) args',
+            (forall arg , In arg args' -> PP arg)
+            -> forall
+              (p : pos_t) (sig : tsig var_t)
+              (s' : list
+                {tau :
+                  type & TypedSyntax.action pos_t var_t fn_name_t TR Sigma sig
+                  tau
+                }
+              ),
+            result_list_map (TypeInference.type_action TR Sigma p sig) args'
+            = Success s'
+            -> forall
+              (Gamma : TypedSemantics.tcontext sig)
+              (UGamma : list (var_t * val)),
+            gamma_eq sig UGamma Gamma
+            -> forall
+              (sched_log action_log action_log' : Logs.Log TR REnv)
+              (usched_log uaction_log : env_t REnv (fun _ : reg_t => RLog val)),
+            log_eq REnv usched_log sched_log
+            -> log_eq REnv uaction_log action_log
+            -> forall
+              s0 : context
+              (fun k_tau : var_t * type =>
+                TypedSyntax.action
+                  pos_t var_t fn_name_t TR Sigma sig (snd k_tau)
+              )
+              l,
+            assert_argtypes' l (combine (map (TypeInference.actpos p) args') s')
+            = Success s0
+            -> Datatypes.length args' = Datatypes.length s'
+            -> forall
+              (v : TypedSemantics.tcontext l)
+              (Gamma' : TypedSemantics.tcontext sig),
+            TypedSemantics.interp_args'
+              (@TypedSemantics.interp_action
+                pos_t var_t fn_name_t reg_t ext_fn_t TR Sigma REnv tr tsigma
+              )
+              Gamma sched_log action_log s0
+            = Some (action_log', v, Gamma')
+            -> exists
+              (uaction_log' : Log) (res : list val)
+              (UGamma' : list (var_t * val)),
+            fold_right
+              (fun a0 (acc : option (Log * list val * list (var_t * val))) =>
+                let/opt3 action_log0, l0, Gamma0 := acc in (
+                  let/opt3 action_log1, v0, Gamma1 :=
+                    interp_action r sigma Gamma0 usched_log action_log0 a0
+                  in
+                  Some (action_log1, v0 :: l0, Gamma1)
+                )
+              )
+            (Some (uaction_log, [], UGamma)) args'
+            = Some (uaction_log', res, UGamma')
+            /\ gamma_eq l (combine (map fst l) res) v
+            /\ log_eq REnv uaction_log' action_log'
+            /\ gamma_eq sig UGamma' Gamma'.
         Proof.
           induction l; simpl; intros.
           - destr_in H4; [|now inv H4]. inv H4.
