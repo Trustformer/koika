@@ -3294,7 +3294,8 @@ Section Eq.
       simpl; reflexivity.
     - destr_in TA; [|inv TA].
       inv TA.
-      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec. subst. simpl in H.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2. 2: apply eq_dec.
+      subst. simpl in H.
       destruct s. simpl in *.
       edestruct (IHua ua) as (ual' & g' & IA' & ALeq & Geq). lia. eauto.
       4: apply H. eauto. eauto. eauto.
