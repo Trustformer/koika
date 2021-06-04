@@ -7,9 +7,8 @@ Require Import Koika.Frontend Koika.Std.
 Require Import rv.Multiplier rv.RVEncoding rv.Scoreboard rv.Stack.
 
 Require Import rv.ISA rv.Instructions rv.ITypes rv.IFields rv.StructsBuilding
-               rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
-               rv.InstructionsOpcodes rv.InstructionsProperties
-               rv.ModuleInstructions.
+  rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
+  rv.InstructionsOpcodes rv.InstructionsProperties rv.ModuleInstructions.
 
 (* The ISA defined hereafter is used to parameterize the Kôika module *)
 Definition isa : ISA := {|
@@ -654,18 +653,30 @@ Module RVCore
   Existing Instance Stack.FiniteType_reg_t.
 
   Definition ofs_toIMem := 0.
-  Definition ofs_fromIMem := ofs_toIMem + List.length (@finite_elements MemReq.reg_t _).
-  Definition ofs_toDMem := ofs_fromIMem + List.length (@finite_elements MemResp.reg_t _).
-  Definition ofs_fromDMem := ofs_toDMem + List.length (@finite_elements MemReq.reg_t _).
-  Definition ofs_f2d := ofs_fromDMem + List.length (@finite_elements MemResp.reg_t _).
-  Definition ofs_f2dprim := ofs_f2d + List.length (@finite_elements fromFetch.reg_t _).
-  Definition ofs_d2e := ofs_f2dprim + List.length (@finite_elements waitFromFetch.reg_t _).
-  Definition ofs_e2w := ofs_d2e + List.length (@finite_elements fromDecode.reg_t _).
-  Definition ofs_rf := ofs_e2w + List.length (@finite_elements fromExecute.reg_t _).
-  Definition ofs_mulState := ofs_rf + List.length (@finite_elements Rf.reg_t _).
-  Definition ofs_stack := ofs_mulState + List.length (@finite_elements Multiplier.reg_t _).
-  Definition ofs_scoreboard := ofs_stack + List.length (@finite_elements Stack.reg_t _).
-  Definition ofs_cycle_count := ofs_scoreboard + List.length (@finite_elements Scoreboard.reg_t _).
+  Definition ofs_fromIMem :=
+    ofs_toIMem + List.length (@finite_elements MemReq.reg_t _).
+  Definition ofs_toDMem :=
+    ofs_fromIMem + List.length (@finite_elements MemResp.reg_t _).
+  Definition ofs_fromDMem :=
+    ofs_toDMem + List.length (@finite_elements MemReq.reg_t _).
+  Definition ofs_f2d :=
+    ofs_fromDMem + List.length (@finite_elements MemResp.reg_t _).
+  Definition ofs_f2dprim :=
+    ofs_f2d + List.length (@finite_elements fromFetch.reg_t _).
+  Definition ofs_d2e :=
+    ofs_f2dprim + List.length (@finite_elements waitFromFetch.reg_t _).
+  Definition ofs_e2w :=
+    ofs_d2e + List.length (@finite_elements fromDecode.reg_t _).
+  Definition ofs_rf :=
+    ofs_e2w + List.length (@finite_elements fromExecute.reg_t _).
+  Definition ofs_mulState :=
+    ofs_rf + List.length (@finite_elements Rf.reg_t _).
+  Definition ofs_stack :=
+    ofs_mulState + List.length (@finite_elements Multiplier.reg_t _).
+  Definition ofs_scoreboard :=
+    ofs_stack + List.length (@finite_elements Stack.reg_t _).
+  Definition ofs_cycle_count :=
+    ofs_scoreboard + List.length (@finite_elements Scoreboard.reg_t _).
   Definition ofs_instr_count := ofs_cycle_count + 1.
   Definition ofs_pc := ofs_instr_count + 1.
   Definition ofs_epoch := ofs_pc + 1.
@@ -681,24 +692,20 @@ Module RVCore
 
   Lemma nth_error_app_r:
     forall {A} (l1 l2: list A) n,
-      nth_error (l1 ++ l2) (List.length l1 + n) = nth_error l2 n.
-  Proof.
-    intros.
-    rewrite nth_error_app2. f_equal. lia. lia.
-  Qed.
+    nth_error (l1 ++ l2) (List.length l1 + n) = nth_error l2 n.
+  Proof. intros. rewrite nth_error_app2. f_equal. lia. lia. Qed.
 
-  Ltac unfolds := unfold ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. 
-  
+  Ltac unfolds :=
+    unfold
+      ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count,
+      ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e,
+      ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
 
   Lemma NoDup_app_sorted:
-    forall l1,
-      NoDup l1 ->
-      forall l2,
-        NoDup l2 ->
-        forall n,
-          (forall x, In x l1 -> x < n) ->
-          (forall x, In x l2 -> x >= n) ->
-          NoDup (l1 ++ l2).
+    forall l1, NoDup l1 -> forall l2, NoDup l2
+    -> forall n,
+    (forall x, In x l1 -> x < n) -> (forall x, In x l2 -> x >= n)
+    -> NoDup (l1 ++ l2).
   Proof.
     induction 1; simpl; intros; eauto.
     constructor; eauto. intro IN. apply in_app_or in IN.
@@ -708,18 +715,17 @@ Module RVCore
 
   Lemma NoDup_map_transl':
     forall {A} (l: list A) y f,
-      NoDup (map (fun x => y + f x) l) ->
-      NoDup (map (fun x => f x) l).
+    NoDup (map (fun x => y + f x) l) -> NoDup (map (fun x => f x) l).
   Proof.
     induction l; simpl; intros; eauto. inversion H. clear H. subst.
     constructor; eauto. rewrite in_map_iff in *.
     intros (x & EQ & IN); apply H2.
     exists x; eauto.
   Qed.
+
   Lemma NoDup_map_transl:
     forall {A} (l: list A) y f,
-      NoDup (map (fun x => f x) l) ->
-      NoDup (map (fun x => y + f x) l).
+    NoDup (map (fun x => f x) l) -> NoDup (map (fun x => y + f x) l).
   Proof.
     induction l; simpl; intros; eauto. inversion H. clear H. subst.
     constructor; eauto. rewrite in_map_iff in *.
@@ -729,18 +735,16 @@ Module RVCore
 
   Lemma map_transl:
     forall {A} y f (l: list A),
-      map (fun x => y + f x) l = map (Nat.add y) (map f l).
-  Proof.
-    intros; rewrite map_map. auto.
-  Qed.
+    map (fun x => y + f x) l = map (Nat.add y) (map f l).
+  Proof. intros; rewrite map_map. auto. Qed.
 
   Lemma map_add:
     forall n m (l: list nat),
-      map (Nat.add (n + m)) l = map (Nat.add n) (map (Nat.add m) l).
+    map (Nat.add (n + m)) l = map (Nat.add n) (map (Nat.add m) l).
   Proof.
     intros; rewrite map_map. apply map_ext. intros; lia.
   Qed.
-  
+
   Lemma nodup_map_add:
     forall {A} f (l: list A) l',
       (forall x, In x l -> f x < List.length l) ->
@@ -752,8 +756,10 @@ Module RVCore
     apply NoDup_app_sorted with (n := List.length l). auto.
     apply FinFun.Injective_map_NoDup. red.  intros; lia.
     auto.
-    intros x IN; rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst. eauto.
-    intros x IN; rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst. lia.
+    intros x IN; rewrite in_map_iff in IN.
+    destruct IN as (x0 & EQ & IN). subst. eauto.
+    intros x IN; rewrite in_map_iff in IN.
+    destruct IN as (x0 & EQ & IN). subst. lia.
   Qed.
 
   Opaque finite_index finite_elements.
@@ -782,83 +788,100 @@ Module RVCore
                  end;
       finite_elements:=
         map (fun i => toIMem i) finite_elements
-            ++ map (fun i => fromIMem i) finite_elements
-            ++ map (fun i => toDMem i) finite_elements
-            ++ map (fun i => fromDMem i) finite_elements
-            ++ map (fun i => f2d i) finite_elements
-            ++ map (fun i => f2dprim i) finite_elements
-            ++ map (fun i => d2e i) finite_elements
-            ++ map (fun i => e2w i) finite_elements
-            ++ map (fun i => rf i) finite_elements
-            ++ map (fun i => mulState i) finite_elements
-            ++ map (fun i => stack i) finite_elements
-            ++ map (fun i => scoreboard i) finite_elements
-            ++ [cycle_count; instr_count; pc; epoch; debug; halt]
+          ++ map (fun i => fromIMem i) finite_elements
+          ++ map (fun i => toDMem i) finite_elements
+          ++ map (fun i => fromDMem i) finite_elements
+          ++ map (fun i => f2d i) finite_elements
+          ++ map (fun i => f2dprim i) finite_elements
+          ++ map (fun i => d2e i) finite_elements
+          ++ map (fun i => e2w i) finite_elements
+          ++ map (fun i => rf i) finite_elements
+          ++ map (fun i => mulState i) finite_elements
+          ++ map (fun i => stack i) finite_elements
+          ++ map (fun i => scoreboard i) finite_elements
+          ++ [cycle_count; instr_count; pc; epoch; debug; halt]
     |}.
   Next Obligation.
     intros.
     destruct a.
-    + rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+    + rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
     + rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
     + unfold ofs_toDMem. rewrite <- Nat.add_assoc. rewrite nth_error_app_r.
       erewrite <- map_length. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
     + unfold ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       erewrite <- map_length. rewrite nth_error_app_r.
       erewrite <- map_length. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
     + unfold ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
-    + unfold ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
-    + unfold ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
-      rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
-      rewrite map_length. apply index_bounded.
-    + unfold ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
-      rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
-      rewrite map_length. apply index_bounded.
-    + unfold ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      erewrite <- map_length at 1. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
-    + unfold ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
+      rewrite map_length. apply index_bounded.
+    + unfold
+        ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem,
+        ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
+      rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      erewrite <- map_length at 1. rewrite nth_error_app_r.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
+      rewrite map_length. apply index_bounded.
+    + unfold
+        ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d,
+        ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
@@ -868,41 +891,71 @@ Module RVCore
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       erewrite <- map_length at 1. rewrite nth_error_app_r.
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
-    + unfold ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold
+        ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d,
+        ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc. rewrite nth_error_app_r.
+      repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective. rewrite map_length. apply index_bounded.
+    + unfold
+        ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e,
+        ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
+      rewrite nth_error_app1. erewrite map_nth_error; eauto.
+      apply finite_surjective.
       rewrite map_length. apply index_bounded.
-    + unfold ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
-      rewrite nth_error_app_r.
-      repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
-      rewrite nth_error_app1. erewrite map_nth_error; eauto. apply finite_surjective.
-      rewrite map_length. apply index_bounded.
-    + unfold ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold
+        ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf,
+        ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
       rewrite <- (Nat.add_0_r (List.length finite_elements)).
       erewrite <- map_length at 1. rewrite nth_error_app_r.
       reflexivity.
-    + unfold ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold
+        ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack,
+        ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d,
+        ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
       reflexivity.
-    + unfold ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold
+        ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack,
+        ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d,
+        ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
       reflexivity.
-    + unfold ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold
+        ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard,
+        ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d,
+        ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
       reflexivity.
-    + unfold ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold
+        ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count,
+        ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e,
+        ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
       reflexivity.
-    + unfold ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count, ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf, ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem. rewrite <- ! Nat.add_assoc.
+    + unfold
+        ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count,
+        ofs_cycle_count, ofs_scoreboard, ofs_stack, ofs_mulState, ofs_rf,
+        ofs_e2w, ofs_d2e, ofs_f2dprim, ofs_f2d, ofs_fromDMem, ofs_toDMem.
+      rewrite <- ! Nat.add_assoc.
       rewrite nth_error_app_r.
       repeat (erewrite <- map_length at 1; rewrite nth_error_app_r).
       reflexivity.
@@ -913,8 +966,9 @@ Module RVCore
     rewrite ! app_assoc.
 
     simpl map.
-    replace [ofs_cycle_count; ofs_instr_count; ofs_pc; ofs_epoch; ofs_debug; ofs_halt]
-      with (map (Nat.add ofs_cycle_count) [0;1;2;3;4;5]).
+    replace [
+      ofs_cycle_count; ofs_instr_count; ofs_pc; ofs_epoch; ofs_debug; ofs_halt
+    ] with (map (Nat.add ofs_cycle_count) [0;1;2;3;4;5]).
     2:{
       unfold ofs_halt, ofs_debug, ofs_epoch, ofs_pc, ofs_instr_count.
       generalize ofs_cycle_count. intros.
@@ -925,15 +979,12 @@ Module RVCore
       f_equal. lia.
     }
     unfolds.
-    repeat match goal with
-             |- context [map (fun x => ?y + _) ?l] =>
-             rewrite (map_transl y _ l)
-           end.
-    repeat rewrite map_add.
-    rewrite <- ! app_assoc.
-    rewrite <- ! map_app.
-    (* apply NoDup_app_sorted with (n := ofs_fromIMem). apply finite_injective. *)
-    (* apply FinFun.Injective_map_NoDup. red.  intros; lia. *)
+    repeat
+      match goal with
+      |- context [map (fun x => ?y + _) ?l] =>
+      rewrite (map_transl y _ l)
+    end.
+    repeat rewrite map_add. rewrite <- ! app_assoc. rewrite <- ! map_app.
     apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
     apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
     apply nodup_map_add. intros; apply index_bounded. apply finite_injective.
@@ -1257,99 +1308,101 @@ Module RVCore
       pass
   }}.
 
-  (* Definition execute : uaction reg_t ext_fn_t := {{ *)
-  (*   if (read0(halt) == Ob~1) then fail else pass; *)
-  (*   let decoded_bookkeeping := d2e.(fromDecode.deq)() in *)
-  (*   if get(decoded_bookkeeping, epoch) == read0(epoch) then *)
-  (*     (* By then we guarantee that this instruction is correct-path *) *)
-  (*     let dInst := get(decoded_bookkeeping, dInst) in *)
-  (*     if get(dInst, legal) == Ob~0 then *)
-  (*       (* Always say that we had a misprediction in this case for simplicity *) *)
-  (*       write0(epoch, read0(epoch)+Ob~1); *)
-  (*       write0(pc, |32`d0|) *)
-  (*     else ( *)
-  (*       let fInst      := get(dInst, inst) in *)
-  (*       let funct3     := get(getFields(fInst), funct3) in *)
-  (*       let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in *)
-  (*       let rs1_val    := get(decoded_bookkeeping, rval1) in *)
-  (*       let rs2_val    := get(decoded_bookkeeping, rval2) in *)
-  (*       (* Use the multiplier module or the ALU *) *)
-  (*       let imm        := getImmediate(dInst) in *)
-  (*       let pc         := get(decoded_bookkeeping, pc) in *)
-  (*       let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in *)
-  (*       let isUnsigned := Ob~0 in *)
-  (*       let size       := funct3[|2`d0| :+ 2] in *)
-  (*       let addr       := rs1_val + imm in *)
-  (*       let offset     := addr[|5`d0| :+ 2] in *)
-  (*       if isMemoryInst(dInst) then *)
-  (*         let shift_amount := offset ++ |3`d0| in *)
-  (*         let is_write     := fInst[|5`d5|] == Ob~1 in *)
-  (*         let byte_en      := *)
-  (*           if is_write then *)
-  (*             match size with *)
-  (*             | Ob~0~0 => Ob~0~0~0~1 *)
-  (*             | Ob~0~1 => Ob~0~0~1~1 *)
-  (*             | Ob~1~0 => Ob~1~1~1~1 *)
-  (*             return default: fail(4) *)
-  (*             end << offset *)
-  (*           else Ob~0~0~0~0 in *)
-  (*         set data       := rs2_val << shift_amount; *)
-  (*         set addr       := addr[|5`d2| :+ 30] ++ |2`d0|; *)
-  (*         set isUnsigned := funct3[|2`d2|]; *)
-  (*         toDMem.(MemReq.enq)(struct mem_req { *)
-  (*           byte_en := byte_en; addr := addr; data := data *)
-  (*         }) *)
-  (*       else if (isControlInst(dInst)) then *)
-  (*         (* See table 2.1. of the unpriviledged ISA specification for *)
-  (*            details *) *)
-  (*         set data := (pc + |32`d4|); (* For jump and link *) *)
-  (*         ( *)
-  (*           let res := Ob~0 in *)
-  (*           let rs1 := get(dInst, inst)[|5`d15| :+ 5] in *)
-  (*           ( *)
-  (*             if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1) *)
-  (*               && (rd_val == |5`d1| || rd_val == |5`d5|)) *)
-  (*             then *)
-  (*               set res := stack.(Stack.push)(data) *)
-  (*             else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then ( *)
-  (*               if (rd_val == |5`d1| && rd_val == |5`d5|) then *)
-  (*                 if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then ( *)
-  (*                   set res := stack.(Stack.push)(data) *)
-  (*                 ) else ( *)
-  (*                   set res := stack.(Stack.pop)(addr); *)
-  (*                   set res := res || stack.(Stack.push)(data) *)
-  (*                 ) *)
-  (*               else if (rs1 == |5`d1| || rs1 == |5`d5|) then *)
-  (*                 set res := stack.(Stack.pop)(addr) *)
-  (*               else pass *)
-  (*             ) *)
-  (*             else pass *)
-  (*           ); *)
-  (*           write0(halt, res) *)
-  (*         ) *)
-  (*       else if (isMultiplyInst(dInst)) then *)
-  (*         mulState.(Multiplier.enq)(rs1_val, rs2_val) *)
-  (*       else *)
-  (*         pass; *)
-  (*       let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in *)
-  (*       let nextPc        := get(controlResult,nextPC) in *)
-  (*       if nextPc != get(decoded_bookkeeping, ppc) then *)
-  (*         write0(epoch, read0(epoch)+Ob~1); *)
-  (*         write0(pc, nextPc) *)
-  (*       else *)
-  (*         pass; *)
-  (*       let execute_bookkeeping := struct execute_bookkeeping { *)
-  (*         isUnsigned := isUnsigned; *)
-  (*         size       := size; *)
-  (*         offset     := offset; *)
-  (*         newrd      := data; *)
-  (*         dInst      := get(decoded_bookkeeping, dInst) *)
-  (*       } in *)
-  (*       e2w.(fromExecute.enq)(execute_bookkeeping) *)
-  (*     ) *)
-  (*   else *)
-  (*     pass *)
-  (* }}. *)
+  (*
+  Definition execute : uaction reg_t ext_fn_t := {{
+    if (read0(halt) == Ob~1) then fail else pass;
+    let decoded_bookkeeping := d2e.(fromDecode.deq)() in
+    if get(decoded_bookkeeping, epoch) == read0(epoch) then
+      (* By then we guarantee that this instruction is correct-path *)
+      let dInst := get(decoded_bookkeeping, dInst) in
+      if get(dInst, legal) == Ob~0 then
+        (* Always say that we had a misprediction in this case for simplicity *)
+        write0(epoch, read0(epoch)+Ob~1);
+        write0(pc, |32`d0|)
+      else (
+        let fInst      := get(dInst, inst) in
+        let funct3     := get(getFields(fInst), funct3) in
+        let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in
+        let rs1_val    := get(decoded_bookkeeping, rval1) in
+        let rs2_val    := get(decoded_bookkeeping, rval2) in
+        (* Use the multiplier module or the ALU *)
+        let imm        := getImmediate(dInst) in
+        let pc         := get(decoded_bookkeeping, pc) in
+        let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in
+        let isUnsigned := Ob~0 in
+        let size       := funct3[|2`d0| :+ 2] in
+        let addr       := rs1_val + imm in
+        let offset     := addr[|5`d0| :+ 2] in
+        if isMemoryInst(dInst) then
+          let shift_amount := offset ++ |3`d0| in
+          let is_write     := fInst[|5`d5|] == Ob~1 in
+          let byte_en      :=
+            if is_write then
+              match size with
+              | Ob~0~0 => Ob~0~0~0~1
+              | Ob~0~1 => Ob~0~0~1~1
+              | Ob~1~0 => Ob~1~1~1~1
+              return default: fail(4)
+              end << offset
+            else Ob~0~0~0~0 in
+          set data       := rs2_val << shift_amount;
+          set addr       := addr[|5`d2| :+ 30] ++ |2`d0|;
+          set isUnsigned := funct3[|2`d2|];
+          toDMem.(MemReq.enq)(struct mem_req {
+            byte_en := byte_en; addr := addr; data := data
+          })
+        else if (isControlInst(dInst)) then
+          (* See table 2.1. of the unpriviledged ISA specification for
+             details *)
+          set data := (pc + |32`d4|); (* For jump and link *)
+          (
+            let res := Ob~0 in
+            let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
+            (
+              if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
+                && (rd_val == |5`d1| || rd_val == |5`d5|))
+              then
+                set res := stack.(Stack.push)(data)
+              else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
+                if (rd_val == |5`d1| && rd_val == |5`d5|) then
+                  if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
+                    set res := stack.(Stack.push)(data)
+                  ) else (
+                    set res := stack.(Stack.pop)(addr);
+                    set res := res || stack.(Stack.push)(data)
+                  )
+                else if (rs1 == |5`d1| || rs1 == |5`d5|) then
+                  set res := stack.(Stack.pop)(addr)
+                else pass
+              )
+              else pass
+            );
+            write0(halt, res)
+          )
+        else if (isMultiplyInst(dInst)) then
+          mulState.(Multiplier.enq)(rs1_val, rs2_val)
+        else
+          pass;
+        let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
+        let nextPc        := get(controlResult,nextPC) in
+        if nextPc != get(decoded_bookkeeping, ppc) then
+          write0(epoch, read0(epoch)+Ob~1);
+          write0(pc, nextPc)
+        else
+          pass;
+        let execute_bookkeeping := struct execute_bookkeeping {
+          isUnsigned := isUnsigned;
+          size       := size;
+          offset     := offset;
+          newrd      := data;
+          dInst      := get(decoded_bookkeeping, dInst)
+        } in
+        e2w.(fromExecute.enq)(execute_bookkeeping)
+      )
+    else
+      pass
+  }}.
+  *)
 
   Definition writeback : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;

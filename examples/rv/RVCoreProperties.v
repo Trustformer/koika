@@ -1,14 +1,8 @@
 (*! Proofs about our RISC-V implementation !*)
-
-Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
-Require Import Koika.Frontend Koika.Logs Koika.Std
-        Koika.ProgramTactics.
-(* Require Import Koika.SimpleTypedSemantics. *)
-Require Import UntypedSemantics.
-Require Import UntypedIndSemantics.
-Require Import BitsToLists.
 Require Import Coq.Program.Equality.
-(* Require Import Koika.IndTypedSemantics. *)
+Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
+Require Import Koika.Frontend Koika.Logs Koika.ProgramTactics Koika.Std.
+Require Import BitsToLists UntypedIndSemantics UntypedSemantics.
 
 Ltac destr_in H :=
   match type of H with
@@ -17,11 +11,10 @@ Ltac destr_in H :=
 
 Ltac destr :=
   match goal with
-    |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
+  |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
   end.
 
-Ltac inv H :=
-  inversion H; try subst; clear H.
+Ltac inv H := inversion H; try subst; clear H.
 
 Module StackProofs.
   (*
@@ -180,15 +173,22 @@ Module StackProofs.
   (* Qed. *)
 
 
-  Definition if_halt_eq : action (ext_fn_t:=RV32I.ext_fn_t) pos_t var_t fn_name_t RV32I.R RV32I.Sigma [] unit_t :=
-    (If (Binop (PrimTyped.Eq (bits_t 1) false) (Read P0 RV32I.halt)
-               (Const (tau:= bits_t 1) {| vhd := true; vtl := _vect_nil |}))
-       (Fail unit_t) (Const (tau:=unit_t) _vect_nil)).
+  Definition if_halt_eq
+  : action
+    (ext_fn_t:=RV32I.ext_fn_t) pos_t var_t fn_name_t RV32I.R RV32I.Sigma []
+    unit_t
+  := (
+    If (
+      Binop
+        (PrimTyped.Eq (bits_t 1) false)
+        (Read P0 RV32I.halt)
+        (Const (tau:= bits_t 1) {| vhd := true; vtl := _vect_nil |})
+    )
+      (Fail unit_t) (Const (tau:=unit_t) _vect_nil)
+  ).
 
   Instance reg_t_eq_dec: EqDec RV32I.reg_t.
-  Proof.
-    eapply EqDec_FiniteType.
-  Qed.
+  Proof. eapply EqDec_FiniteType. Qed.
 
   Lemma log_app_r_empty:
     forall (REnv: Env RV32I.reg_t) (l: Log REnv), log_app l log_empty = l.
@@ -202,40 +202,28 @@ Module StackProofs.
 
   Lemma get_log_cons:
     forall (REnv: Env RV32I.reg_t) (l: Log REnv) le r1,
-      getenv REnv (log_cons r1 le l) r1 = le :: getenv REnv l r1.
-  Proof.
-    unfold log_cons. intros.
-    rewrite get_put_eq. auto.
-  Qed.
+    getenv REnv (log_cons r1 le l) r1 = le :: getenv REnv l r1.
+  Proof. unfold log_cons. intros. rewrite get_put_eq. auto. Qed.
 
   Lemma get_log_cons_other:
     forall (REnv: Env RV32I.reg_t) (l: Log REnv) le r1 r2 (d: r1 <> r2),
-      getenv REnv (log_cons r1 le l) r2 = getenv REnv l r2.
-  Proof.
-    unfold log_cons. intros.
-    rewrite get_put_neq; auto.
-  Qed.
+    getenv REnv (log_cons r1 le l) r2 = getenv REnv l r2.
+  Proof. unfold log_cons. intros. rewrite get_put_neq; auto. Qed.
 
-  
   Lemma execute_overwrites_halt:
     forall REnv (r: env_t REnv _) sigma l,
-      interp_rule r sigma log_empty
-                  RV32I.execute l ->
-      (getenv REnv r RV32I.halt <> Bits 1 [true]) ->
-      log_existsb l RV32I.halt (fun k p =>
-                                  match k with
-                                    LogRead => false
-                                  | LogWrite => true
-                                  end
-                               ) = true.
+    interp_rule r sigma log_empty RV32I.execute l
+    -> (getenv REnv r RV32I.halt <> Bits 1 [true])
+    -> log_existsb l RV32I.halt (fun k p =>
+      match k with
+      | LogRead => false
+      | LogWrite => true
+      end
+    ) = true.
   Proof.
     intros.
-    dependent destruction H.
-    dependent destruction H.
-    dependent destruction H.
-    dependent destruction H.
-    dependent destruction H.
-    dependent destruction H0.
+    dependent destruction H. dependent destruction H. dependent destruction H.
+    dependent destruction H. dependent destruction H. dependent destruction H0.
     destruct (val_eq_dec).
     rewrite e in H3. contradict H3.
     unfold l0. simpl. reflexivity.
@@ -247,7 +235,7 @@ Module StackProofs.
   Theorem stack_0_implies_no_setting_halt :
     (r: ContextEnv.(env_t) RV32I.R)
     (sigma : forall f, Sig_denote (RV32I.Sigma f)),
-     r.(getenv) halt = 0 -> (rv_cycle r sigma).(getenv) halt = 1 ->
+    r.(getenv) halt = 0 -> (rv_cycle r sigma).(getenv) halt = 1 ->
 
   Theorem forall_calls :
     forall (r : ContextEnv.(env_t) RV32I.R)
