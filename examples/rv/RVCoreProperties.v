@@ -14,11 +14,10 @@ Ltac destr_in H :=
 
 Ltac destr :=
   match goal with
-    |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
+  |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
   end.
 
-Ltac inv H :=
-  inversion H; try subst; clear H.
+Ltac inv H := inversion H; try subst; clear H.
 
 Module StackProofs.
   (*
@@ -280,12 +279,10 @@ Module StackProofs.
     apply Eqdep_dec.inj_pair2_eq_dec in H12.
     apply Eqdep_dec.inj_pair2_eq_dec in H14. subst.
     all: try apply eq_dec.
-
-
-    destruct (interp_action r sigma CtxEmpty log_empty log_empty RV32I.tc_end_execution) eqn:?.
-    2:{
-      Set Printing All.
-    }
+    destruct (
+      interp_action r sigma CtxEmpty log_empty log_empty RV32I.tc_end_execution
+    ) eqn:?.
+    2:{ Set Printing All. }
     destr_in H.
     inv H.
     unfold RV32I.tc_end_execution in H0.
@@ -294,9 +291,7 @@ Module StackProofs.
       match
         desugar_action' dummy_pos (fun r : RV32I.reg_t => r)
         (fun fn => fn) RV32I.end_execution
-      with
-         x => _
-      end
+      with x => _ end
     ).
     fold x in H0.
     refine ((
@@ -332,12 +327,9 @@ Module StackProofs.
     subst.
     simpl projT1 in v.
     simpl projT2 in H0.
-
     inversion H0.
     apply Eqdep_dec.inj_pair2_eq_dec in H11.
-    2:{
-      apply eq_dec.
-    }
+    2:{ apply eq_dec.  }
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
     apply Eqdep_dec.inj_pair2_eq_dec in H8.
@@ -372,7 +364,6 @@ Module StackProofs.
     apply Eqdep_dec.inj_pair2_eq_dec in H12.
     apply Eqdep_dec.inj_pair2_eq_dec in H14. subst.
     all: try apply eq_dec.
-
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
     apply Eqdep_dec.inj_pair2_eq_dec in H7.
     apply Eqdep_dec.inj_pair2_eq_dec in H8.
@@ -385,30 +376,19 @@ Module StackProofs.
     apply Eqdep_dec.inj_pair2_eq_dec in H.
     all: try apply eq_dec. clear H0.
     subst.
-
-    2:{
-      intros. decide equality. apply EqDec_pair.
-    }
+    2:{ intros. decide equality. apply EqDec_pair. }
     inversion H11.
     destruct H11. unfold eq_rect in e.
     cbn [projT1 projT2] in *.
-
     vm_compute in H0.
-
-
     Set Printing Depth 500.
-
     inv H0.
-
-
     unfold RV32I.tc_execute in H0.
     refine (
       match
         desugar_action' dummy_pos (fun r : RV32I.reg_t => r)
         (fun fn => fn) RV32I.execute
-      with
-         x => _
-      end
+      with x => _ end
     ).
     fold x in H0.
     refine ((
@@ -440,15 +420,12 @@ Module StackProofs.
     simpl in Heqr0.
     vm_compute in Heqr0.
     apply success_inj in Heqr0.
-
-
     subst s0. simpl projT1 in v.
     simpl projT2 in H0.
     match type of H0 with
-      context [Seq ?a1 ?a2] => set(XX:=a2); fold XX in H0
+    | context [Seq ?a1 ?a2] => set(XX:=a2); fold XX in H0
     end.
     inv H0.
-
     unfold eq_rect in Heqo.
     destruct p.
     assert (p = eq_refl).
@@ -456,8 +433,6 @@ Module StackProofs.
     revert H1; rewrite <- Heqr0; clear Heqr0.
     simpl projT2.
     intro Hcast; vm_compute in Hcast; inv Hcast.
-
-
     Heqr0.
     vm_compute in H1. inv H1. simpl in H2.
     cbn beta delta iota zeta in H.
@@ -468,13 +443,7 @@ Module StackProofs.
       rewrite (proj2 (beq_dec_iff _ _ _)). intro A; inv A. reflexivity.
       reflexivity.
     - congruence.
-
     unfold x in H1. vm_compute in H1.
-
-
-
-
-
     interp_action_t.
   Qed.
 
