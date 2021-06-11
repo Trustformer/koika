@@ -44,10 +44,8 @@ Section RVHelpers.
     int_body    :=
       USugar (UStructInit inst_field (
         fold_left (fun a f =>
-          let fp := get_i_field_properties f in
-          let merge_actions := (fun a1 a2 =>
-            UBinop (UBits2 UConcat) a1 a2
-          ) in
+          let fp            := get_i_field_properties f in
+          let merge_actions := (fun a1 a2 => UBinop (UBits2 UConcat) a1 a2) in
           (* To get the final value of some fields, the result of slice_actions
              has to be shifted.
              For instance, the immJ field is only ever used for the JAL
@@ -138,13 +136,12 @@ Section RVHelpers.
           USugar (
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
             (map (fun f =>
-                (USugar (UConstBits (fct3_bin f)), (
-                  if (has_fct2 (get_opcode_i_type o)) then
-                    generate_fct2_match o f
-                  (* fct2 and fct7 are mutually exclusive. *)
-                  else (if (has_fct7 (get_opcode_i_type o)) then
-                    generate_fct7_match o f
-                  else {{ Ob~1 }}
+              (USugar (UConstBits (fct3_bin f)), (
+                if (has_fct2 (get_opcode_i_type o)) then generate_fct2_match o f
+                (* fct2 and fct7 are mutually exclusive. *)
+                else (if (has_fct7 (get_opcode_i_type o)) then
+                  generate_fct7_match o f
+                else {{ Ob~1 }}
               )))) (get_fcts3 o instructions)
       )))) in
       UBind "fields" (USugar (UCallModule
@@ -158,11 +155,11 @@ Section RVHelpers.
           USugar (
             USwitch {{__reserved__matchPattern}} (USugar (UConstBits Ob~0))
             (map (fun o =>
-                (USugar (UConstBits (opcode_bin o)), (
-                  (* (fct2 or fct7) implies fct3, so checking for those happens
-                     in generate_fct3_match *)
-                  if (has_fct3 (get_opcode_i_type o)) then generate_fct3_match o
-                  else {{ Ob~1 }}
+              (USugar (UConstBits (opcode_bin o)), (
+                (* (fct2 or fct7) implies fct3, so checking for those happens
+                   in generate_fct3_match *)
+                if (has_fct3 (get_opcode_i_type o)) then generate_fct3_match o
+                else {{ Ob~1 }}
         ))) opcodes))))
   |}.
 
@@ -170,10 +167,10 @@ Section RVHelpers.
      opcode are always 11 and can thus be safely ignored
    *)
   Definition getImmediateType : UInternalFunction reg_t empty_ext_fn_t := {|
-    int_name := "getImmediateType";
+    int_name    := "getImmediateType";
     int_argspec := [("inst", bits_t 32)];
-    int_retSig := maybe (enum_t imm_type);
-    int_body := UBind "__reserved__matchPattern"
+    int_retSig  := maybe (enum_t imm_type);
+    int_body    := UBind "__reserved__matchPattern"
       (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
       (USugar (USwitch
         {{__reserved__matchPattern}}
@@ -183,11 +180,8 @@ Section RVHelpers.
           map (fun o => (
             USugar (UConstBits (opcode_bin o)),
             USugar (UStructInit {|
-                struct_name   := "maybe_immType";
-                struct_fields := [
-                  ("valid", bits_t 1);
-                  ("data", enum_t imm_type)
-                ]
+              struct_name   := "maybe_immType";
+              struct_fields := [("valid", bits_t 1); ("data", enum_t imm_type)]
             |}
               [
                 ("valid", USugar (UConstBits Ob~1));
@@ -214,12 +208,12 @@ Section RVHelpers.
   |}.
 
   Definition usesRS1 : UInternalFunction reg_t empty_ext_fn_t := {|
-    int_name := "usesRS1";
+    int_name    := "usesRS1";
     int_argspec := [prod_of_argsig
       {| arg_name := "inst"; arg_type := bits_t 32 |}
     ];
-    int_retSig := bits_t 1;
-    int_body := UBind "__reserved__matchPattern"
+    int_retSig  := bits_t 1;
+    int_body    := UBind "__reserved__matchPattern"
       (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
       (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
       (
@@ -234,21 +228,21 @@ Section RVHelpers.
   |}.
 
   Definition usesRS2 : UInternalFunction reg_t empty_ext_fn_t := {|
-    int_name := "usesRS2";
+    int_name    := "usesRS2";
     int_argspec := [prod_of_argsig
       {| arg_name := "inst"; arg_type := bits_t 32 |}
     ];
-    int_retSig := bits_t 1;
-    int_body := UBind "__reserved__matchPattern"
+    int_retSig  := bits_t 1;
+    int_body    := UBind "__reserved__matchPattern"
       (UBinop (UBits2 (UIndexedSlice 7)) {{inst}} {{|5`d0|}})
       (USugar (USwitch {{__reserved__matchPattern}} {{Ob~0}}
       (
         let rs2_opcodes := get_opcodes_from_instructions_list (
           get_rs2_users instructions
         ) in
-        map (fun o =>
-          (USugar (UConstBits (opcode_bin o)), {{Ob~1}})
-        ) rs2_opcodes
+        map
+          (fun o => (USugar (UConstBits (opcode_bin o)), {{Ob~1}}))
+          rs2_opcodes
       )
     ))
   |}.
@@ -395,46 +389,40 @@ Section RVHelpers.
       ) instructions in
       let fcts3 : list fct3_type := get_fcts3_in_instructions binops in
       (
-        UBind "shamt" (UBinop (UBits2 (UIndexedSlice 5)) {{ b }}
-          {{ Ob~0~0~0~0~0 }})
+        UBind "shamt"
+          (UBinop (UBits2 (UIndexedSlice 5)) {{ b }} {{ Ob~0~0~0~0~0 }})
         (
-        UBind "__reserved__matchPattern" {{ funct3 }} (
-          USugar (
-            USwitch {{ __reserved__matchPattern }} {{ |32`d0| }} (
-              map (fun i =>
-                match (filter_by_fct3 binops i) with
-                | [h]  =>
-                (
-                  USugar (UConstBits (fct3_bin i)),
-                  get_semantics_binop_32 h
-                )
-                | _::_ => (USugar (UConstBits (fct3_bin i)),
-                  (
-                  UBind "__reserved__matchPattern" {{ funct7 }} (
-                    USugar (
-                      USwitch {{ __reserved__matchPattern }} {{ |32`d0| }} (
-                        let fcts7 := get_fcts7_in_instructions binops i in
-                        map (fun j =>
-                          match (filter_by_fct3_and_fct7 binops i j) with
-                          | [h] => (
-                            USugar (UConstBits (fct7_bin j)),
-                            get_semantics_binop_32 h
-                          )
-                          | _   => (
-                            USugar (UConstBits (fct7_bin j)), {{ |32`d0| }}
-                          ) (* Impossible case *)
-                          end
-                        ) fcts7
+        UBind "__reserved__matchPattern" {{ funct3 }} (USugar (
+          USwitch {{ __reserved__matchPattern }} {{ |32`d0| }} (
+            map (fun i =>
+              match (filter_by_fct3 binops i) with
+              | [h]  =>
+                (USugar (UConstBits (fct3_bin i)), get_semantics_binop_32 h)
+              | _::_ => (
+                USugar (UConstBits (fct3_bin i)),
+                (UBind "__reserved__matchPattern" {{ funct7 }} (USugar (
+                  USwitch {{ __reserved__matchPattern }} {{ |32`d0| }} (
+                    let fcts7 := get_fcts7_in_instructions binops i in
+                    map (fun j =>
+                      match (filter_by_fct3_and_fct7 binops i j) with
+                      | [h] => (
+                        USugar (UConstBits (fct7_bin j)),
+                        get_semantics_binop_32 h
                       )
-                  )))
-                )
-                | _    => (
-                  USugar (UConstBits (fct3_bin i)),
-                  {{ |32`d0| }}
-                ) (* Impossible case *)
-                end
+                      | _   =>
+                        (* Impossible case *)
+                        (USugar (UConstBits (fct7_bin j)), {{ |32`d0| }})
+                      end
+                    ) fcts7
+                  )
+                )))
               )
-              fcts3
+              | _    =>
+                (* Impossible case *)
+                (USugar (UConstBits (fct3_bin i)), {{ |32`d0| }})
+              end
+            )
+            fcts3
             )
           )
         ))
@@ -450,18 +438,15 @@ Section RVHelpers.
       let isAUIPC := (inst[|5`d2|] == Ob~1) && (inst[|5`d5|] == Ob~0) in
       let isIMM   := (inst[|5`d5|] == Ob~0) in
       let rd_val  := |32`d0| in (
-        if (isLUI) then
-          set rd_val := imm_val
-        else if (isAUIPC) then
-          set rd_val := (pc + imm_val)
+        if (isLUI) then set rd_val := imm_val
+        else if (isAUIPC) then set rd_val := (pc + imm_val)
         else
           let alu_src1 := rs1_val in
           let alu_src2 := if isIMM then imm_val else rs2_val in
           let funct3   := get(getFields(inst), funct3) in
           let funct7   := get(getFields(inst), funct7) in
           let opcode   := get(getFields(inst), opcode) in
-          if
-            ((funct3 == #funct3_ADD) && isIMM) || (opcode == #opcode_BRANCH)
+          if ((funct3 == #funct3_ADD) && isIMM) || (opcode == #opcode_BRANCH)
           then
             (* Replace the instruction by an add *)
             (set funct7 := #funct7_ADD)
@@ -511,10 +496,8 @@ Section RVHelpers.
               return default: Ob~0
               end
             );
-            if (taken) then
-              set nextPC := (pc + imm_val)
-            else
-              set nextPC := incPC);
+            if (taken) then set nextPC := (pc + imm_val)
+            else set nextPC := incPC);
     struct control_result {taken := taken; nextPC := nextPC}
   }}.
 End RVHelpers.
@@ -530,23 +513,20 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
 
   Definition mem_req := {|
     struct_name   := "mem_req";
-    struct_fields := [
-      ("byte_en", bits_t 4); ("addr", bits_t 32); ("data", bits_t 32)
-    ]
+    struct_fields :=
+      [("byte_en", bits_t 4); ("addr", bits_t 32); ("data", bits_t 32)]
   |}.
 
   Definition mem_resp := {|
     struct_name   := "mem_resp";
-    struct_fields := [
-      ("byte_en", bits_t 4); ("addr", bits_t 32); ("data", bits_t 32)
-    ]
+    struct_fields :=
+      [("byte_en", bits_t 4); ("addr", bits_t 32); ("data", bits_t 32)]
   |}.
 
   Definition fetch_bookkeeping := {|
     struct_name   := "fetch_bookkeeping";
-    struct_fields := [
-      ("pc", bits_t 32); ("ppc", bits_t 32); ("epoch", bits_t 1)
-    ]
+    struct_fields :=
+      [("pc", bits_t 32); ("ppc", bits_t 32); ("epoch", bits_t 1)]
   |}.
 
   Definition decode_bookkeeping := {|
@@ -717,8 +697,8 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
   Definition finish_input := maybe (bits_t 8).
 
   Definition host_id :=
-    {| enum_name := "hostID";
-       enum_members := ["FPGA"; "Verilator"; "Cuttlesim"];
+    {| enum_name        := "hostID";
+       enum_members     := ["FPGA"; "Verilator"; "Cuttlesim"];
        enum_bitpatterns := vect_map (Bits.of_nat 8) [128; 1; 0]
     |}%vect.
 
@@ -785,8 +765,8 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       guard (score1 == Ob~0~0 && score2 == Ob~0~0);
       (
         when (get(decodedInst, valid_rd)) do
-        let rd_idx := get(getFields(instr), rd) in
-        scoreboard.(Scoreboard.insert)(sliceReg(rd_idx))
+          let rd_idx := get(getFields(instr), rd) in
+          scoreboard.(Scoreboard.insert)(sliceReg(rd_idx))
       );
       let rs1 := rf.(Rf.read_1)(sliceReg(rs1_idx)) in
       let rs2 := rf.(Rf.read_1)(sliceReg(rs2_idx)) in
@@ -865,8 +845,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
             (
               if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
                 && (rd_val == |5`d1| || rd_val == |5`d5|))
-              then
-                set res := stack.(Stack.push)(data)
+              then set res := stack.(Stack.push)(data)
               else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
                 if (rd_val == |5`d1| && rd_val == |5`d5|) then
                   if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
@@ -940,17 +919,13 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       | Ob~0~1~0 => set data := mem_data (* Load Word *)
       return default: fail (* Load Double or Signed Word *)
       end
-    else
-      pass;
+    else pass;
     if get(dInst,valid_rd) then
       let rd_idx := get(fields, rd) in
       scoreboard.(Scoreboard.remove)(sliceReg(rd_idx));
-      if (rd_idx == |5`d0|) then
-        pass
-      else
-        rf.(Rf.write_0)(sliceReg(rd_idx), data)
-    else
-      pass
+      if (rd_idx == |5`d0|) then pass
+      else rf.(Rf.write_0)(sliceReg(rd_idx), data)
+    else pass
   }}.
 
   Definition MMIO_UART_ADDRESS :=
@@ -998,7 +973,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
           let char    := get(put_request, data)[|5`d0| :+ 8] in
           let may_run := get_ready && put_valid && is_uart_write in
           let ready   := extcall ext_uart_write (struct (Maybe (bits_t 8)) {
-            valid     := may_run; data := char
+            valid := may_run; data := char
           }) in
           struct mem_output {
             get_valid    := may_run && ready;
@@ -1046,9 +1021,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
             get_valid    := may_run && ready;
             put_ready    := may_run && ready;
             get_response := struct mem_resp {
-              byte_en := byte_en;
-              addr    := addr;
-              data    := zeroExtend(response, 32)
+              byte_en := byte_en; addr := addr; data := zeroExtend(response, 32)
             }
           }
         else if is_host_id then
@@ -1059,8 +1032,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
             get_valid := may_run && ready;
             put_ready := may_run && ready;
             get_response := struct mem_resp {
-              byte_en := byte_en; addr := addr;
-              data := zeroExtend(response, 32)
+              byte_en := byte_en; addr := addr; data := zeroExtend(response, 32)
             }
           }
         else
@@ -1152,9 +1124,8 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
   Instance FiniteType_d2e      : FiniteType fromDecode.reg_t  := _.
   Instance FiniteType_e2w      : FiniteType fromExecute.reg_t := _.
 
-  Instance Show_rf : Show (Rf.reg_t) := {|
-    show '(Rf.rData v) := rv_register_name v
-  |}.
+  Instance Show_rf : Show (Rf.reg_t) :=
+    {| show '(Rf.rData v) := rv_register_name v |}.
 
   Instance Show_scoreboard : Show (Scoreboard.reg_t) := {|
     show '(Scoreboard.Scores (Scoreboard.Rf.rData v)) := rv_register_name v
@@ -1209,27 +1180,3 @@ Module Type Core.
   Parameter rv_ext_fn_sim_specs : _ext_fn_t -> ext_fn_sim_spec.
   Parameter rv_ext_fn_rtl_specs : _ext_fn_t -> ext_fn_rtl_spec.
 End Core.
-
-(* TODO reactivate *)
-(* Module StackParams <: Stack_sig. *)
-(*   Definition capacity := 32. *)
-(* End StackParams. *)
-
-(** A quick way to measure term sizes:
-    Compute (uaction_size RV32I.fetch).
-    Compute (uaction_size RV32I.decode).
-    Compute (uaction_size RV32I.execute).
-    Compute (uaction_size RV32I.writeback).
-    Compute (uaction_size RV32I.wait_imem).
-    Compute (uaction_size (RV32I.mem RV32I.imem)).
-    Compute (uaction_size (RV32I.mem RV32I.dmem)).
-    Compute (uaction_size RV32I.tick).
-
-    Compute (action_size RV32I.tc_fetch).
-    Compute (action_size RV32I.tc_decode).
-    Compute (action_size RV32I.tc_execute).
-    Compute (action_size RV32I.tc_writeback).
-    Compute (action_size RV32I.tc_wait_imem).
-    Compute (action_size RV32I.tc_imem).
-    Compute (action_size RV32I.tc_dmem).
-    Compute (action_size RV32I.tc_tick). **)

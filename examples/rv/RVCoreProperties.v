@@ -1,11 +1,8 @@
 (*! Proofs about our RISC-V implementation !*)
 
+Require Import Koika.Frontend Koika.Logs Koika.ProgramTactics
+  Koika.SimpleTypedSemantics Koika.Std.
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
-Require Import Koika.Frontend Koika.Logs Koika.Std
-        Koika.ProgramTactics.
-Require Import Koika.SimpleTypedSemantics.
-
-(* Require Import Koika.IndTypedSemantics. *)
 
 Ltac destr_in H :=
   match type of H with
@@ -19,91 +16,10 @@ Ltac destr :=
 
 Ltac inv H := inversion H; try subst; clear H.
 
+Module RVProofs.
+End RVProofs.
+
 Module StackProofs.
-  (*
-    # Kôika
-    Types:
-    - type (
-      Inductive type : Type :=
-      | bits_t : nat -> type
-      | enum_t : enum_sig -> type
-      | struct_t : struct_sig -> type
-      | array_t : array_sig -> type.
-    );
-    - _Sig (
-      Record _Sig {argKind: Type} {nArgs: nat} := {
-        argSigs : vect argKind nArgs;
-        retSig : argKind
-      }.
-    );
-    - tsig : forall var_t, list (var_t * type);
-    - action (
-      Inductive action : tsig var_t -> type -> Type :=
-      | Fail {sig} tau : action sig tau
-      | Var {sig} {k : var_t} {tau : type} (m : member (k, tau) sig)
-        : action sig tau.
-      ...
-      .
-    )
-    - scheduler (
-      Inductive scheduler :=
-      | Done
-      | Cons (r: rule_name_t) (s: scheduler)
-      | Try (r: rule_name_t) (s1 s2: scheduler)
-      | SPos (p: pos_t) (s: scheduler).
-    ).
-    Rôle de Try et SPos ?
-
-    # Modèle
-    Types :
-    - reg_t : registres (Set);
-    - ext_fn_t : fonctions externes (Set);
-    - rule_name_t : règles (Set).
-    - schedule : (scheduler)
-    Fonctions :
-    - R : typage des reg_t (reg_t -> type);
-    - r : valeur initiale des reg_t ((reg : reg_t) -> R reg);
-    - Sigma : décl. des ext_fn_t (ext_fn_t -> _Sig type 1);
-    - sigma : déf. des ext_fn_t ((fn : ext_fn_t) -> Sig_denote (Sigma fn));
-    - rules : déf. des règles (rule_name_t -> action R Sigma).
-
-    # Fonctions
-    interp_action :
-    état des registres en début de cycle
-    -> déclaration des ext_fn_t [Sigma]
-    -> valeur des bindings lets de la règle à ce stade
-    -> log des règles précédentes dans le schedule
-    -> log de la règle à ce stade
-    -> action à interpréter
-    -> option (log de la règle, val de retour, nvlle val des bindings let)
-
-    interp_scheduler :
-    état des registres en début de cycle
-    -> déclaration des ext_fn_t [Sigma]
-    -> définition des règles [rules]
-    -> schedule à interpréter
-    -> log du schedule
-
-    interp_rule :
-    état des registres en début de cycle
-    -> déclaration des ext_fn_t [Sigma]
-    -> log des règles précédentes dans le schedule
-    -> règle à interpréter
-    -> option (log de la règle)
-
-    interp_cycle :
-    déclaration des ext_fn_t [Sigma]
-    -> définition des règles [rules]
-    -> schedule
-    -> état des registres en début de cycle
-    -> état des registres suite à ce cycle (càd en début du cycle suivant)
-
-    commit_update :
-    état des registres en début de cycle
-    -> log à la fin du cycle
-    -> état des registres en fin de cycle
-  *)
-
   Definition rv_cycle
     (r: ContextEnv.(env_t) RV32I.R)
     (sigma : forall f, Sig_denote (RV32I.Sigma f))
@@ -125,9 +41,7 @@ Module StackProofs.
 
   Lemma success_inj:
     forall {S F: Type} (x y: S), Success x = @Success S F y -> x = y.
-  Proof.
-    intros S F x y H. inv H; auto.
-  Qed.
+  Proof. intros S F x y H. inv H; auto. Qed.
 
   Lemma cast_action'_eq:
     forall (pos_t fn_name_t var_t reg_t ext_fn_t : Type) (R : reg_t -> type)
