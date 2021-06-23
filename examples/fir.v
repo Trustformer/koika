@@ -13,14 +13,6 @@ Definition static_access  {reg_t ext_fn_t}  array idx: uaction reg_t ext_fn_t :=
 Definition static_update {reg_t ext_fn_t} array idx v: uaction reg_t ext_fn_t :=
                       (UBinop (UArray2 (USubstElement idx)) array v).
 
-Definition static_slice {reg_t ext_fn_t} (T: type) (init: uaction reg_t ext_fn_t) sz  array idx: uaction reg_t ext_fn_t :=
-  let ainit := @array_init T sz reg_t ext_fn_t in
-  {{
-  let returned := ainit(`init`) in
-  `List.fold_left (fun acc el =>
-  static_update acc el ( UUnop (UArray1 (UGetElement (idx+el))) array)) (seq 0 sz) {{returned}}`
-  }}.
-
 Definition access n T {reg_t} : UInternalFunction reg_t empty_ext_fn_t :=
   let sz := log2 n in
    {{ fun access (array : array_t {| array_type:= T; array_len:= n|}  ) (idx: bits_t sz ) : T =>
@@ -52,6 +44,12 @@ Section Fir.
   Definition NI := 8.
   Definition NO := 2 * NI.
   Inductive reg_t := q | x.
+  Instance finite_reg_t: FiniteType reg_t.
+   Proof.
+    eapply (Build_FiniteType _ (fun r => match r with q => O | x => 1 end) [q; x]).
+    - simpl. destruct a; reflexivity.
+    - simpl. repeat constructor. simpl. lia. easy.
+  Defined.
 
   Definition Sigma (fn: ext_fn_t) :=
     match fn with
@@ -68,7 +66,7 @@ Section Fir.
     `static_access {{q}} i` +  `static_access {{mul_out}} (T-i-1)`
     }}.
 
-  Definition feed : UInternalFunction reg_t ext_fn_t :=
+  Definition feed {finite_reg : FiniteType reg_t} : UInternalFunction reg_t ext_fn_t :=
     let access := access (reg_t:= reg_t) T (bits_t NI) in
     let ainitI := array_init (ext_fn_t:= ext_fn_t) (reg_t:= reg_t) (bits_t NI) T in
     let ainitO := array_init (ext_fn_t:= ext_fn_t) (reg_t:= reg_t) (bits_t NO) T in

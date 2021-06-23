@@ -4,6 +4,7 @@ Require Export Koika.Common Koika.Primitives Koika.Types Koika.ErrorReporting.
 Section Syntax.
   Context {pos_t var_t rule_name_t fn_name_t: Type}.
   Class Lift {from to: Type} := lift: from -> to.
+  Class Inj {from to: Type} (f: from -> to) := inj: forall i j, i <> j -> f i <> f j.
   Hint Mode Lift - ! : typeclass_instances.
 
   Inductive uaction {reg_t ext_fn_t} :=
@@ -38,7 +39,9 @@ Section Syntax.
   | UStructInit (sig: struct_sig) (fields: list (string * uaction))
   | UArrayInit (tau: type) (elements: list uaction)
   | UCallModule {module_reg_t module_ext_fn_t: Type}
+                `{finite_reg: FiniteType module_reg_t}
                 (fR: module_reg_t -> reg_t)
+                (* `{fR_injective: Inj _ _ fR} *)
                 (fSigma: @Lift module_ext_fn_t ext_fn_t)
                 (fn: InternalFunction var_t fn_name_t (@uaction module_reg_t module_ext_fn_t))
                 (args: list uaction).

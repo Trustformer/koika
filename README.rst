@@ -44,7 +44,8 @@ Installing dependencies and building from source
 
 * To run the tests of our RISCV core, a `RISCV compilation toolchain <https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/>`_.
 
-* To run C++ simulations: a recent C++ compiler (clang or gcc), ``libboost-dev``, and optionally ``clang-format``.
+* To run C++ simulations: a recent C++ compiler (clang or gcc) and
+  ``libboost-dev``.
 
 You can compile the full distribution, including examples, tests, and proofs by running ``make`` in the top-level directory of this repo.  Generated files are placed in ``_build``, ``examples/_objects/``,  ``tests/_objects/``, and  ``examples/rv/_objects/``.
 
@@ -777,7 +778,7 @@ The following list shows the current state of the repo:
       - |coq/TypedSemantics.v|_: Semantics of typed |koika| programs
       - |coq/TypedSyntax.v|_: Typed ASTs
       - |coq/Types.v|_: Types used by |koika| programs
-      - |coq/UntypedLogs.v|_: Logs of reads and writes
+      - |coq/ULogs.v|_: Logs of reads and writes
       - |coq/UntypedSemantics.v|_: Semantics of typed |koika| programs
 
    (ORAAT)
@@ -789,6 +790,7 @@ The following list shows the current state of the repo:
 
    (Tools)
       - |coq/LoweredSyntaxFunctions.v|_: Functions defined on lowered ASTs
+      - |coq/Magic.v|_: Universal axiom to replace the ‘admit’ tactic
       - |coq/TypedSyntaxFunctions.v|_: Functions defined on typed ASTs
       - |coq/TypedSyntaxProperties.v|_: Lemmas pertaining to tools on typed syntax
 
@@ -855,12 +857,14 @@ The following list shows the current state of the repo:
 
       - |examples/rv/IFields.v|_: Definitions of the instruction fields
       - |examples/rv/ITypes.v|_: Definition of the available instruction types
-      - |examples/rv/Instructions.v|_: Definition of the instructions introduced in the RISC-V specification
       - |examples/rv/InstructionsFct2.v|_: Definitions related to the fct2 instruction field
       - |examples/rv/InstructionsFct3.v|_: Definitions related to the fct3 instruction field
       - |examples/rv/InstructionsFct7.v|_: Definitions related to the fct7 instruction field
       - |examples/rv/InstructionsFixedRs2.v|_: Definitions related to the rs2 instruction field
+      - |examples/rv/InstructionsOpcodes.v|_: Definitions related to the opcode instruction field
       - |examples/rv/InstructionsProperties.v|_: Definition of functions helpful for filtering instructions
+      - |examples/rv/Multiplier.v|_: Implementation of a multiplier module
+      - |examples/rv/MultiplierCorrectness.v|_: Proof of correctness of the multiplier module
       - |examples/rv/RVCore.v|_: Implementation of our RISC-V core
       - |examples/rv/RVCoreProperties.v|_: Proofs about our RISC-V implementation
       - |examples/rv/RVEncoding.v|_: Encoding-related constants
@@ -962,6 +966,8 @@ The following list shows the current state of the repo:
 
 .. |coq/BitTactics.v| replace:: ``BitTactics.v``
 .. _coq/BitTactics.v: coq/BitTactics.v
+.. |coq/BitsToLists.v| replace:: ``BitsToLists.v``
+.. _coq/BitsToLists.v: coq/BitsToLists.v
 .. |coq/CPS.v| replace:: ``CPS.v``
 .. _coq/CPS.v: coq/CPS.v
 .. |coq/CircuitGeneration.v| replace:: ``CircuitGeneration.v``
@@ -1022,6 +1028,8 @@ The following list shows the current state of the repo:
 .. _coq/LoweredSyntaxFunctions.v: coq/LoweredSyntaxFunctions.v
 .. |coq/Lowering.v| replace:: ``Lowering.v``
 .. _coq/Lowering.v: coq/Lowering.v
+.. |coq/Magic.v| replace:: ``Magic.v``
+.. _coq/Magic.v: coq/Magic.v
 .. |coq/Member.v| replace:: ``Member.v``
 .. _coq/Member.v: coq/Member.v
 .. |coq/OneRuleAtATime.v| replace:: ``OneRuleAtATime.v``
@@ -1062,8 +1070,8 @@ The following list shows the current state of the repo:
 .. _coq/TypedSyntaxProperties.v: coq/TypedSyntaxProperties.v
 .. |coq/Types.v| replace:: ``Types.v``
 .. _coq/Types.v: coq/Types.v
-.. |coq/UntypedLogs.v| replace:: ``UntypedLogs.v``
-.. _coq/UntypedLogs.v: coq/UntypedLogs.v
+.. |coq/ULogs.v| replace:: ``ULogs.v``
+.. _coq/ULogs.v: coq/ULogs.v
 .. |coq/UntypedSemantics.v| replace:: ``UntypedSemantics.v``
 .. _coq/UntypedSemantics.v: coq/UntypedSemantics.v
 .. |coq/Vect.v| replace:: ``Vect.v``
@@ -1146,6 +1154,10 @@ The following list shows the current state of the repo:
 .. _examples/rv/InstructionsProperties.v: examples/rv/InstructionsProperties.v
 .. |examples/rv/ModuleInstructions.v| replace:: ``ModuleInstructions.v``
 .. _examples/rv/ModuleInstructions.v: examples/rv/ModuleInstructions.v
+.. |examples/rv/Multiplier.v| replace:: ``Multiplier.v``
+.. _examples/rv/Multiplier.v: examples/rv/Multiplier.v
+.. |examples/rv/MultiplierCorrectness.v| replace:: ``MultiplierCorrectness.v``
+.. _examples/rv/MultiplierCorrectness.v: examples/rv/MultiplierCorrectness.v
 .. |examples/rv/RVCore.v| replace:: ``RVCore.v``
 .. _examples/rv/RVCore.v: examples/rv/RVCore.v
 .. |examples/rv/RVCoreProperties.v| replace:: ``RVCoreProperties.v``

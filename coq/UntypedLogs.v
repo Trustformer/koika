@@ -31,13 +31,11 @@ Section Logs.
   Definition log_cons (reg: reg_t) le (l: ULog) :=
     REnv.(putenv) l reg (le :: REnv.(getenv) l reg).
 
-  Definition log_forallb
-    (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool)
+  Definition log_forallb (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool)
   :=
     List.forallb (fun '(LE kind prt _) => f kind prt) (REnv.(getenv) log reg).
 
-  Definition log_existsb
-    (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool)
+  Definition log_existsb (log: ULog) reg (f: Logs.LogEntryKind -> Port -> bool)
   :=
     List.existsb (fun '(LE kind prt _) => f kind prt) (REnv.(getenv) log reg).
 
@@ -115,14 +113,14 @@ Section Logs.
     REnv.(create) (fun k =>
       match latest_write log k with
       | Some v => v
-      | None => REnv.(getenv) r0 k
+      | None   => REnv.(getenv) r0 k
       end
     ).
 
   Fixpoint no_latest_writes (log: ULog) l :=
     match l with
-    | [] => True
-    | [a] => latest_write log a = None
+    | []   => True
+    | [a]  => latest_write log a = None
     | a::b => latest_write log a = None /\ no_latest_writes log b
     end.
 End Logs.

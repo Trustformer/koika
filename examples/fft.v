@@ -13,7 +13,7 @@ Definition static_access  {reg_t ext_fn_t}  array idx: uaction reg_t ext_fn_t :=
 Definition static_update {reg_t ext_fn_t} array idx v: uaction reg_t ext_fn_t :=
                       (UBinop (UArray2 (USubstElement idx)) array v).
 
-Definition static_slice {reg_t ext_fn_t} (T: type) (init: uaction reg_t ext_fn_t) sz  array idx: uaction reg_t ext_fn_t :=
+Definition static_slice {reg_t ext_fn_t} `{finite_reg: FiniteType reg_t} (T: type) (init: uaction reg_t ext_fn_t) sz  array idx: uaction reg_t ext_fn_t :=
   let ainit := @array_init T sz reg_t ext_fn_t in
   {{
   let returned := ainit(`init`) in
@@ -52,6 +52,12 @@ Section FFT.
   Definition log_points := 4.
   Definition points := pow2 log_points.
   Inductive reg_t := localSt.
+  Instance finite_reg_t: FiniteType reg_t.
+  Proof.
+    eapply (Build_FiniteType _ (fun _ => O) [localSt]).
+    - simpl. destruct a; reflexivity.
+    - simpl. repeat constructor. simpl. auto.
+  Defined.
 
   Notation ext_fn_t := empty_ext_fn_t.
   (* Inductive ext_fn_t := *)
