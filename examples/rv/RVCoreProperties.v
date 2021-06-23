@@ -17,7 +17,32 @@ Ltac destr :=
 Ltac inv H := inversion H; try subst; clear H.
 
 Module RVProofs.
-End RVProofs.
+  Context (ext_sigma : RV32I.ext_fn_t -> val -> val).
+  Context (ext_Sigma : RV32I.ext_fn_t -> ExternalSignature).
+  Context {REnv : Env RV32I.reg_t}.
+
+  Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
+    UntypedSemantics.interp_cycle r ext_sigma RV32I.rv_urules rv_schedule.
+
+  Definition env_type := env_t REnv RV32I.R.
+  Definition initial_env := create REnv RV32I.r.
+
+  Definition initial_context_env := ContextEnv.(create) (RV32I.r).
+  Compute initial_context_env.[RV32I.epoch].
+  Definition f_init := fun x => val_of_value (initial_context_env.[x]).
+
+  Theorem osef : initial_context_env.[RV32I.epoch] = Ob~0.
+  Proof. trivial. Qed.
+
+  Definition initial_context_env_val := ContextEnv.(create) (f_init).
+  Check initial_context_env_val.
+
+  Definition state_step_1 := cycle initial_context_env_val.
+
+  Theorem on_off_cycles_first :
+    initial_context_env_val.[RV32I.on_off]
+    <> (cycle initial_context_env_val).[RV32I.on_off].
+  Proof.
 
 Module StackProofs.
   Definition rv_cycle

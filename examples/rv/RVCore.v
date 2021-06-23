@@ -612,6 +612,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
   | pc
   | epoch
   | debug
+  | on_off
   | halt.
 
   (* State type *)
@@ -633,6 +634,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
     | instr_count  => bits_t 32
     | epoch        => bits_t 1
     | debug        => bits_t 1
+    | on_off       => bits_t 1
     | halt         => bits_t 1
     end.
 
@@ -655,6 +657,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
     | instr_count  => Bits.zero
     | epoch        => Bits.zero
     | debug        => Bits.zero
+    | on_off       => Bits.zero
     | halt         => Bits.zero
     end.
 
@@ -711,6 +714,10 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
     | ext_host_id    => {$ bits_t 1 ~> enum_t host_id $}
     | ext_finish     => {$ finish_input ~> bits_t 1 $}
     end.
+
+  Definition update_on_off : uaction reg_t ext_fn_t := {{
+    write1(on_off, read0(on_off)+Ob~1)
+  }}.
 
   Definition end_execution : uaction reg_t ext_fn_t := {{
     let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
@@ -1163,6 +1170,7 @@ Inductive rv_rules_t :=
 | Imem
 | Dmem
 | Tick
+| UpdateOnOff
 | EndExecution.
 
 Definition rv_external (rl: rv_rules_t) := false.

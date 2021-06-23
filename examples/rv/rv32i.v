@@ -19,33 +19,38 @@ Module RV32I <: Core.
   Definition _reg_t := reg_t.
   Definition _ext_fn_t := ext_fn_t.
 
-  Definition tc_fetch := tc_rule R Sigma fetch.
-  Definition tc_wait_imem := tc_rule R Sigma wait_imem.
-  Definition tc_decode := tc_rule R Sigma decode.
-  Definition tc_execute := tc_rule R Sigma execute.
-  Definition tc_writeback := tc_rule R Sigma writeback.
-  Definition tc_imem := tc_rule R Sigma (mem imem).
-  Definition tc_dmem := tc_rule R Sigma (mem dmem).
-  Definition tc_tick := tc_rule R Sigma tick.
-  Definition tc_end_execution := tc_rule R Sigma end_execution.
-
-  Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
-    match rl with
-    | Fetch => tc_fetch
-    | Decode => tc_decode
-    | Execute => tc_execute
-    | Writeback => tc_writeback
-    | WaitImem => tc_wait_imem
-    | Imem => tc_imem
-    | Dmem => tc_dmem
-    | Tick => tc_tick
-    | EndExecution => tc_end_execution
-    end.
-
   Instance FiniteType_rf : FiniteType Rf.reg_t := _.
   Instance FiniteType_scoreboard_rf : FiniteType Scoreboard.Rf.reg_t := _.
   Instance FiniteType_scoreboard : FiniteType Scoreboard.reg_t := _.
   Instance FiniteType_reg_t : FiniteType reg_t := _.
+
+  Definition rv_urules (rl: rv_rules_t) : uaction reg_t ext_fn_t :=
+    match rl with
+    | Fetch        => fetch
+    | Decode       => decode
+    | Execute      => execute
+    | Writeback    => writeback
+    | WaitImem     => wait_imem
+    | Imem         => (mem imem)
+    | Dmem         => (mem dmem)
+    | Tick         => tick
+    | UpdateOnOff  => update_on_off
+    | EndExecution => end_execution
+    end.
+
+  Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
+    match rl with
+    | Fetch        => tc_rule R Sigma fetch
+    | Decode       => tc_rule R Sigma decode
+    | Execute      => tc_rule R Sigma execute
+    | Writeback    => tc_rule R Sigma writeback
+    | WaitImem     => tc_rule R Sigma wait_imem
+    | Imem         => tc_rule R Sigma (mem imem)
+    | Dmem         => tc_rule R Sigma (mem dmem)
+    | Tick         => tc_rule R Sigma tick
+    | UpdateOnOff  => tc_rule R Sigma update_on_off
+    | EndExecution => tc_rule R Sigma end_execution
+    end.
 End RV32I.
 
 Module RV32IPackage := Package RV32I.

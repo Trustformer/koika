@@ -1,4 +1,4 @@
-(*! Language | Semantics of typed Kôika programs !*)
+(*! Language | Untyped semantics of typed Kôika programs !*)
 Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
 Require Import BitsToLists Desugaring SyntaxMacros.
 Require TypeInference TypedSemantics.

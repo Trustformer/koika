@@ -1,4 +1,4 @@
-(*! Language | Logs of reads and writes !*)
+(*! Language | Untyped logs of reads and writes !*)
 Require Export Koika.Common Koika.Environments Koika.Syntax.
 Require Logs.
 
