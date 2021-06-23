@@ -35,7 +35,7 @@ Section RVHelpers.
 
   Definition inst_field := get_inst_fields_struct_from_ISA isa.
 
-  Definition getFields : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition getFields `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "getFields";
     int_argspec := [prod_of_argsig
       {| arg_name := "inst"; arg_type := bits_t 32 |}
@@ -103,7 +103,7 @@ Section RVHelpers.
   |}.
 
   (* TODO add fixed fields verification *)
-  Definition isLegalInstruction : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition isLegalInstruction `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
     int_argspec := [("inst", bits_t 32)];
     int_retSig  := bits_t 1;
@@ -166,7 +166,7 @@ Section RVHelpers.
   (* TODO only analyze useful bits - for instance, the last two bits of the
      opcode are always 11 and can thus be safely ignored
    *)
-  Definition getImmediateType : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition getImmediateType `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "getImmediateType";
     int_argspec := [("inst", bits_t 32)];
     int_retSig  := maybe (enum_t imm_type);
@@ -267,7 +267,7 @@ Section RVHelpers.
     ))
   |}.
 
-  Definition decode_fun : UInternalFunction reg_t empty_ext_fn_t := {{
+  Definition decode_fun `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {{
     fun decode_fun (arg_inst : bits_t 32) : struct_t decoded_sig =>
       struct decoded_sig {
         valid_rs1     := usesRS1(arg_inst);
@@ -279,7 +279,7 @@ Section RVHelpers.
       }
   }}.
 
-  Definition getImmediate : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition getImmediate `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name := "getImmediate";
     int_argspec := [prod_of_argsig
       {| arg_name := "dInst"; arg_type := struct_t decoded_sig |}
@@ -430,7 +430,7 @@ Section RVHelpers.
     )
   |}.
 
-  Definition execALU32 : UInternalFunction reg_t empty_ext_fn_t := {{
+  Definition execALU32 `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execALU32 (inst : bits_t 32) (rs1_val : bits_t 32) (rs2_val : bits_t 32)
       (imm_val : bits_t 32) (pc : bits_t 32) : bits_t 32
     =>
@@ -461,7 +461,7 @@ Section RVHelpers.
     struct_fields := ("nextPC", bits_t 32) :: ("taken", bits_t 1) :: nil
   |}.
 
-  Definition execControl32 : UInternalFunction reg_t empty_ext_fn_t := {{
+  Definition execControl32 `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execControl32 (inst : bits_t 32) (rs1_val : bits_t 32)
       (rs2_val : bits_t 32) (imm_val : bits_t 32) (pc : bits_t 32)
       : struct_t control_result
@@ -751,7 +751,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
      Bluespec if we care about simulation performance. Moreover, we could read
      unconditionally to avoid potential muxing on the input, TODO check if it
      changes anything. *)
-  Definition decode : uaction reg_t ext_fn_t := {{
+  Definition decode `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let instr               := fromIMem.(MemResp.deq)() in
     let instr               := get(instr,data) in
@@ -803,7 +803,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       && get(dInst, inst)[|5`d0| :+ 3] == Ob~1~1~1
   }}.
 
-  Definition execute_1 : uaction reg_t ext_fn_t := {{
+  Definition execute_1 `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
 (
         let fInst      := get(dInst, inst) in
         let funct3     := get(getFields(fInst), funct3) in
@@ -882,7 +882,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       )
   }}.
 
-  Definition execute : uaction reg_t ext_fn_t := {{
+  Definition execute `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let decoded_bookkeeping := d2e.(fromDecode.deq)() in
     if get(decoded_bookkeeping, epoch) == read0(epoch) then
@@ -897,7 +897,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       pass
   }}.
 
-  Definition writeback : uaction reg_t ext_fn_t := {{
+  Definition writeback `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let execute_bookkeeping := e2w.(fromExecute.deq)() in
     let dInst               := get(execute_bookkeeping, dInst) in
@@ -1045,7 +1045,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       end`
   }}.
 
-  Definition mem (m: memory) : uaction reg_t ext_fn_t :=
+  Definition mem (m: memory) `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t}: uaction reg_t ext_fn_t :=
     let fromMem :=
       match m with
       | imem => fromIMem
