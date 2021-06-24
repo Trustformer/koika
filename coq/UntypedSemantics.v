@@ -1010,6 +1010,47 @@ Section Interp.
         Some (fLog' fR REnv REnv' action_log1 action_log, v, Gamma0)
     end.
 
+  Compute log_empty.
+
+  (* TODO remove *)
+  Fixpoint interp_action_2
+    {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+    (sigma: forall f: ext_fn_t, val -> val) (Gamma: list (var_t * val))
+    (sched_log: Log REnv) (action_log: Log REnv)
+    (a: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) {struct a}
+  : option (Log REnv * val * list (var_t * val)) :=
+    match a with
+    | UError e                               => None
+    | UFail _                                => None
+    | UVar var                               => None
+    | @UConst _ _ _ _ _ tau cst              => None
+    | UAssign k a                            => None
+    | USeq a1 a2                             => None
+    | UBind k a1 a2                          => None
+    | UIf cond athen aelse                   => None
+    | URead prt idx                          => None
+    | UWrite prt idx v                       => None
+    | UUnop fn arg                           => None
+    | UBinop fn arg1 arg2                    => None
+    | UExternalCall fn arg1                  => None
+    | UInternalCall f args                   => None
+    | UAPos p a                              => None
+    | USugar UErrorInAst                     => None
+    | USugar USkip                           => None
+    | USugar (UConstBits v)                  =>
+      (* let l := vect_to_list v in *)
+      Some (log_empty, Bits 0 [], nil)
+    | USugar (UConstString s)                => None
+    | USugar (UConstEnum sig name)           => None
+    | USugar (UProgn aa)                     => None
+    | USugar (ULet bindings body)            => None
+    | USugar (UWhen cond body)               => None
+    | USugar (USwitch var default branches)  => None
+    | USugar (UStructInit sig fields)        => None
+    | USugar (UArrayInit tau elements)       => None
+    | USugar (UCallModule fR fSigma fn args) => None
+    end.
+
   Fixpoint uprogn2 {reg_t ext_fn_t} (aa: list (uaction reg_t ext_fn_t)) dft :=
     match aa with
     | [] => dft
