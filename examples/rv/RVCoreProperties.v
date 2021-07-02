@@ -41,8 +41,132 @@ Module RVProofs.
   Definition state_step_1 := cycle initial_context_env_val .
 
   Require Import UntypedIndSemantics.
-  Set NativeCompute Profiling.
-  Eval native_compute in (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)).
+  Require Import Coq.Program.Equality.
+
+  Lemma log_app_empty_r:
+    forall {V} (l: @_ULog V _ REnv), log_app l log_empty = l.
+  Proof.
+    unfold log_app. unfold map2.
+    intros.
+    etransitivity.
+    2: apply create_getenv_id.
+    apply create_funext. intros. unfold log_empty.
+    rewrite getenv_create. rewrite app_nil_r. auto.
+  Qed.
+
+  Goal
+    forall ctx ctx',
+      UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Tick |> done) ctx' ->
+      getenv REnv ctx' RV32I.on_off = getenv REnv ctx RV32I.on_off.
+  Proof.
+    intros ctx ctx' A.
+    inv A. inv H. inv H0.
+    inv H4.
+    - inv H0.
+      simpl RV32I.rv_urules in H.
+      unfold RV32I.tick in H.
+      dependent destruction H.
+      dependent destruction H.
+      dependent destruction H.
+      dependent destruction H.
+      dependent destruction H.
+      dependent destruction H0.
+      dependent destruction H2.
+      dependent destruction H2.
+      dependent destruction H2_.
+      dependent destruction H2_0.
+      assert (action_log' = (log_cons RV32I.halt {| kind := Logs.LogRead; port := P0; val := Bits 0 [] |} log_empty)).
+      {
+        clear - H1.
+        destruct val_eq_dec; simpl in *.
+        dependent destruction H1.
+        dependent destruction H1.
+        auto.
+      }
+      subst. clear.
+      unfold commit_update.
+      rewrite getenv_create.
+      unfold latest_write. unfold log_find.
+      rewrite SemanticProperties.find_none_notb. auto. intros.
+      rewrite log_app_empty_r in H.
+      unfold log_cons in H.
+      rewrite get_put_neq in H by congruence.
+      rewrite get_put_neq in H by congruence.
+      rewrite get_put_neq in H by congruence.
+      setoid_rewrite getenv_create in H. easy.
+    - inv H0. unfold commit_update.
+      rewrite getenv_create.
+      unfold latest_write. unfold log_find.
+      rewrite SemanticProperties.find_none_notb. auto. intros.
+      setoid_rewrite getenv_create in H0. easy.
+
+  Qed.
+
+  Require Import Instructions.
+  Variable decode_opcode : list bool -> instruction.
+  Variable decode_rd : list bool -> RV32I.Rf.reg_t.
+  Variable decode_rs1 : list bool -> RV32I.Rf.reg_t.
+  Variable decode_imm : list bool -> BitsToLists.val.
+
+  Definition val_add (v1 v2: BitsToLists.val) :=
+    match v1, v2 with
+    | Bits sz1 l1, Bits sz2 l2 => Some (Bits sz1 l1)
+    | _, _ => None
+    end.
+
+  Goal
+    forall ctx bits_instr rs1 rd vimm l l',
+      getenv REnv ctx RV32I.halt = Bits 1 [false] ->
+      getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) = Bits 32 bits_instr ->
+      getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits 1 [true] ->
+      decode_opcode bits_instr = ADDI_32I ->
+      decode_rd bits_instr = rd ->
+      decode_rs1 bits_instr = rs1 ->
+      decode_imm bits_instr = vimm ->
+      UntypedIndSemantics.interp_rule ctx ext_sigma l RV32I.execute l' ->
+      (* UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Execute |> done) ctx' -> *)
+      let ctx1 := commit_update ctx l in
+      let ctx2 := commit_update ctx l' in
+      Some (getenv REnv ctx2 (RV32I.rf rd)) = val_add (getenv REnv ctx1 (RV32I.rf rs1)) vimm.
+  Proof.
+    intros ctx bits_instr rs1 rd vimm l l' NoHalt BitsInstr InstrValid Opcode RD RS1 IMM IR ctx1 ctx2.
+    dependent destruction IR.
+    dependent destruction H.
+    dependent destruction H.
+    destruct b.
+    - dependent destruction H0.
+    - dependent destruction H0.
+      dependent destruction H1.
+      dependent destruction H1_.
+      dependent destruction H0. simpl in *.
+      dependent destruction H1_.
+      dependent destruction H1_1.
+      dependent destruction H1_1_1.
+      dependent destruction H1_1_1_1.
+      dependent destruction H1_1_1_1.
+      dependent destruction H.
+      simpl in *.
+      dependent destruction H1_1_1_1.
+      simpl in *.
+      dependent destruction H.
+
+  Qed.
+
+
+
+  Goal
+    forall ctx bits_instr rs1 rd vimm ctx',
+      getenv REnv ctx RV32I.halt = Bits 1 [false] ->
+      getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) = Bits 32 bits_instr ->
+      getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits 1 [true] ->
+      decode_opcode bits_instr = ADDI_32I ->
+      decode_rd bits_instr = rd ->
+      decode_rs1 bits_instr = rs1 ->
+      decode_imm bits_instr = Bits 12 vimm ->
+      UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma rv_schedule ctx' ->
+      (* UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Execute |> done) ctx' -> *)
+      getenv REnv ctx' rd = getenv REnv ctx rs1 + vimm.
+
 
   Check UntypedIndSemantics.interp_cycle RV32I.rv_urules .
 
