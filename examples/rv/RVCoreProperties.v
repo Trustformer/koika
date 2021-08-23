@@ -27,8 +27,13 @@ Module RVProofs.
   Definition env_type := env_t REnv RV32I.R.
   Definition initial_env := create REnv RV32I.r.
 
-  Definition initial_context_env := ContextEnv.(create) (RV32I.r).
-  Compute initial_context_env.[RV32I.epoch].
+  Definition CEnv := @ContextEnv RV32I.reg_t RV32I.FiniteType_reg_t.
+  Print RV32I.FiniteType_reg_t.
+  Print Options.
+  Set NativeCompute Profiling.
+  Definition initial_context_env := CEnv.(create) (RV32I.r).
+
+  Compute @initial_context_env.
   Definition f_init := fun x => val_of_value (initial_context_env.[x]).
 
   Theorem osef : initial_context_env.[RV32I.on_off] = Ob~0.
@@ -38,65 +43,11 @@ Module RVProofs.
   Theorem osef2 : initial_context_env_val.[RV32I.on_off] = @BitsToLists.val_of_value (bits_t 1) Ob~0.
   Proof. trivial. Qed.
 
-  Definition state_step_1 := cycle initial_context_env_val .
-
-  Require Import UntypedIndSemantics.
-  Set NativeCompute Profiling.
-  Eval native_compute in (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)).
-
-  Check UntypedIndSemantics.interp_cycle RV32I.rv_urules .
-
-  (* Set Printing All. *)
-  (* Set Printing Width 20000. *)
-  (* Set Printing Depth 20000. *)
-  (* Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)). *)
-
-  Time Compute (UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)).
-  Time Compute initial_context_env_val. (* 4.8s *)
-
-  (* Check UntypedSemantics.interp_rule initial_context_env_val ext_sigma log_empty RV32I.do_nothing. *)
-  (* Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.do_nothing. *)
-  Time Compute UntypedSemantics.interp_action_2 initial_context_env_val ext_sigma nil log_empty log_empty RV32I.do_nothing.
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (EndExecution |> done)). (* 5.9s *)
-  Time Compute initial_context_env_val.
-  Time Compute ext_sigma.
-  Time Compute log_empty.
-  Compute ccreate finite_elements (fun k _ => f_init k).
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (done). (* 5s *)
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (UpdateOnOff |> done). (* 5.6s *)
-  Time Compute UntypedSemantics.interp_rule initial_context_env_val ext_sigma log_empty RV32I.writeback. (* 11.2s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (UpdateOnOff |> done)). (* 5.2s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Writeback |> done)). (* 26.7s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)). (* 61.3s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (EndExecution |> done)). (* 5.9s *)
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (Writeback |> done). (* >500s, >15G *)
-  Time Compute initial_context_env_val.
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (UpdateOnOff |> Writeback |> done). (* >200s *)
-  Time Compute initial_context_env_val.
-  Time Compute initial_context_env_val.
-  Time Compute RV32I.do_nothing.
-
-  Time Compute ContextEnv.(create).
-Time Compute @BitsToLists.val_of_value (bits_t 32000) (Bits.of_nat 32000 1).
-  Compute nil.
-  Set Printing All.
-  Compute RV32I.do_nothing.
-
-
-  Time Compute UntypedSemantics.interp_rule initial_context_env_val ext_sigma log_empty RV32I.do_nothing.
-
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.do_nothing.
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.update_on_off.
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.writeback.
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.execute.
-  Time Compute UntypedSemantics.interp_cycle.
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules.
-
-  Print CompactLogs.nonep.
-
   Theorem on_off_cycles_firstu:
     CompactLogs.nonep (UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.update_on_off) = false.
   Proof. trivial. Qed.
+
+  Compute (cycle initial_context_env_val).[RV32I.on_off].
 
   Theorem on_off_cycles_first :
     initial_context_env_val.[RV32I.on_off]

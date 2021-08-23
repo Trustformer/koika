@@ -1052,3 +1052,161 @@ Definition filter_by_fct3_and_fct7 (instrs : list instruction) (f3 : fct3_type)
     fun (x : {i : instruction | has_fct7 (get_instruction_i_type i) = true})
       => proj1_sig x
   ) same_fct7.
+
+(* Decoding *)
+Definition get_field_sublist (b : list bool) (first length : nat) :=
+  firstn length (skipn first b).
+
+Scheme Equality for list.
+Check List.filter.
+Search (_ -> bool).
+
+Definition get_opcode (b : list bool) : option opcode_name :=
+  let candidates :=  [
+    opc_OP    ; opc_JALR  ; opc_LOAD     ; opc_OP_IMM; opc_MISC_MEM;
+    opc_STORE ; opc_BRANCH; opc_LUI      ; opc_AUIPC ; opc_JAL     ;
+    opc_SYSTEM; opc_OP_32 ; opc_OP_IMM_32; opc_AMO   ; opc_OP_FP   ;
+    opc_MADD  ; opc_MSUB  ; opc_NMSUB    ; opc_NMADD ; opc_LOAD_FP ;
+    opc_STORE_FP
+  ] in
+  let sub_b := firstn 7 b in
+  let matching := List.filter (
+    fun x => list_beq bool (bool_eq) sub_b (vect_to_list (opcode_bin x))
+  ) candidates in
+  match matching with
+  | h1::h2::t => None (* Should never happen *)
+  | h::t      => Some h
+  | nil       => None
+  end.
+Definition get_fct2 (b : list bool) : option fct2_type :=
+  let candidates :=  [fct2_00; fct2_01; fct2_11] in
+  let sub_b := firstn 2 (skipn 25 b) in
+  let matching := List.filter (
+    fun x => list_beq bool (bool_eq) sub_b (vect_to_list (fct2_bin x))
+  ) candidates in
+  match matching with
+  | h1::h2::t => None (* Should never happen *)
+  | h::t      => Some h
+  | nil       => None
+  end.
+Definition get_fct3 (b : list bool) : option fct3_type :=
+  let candidates :=  [
+    fct3_000; fct3_001; fct3_010; fct3_011; fct3_100; fct3_101; fct3_110;
+    fct3_111
+  ] in
+  let sub_b := firstn 3 (skipn 12 b) in
+  let matching := List.filter (
+    fun x => list_beq bool (bool_eq) sub_b (vect_to_list (fct3_bin x))
+  ) candidates in
+  match matching with
+  | h1::h2::t => None (* Should never happen *)
+  | h::t      => Some h
+  | nil       => None
+  end.
+Definition get_fct7 (b : list bool) : option fct7_type :=
+  let candidates :=  [
+    fct7_0000000; fct7_0000001; fct7_0000010; fct7_0000011; fct7_0000100;
+    fct7_0000101; fct7_0000110; fct7_0000111; fct7_0001000; fct7_0001001;
+    fct7_0001010; fct7_0001011; fct7_0001100; fct7_0001101; fct7_0001110;
+    fct7_0001111; fct7_0010000; fct7_0010001; fct7_0010010; fct7_0010011;
+    fct7_0010100; fct7_0010101; fct7_0010111; fct7_0100000; fct7_0100001;
+    fct7_0100010; fct7_0100011; fct7_0101100; fct7_0101101; fct7_0101111;
+    fct7_0110000; fct7_0110001; fct7_0110010; fct7_0110011; fct7_1000000;
+    fct7_1000001; fct7_1000010; fct7_1000011; fct7_1010000; fct7_1010001;
+    fct7_1010010; fct7_1010011; fct7_1100000; fct7_1100001; fct7_1100010;
+    fct7_1100011; fct7_1101000; fct7_1101001; fct7_1101011; fct7_1110000;
+    fct7_1110001; fct7_1110010; fct7_1110011; fct7_1111000; fct7_1111001;
+    fct7_1111011
+  ] in
+  let sub_b := firstn 7 (skipn 25 b) in
+  let matching := List.filter (
+    fun x => list_beq bool (bool_eq) sub_b (vect_to_list (fct7_bin x))
+  ) candidates in
+  match matching with
+  | h1::h2::t => None (* Should never happen *)
+  | h::t      => Some h
+  | nil       => None
+  end.
+
+Compute get_fct3 (
+  vect_to_list
+  (Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0~0~1~1)
+).
+
+Definition filter_by_opcode (o : opcode_name) (instrs : list instruction)
+  : list instruction
+:= List.filter (fun i => opcode_name_beq o (instruction_opcode i)) instrs.
+Definition filter_by_fct2_decode (fct2 : fct2_type) (instrs : list instruction)
+  : list instruction
+:=
+  List.filter (fun i =>
+    match maybe_instruction_fct2 i with
+    | Some x => fct2_type_beq fct2 x
+    | None   => false
+    end
+  ) instrs.
+Definition filter_by_fct3_decode (fct3 : fct3_type) (instrs : list instruction)
+  : list instruction
+:=
+  List.filter (fun i =>
+    match maybe_instruction_fct3 i with
+    | Some x => fct3_type_beq fct3 x
+    | None   => false
+    end
+  ) instrs.
+Definition filter_by_fct7_decode (fct7 : fct7_type) (instrs : list instruction)
+  : list instruction
+:=
+  List.filter (fun i =>
+    match maybe_instruction_fct7 i with
+    | Some x => fct7_type_beq fct7 x
+    | None   => false
+    end
+  ) instrs.
+
+(* Definition decode_helper (b : list bool) (instrs : list instruction) *)
+(*   : list instruction *)
+(* := *)
+(*   let opc      := get_opcode b in *)
+(*   let fct2     := get_fct2 b in *)
+(*   let fct3     := get_fct3 b in *)
+(*   let fct7     := get_fct7 b in *)
+(*   let instrs_0 := match o *)
+(*   let type     := get_opcode_i_type opc in *)
+(*   let instrs_1 := filter_by_opcode opc instrs in *)
+(*   let instrs_2 := *)
+(*     if (has_fct3 type) then *)
+(*       filter_by_fct3_decode fct3 instrs_1 *)
+(*     else instrs_1 *)
+(*   in *)
+(*   let instrs_3 := *)
+(*     if (has_fct7 type) then filter_by_fct7_decode fct7 instrs_2 else instrs_2 *)
+(*   in *)
+(*   if (has_fct2 type) then filter_by_fct2_decode fct2 instrs_3 else instrs_3. *)
+
+(* Definition decode (b : bits_t 32) (instrs : list instruction) : instruction := *)
+(*   let bits := vect_to_list b in. *)
+
+(* Compute get_opcode ( *)
+(*   vect_to_list *)
+(*   (Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0~0~1~1) *)
+(* ). *)
+
+(* TODO refactor *)
+(* Definition filter_by_opcode (o : opcode_name) (instrs : list instruction) *)
+(*   : list instruction *)
+(* := List.filter (fun i => opcode_name_beq o (instruction_opcode i)) instrs. *)
+
+(* Definition decode_helper (b : list bool) (instrs : list instruction) *)
+(*   : list instruction *)
+(* := *)
+(*   let opc      := get_opcode b in *)
+(*   let type     := get_opcode_i_type opc in *)
+(*   let instrs_1 := filter_by_opcode opc instrs in *)
+(*   let type     := get_i_type_from_opcode opc in *)
+(*   let instrs_2 := if (has_fct3) then filter_by_fct3 b instrs_1 else instrs_1 in *)
+(*   let instrs_3 := if (has_fct7) then filter_by_fct7 b instrs_2 else instrs_2 in *)
+(*   if (has_fct2) then filter_by_fct2 b instrs_3 else instrs_3. *)
+
+(* Definition decode (b : bits_t 32) (instrs : list instruction) : instruction := *)
+(*   let bits := vect_to_list b in. *)

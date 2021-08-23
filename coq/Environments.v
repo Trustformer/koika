@@ -10,16 +10,6 @@ Section Contexts.
   | CtxEmpty: context []
   | CtxCons {sig} (k: K) (v: V k) (ctx: context sig): context (k :: sig).
 
-  Definition cdestruct {sig} (ctx: context sig)
-    : match sig return context sig -> Type with
-      | [] => fun ctx => ctx = CtxEmpty
-      | k :: sig => fun ctx => { vs: V k * context sig | ctx = CtxCons k (fst vs) (snd vs) }
-      end ctx.
-    destruct ctx.
-    - reflexivity.
-    - exists (v, ctx); reflexivity.
-  Defined.
-
   Definition chd {k sig} (ctx: context (k :: sig)) : V k :=
     match ctx in (context sig')
           return match sig' with [] => unit | k :: _ => V k end with
