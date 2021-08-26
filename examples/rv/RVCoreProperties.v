@@ -1,5 +1,4 @@
 (*! Proofs about our RISC-V implementation !*)
-
 Require Import Koika.BitsToLists Koika.Frontend Koika.Logs Koika.ProgramTactics
   Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs Koika.UntypedSemantics.
 Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
@@ -60,10 +59,10 @@ Module RVProofs.
     rewrite getenv_create. rewrite app_nil_r. auto.
   Qed.
 
-  Goal
+  Theorem tick_preserves_on_off :
     forall ctx ctx',
-      UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Tick |> done) ctx' ->
-      getenv REnv ctx' RV32I.on_off = getenv REnv ctx RV32I.on_off.
+    UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Tick |> done) ctx' ->
+    getenv REnv ctx' RV32I.on_off = getenv REnv ctx RV32I.on_off.
   Proof.
     intros ctx ctx' A.
     inv A. inv H. inv H0.
@@ -105,8 +104,60 @@ Module RVProofs.
       unfold latest_write. unfold log_find.
       rewrite SemanticProperties.find_none_notb. auto. intros.
       setoid_rewrite getenv_create in H0. easy.
-
   Qed.
+
+  Lemma getenv_ulogapp:
+    forall (V reg_t: Type) (REnv: Env reg_t) (l l': UntypedLogs._ULog) idx,
+    REnv.(getenv) (@UntypedLogs.log_app V reg_t REnv l l') idx =
+    REnv.(getenv) l idx ++ REnv.(getenv) l' idx.
+  Proof.
+    intros.
+    unfold log_app, map2; intros; rewrite getenv_create; reflexivity.
+  Qed.
+
+  Lemma find_latest_write_top:
+    forall (V reg_t : Type) (REnv : Env reg_t) (l l' : UntypedLogs._ULog) x px xval,
+    @UntypedLogs.latest_write V reg_t REnv (UntypedLogs.log_app
+      (UntypedLogs.log_cons x {| kind := Logs.LogWrite; port := px; val := xval |} l) l'
+    ) x = Some xval.
+  Proof.
+    intros.
+    unfold latest_write.
+    unfold log_find.
+    unfold RLog. (* Effects invisible without Set Printing All but required *)
+    rewrite getenv_ulogapp.
+    unfold log_cons.
+    rewrite get_put_eq.
+    simpl.
+    reflexivity.
+  Qed.
+
+  Theorem tick_overwrites_cycle_count:
+    forall ctx ctx',
+    UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Tick |> done) ctx' ->
+    getenv REnv ctx RV32I.halt = @val_of_value (bits_t 1) Ob~0 ->
+    getenv REnv ctx RV32I.cycle_count <> getenv REnv ctx' RV32I.cycle_count.
+  Proof.
+    intros.
+    inv H. inv H1. inv H. inv H5. inv H1. inv H0.
+    simpl RV32I.rv_urules in H.
+    - dependent destruction H.
+      dependent destruction H.
+      dependent destruction H.
+      dependent destruction H.
+      dependent destruction H.
+      dependent destruction H0.
+      dependent destruction H2.
+      dependent destruction H2.
+      dependent destruction H2_.
+      dependent destruction H2_0.
+      unfold commit_update. rewrite getenv_create.
+      rewrite find_latest_write_top.
+      simpl in H2.
+      destruct (getenv REnv ctx RV32I.cycle_count).
+      + inv H2. induction v.
+        * simpl. unfold vect_to_list. simpl.
+  Admitted.
 
   Require Import Instructions.
   Variable decode_opcode : list bool -> instruction.
@@ -155,10 +206,7 @@ Module RVProofs.
       dependent destruction H1_1_1_1.
       simpl in *.
       dependent destruction H.
-
   Qed.
-
-
 
   Goal
     forall ctx bits_instr rs1 rd vimm ctx',
