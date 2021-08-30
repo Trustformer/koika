@@ -132,6 +132,14 @@ Module RVProofs.
     reflexivity.
   Qed.
 
+  (* Lemma registers_contents_match_type: *)
+  (*   forall x y reg_t, *)
+  (*   reg_t sz *)
+  (*   getenv REnv ctx RV32I.cycle_count = y -> *)
+
+  (*   ) *)
+  (*   Bits (type_sz (RV32I.R RV32I.cycle_count)) y *)
+
   Theorem tick_overwrites_cycle_count:
     forall ctx ctx',
     UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Tick |> done) ctx' ->
@@ -154,9 +162,25 @@ Module RVProofs.
       unfold commit_update. rewrite getenv_create.
       rewrite find_latest_write_top.
       simpl in H2.
-      destruct (getenv REnv ctx RV32I.cycle_count).
-      + inv H2. induction v.
-        * simpl. unfold vect_to_list. simpl.
+      Check (ctx).
+      Check (getenv REnv ctx RV32I.cycle_count).
+      (* assert ( *)
+      (*   exists x, *)
+      (*   getenv REnv ctx RV32I.cycle_count *)
+      (*   = Bits (type_sz (RV32I.R RV32I.cycle_count)) x *)
+      (* ). { *)
+      (*   destruct (getenv REnv ctx RV32I.cycle_count). *)
+      (*   - exists v. *)
+      (*   Check ubits_of_value_len. *)
+      (*   rewrite ubits_of_value_len. *)
+      (*   - exists []. *)
+      (* } *)
+      (* destruct (getenv REnv ctx RV32I.cycle_count); inv H2. *)
+      (* Set Printing All. *)
+      (* assert () *)
+      (* induction v. *)
+      (* (1* v is not constrained in any way, yet we need to use the fact that its size is known *1) *)
+      (* + simpl. unfold vect_to_list. simpl. *)
   Admitted.
 
   Require Import Instructions.
@@ -206,69 +230,21 @@ Module RVProofs.
       dependent destruction H1_1_1_1.
       simpl in *.
       dependent destruction H.
-  Qed.
+  Admitted.
 
-  Goal
-    forall ctx bits_instr rs1 rd vimm ctx',
-      getenv REnv ctx RV32I.halt = Bits 1 [false] ->
-      getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) = Bits 32 bits_instr ->
-      getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits 1 [true] ->
-      decode_opcode bits_instr = ADDI_32I ->
-      decode_rd bits_instr = rd ->
-      decode_rs1 bits_instr = rs1 ->
-      decode_imm bits_instr = Bits 12 vimm ->
-      UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma rv_schedule ctx' ->
-      (* UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Execute |> done) ctx' -> *)
-      getenv REnv ctx' rd = getenv REnv ctx rs1 + vimm.
+  (* Goal *)
+  (*   forall ctx bits_instr rs1 rd vimm ctx', *)
+  (*     getenv REnv ctx RV32I.halt = Bits 1 [false] -> *)
+  (*     getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) = Bits 32 bits_instr -> *)
+  (*     getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits 1 [true] -> *)
+  (*     decode_opcode bits_instr = ADDI_32I -> *)
+  (*     decode_rd bits_instr = rd -> *)
+  (*     decode_rs1 bits_instr = rs1 -> *)
+  (*     decode_imm bits_instr = Bits 12 vimm -> *)
+  (*     UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma rv_schedule ctx' -> *)
+  (*     (1* UntypedIndSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma (Execute |> done) ctx' -> *1) *)
+  (*     getenv REnv ctx' rd = getenv REnv ctx rs1 + vimm. *)
 
-
-  Check UntypedIndSemantics.interp_cycle RV32I.rv_urules .
-
-  (* Set Printing All. *)
-  (* Set Printing Width 20000. *)
-  (* Set Printing Depth 20000. *)
-  (* Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)). *)
-
-  Time Compute (UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)).
-  Time Compute initial_context_env_val. (* 4.8s *)
-
-  (* Check UntypedSemantics.interp_rule initial_context_env_val ext_sigma log_empty RV32I.do_nothing. *)
-  (* Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.do_nothing. *)
-  Time Compute UntypedSemantics.interp_action_2 initial_context_env_val ext_sigma nil log_empty log_empty RV32I.do_nothing.
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (EndExecution |> done)). (* 5.9s *)
-  Time Compute initial_context_env_val.
-  Time Compute ext_sigma.
-  Time Compute log_empty.
-  Compute ccreate finite_elements (fun k _ => f_init k).
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (done). (* 5s *)
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (UpdateOnOff |> done). (* 5.6s *)
-  Time Compute UntypedSemantics.interp_rule initial_context_env_val ext_sigma log_empty RV32I.writeback. (* 11.2s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (UpdateOnOff |> done)). (* 5.2s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Writeback |> done)). (* 26.7s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (Tick |> done)). (* 61.3s *)
-  Time Compute (UntypedSemantics.interp_scheduler RV32I.rv_urules initial_context_env_val ext_sigma (EndExecution |> done)). (* 5.9s *)
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (Writeback |> done). (* >500s, >15G *)
-  Time Compute initial_context_env_val.
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules initial_context_env_val ext_sigma (UpdateOnOff |> Writeback |> done). (* >200s *)
-  Time Compute initial_context_env_val.
-  Time Compute initial_context_env_val.
-  Time Compute RV32I.do_nothing.
-
-  Time Compute ContextEnv.(create).
-Time Compute @BitsToLists.val_of_value (bits_t 32000) (Bits.of_nat 32000 1).
-  Compute nil.
-  Set Printing All.
-  Compute RV32I.do_nothing.
-
-
-  Time Compute UntypedSemantics.interp_rule initial_context_env_val ext_sigma log_empty RV32I.do_nothing.
-
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.do_nothing.
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.update_on_off.
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.writeback.
-  Time Compute UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.execute.
-  Time Compute UntypedSemantics.interp_cycle.
-  Time Compute UntypedSemantics.interp_cycle RV32I.rv_urules.
 
   Print CompactLogs.nonep.
 
@@ -276,15 +252,13 @@ Time Compute @BitsToLists.val_of_value (bits_t 32000) (Bits.of_nat 32000 1).
     CompactLogs.nonep (UntypedSemantics.interp_action initial_context_env_val ext_sigma nil log_empty log_empty RV32I.update_on_off) = false.
   Proof. trivial. Qed.
 
-  Compute (cycle initial_context_env_val).[RV32I.on_off].
+  (* Theorem on_off_cycles_first : *)
+  (*   initial_context_env_val.[RV32I.on_off] *)
+  (*   <> (cycle initial_context_env_val).[RV32I.on_off]. *)
+  (* Proof. vm_compute. trivial. Qed. *)
 
-  Theorem on_off_cycles_first :
-    initial_context_env_val.[RV32I.on_off]
-    <> (cycle initial_context_env_val).[RV32I.on_off].
-  Proof. vm_compute. trivial. Qed.
-
-  Theorem add_adds :
-    initial_context_env_val.[]
+  (* Theorem add_adds : *)
+  (*   initial_context_env_val.[] *)
 
 Module StackProofs.
   Definition rv_cycle

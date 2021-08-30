@@ -25,7 +25,7 @@ Module Package (C: Core).
     koika_scheduler     := rv_schedule;
     koika_module_name   := "rv32"
   |}.
-
+  Print koika_package_t.
   Definition package := {|
     ip_koika := koika_package;
     ip_sim   := {|

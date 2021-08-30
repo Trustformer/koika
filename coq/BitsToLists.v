@@ -13,7 +13,7 @@ Ltac destr :=
 Ltac inv H := inversion H; try subst; clear H.
 
 Inductive val :=
-| Bits (sz:nat) (v: list bool)
+| Bits (sz: nat) (v: list bool)
 | Enum (sig: enum_sig) (v: list bool)
 | Struct (sig: struct_sig) (v: list val)
 | Array (sig: array_sig) (v: list val).
