@@ -1193,3 +1193,51 @@ Fixpoint uvalue_of_list_bits {tau} (bs: list (list bool)) : option (list val) :=
     let/opt tl0 := uvalue_of_list_bits (tau:=tau) bs in
     Some (hd0 :: tl0)
   end.
+
+Section WT.
+  Parameters pos_t fn_name_t: Type.
+  Parameter var_t: Type.
+  Context {eq_dec_var_t: EqDec var_t}.
+  Parameter ext_fn_t: Type.
+  Parameter reg_t: Type.
+  Parameter R : reg_t -> type.
+
+  Inductive wt_var : tsig var_t -> var_t -> type -> Prop :=
+  | wt_var_intro:
+      forall sig v t tm,
+        assoc v sig = Some tm ->
+        projT1 tm = t ->
+        wt_var sig v t.
+
+  Inductive wt_action : tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop :=
+  | wt_action_var:
+      forall sig var t,
+        wt_var sig var t ->
+        wt_action sig (UVar var) t
+  | wt_action_const: forall sig tau cst,
+      wt_action sig (@UConst _ _ _ _ _ tau cst) tau
+  | wt_action_assign: forall sig k a t,
+      wt_action sig a t ->
+      wt_var sig k t ->
+      wt_action sig (UAssign k a) (bits_t 0)
+  | wt_action_seq: forall sig a1 a2 t1 t2,
+      wt_action sig a1 t1 ->
+      wt_action sig a2 t2 ->
+      wt_action sig (USeq a1 a2) t2
+  | wt_action_bind: forall sig k a1 a2 t1 t2,
+      wt_action sig a1 t1 ->
+      wt_action ((k,t1)::sig) a2 t2 ->
+      wt_action sig (UBind k a1 a2) t2
+  | wt_action_if: forall sig cond athen aelse t,
+      wt_action sig cond (bits_t 1) ->
+      wt_action sig athen t ->
+      wt_action sig aelse t ->
+      wt_action sig (UIf cond athen aelse) t
+  | wt_action_read: forall sig prt idx,
+      wt_action sig (URead prt idx) (R idx)
+  | wt_action_write: forall sig prt idx v,
+      wt_action sig v (R idx) ->
+      wt_action sig (UWrite prt idx v) (R idx)
+  .
+
+  End WT.
