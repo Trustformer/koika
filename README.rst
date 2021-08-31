@@ -802,7 +802,6 @@ The following list shows the current state of the repo:
       - |coq/EqDec.v|_: Decidable equality typeclass
       - |coq/FiniteType.v|_: Finiteness typeclass
       - |coq/IndexUtils.v|_: Functions on Vect.index elements
-      - |coq/LightEnvironments.v|_: Environments used to track variable bindings
       - |coq/Member.v|_: Dependent type tracking membership into a list
       - |coq/Show.v|_: Show typeclass (α → string)
       - |coq/Vect.v|_: Vectors and bitvector library
@@ -1018,8 +1017,6 @@ The following list shows the current state of the repo:
 .. _coq/IndexUtils.v: coq/IndexUtils.v
 .. |coq/Interop.v| replace:: ``Interop.v``
 .. _coq/Interop.v: coq/Interop.v
-.. |coq/LightEnvironments.v| replace:: ``LightEnvironments.v``
-.. _coq/LightEnvironments.v: coq/LightEnvironments.v
 .. |coq/Logs.v| replace:: ``Logs.v``
 .. _coq/Logs.v: coq/Logs.v
 .. |coq/LoweredSemantics.v| replace:: ``LoweredSemantics.v``
