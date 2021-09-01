@@ -334,9 +334,9 @@ Section WT.
   Lemma wt_action_type:
     forall ua sig t,
       wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua t ->
-      forall p,
+      forall p p2,
       exists a,
-        type_action R Sigma p sig ua = Success a /\
+        type_action R Sigma p sig (Desugaring.desugar_action p2 ua) = Success a /\
         projT1 a = t.
   Proof.
     intros ua.
@@ -352,20 +352,27 @@ Section WT.
                 size_uaction ua' < size_uaction ua ->
                 forall sig t,
                   wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua' t ->
-                  forall p,
+                  forall p p2,
                   exists a,
-                    type_action R Sigma p sig ua' = Success a /\
+                    type_action R Sigma p sig (Desugaring.desugar_action p2 ua') = Success a /\
                     projT1 a = t
            ).
     { intros. eapply Plt. 3: reflexivity. lia. auto. eauto. } clear Plt.
     rename Plt' into IHua. clear n.
-    intros sig t WT. inv WT; simpl; intros; eauto.
+    Ltac autofold :=
+      repeat match goal with
+             | |- context [(Desugaring.desugar_action' ?p2 ?fR ?fSigma ?a)] =>
+               fold (@Desugaring.desugar_action pos_t var_t fn_name_t reg_t ext_fn_t p2 a)
+             | |- context [?f ?rt ?efnt ?p2 ?fR ?fSigma ?a] =>
+               fold (@Desugaring.desugar_action' pos_t var_t fn_name_t reg_t ext_fn_t rt efnt p2 fR fSigma a)
+             end.
+    intros sig t WT. inv WT; simpl; intros; autofold;  eauto.
     - inv H. rewrite H0; simpl. eexists; split; eauto.
     - inv H0. rewrite H1; simpl.
       edestruct (IHua a) as (a0 & TA & EQt). simpl; lia. eauto.
       rewrite TA. erewrite cast_action_ok.
-      Unshelve. 2: eauto.
       eexists; split; eauto.
+      Unshelve. eauto.
     - edestruct (IHua a1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
       edestruct (IHua a2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
       rewrite TA1, TA2. erewrite cast_action_ok.
@@ -685,6 +692,7 @@ Section WT.
           simpl. rewrite Heqr. erewrite IHl1. eauto. eauto. auto.
       Qed.
 
+
       Lemma argtypes_ok':
         forall {T} args sig p (src: T) nexpected fn_name argspec argpos
                (IHua:
@@ -724,9 +732,62 @@ Section WT.
           }
           eexists; split; eauto.
       Qed.
+      Lemma argtypes_ok2':
+        forall {T} args sig p (src: T) nexpected fn_name argspec argpos
+               (IHua:
+               forall ua' : uaction pos_t var_t fn_name_t reg_t ext_fn_t,
+                 In ua' args ->
+                 forall (sig : tsig var_t) t,
+                   wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua' t ->
+                   forall p p2,
+                   exists a, type_action R Sigma p sig (Desugaring.desugar_action p2 ua') = Success a /\
+                             projT1 a = t
+               )
+               (SAMELEN: List.length argspec = List.length argpos)
+        ,
+          Forall2 (wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig) args (map snd argspec) ->
+          forall p2,
+          exists s s0,
+          result_list_map (type_action R Sigma p sig) (map (Desugaring.desugar_action p2) args) = Success s /\
+          assert_argtypes' R Sigma src nexpected fn_name p
+                           (rev argspec)
+                           (rev (combine argpos s)) =
+          Success s0.
+      Proof.
+        induction args; simpl; intros; eauto.
+        - inv H. destruct argspec; simpl in *; try congruence.
+          destruct argpos; simpl in *; try congruence. eexists; eexists; split; eauto.
+        - inv H.
+          destruct argspec; simpl in *; try congruence.
+          destruct argpos; simpl in *; try congruence. inv H2.
+          edestruct (IHua a) as (a01 & TA1 & EQt1). auto. eauto.
+          rewrite TA1.
+          edestruct IHargs as (s & s0 & RLM & AAT). intros; eapply IHua; eauto. 2: eauto. inv SAMELEN. apply H0.
+          rewrite RLM.
+          exists (a01 :: s). simpl.
+          destruct p0. erewrite argtypes_app'. 2: apply AAT.
+          2:{
+            simpl. erewrite cast_action_ok. eauto.
+            Unshelve. rewrite EQt1; reflexivity.
+          }
+          eexists; split; eauto.
+      Qed.
+      autofold.
+      fold (Desugaring.desugar_action'
+              (var_t:=var_t)
+              (fn_name_t := fn_name_t)
+              (reg_t := reg_t)
+              (ext_fn_t := ext_fn_t)
+              p2 (fun r => r) (fun fn => fn)).
+      fold (Desugaring.desugar_action
+              (var_t:=var_t)
+              (fn_name_t := fn_name_t)
+              (reg_t := reg_t)
+              (ext_fn_t := ext_fn_t)
+              p2).
       unfold assert_argtypes.
-      edestruct (argtypes_ok' (T:=uaction pos_t var_t fn_name_t reg_t ext_fn_t)) with
-          (src:= UInternalCall fn args) (args:=args) as (s & s0 & RLM & AAT).
+      edestruct (argtypes_ok2' (T:=uaction pos_t var_t fn_name_t reg_t ext_fn_t)) with
+          (args:=args) as (s & s0 & RLM & AAT).
       {
         intros; eapply IHua. clear - H1.
         revert ua' H1. induction args; simpl; intros; eauto. easy. destruct H1; subst; eauto.
@@ -741,12 +802,43 @@ Section WT.
       Proof.
         induction 1; simpl; intros; eauto.
       Qed.
-      apply Forall2_length in H. rewrite H. rewrite map_length. auto.
+      apply Forall2_length in H. rewrite map_length. rewrite H. rewrite map_length. auto.
       eexists; split; eauto.
       Unshelve. auto.
     - edestruct (IHua e) as (a01 & TA1 & EQt1). simpl; lia. eauto.
       rewrite TA1.
       eexists; split; eauto.
+    - cbn. rewrite H. simpl. eexists; split; eauto.
+    - change (Desugaring.desugar_action p2 (USugar (UProgn aa)))
+             with (SyntaxMacros.uprogn (map (Desugaring.desugar_action p2) aa)).
+      cbn.
+      Lemma uprogn_wt_type:
+        forall aa sig,
+        Forall (fun ua =>
+            forall p,
+            exists a : {tau : type & TypedSyntax.action pos_t var_t fn_name_t R Sigma sig tau},
+              type_action R Sigma p sig ua = Success a /\ projT1 a = unit_t
+        ) aa ->
+        forall p,
+        exists a : {tau : type & TypedSyntax.action pos_t var_t fn_name_t R Sigma sig tau},
+          type_action R Sigma p sig (SyntaxMacros.uprogn aa) =
+          Success a /\ projT1 a = unit_t.
+      Proof.
+        induction 1; simpl; intros; eauto.
+        destruct l; simpl in *; eauto.
+        edestruct H as (a0 & TA0 & EQt0). rewrite TA0.
+        erewrite cast_action_ok.
+        edestruct IHForall as (a1 & TA1 & EQt1). rewrite TA1.
+        eexists; split; eauto. Unshelve. auto.
+      Qed.
+      apply uprogn_wt_type.
+      rewrite Forall_forall; intros.
+      rewrite in_map_iff in H0. destruct H0 as (x0 & DES & IN). subst.
+      generalize (H _ IN); intro HH.
+      eapply IHua in HH. eauto. simpl.
+      clear - IN.
+      revert IN. induction aa; simpl; intros; eauto. easy.
+      destruct IN; subst. lia. apply IHaa in H. lia.
   Qed.
- 
+
 End WT.

@@ -1435,7 +1435,7 @@ Section WT.
     vect_index name sg.(enum_members) = Some r ->
     wt_action sig (USugar (UConstEnum sg name)) (enum_t sg)
   | wt_action_uprogn: forall sig aa,
-    (forall a, In a aa -> exists tau, wt_action sig a tau) ->
+    (forall a, In a aa -> wt_action sig a unit_t) ->
     wt_action sig (USugar (UProgn aa)) (bits_t 0)
   (* | wt_action_ulet: forall sig bindings body tau, *)
   (*   (forall (a * tau'), In ) -> *)
