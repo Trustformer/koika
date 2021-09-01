@@ -1218,8 +1218,8 @@ Section WT.
   | wt_action_assign: forall sig k a t,
     wt_action sig a t -> wt_var sig k t ->
     wt_action sig (UAssign k a) (bits_t 0)
-  | wt_action_seq: forall sig a1 a2 t1 t2,
-    wt_action sig a1 t1 -> wt_action sig a2 t2 -> wt_action sig (USeq a1 a2) t2
+  | wt_action_seq: forall sig a1 a2 t2,
+    wt_action sig a1 unit_t -> wt_action sig a2 t2 -> wt_action sig (USeq a1 a2) t2
   | wt_action_bind: forall sig k a1 a2 t1 t2,
     wt_action sig a1 t1 -> wt_action ((k,t1)::sig) a2 t2 ->
     wt_action sig (UBind k a1 a2) t2
@@ -1231,6 +1231,7 @@ Section WT.
     wt_action sig v (R idx) ->
     wt_action sig (UWrite prt idx v) unit_t
   | wt_action_udisplayutf8: forall sig arg tau,
+    array_type tau = bits_t 8 ->
     wt_action sig arg (array_t tau) ->
     wt_action sig (UUnop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) arg)
       unit_t
@@ -1285,12 +1286,14 @@ Section WT.
     wt_action sig
       (UUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) arg)
       (bits_t (field_sz sg idx))
-  | wt_action_ugetelement: forall sig arg sg idx,
+  | wt_action_ugetelement: forall sig arg sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
     wt_action sig arg (array_t sg) ->
     wt_action sig
       (UUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) arg)
       (sg.(array_type))
-  | wt_action_ugetelementbits: forall sig arg sg idx,
+  | wt_action_ugetelementbits: forall sig arg sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
     wt_action sig arg (bits_t (array_sz sg)) ->
     wt_action sig
       (UUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) arg)
@@ -1396,13 +1399,15 @@ Section WT.
           PrimUntyped.USubstFieldBits sg field_name
         )) arg1 arg2)
         (bits_t (struct_sz sg))
-  | wt_action_usubstelement: forall sig arg1 arg2 sg idx,
+  | wt_action_usubstelement: forall sig arg1 arg2 sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
     wt_action sig arg1 (array_t sg) ->
     wt_action sig arg2 (sg.(array_type)) ->
     wt_action sig
       (UBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) arg1 arg2)
       (array_t sg)
-  | wt_action_usubsttelementbits: forall sig arg1 arg2 sg idx,
+  | wt_action_usubsttelementbits: forall sig arg1 arg2 sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
     wt_action sig arg1 (bits_t (array_sz sg)) ->
     wt_action sig arg2 (bits_t (element_sz sg)) ->
     wt_action sig
