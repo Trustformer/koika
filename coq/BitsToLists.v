@@ -1228,8 +1228,7 @@ Section WT.
     wt_action sig aelse t -> wt_action sig (UIf cond athen aelse) t
   | wt_action_read: forall sig prt idx, wt_action sig (URead prt idx) (R idx)
   | wt_action_write: forall sig prt idx v,
-    wt_action sig v (R idx) ->
-    wt_action sig (UWrite prt idx v) unit_t
+    wt_action sig v (R idx) -> wt_action sig (UWrite prt idx v) unit_t
   | wt_action_udisplayutf8: forall sig arg tau,
     array_type tau = bits_t 8 ->
     wt_action sig arg (array_t tau) ->
@@ -1299,97 +1298,83 @@ Section WT.
       (UUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) arg)
       (bits_t (element_sz sg))
   | wt_action_ueq: forall sig arg1 arg2 tau neg,
-      wt_action sig arg1 tau ->
-      wt_action sig arg2 tau ->
-      wt_action sig (UBinop (PrimUntyped.UEq neg) arg1 arg2) (bits_t 1)
+    wt_action sig arg1 tau -> wt_action sig arg2 tau ->
+    wt_action sig (UBinop (PrimUntyped.UEq neg) arg1 arg2) (bits_t 1)
   | wt_action_uand: forall sig arg1 arg2 sz,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) arg1 arg2)
-        (bits_t sz)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) arg1 arg2)
+      (bits_t sz)
   | wt_action_uor: forall sig arg1 arg2 sz,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) arg1 arg2)
-        (bits_t sz)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) arg1 arg2)
+      (bits_t sz)
   | wt_action_uxor: forall sig arg1 arg2 sz,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UXor) arg1 arg2)
-        (bits_t sz)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UXor) arg1 arg2)
+      (bits_t sz)
   | wt_action_ulsl: forall sig arg1 arg2 bits_sz shift_sz,
-      wt_action sig arg1 (bits_t bits_sz) ->
-      wt_action sig arg2 (bits_t shift_sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.ULsl) arg1 arg2)
-        (bits_t bits_sz)
+    wt_action sig arg1 (bits_t bits_sz) ->
+    wt_action sig arg2 (bits_t shift_sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.ULsl) arg1 arg2)
+      (bits_t bits_sz)
   | wt_action_ulsr: forall sig arg1 arg2 bits_sz shift_sz,
-      wt_action sig arg1 (bits_t bits_sz) ->
-      wt_action sig arg2 (bits_t shift_sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.ULsr) arg1 arg2)
-        (bits_t bits_sz)
+    wt_action sig arg1 (bits_t bits_sz) ->
+    wt_action sig arg2 (bits_t shift_sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.ULsr) arg1 arg2)
+      (bits_t bits_sz)
   | wt_action_uasr: forall sig arg1 arg2 bits_sz shift_sz,
-      wt_action sig arg1 (bits_t bits_sz) ->
-      wt_action sig arg2 (bits_t shift_sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UAsr) arg1 arg2)
-        (bits_t bits_sz)
+    wt_action sig arg1 (bits_t bits_sz) ->
+    wt_action sig arg2 (bits_t shift_sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UAsr) arg1 arg2)
+      (bits_t bits_sz)
   | wt_action_uconcat: forall sig arg1 arg2 sz1 sz2,
-      wt_action sig arg1 (bits_t sz1) ->
-      wt_action sig arg2 (bits_t sz2) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UConcat) arg1 arg2)
-        (bits_t (sz1 + sz2))
+    wt_action sig arg1 (bits_t sz1) -> wt_action sig arg2 (bits_t sz2) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UConcat) arg1 arg2)
+      (bits_t (sz1 + sz2))
   | wt_action_usel: forall sig arg1 arg2 sz,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t (log2 sz)) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.USel) arg1 arg2)
-        (bits_t 1)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t (log2 sz)) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.USel) arg1 arg2)
+      (bits_t 1)
   | wt_action_uslicesubst: forall sig arg1 arg2 sz offset width,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t width) ->
-      wt_action sig
-        (UBinop (PrimUntyped.UBits2 (
-          PrimUntyped.USliceSubst offset width
-        )) arg1 arg2)
-        (bits_t sz)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t width) ->
+    wt_action sig
+      (UBinop (PrimUntyped.UBits2 (
+        PrimUntyped.USliceSubst offset width
+      )) arg1 arg2)
+      (bits_t sz)
   | wt_action_uindexedslice: forall sig arg1 arg2 sz width,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t (log2 sz)) ->
-      wt_action sig
-        (UBinop (PrimUntyped.UBits2 (
-          PrimUntyped.UIndexedSlice width
-        )) arg1 arg2)
-        (bits_t width)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t (log2 sz)) ->
+    wt_action sig
+      (UBinop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice width)) arg1 arg2)
+      (bits_t width)
   | wt_action_uplus: forall sig arg1 arg2 sz,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UPlus) arg1 arg2)
-        (bits_t sz)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UPlus) arg1 arg2)
+      (bits_t sz)
   | wt_action_uminus: forall sig arg1 arg2 sz,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t sz) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UMinus) arg1 arg2)
-        (bits_t sz)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UMinus) arg1 arg2)
+      (bits_t sz)
   | wt_action_umul: forall sig arg1 arg2 sz1 sz2,
-      wt_action sig arg1 (bits_t sz1) ->
-      wt_action sig arg2 (bits_t sz2) ->
-      wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UMul) arg1 arg2)
-        (bits_t (sz1 + sz2))
+    wt_action sig arg1 (bits_t sz1) -> wt_action sig arg2 (bits_t sz2) ->
+    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UMul) arg1 arg2)
+      (bits_t (sz1 + sz2))
   | wt_action_ucompare: forall sig arg1 arg2 sz signed bits_comparison,
-      wt_action sig arg1 (bits_t sz) ->
-      wt_action sig arg2 (bits_t sz) ->
-      wt_action sig
-        (UBinop (PrimUntyped.UBits2 (
-          PrimUntyped.UCompare signed bits_comparison
-        )) arg1 arg2)
-        (bits_t 1)
+    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
+    wt_action sig
+      (UBinop (PrimUntyped.UBits2 (
+        PrimUntyped.UCompare signed bits_comparison
+      )) arg1 arg2)
+      (bits_t 1)
   | wt_action_usubstfield: forall sig arg1 arg2 sg field_name idx,
-      wt_action sig arg1 (struct_t sg) ->
-      PrimTypeInference.find_field sg field_name = Success idx ->
-      wt_action sig arg2 (field_type sg idx) ->
-      wt_action sig
-        (UBinop (PrimUntyped.UStruct2 (
-          PrimUntyped.USubstField field_name
-        )) arg1 arg2)
-        (struct_t sg)
+    wt_action sig arg1 (struct_t sg) ->
+    PrimTypeInference.find_field sg field_name = Success idx ->
+    wt_action sig arg2 (field_type sg idx) ->
+    wt_action sig
+      (UBinop (PrimUntyped.UStruct2 (
+        PrimUntyped.USubstField field_name
+      )) arg1 arg2)
+      (struct_t sg)
   | wt_action_usubstfieldbits: forall sig arg1 arg2 sg field_name idx,
       wt_action sig arg1 (bits_t (struct_sz sg)) ->
       PrimTypeInference.find_field sg field_name = Success idx ->
@@ -1416,16 +1401,15 @@ Section WT.
       )) arg1 arg2)
       (bits_t (array_sz sg))
   | wt_action_uexternalcall: forall sig fn a,
-      wt_action sig a (arg1Sig (Sigma fn)) ->
-      wt_action sig (UExternalCall fn a) (retSig (Sigma fn))
+    wt_action sig a (arg1Sig (Sigma fn)) ->
+    wt_action sig (UExternalCall fn a) (retSig (Sigma fn))
   | wt_action_internal_call: forall sig fn args,
-      Forall2 (wt_action sig) args (map snd (int_argspec fn)) ->
+    Forall2 (wt_action sig) args (map snd (int_argspec fn)) ->
     wt_action (List.rev fn.(int_argspec)) (int_body fn) (int_retSig fn)->
     wt_action sig (UInternalCall fn args) (fn.(int_retSig))
   | wt_action_uapos: forall sig tau pos e,
     wt_action sig e tau -> wt_action sig (UAPos pos e) tau
-  | wt_action_uskip: forall sig,
-    wt_action sig (USugar USkip) (bits_t 0)
+  | wt_action_uskip: forall sig, wt_action sig (USugar USkip) (bits_t 0)
   | wt_action_uconstbits: forall sig {sz} (arg : bits_t sz),
     wt_action sig (USugar (UConstBits arg)) (bits_t sz)
   | wt_action_uconststring: forall sig (s : string),
@@ -1437,13 +1421,43 @@ Section WT.
   | wt_action_uprogn: forall sig aa,
     (forall a, In a aa -> wt_action sig a unit_t) ->
     wt_action sig (USugar (UProgn aa)) (bits_t 0)
-  (* | wt_action_ulet: forall sig bindings body tau, *)
-  (*   (forall (a * tau'), In ) -> *)
-  (*   wt_action (sig) body tau -> *)
-  (*   wt_action sig (USugar (ULet bindings body)) tau *)
-  (* | wt_action_uinternalcall: forall sig fn a, *)
-  (*     wt_action sig a (arg1Sig (Sigma fn)) -> *)
-  (*     wt_action sig (UInternalCall fn args) (retSig (Sigma fn)) *)
- 
-  .
+  | wt_action_ulet: forall sig bindings body (bind_taus : list type) body_tau,
+    Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus ->
+    wt_action (snd (
+    List.fold_left
+      (fun (p: (nat * list (var_t * type))) v =>
+        (* Forall2 ensures that nth never returns the default value *)
+        ((fst p)+1, (fst v, List.nth (fst p) bind_taus unit_t)::(snd p))
+      )
+      bindings (0, [])
+    ) ++ sig) body body_tau ->
+    wt_action sig (USugar (ULet bindings body)) body_tau
+  | wt_action_uwhen: forall sig cond body tau,
+    wt_action sig cond (bits_t 1) ->
+    wt_action sig body tau ->
+    (* XXX See related FIXME comment in Desugaring.v *)
+    wt_action sig (USugar (UWhen cond body)) tau
+  | wt_action_uswitch: forall sig var default branches tau tau',
+    wt_action sig var tau ->
+    wt_action sig default tau ->
+    Forall (
+      fun b => wt_action sig (fst b) tau /\ wt_action sig (snd b) tau'
+    ) branches ->
+    wt_action sig (USugar (USwitch var default branches)) tau'
+  | wt_action_ustructinit: forall sig (sg: struct_sig) fields,
+    Forall (
+      fun f => exists n x y,
+      List.nth_error (struct_fields sg) n = Some (fst f, x)
+      /\ wt_action sig (snd f) (snd (List.nth n (struct_fields sg) (y, unit_t)))
+    ) fields ->
+    wt_action sig (USugar (UStructInit sg fields)) (struct_t sg)
+  | wt_action_uarrayinit: forall sig tau elements,
+    Forall (fun e => wt_action sig e tau) elements ->
+    wt_action sig (USugar (UArrayInit tau elements)) (
+      array_t {| array_type := tau; array_len := List.length elements |}
+    )
+  (* | wt_action_ucallmodule: *)
+  (*   forall sig {module_reg_t module_ext_fn_t} fR fSigma fn args, *)
+  (*   wt_action sig (USugar (UCallModule fR fSigma fn args)) ((fSigma module_ext_fn_t)). *)
+.
 End WT.

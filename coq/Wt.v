@@ -59,7 +59,6 @@ Section WT.
   Variable R : reg_t -> type.
   Variable Sigma: ext_fn_t -> ExternalSignature.
 
-
   Lemma cast_action'_eq:
     forall
       (p: pos_t) (sig: tsig var_t) (tau1 tau2: type)
@@ -87,8 +86,8 @@ Section WT.
 
   Lemma type_action_wt:
     forall ua p sig a,
-      type_action R Sigma p sig ua = Success a ->
-      wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua (projT1 a).
+    type_action R Sigma p sig ua = Success a ->
+    wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua (projT1 a).
   Proof.
     intros ua.
     remember (size_uaction ua).
@@ -98,14 +97,15 @@ Section WT.
     { red. red. intros. subst. tauto. } 2: lia.
     intros n0 _ Plt ua Heqn. subst.
     assert (Plt':
-              forall
-                (ua': Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t),
-                size_uaction ua' < size_uaction ua ->
-                forall (p : pos_t) (sig : tsig var_t)
-                       (a : {tau : type & TypedSyntax.action pos_t var_t fn_name_t R Sigma sig tau}),
-                  type_action R Sigma p sig ua' = Success a ->
-                  wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua' (projT1 a)
-           ).
+      forall (ua': Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t),
+      size_uaction ua' < size_uaction ua ->
+      forall (p : pos_t) (sig : tsig var_t)
+        (a : {
+          tau : type & TypedSyntax.action pos_t var_t fn_name_t R Sigma sig tau
+        }),
+      type_action R Sigma p sig ua' = Success a ->
+      wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua' (projT1 a)
+    ).
     { intros. eapply Plt. 3: reflexivity. lia. auto. eauto. } clear Plt.
     rename Plt' into IHua. clear n.
     destruct ua; simpl; intros.
@@ -174,15 +174,20 @@ Section WT.
       destruct s, s0; simpl in *. subst.
       destruct ufn2; simpl in *.
       + inv Heqr1. simpl. econstructor; eauto.
-        replace (arg1Sig (PrimSignatures.Sigma2 s1)) with (arg2Sig (PrimSignatures.Sigma2 s1)). eauto.
+        replace (arg1Sig (PrimSignatures.Sigma2 s1))
+          with (arg2Sig (PrimSignatures.Sigma2 s1)). eauto.
         rewrite <- H0. simpl. eauto.
-      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *; try (econstructor; eauto; fail).
+      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *;
+          try (econstructor; eauto; fail).
         * replace (s0 + s) with (s + s0). econstructor; eauto. lia.
-      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *; try (econstructor; eauto; fail).
-      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *; try (econstructor; eauto; fail).
+      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *;
+          try (econstructor; eauto; fail).
+      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *;
+          try (econstructor; eauto; fail).
     - repeat destr_in H; inv H. simpl.
       econstructor.
-      eapply cast_action_eq in Heqr0. destruct Heqr0. subst. rewrite <- x; eauto.
+      eapply cast_action_eq in Heqr0. destruct Heqr0. subst. rewrite <- x;
+        eauto.
     - repeat destr_in H; inv H. simpl.
       eapply cast_action_eq in Heqr2. destruct Heqr2. subst.
       eapply IHua in Heqr1. 2: simpl; lia.
@@ -208,20 +213,13 @@ Section WT.
 
       Lemma argtypes_app:
         forall {T} sig p (src: T) nexpected fn_name l1 l2 l3 l4 s0,
-          assert_argtypes'
-            (sig:=sig)
-            (fn_name_t := fn_name_t)
-            (pos_t := pos_t)
-            (var_t := var_t)
-            R Sigma src nexpected fn_name p
-                           (l1 ++ l2)
-                           (l3 ++ l4) =
-          Success s0 ->
-          List.length l1 = List.length l3 ->
-          List.length l2 = List.length l4 ->
-          exists s1 s2,
-            assert_argtypes' R Sigma src nexpected fn_name p l1 l3 = Success s1 /\
-            assert_argtypes' R Sigma src nexpected fn_name p l2 l4 = Success s2.
+        assert_argtypes' (sig:=sig) (fn_name_t := fn_name_t) (pos_t := pos_t)
+          (var_t := var_t) R Sigma src nexpected fn_name p (l1 ++ l2) (l3 ++ l4)
+        = Success s0 ->
+        List.length l1 = List.length l3 -> List.length l2 = List.length l4 ->
+        exists s1 s2,
+        assert_argtypes' R Sigma src nexpected fn_name p l1 l3 = Success s1
+        /\ assert_argtypes' R Sigma src nexpected fn_name p l2 l4 = Success s2.
       Proof.
         induction l1; simpl; intros; eauto.
         - destruct l3; simpl in *; try lia.
@@ -236,29 +234,35 @@ Section WT.
 
       Lemma argtypes_ok:
         forall {T} args sig p s (src: T) nexpected fn_name argspec argpos s0
-               (IHua:
-               forall ua' : uaction pos_t var_t fn_name_t reg_t ext_fn_t,
-                 In ua' args ->
-                 forall (p : pos_t) (sig : tsig var_t)
-                        (a : {tau : type & TypedSyntax.action pos_t var_t fn_name_t R Sigma sig tau}),
-                   type_action R Sigma p sig ua' = Success a ->
-                   wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua' (projT1 a)
-               )
-               (SAMELEN:           List.length argpos = List.length s)
-        ,
-          result_list_map (type_action R Sigma p sig) args = Success s ->
-          assert_argtypes' R Sigma src nexpected fn_name p
-                           (rev argspec)
-                           (rev (combine argpos s)) =
-          Success s0 ->
-          Forall2 (wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig) args (map snd argspec).
+          (IHua:
+            forall ua' : uaction pos_t var_t fn_name_t reg_t ext_fn_t,
+            In ua' args ->
+            forall (p : pos_t) (sig : tsig var_t)
+              (a : {
+                tau : type
+                & TypedSyntax.action pos_t var_t fn_name_t R Sigma sig tau
+              }),
+            type_action R Sigma p sig ua' = Success a ->
+            wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua'
+              (projT1 a)
+          )
+          (SAMELEN: List.length argpos = List.length s),
+        result_list_map (type_action R Sigma p sig) args = Success s ->
+        assert_argtypes' R Sigma src nexpected fn_name p (rev argspec)
+          (rev (combine argpos s))
+        = Success s0 ->
+        Forall2 (wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig)
+          args (map snd argspec).
       Proof.
         induction args; simpl; intros; eauto.
         - inv H. simpl in H0.
-          apply assert_argtypes'_same_length in H0. rewrite combine_nil in H0. simpl in H0.
+          apply assert_argtypes'_same_length in H0. rewrite combine_nil in H0.
+          simpl in H0.
           rewrite rev_length in H0.
           apply length_zero_iff_nil in H0. subst. simpl. constructor.
-        - assert ( List.length (rev argspec) = List.length (rev (combine argpos s))).
+        - assert (
+            List.length (rev argspec) = List.length (rev (combine argpos s))
+          ).
           apply assert_argtypes'_same_length in H0. auto.
           repeat destr_in H; inv H. simpl in H1.
           simpl in SAMELEN. destruct argpos; simpl in SAMELEN; try lia.
@@ -281,7 +285,8 @@ Section WT.
       {
         intros; eapply IHua; eauto. simpl.
         cut (size_uaction ua' <= list_sum (map size_uaction args)). lia.
-        clear - H. revert ua' args H. induction args; simpl; intros; eauto. easy.
+        clear - H. revert ua' args H. induction args; simpl; intros; eauto.
+        easy.
         destruct H. subst. lia.
         apply IHargs in H. lia.
       }
@@ -298,7 +303,7 @@ Section WT.
         erewrite IHl; eauto.
       Qed.
       erewrite <- result_list_map_length; eauto.
-    - repeat destr_in H; inv H. simpl. constructor.  eapply IHua; eauto.
+    - repeat destr_in H; inv H. simpl. constructor. eapply IHua; eauto.
     - inv H.
   Qed.
 
@@ -842,3 +847,13 @@ Section WT.
   Qed.
 
 End WT.
+Require Import Desugaring.
+Lemma type_desugared_action_wt:
+  forall ua tau sig a ta pos,
+  desugar_action pos ua = ta ->
+  type_action R Sigma tau sig ta = Success a ->
+  wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ta (projT1 a).
+Proof.
+  intros ua tau sig a ta pos H.
+  apply type_action_wt.
+Qed.
