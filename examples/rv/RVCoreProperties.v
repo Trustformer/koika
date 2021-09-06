@@ -1,9 +1,9 @@
 (*! Proofs about our RISC-V implementation !*)
 Require Import Coq.Program.Equality.
-Require Import Koika.BitsToLists Koika.Frontend Koika.Instructions Koika.Logs
+Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
   Koika.ProgramTactics Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs
   UntypedIndSemantics Koika.UntypedSemantics.
-Require Export rv.Stack rv.RVCore rv.rv32 rv.rv32i.
+Require Export rv.Instructions rv.Stack rv.RVCore rv.rv32 rv.rv32i.
 
 Ltac destr_in H :=
   match type of H with
@@ -178,7 +178,7 @@ Module RVProofs.
       (* Set Printing All. *)
       (* assert () *)
       (* induction v. *)
-      (* (1* v is not constrained in any way, yet we need to use the fact that its size is known *1) *)
+      (* v is not constrained in any way, yet we need to use the fact that its size is known *)
       (* + simpl. unfold vect_to_list. simpl. *)
   Admitted.
 
@@ -192,6 +192,11 @@ Module RVProofs.
     | Bits sz1 l1, Bits sz2 l2 => Some (Bits sz1 l1)
     | _, _ => None
     end.
+
+
+  Goal
+  forall (ctx : env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)),
+  getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits 1 [true].
 
   Goal
     forall ctx bits_instr rs1 rd vimm l l',

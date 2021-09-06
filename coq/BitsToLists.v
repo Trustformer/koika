@@ -1206,8 +1206,6 @@ Section WT.
   | wt_var_intro: forall sig v t tm,
     assoc v sig = Some tm -> projT1 tm = t -> wt_var sig v t.
 
-  Set Printing All.
-
   Inductive wt_action
     {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
     {Sigma: ext_fn_t -> ExternalSignature}
