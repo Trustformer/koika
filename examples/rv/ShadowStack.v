@@ -1,8 +1,7 @@
 (*! Implementation of an address stack module !*)
-
 Require Import Koika.Frontend Koika.Std.
 
-Module Type StackInterface.
+Module Type ShadowStackInterface.
   Axiom reg_t            : Type.
   Axiom R                : reg_t -> type.
   Axiom r                : forall idx : reg_t, R idx.
@@ -10,14 +9,14 @@ Module Type StackInterface.
   Axiom pop              : UInternalFunction reg_t empty_ext_fn_t.
   Axiom FiniteType_reg_t : FiniteType reg_t.
   Axiom Show_reg_t       : Show reg_t.
-End StackInterface.
+End ShadowStackInterface.
 
-(* TODO Parameterizing StackF hurts the instantiation of FiniteType_reg_t *)
-(* Module Type Stack_sig. *)
+(* TODO Parameterizing ShadowStackF hurts the instantiation of FiniteType_reg_t *)
+(* Module Type ShadowStack_sig. *)
 (*   Parameter capacity : nat. *)
-(* End Stack_sig. *)
+(* End ShadowStack_sig. *)
 
-Module StackF <: StackInterface.
+Module ShadowStackF <: ShadowStackInterface.
   Definition capacity := 4.
 
   (* The + 1 is required for situations where capacity = 2^x *)
@@ -76,4 +75,4 @@ Module StackF <: StackInterface.
 
   Instance Show_reg_t : Show reg_t := _.
   Instance FiniteType_reg_t : FiniteType reg_t := _.
-End StackF.
+End ShadowStackF.

@@ -1,12 +1,12 @@
 (*! Definition of a pipelined schedule !*)
 Require Import Koika.Frontend.
-Require Import rv.RVCore.
+Require Import rv.RVCoreNoShadowStack.
 
 Definition rv_schedule : scheduler :=
   UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem
   |> Dmem |> Tick |> EndExecution |> done.
 
-Module Package (C: Core).
+Module PackageNoShadowStack (C: CoreNoShadowStack).
   Import C.
   Existing Instance Show_reg_t.
   Existing Instance Show_ext_fn_t.
@@ -32,4 +32,4 @@ Module Package (C: Core).
     |};
     ip_verilog := {| vp_ext_fn_specs := rv_ext_fn_rtl_specs |}
   |}.
-End Package.
+End PackageNoShadowStack.

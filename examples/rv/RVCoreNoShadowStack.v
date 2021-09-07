@@ -4,7 +4,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Koika.Frontend Koika.Std.
-Require Import rv.RVEncoding rv.Scoreboard rv.ShadowStack.
+Require Import rv.RVEncoding rv.Scoreboard.
 
 Require Import rv.ISA rv.Instructions rv.ITypes rv.IFields rv.StructsBuilding
   rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
@@ -15,7 +15,7 @@ Definition isa : ISA := {|
   ISA_memory_model := RVWMO; ISA_base_standard := RV32I; ISA_extensions := []
 |}.
 
-Section RVHelpers.
+Section RVHelpersNoShadowStack.
   Definition instructions := (ISA_instructions_set isa).
 
   Context {reg_t : Type}.
@@ -516,14 +516,14 @@ Section RVHelpers.
             else set nextPC := incPC);
     struct control_result {taken := taken; nextPC := nextPC}
   }}.
-End RVHelpers.
+End RVHelpersNoShadowStack.
 
-Module Type RVParams.
+Module Type RVParamsNoShadowStack.
   Parameter NREGS : nat.
   Parameter WIDTH : nat.
-End RVParams.
+End RVParamsNoShadowStack.
 
-Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
+Module RVCoreNoShadowStack (RVP: RVParams).
   Import ListNotations.
   Import RVP.
 
@@ -621,7 +621,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
   | d2e (state: fromDecode.reg_t)
   | e2w (state: fromExecute.reg_t)
   | rf (state: Rf.reg_t)
-  | stack (state: ShadowStack.reg_t)
   | scoreboard (state: Scoreboard.reg_t)
   | cycle_count
   | instr_count
@@ -644,7 +643,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
     | e2w r        => fromExecute.R r
     | rf r         => Rf.R r
     | scoreboard r => Scoreboard.R r
-    | stack r      => ShadowStack.R r
     | pc           => bits_t 32
     | cycle_count  => bits_t 32
     | instr_count  => bits_t 32
@@ -667,7 +665,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
     | d2e s        => fromDecode.r s
     | e2w s        => fromExecute.r s
     | scoreboard s => Scoreboard.r s
-    | stack s      => ShadowStack.r s
     | pc           => Bits.zero
     | cycle_count  => Bits.zero
     | instr_count  => Bits.zero
@@ -776,7 +773,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
      changes anything. *)
   Definition decode
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let instr               := fromIMem.(MemResp.deq)() in
@@ -831,7 +827,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
 
   Definition execute_1
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{(
     let fInst      := get(dInst, inst) in
     let funct3     := get(getFields(fInst), funct3) in
@@ -864,32 +859,7 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
         byte_en := byte_en; addr := addr; data := data
       })
     else if (isControlInst(dInst)) then
-      (* See table 2.1. of the unpriviledged ISA specification for *)
-      (* details *)
       set data := (pc + |32`d4|); (* For jump and link *)
-      (
-        let res := Ob~0 in
-        let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
-        (
-          if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
-            && (rd_val == |5`d1| || rd_val == |5`d5|))
-          then set res := stack.(ShadowStack.push)(data)
-          else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
-            if (rd_val == |5`d1| || rd_val == |5`d5|) then
-              if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
-                set res := stack.(ShadowStack.push)(data)
-              ) else (
-                set res := stack.(ShadowStack.pop)(addr);
-                set res := res || stack.(ShadowStack.push)(data)
-              )
-            else if (rs1 == |5`d1| || rs1 == |5`d5|) then
-              set res := stack.(ShadowStack.pop)(addr)
-            else pass
-          )
-          else pass
-        );
-        write0(halt, res)
-      )
     else
       pass;
     let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
@@ -911,7 +881,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
 
   Definition execute
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let decoded_bookkeeping := d2e.(fromDecode.deq)() in
@@ -929,7 +898,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
 
   Definition writeback
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let execute_bookkeeping := e2w.(fromExecute.deq)() in
@@ -1080,7 +1048,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
 
   Definition mem
     (m: memory) `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t :=
     let fromMem :=
       match m with
@@ -1115,7 +1082,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
     write0(cycle_count, read0(cycle_count) + |32`d1|)
   }}.
 
-  Existing Instance ShadowStack.Show_reg_t.
   Instance Show_reg_t : Show reg_t := _.
   Instance Show_ext_fn_t : Show ext_fn_t := _.
 
@@ -1136,7 +1102,7 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
       | _ => false
       end
   |}.
-End RVCore.
+End RVCoreNoShadowStack.
 
 Inductive rv_rules_t :=
 | Fetch
@@ -1152,7 +1118,7 @@ Inductive rv_rules_t :=
 
 Definition rv_external (rl: rv_rules_t) := false.
 
-Module Type Core.
+Module Type CoreNoShadowStack.
   Parameter _reg_t              : Type.
   Parameter _ext_fn_t           : Type.
   Parameter R                   : _reg_t -> type.
@@ -1164,4 +1130,4 @@ Module Type Core.
   Parameter Show_ext_fn_t       : Show _ext_fn_t.
   Parameter rv_ext_fn_sim_specs : _ext_fn_t -> ext_fn_sim_spec.
   Parameter rv_ext_fn_rtl_specs : _ext_fn_t -> ext_fn_rtl_spec.
-End Core.
+End CoreNoShadowStack.

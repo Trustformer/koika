@@ -29,12 +29,8 @@ Module RVProofs.
   Definition initial_env := create REnv RV32I.r.
 
   Definition CEnv := @ContextEnv RV32I.reg_t RV32I.FiniteType_reg_t.
-  Print RV32I.FiniteType_reg_t.
-  Print Options.
-  Set NativeCompute Profiling.
   Definition initial_context_env := CEnv.(create) (RV32I.r).
 
-  Compute @initial_context_env.
   Definition f_init := fun x => val_of_value (initial_context_env.[x]).
 
   Theorem osef : initial_context_env.[RV32I.on_off] = Ob~0.
@@ -161,8 +157,6 @@ Module RVProofs.
       unfold commit_update. rewrite getenv_create.
       rewrite find_latest_write_top.
       simpl in H2.
-      Check (ctx).
-      Check (getenv REnv ctx RV32I.cycle_count).
       (* assert ( *)
       (*   exists x, *)
       (*   getenv REnv ctx RV32I.cycle_count *)
@@ -170,12 +164,10 @@ Module RVProofs.
       (* ). { *)
       (*   destruct (getenv REnv ctx RV32I.cycle_count). *)
       (*   - exists v. *)
-      (*   Check ubits_of_value_len. *)
       (*   rewrite ubits_of_value_len. *)
       (*   - exists []. *)
       (* } *)
       (* destruct (getenv REnv ctx RV32I.cycle_count); inv H2. *)
-      (* Set Printing All. *)
       (* assert () *)
       (* induction v. *)
       (* v is not constrained in any way, yet we need to use the fact that its size is known *)

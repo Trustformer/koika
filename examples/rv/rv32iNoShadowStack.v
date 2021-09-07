@@ -1,19 +1,17 @@
 (*! Pipelined instantiation of an RV32I core !*)
 Require Import Koika.Frontend.
-Require Import rv.RVCore rv.rv32.
-Require Import rv.ShadowStack.
+Require Import rv.RVCoreNoShadowStack rv.rv32NoShadowStack.
 
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
 
-Module RVIParams <: RVParams.
+Module RVIParamsNoShadowStack <: RVParamsNoShadowStack.
   Definition NREGS := 32.
   Definition WIDTH := 32.
-End RVIParams.
+End RVIParamsNoShadowStack.
 
-Module RV32I <: Core.
-  Module ShadowStack := ShadowStackF.
-  Include (RVCore RVIParams ShadowStack).
+Module RV32INoShadowStack <: CoreNoShadowStack.
+  Include (RVCoreNoShadowStack RVIParamsNoShadowStack).
 
   Definition _reg_t := reg_t.
   Definition _ext_fn_t := ext_fn_t.
@@ -50,8 +48,8 @@ Module RV32I <: Core.
     | UpdateOnOff  => tc_rule R Sigma update_on_off
     | EndExecution => tc_rule R Sigma end_execution
     end.
-End RV32I.
+End RV32INoShadowStack.
 
-Module RV32IPackage := Package RV32I.
-Definition prog := Interop.Backends.register RV32IPackage.package.
-Extraction "rv32i.ml" prog.
+Module RV32IPackageNoShadowStack := PackageNoShadowStack RV32INoShadowStack.
+Definition prog := Interop.Backends.register RV32IPackageNoShadowStack.package.
+Extraction "rv32iNoShadowStack.ml" prog.
