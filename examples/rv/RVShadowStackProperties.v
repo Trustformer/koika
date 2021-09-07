@@ -228,7 +228,7 @@ Section ShadowStackProperties.
 
   Lemma no_stack_violation_behaves_as_if_no_stack:
     forall (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)),
-    !(stack_violation ctx) ->
+    not (stack_violation ctx) ->
     interp_n_cycles 1 ctx = interp_n_cycles_no_shadow_stack 1 ctx.
   Proof.
   Qed.
