@@ -2,6 +2,8 @@
 Require Import Koika.BitsToLists Koika.Frontend Koika.UntypedSemantics
   Koika.UntypedIndSemantics.
 Require Import rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
+(* Require Import rv.RVCoreNoShadowStack rv.rv32NoShadowStack *)
+(*   rv.rv32iNoShadowStack. *)
 
 Import Coq.Lists.List.ListNotations.
 Scheme Equality for list.
@@ -196,6 +198,16 @@ Section ShadowStackProperties.
       )
     end.
 
+  (* Fixpoint interp_n_cycles_no_shadow_stack *)
+  (*   n (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)) *)
+  (* : env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val) := *)
+  (*   match n with *)
+  (*   | O => ctx *)
+  (*   | S n' => interp_n_cycles n' ( *)
+  (*       UntypedSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma schedule *)
+  (*     ) *)
+  (*   end. *)
+
   Definition is_sink_state
     (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
   : Prop :=
@@ -217,13 +229,13 @@ Section ShadowStackProperties.
   Lemma no_stack_violation_behaves_as_if_no_stack:
     forall (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)),
     !(stack_violation ctx) ->
-    cycle_end_state ctx = stackless_cycle_end_state ctx.
+    interp_n_cycles 1 ctx = interp_n_cycles_no_shadow_stack 1 ctx.
   Proof.
   Qed.
 
   (* Main theorem *)
   Theorem shadow_stack_ok:
-    halt_leads_to_a_sink_state /\ stack_violation_results_in_halt
+    stack_violation_results_in_halt /\ halt_leads_to_a_sink_state
     /\ no_stack_violation_behaves_as_if_no_stack.
   Proof.
   Qed.

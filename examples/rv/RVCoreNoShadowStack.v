@@ -15,7 +15,7 @@ Definition isa : ISA := {|
   ISA_memory_model := RVWMO; ISA_base_standard := RV32I; ISA_extensions := []
 |}.
 
-Section RVHelpers.
+Section RVHelpersNoShadowStack.
   Definition instructions := (ISA_instructions_set isa).
 
   Context {reg_t : Type}.
@@ -516,14 +516,14 @@ Section RVHelpers.
             else set nextPC := incPC);
     struct control_result {taken := taken; nextPC := nextPC}
   }}.
-End RVHelpers.
+End RVHelpersNoShadowStack.
 
-Module Type RVParams.
+Module Type RVParamsNoShadowStack.
   Parameter NREGS : nat.
   Parameter WIDTH : nat.
-End RVParams.
+End RVParamsNoShadowStack.
 
-Module RVCore (RVP: RVParams).
+Module RVCoreNoShadowStack (RVP: RVParams).
   Import ListNotations.
   Import RVP.
 
@@ -1102,7 +1102,7 @@ Module RVCore (RVP: RVParams).
       | _ => false
       end
   |}.
-End RVCore.
+End RVCoreNoShadowStack.
 
 Inductive rv_rules_t :=
 | Fetch
@@ -1118,7 +1118,7 @@ Inductive rv_rules_t :=
 
 Definition rv_external (rl: rv_rules_t) := false.
 
-Module Type Core.
+Module Type CoreNoShadowStack.
   Parameter _reg_t              : Type.
   Parameter _ext_fn_t           : Type.
   Parameter R                   : _reg_t -> type.
@@ -1130,4 +1130,4 @@ Module Type Core.
   Parameter Show_ext_fn_t       : Show _ext_fn_t.
   Parameter rv_ext_fn_sim_specs : _ext_fn_t -> ext_fn_sim_spec.
   Parameter rv_ext_fn_rtl_specs : _ext_fn_t -> ext_fn_rtl_spec.
-End Core.
+End CoreNoShadowStack.
