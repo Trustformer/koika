@@ -1472,5 +1472,4 @@ Section WT.
       (fun x => Sigma (fSigma x)) (List.rev fn.(int_argspec)) (int_body fn)
       (int_retSig fn) ->
     wt_action sig (USugar (UCallModule fR fSigma fn args)) (fn.(int_retSig)).
-.
 End WT.

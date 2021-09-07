@@ -4,7 +4,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Koika.Frontend Koika.Std.
-Require Import rv.RVEncoding rv.Scoreboard rv.Stack.
+Require Import rv.RVEncoding rv.Scoreboard rv.ShadowStack.
 
 Require Import rv.ISA rv.Instructions rv.ITypes rv.IFields rv.StructsBuilding
   rv.InstructionsFct2 rv.InstructionsFct3 rv.InstructionsFct7
@@ -36,7 +36,9 @@ Section RVHelpers.
   Definition inst_field := get_inst_fields_struct_from_ISA isa.
   Compute inst_field.
 
-  Definition getFields `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition getFields
+    `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "getFields";
     int_argspec := [prod_of_argsig
       {| arg_name := "inst"; arg_type := bits_t 32 |}
@@ -104,7 +106,9 @@ Section RVHelpers.
   |}.
 
   (* TODO add fixed fields verification *)
-  Definition isLegalInstruction `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition isLegalInstruction
+    `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
     int_argspec := [("inst", bits_t 32)];
     int_retSig  := bits_t 1;
@@ -169,7 +173,9 @@ Section RVHelpers.
   (* TODO only analyze useful bits - for instance, the last two bits of the
      opcode are always 11 and can thus be safely ignored
    *)
-  Definition getImmediateType `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition getImmediateType
+    `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "getImmediateType";
     int_argspec := [("inst", bits_t 32)];
     int_retSig  := maybe (enum_t imm_type);
@@ -270,7 +276,9 @@ Section RVHelpers.
     ))
   |}.
 
-  Definition decode_fun `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {{
+  Definition decode_fun
+    `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {{
     fun decode_fun (arg_inst : bits_t 32) : struct_t decoded_sig =>
       struct decoded_sig {
         valid_rs1     := usesRS1(arg_inst);
@@ -282,7 +290,9 @@ Section RVHelpers.
       }
   }}.
 
-  Definition getImmediate `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {|
+  Definition getImmediate
+    `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name := "getImmediate";
     int_argspec := [prod_of_argsig
       {| arg_name := "dInst"; arg_type := struct_t decoded_sig |}
@@ -433,7 +443,9 @@ Section RVHelpers.
     )
   |}.
 
-  Definition execALU32 `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {{
+  Definition execALU32
+    `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execALU32 (inst : bits_t 32) (rs1_val : bits_t 32) (rs2_val : bits_t 32)
       (imm_val : bits_t 32) (pc : bits_t 32) : bits_t 32
     =>
@@ -464,7 +476,9 @@ Section RVHelpers.
     struct_fields := ("nextPC", bits_t 32) :: ("taken", bits_t 1) :: nil
   |}.
 
-  Definition execControl32 `{finite_reg: FiniteType reg_t} : UInternalFunction reg_t empty_ext_fn_t := {{
+  Definition execControl32
+    `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execControl32 (inst : bits_t 32) (rs1_val : bits_t 32)
       (rs2_val : bits_t 32) (imm_val : bits_t 32) (pc : bits_t 32)
       : struct_t control_result
@@ -510,7 +524,7 @@ Module Type RVParams.
   Parameter WIDTH : nat.
 End RVParams.
 
-Module RVCore (RVP: RVParams) (Stack : StackInterface).
+Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
   Import ListNotations.
   Import RVP.
 
@@ -608,7 +622,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
   | d2e (state: fromDecode.reg_t)
   | e2w (state: fromExecute.reg_t)
   | rf (state: Rf.reg_t)
-  | stack (state: Stack.reg_t)
+  | stack (state: ShadowStack.reg_t)
   | scoreboard (state: Scoreboard.reg_t)
   | cycle_count
   | instr_count
@@ -631,7 +645,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
     | e2w r        => fromExecute.R r
     | rf r         => Rf.R r
     | scoreboard r => Scoreboard.R r
-    | stack r      => Stack.R r
+    | stack r      => ShadowStack.R r
     | pc           => bits_t 32
     | cycle_count  => bits_t 32
     | instr_count  => bits_t 32
@@ -654,7 +668,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
     | d2e s        => fromDecode.r s
     | e2w s        => fromExecute.r s
     | scoreboard s => Scoreboard.r s
-    | stack s      => Stack.r s
+    | stack s      => ShadowStack.r s
     | pc           => Bits.zero
     | cycle_count  => Bits.zero
     | instr_count  => Bits.zero
@@ -761,7 +775,10 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
      Bluespec if we care about simulation performance. Moreover, we could read
      unconditionally to avoid potential muxing on the input, TODO check if it
      changes anything. *)
-  Definition decode `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
+  Definition decode
+    `{finite_reg: FiniteType reg_t}
+    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+  : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let instr               := fromIMem.(MemResp.deq)() in
     let instr               := get(instr,data) in
@@ -813,86 +830,90 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       && get(dInst, inst)[|5`d0| :+ 3] == Ob~1~1~1
   }}.
 
-  Definition execute_1 `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
-(
-        let fInst      := get(dInst, inst) in
-        let funct3     := get(getFields(fInst), funct3) in
-        let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in
-        let rs1_val    := get(decoded_bookkeeping, rval1) in
-        let rs2_val    := get(decoded_bookkeeping, rval2) in
-        let imm        := getImmediate(dInst) in
-        let pc         := get(decoded_bookkeeping, pc) in
-        let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in
-        let isUnsigned := Ob~0 in
-        let size       := funct3[|2`d0| :+ 2] in
-        let addr       := rs1_val + imm in
-        let offset     := addr[|5`d0| :+ 2] in
-        if isMemoryInst(dInst) then
-          let shift_amount := offset ++ |3`d0| in
-          let is_write     := fInst[|5`d5|] == Ob~1 in
-          let byte_en      :=
-            if is_write then
-              match size with
-              | Ob~0~0 => Ob~0~0~0~1
-              | Ob~0~1 => Ob~0~0~1~1
-              | Ob~1~0 => Ob~1~1~1~1
-              return default: fail(4)
-              end << offset
-            else Ob~0~0~0~0 in
-          set data       := rs2_val << shift_amount;
-          set addr       := addr[|5`d2| :+ 30] ++ |2`d0|;
-          set isUnsigned := funct3[|2`d2|];
-          toDMem.(MemReq.enq)(struct mem_req {
-            byte_en := byte_en; addr := addr; data := data
-          })
-        else if (isControlInst(dInst)) then
-          (* See table 2.1. of the unpriviledged ISA specification for *)
-          (* details *)
-          set data := (pc + |32`d4|); (* For jump and link *)
-          (
-            let res := Ob~0 in
-            let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
-            (
-              if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
-                && (rd_val == |5`d1| || rd_val == |5`d5|))
-              then set res := stack.(Stack.push)(data)
-              else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
-                if (rd_val == |5`d1| || rd_val == |5`d5|) then
-                  if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
-                    set res := stack.(Stack.push)(data)
-                  ) else (
-                    set res := stack.(Stack.pop)(addr);
-                    set res := res || stack.(Stack.push)(data)
-                  )
-                else if (rs1 == |5`d1| || rs1 == |5`d5|) then
-                  set res := stack.(Stack.pop)(addr)
-                else pass
+  Definition execute_1
+    `{finite_reg: FiniteType reg_t}
+    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+  : uaction reg_t ext_fn_t := {{(
+    let fInst      := get(dInst, inst) in
+    let funct3     := get(getFields(fInst), funct3) in
+    let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in
+    let rs1_val    := get(decoded_bookkeeping, rval1) in
+    let rs2_val    := get(decoded_bookkeeping, rval2) in
+    let imm        := getImmediate(dInst) in
+    let pc         := get(decoded_bookkeeping, pc) in
+    let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in
+    let isUnsigned := Ob~0 in
+    let size       := funct3[|2`d0| :+ 2] in
+    let addr       := rs1_val + imm in
+    let offset     := addr[|5`d0| :+ 2] in
+    if isMemoryInst(dInst) then
+      let shift_amount := offset ++ |3`d0| in
+      let is_write     := fInst[|5`d5|] == Ob~1 in
+      let byte_en      :=
+        if is_write then
+          match size with
+          | Ob~0~0 => Ob~0~0~0~1
+          | Ob~0~1 => Ob~0~0~1~1
+          | Ob~1~0 => Ob~1~1~1~1
+          return default: fail(4)
+          end << offset
+        else Ob~0~0~0~0 in
+      set data       := rs2_val << shift_amount;
+      set addr       := addr[|5`d2| :+ 30] ++ |2`d0|;
+      set isUnsigned := funct3[|2`d2|];
+      toDMem.(MemReq.enq)(struct mem_req {
+        byte_en := byte_en; addr := addr; data := data
+      })
+    else if (isControlInst(dInst)) then
+      (* See table 2.1. of the unpriviledged ISA specification for *)
+      (* details *)
+      set data := (pc + |32`d4|); (* For jump and link *)
+      (
+        let res := Ob~0 in
+        let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
+        (
+          if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
+            && (rd_val == |5`d1| || rd_val == |5`d5|))
+          then set res := stack.(ShadowStack.push)(data)
+          else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
+            if (rd_val == |5`d1| || rd_val == |5`d5|) then
+              if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
+                set res := stack.(ShadowStack.push)(data)
+              ) else (
+                set res := stack.(ShadowStack.pop)(addr);
+                set res := res || stack.(ShadowStack.push)(data)
               )
-              else pass
-            );
-            write0(halt, res)
+            else if (rs1 == |5`d1| || rs1 == |5`d5|) then
+              set res := stack.(ShadowStack.pop)(addr)
+            else pass
           )
-        else
-          pass;
-        let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
-        let nextPc        := get(controlResult,nextPC) in
-        if nextPc != get(decoded_bookkeeping, ppc) then
-          write0(epoch, read0(epoch)+Ob~1);
-          write0(pc, nextPc)
-        else
-          pass;
-        let execute_bookkeeping := struct execute_bookkeeping {
-          isUnsigned := isUnsigned;
-          size       := size;
-          offset     := offset;
-          newrd      := data;
-          dInst      := get(decoded_bookkeeping, dInst)
-        } in
-        e2w.(fromExecute.enq)(execute_bookkeeping)
+          else pass
+        );
+        write0(halt, res)
       )
-  }}.
+    else
+      pass;
+    let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
+    let nextPc        := get(controlResult,nextPC) in
+    if nextPc != get(decoded_bookkeeping, ppc) then
+      write0(epoch, read0(epoch)+Ob~1);
+      write0(pc, nextPc)
+    else
+      pass;
+    let execute_bookkeeping := struct execute_bookkeeping {
+      isUnsigned := isUnsigned;
+      size       := size;
+      offset     := offset;
+      newrd      := data;
+      dInst      := get(decoded_bookkeeping, dInst)
+    } in
+    e2w.(fromExecute.enq)(execute_bookkeeping)
+  )}}.
 
-  Definition execute `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
+  Definition execute
+    `{finite_reg: FiniteType reg_t}
+    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+  : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let decoded_bookkeeping := d2e.(fromDecode.deq)() in
     if get(decoded_bookkeeping, epoch) == read0(epoch) then
@@ -907,7 +928,10 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       pass
   }}.
 
-  Definition writeback `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t} : uaction reg_t ext_fn_t := {{
+  Definition writeback
+    `{finite_reg: FiniteType reg_t}
+    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+  : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let execute_bookkeeping := e2w.(fromExecute.deq)() in
     let dInst               := get(execute_bookkeeping, dInst) in
@@ -1055,7 +1079,10 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       end`
   }}.
 
-  Definition mem (m: memory) `{finite_reg: FiniteType reg_t} `{finite_reg_stack: FiniteType Stack.reg_t}: uaction reg_t ext_fn_t :=
+  Definition mem
+    (m: memory) `{finite_reg: FiniteType reg_t}
+    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+  : uaction reg_t ext_fn_t :=
     let fromMem :=
       match m with
       | imem => fromIMem
@@ -1133,7 +1160,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
     show '(Scoreboard.Scores (Scoreboard.Rf.rData v)) := rv_register_name v
   |}.
 
-  Existing Instance Stack.Show_reg_t.
+  Existing Instance ShadowStack.Show_reg_t.
   Instance Show_reg_t : Show reg_t := _.
   Instance Show_ext_fn_t : Show ext_fn_t := _.
 
@@ -1154,7 +1181,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       | _ => false
       end
   |}.
-Check d2e.
+End RVCore.
 
 Inductive rv_rules_t :=
 | Fetch

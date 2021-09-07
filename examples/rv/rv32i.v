@@ -1,8 +1,7 @@
 (*! Pipelined instantiation of an RV32I core !*)
 Require Import Koika.Frontend.
-
 Require Import rv.RVCore rv.rv32.
-Require Import rv.Stack.
+Require Import rv.ShadowStack.
 
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
@@ -13,8 +12,8 @@ Module RVIParams <: RVParams.
 End RVIParams.
 
 Module RV32I <: Core.
-  Module Stack := StackF.
-  Include (RVCore RVIParams Stack).
+  Module ShadowStack := ShadowStackF.
+  Include (RVCore RVIParams ShadowStack).
 
   Definition _reg_t := reg_t.
   Definition _ext_fn_t := ext_fn_t.

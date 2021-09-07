@@ -1058,8 +1058,6 @@ Definition get_field_sublist (b : list bool) (first length : nat) :=
   firstn length (skipn first b).
 
 Scheme Equality for list.
-Check List.filter.
-Search (_ -> bool).
 
 Definition get_opcode (b : list bool) : option opcode_name :=
   let candidates :=  [
