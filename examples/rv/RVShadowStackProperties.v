@@ -1,5 +1,6 @@
 (*! Proofs about the behavior of our basic shadow stack mechanism !*)
-Require Import Koika.BitsToLists Koika.Frontend Koika.UntypedIndSemantics.
+Require Import Koika.BitsToLists Koika.Frontend Koika.UntypedSemantics
+  Koika.UntypedIndSemantics.
 Require Import rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 
 Import Coq.Lists.List.ListNotations.
@@ -185,25 +186,20 @@ Section ShadowStackProperties.
       RV32I.rv_urules ctx ext_sigma schedule ctx' ->
     getenv REnv ctx' RV32I.halt = @val_of_value (bits_t 1) Ob~1.
 
-  (* Fixpoint interp_n_cycles *)
-  (*   n (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)) *)
-  (* : env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val) := *)
-  (*   match n with *)
-  (*   | O => ctx *)
-  (*   | S n' => interp_n_cycles n' ( *)
-  (*       UntypedIndSemantics.interp_cycle *)
-  (*         RV32I.rv_urules ctx ext_sigma schedule *)
-  (*     ) *)
-  (*   end. *)
+  Fixpoint interp_n_cycles
+    n (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
+  : env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val) :=
+    match n with
+    | O => ctx
+    | S n' => interp_n_cycles n' (
+        UntypedSemantics.interp_cycle RV32I.rv_urules ctx ext_sigma schedule
+      )
+    end.
 
-  (* Definition is_sink_state *)
-  (*   (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)) *)
-  (* : Prop := *)
-  (*   forall n ctx', *)
-  (*   UntypedIndSemantics.interp_n_cycles n ctx' = ctx. *)
-
-  (* Proofs *)
-  (* Auxiliary lemmas *)
+  Definition is_sink_state
+    (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
+  : Prop :=
+    forall n ctx', interp_n_cycles n ctx' = ctx.
 
   (* Main lemmas *)
   Lemma halt_leads_to_a_sink_state:
