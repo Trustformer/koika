@@ -857,7 +857,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
                 && (rd_val == |5`d1| || rd_val == |5`d5|))
               then set res := stack.(Stack.push)(data)
               else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
-                if (rd_val == |5`d1| && rd_val == |5`d5|) then
+                if (rd_val == |5`d1| || rd_val == |5`d5|) then
                   if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
                     set res := stack.(Stack.push)(data)
                   ) else (
