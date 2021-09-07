@@ -1154,7 +1154,7 @@ Module RVCore (RVP: RVParams) (Stack : StackInterface).
       | _ => false
       end
   |}.
-End RVCore.
+Check d2e.
 
 Inductive rv_rules_t :=
 | Fetch

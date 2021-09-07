@@ -1198,12 +1198,11 @@ Section WT.
   Variables pos_t fn_name_t: Type.
   Variable var_t: Type.
   Context {eq_dec_var_t: EqDec var_t}.
-  Variable ext_fn_t: Type.
-  Variable reg_t: Type.
-  Variable R : reg_t -> type.
-  Variable Sigma: ext_fn_t -> ExternalSignature.
 
-  Inductive wt_var : tsig var_t -> var_t -> type -> Prop :=
+  Inductive wt_var
+    {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
+    {Sigma: ext_fn_t -> ExternalSignature}
+  : tsig var_t -> var_t -> type -> Prop :=
   | wt_var_intro: forall sig v t tm,
     assoc v sig = Some tm -> projT1 tm = t -> wt_var sig v t.
 
@@ -1217,15 +1216,17 @@ Section WT.
       wt_list P sig ((v,a)::l) (t::lt).
 
   Inductive wt_action
-    : tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop
+    {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
+    {Sigma: ext_fn_t -> ExternalSignature}
+  : tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop
   :=
   | wt_action_fail: forall sig t, wt_action sig (UFail t) t
   | wt_action_var: forall sig var t,
-    wt_var sig var t -> wt_action sig (UVar var) t
+    @wt_var ext_fn_t reg_t R Sigma sig var t -> wt_action sig (UVar var) t
   | wt_action_const: forall sig tau cst,
     wt_action sig (@UConst _ _ _ _ _ tau cst) tau
   | wt_action_assign: forall sig k a t,
-    wt_action sig a t -> wt_var sig k t ->
+    wt_action sig a t -> @wt_var ext_fn_t reg_t R Sigma sig k t ->
     wt_action sig (UAssign k a) (bits_t 0)
   | wt_action_seq: forall sig a1 a2 t2,
     wt_action sig a1 unit_t -> wt_action sig a2 t2 -> wt_action sig (USeq a1 a2) t2
@@ -1466,8 +1467,20 @@ Section WT.
     wt_action sig (USugar (UArrayInit tau elements)) (
       array_t {| array_type := tau; array_len := List.length elements |}
     )
-  (* | wt_action_ucallmodule: *)
-  (*   forall sig {module_reg_t module_ext_fn_t} fR fSigma fn args, *)
-  (*   wt_action sig (USugar (UCallModule fR fSigma fn args)) ((fSigma module_ext_fn_t)). *)
+  | wt_action_ucallmodule:
+    forall
+      sig {module_reg_t module_ext_fn_t : Type}
+      `{finite_reg: FiniteType module_reg_t} (fR: module_reg_t -> reg_t)
+      (fSigma: @Lift module_ext_fn_t ext_fn_t)
+      (fn: InternalFunction var_t fn_name_t (
+        @uaction pos_t var_t fn_name_t module_reg_t module_ext_fn_t
+      ))
+      (args: list (uaction pos_t var_t fn_name_t reg_t ext_fn_t)),
+    Forall2 (wt_action sig) args (map snd (int_argspec fn)) ->
+    @wt_action
+      module_ext_fn_t module_reg_t (fun x => R (fR x))
+      (fun x => Sigma (fSigma x)) (List.rev fn.(int_argspec)) (int_body fn)
+      (int_retSig fn) ->
+    wt_action sig (USugar (UCallModule fR fSigma fn args)) (fn.(int_retSig)).
 .
 End WT.
