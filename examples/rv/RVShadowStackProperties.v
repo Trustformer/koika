@@ -1,6 +1,6 @@
 (*! Proofs about the behavior of our basic shadow stack mechanism !*)
 Require Import Koika.BitsToLists Koika.Frontend Koika.UntypedIndSemantics.
-Require Import rv.Stack rv.RVCore rv.rv32 rv.rv32i.
+Require Import rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 
 Import Coq.Lists.List.ListNotations.
 Scheme Equality for list.
@@ -10,8 +10,9 @@ Scheme Equality for list.
    (decode to execute buffer). *)
 Section ShadowStackProperties.
   Context {REnv : Env RV32I.reg_t}.
+  Context (ext_sigma : RV32I.ext_fn_t -> BitsToLists.val -> BitsToLists.val).
+  Context (ext_Sigma : RV32I.ext_fn_t -> ExternalSignature).
   Definition schedule := rv_schedule.
-
   Definition eql (l1 l2: list bool) : bool := list_beq bool Bool.eqb l1 l2.
 
   (* Propositions about the initial state *)
@@ -27,17 +28,17 @@ Section ShadowStackProperties.
   Definition stack_empty
     (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
   : Prop :=
-    getenv REnv ctx (RV32I.stack (RV32I.Stack.size))
+    getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.size))
     = @val_of_value
-      (bits_t RV32I.Stack.index_sz) (Bits.of_nat (RV32I.Stack.index_sz) 0).
+      (bits_t RV32I.ShadowStack.index_sz) (Bits.of_nat (RV32I.ShadowStack.index_sz) 0).
 
   Definition stack_full
     (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
   : Prop :=
-    getenv REnv ctx (RV32I.stack (RV32I.Stack.size))
+    getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.size))
     = @val_of_value
-      (bits_t RV32I.Stack.index_sz)
-      (Bits.of_nat (RV32I.Stack.index_sz) RV32I.Stack.capacity).
+      (bits_t RV32I.ShadowStack.index_sz)
+      (Bits.of_nat (RV32I.ShadowStack.index_sz) RV32I.ShadowStack.capacity).
 
   (* XXX Note that both a pop and a push can happen for the same instruction *)
 
@@ -145,12 +146,12 @@ Section ShadowStackProperties.
   Definition stack_top_address
     (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
   : option (bits_t 32) :=
-    let index_raw := getenv REnv ctx (RV32I.stack RV32I.Stack.size) in
+    let index_raw := getenv REnv ctx (RV32I.stack RV32I.ShadowStack.size) in
     let index_nat := Bits.to_nat (vect_of_list (ubits_of_value index_raw)) in
-    let index := index_of_nat (pow2 RV32I.Stack.index_sz) index_nat in
+    let index := index_of_nat (pow2 RV32I.ShadowStack.index_sz) index_nat in
     match index with
     | Some x =>
-      let data_raw := (getenv REnv ctx (RV32I.stack (RV32I.Stack.stack x))) in
+      let data_raw := (getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.stack x))) in
       Some (Bits.of_N 32 (Bits.to_N (vect_of_list (ubits_of_value data_raw))))
     | None => None
     end.
@@ -174,15 +175,38 @@ Section ShadowStackProperties.
     stack_underflow ctx \/ stack_overflow ctx \/ stack_address_violation ctx.
 
   (* Final state *)
-  Definition halt_set := .
+  Definition halt_set
+    (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
+  : Prop :=
+    forall ctx',
+    UntypedIndSemantics.interp_cycle
+      RV32I.rv_urules ctx ext_sigma schedule ctx' ->
+    getenv REnv ctx' RV32I.halt = @val_of_value (bits_t 1) Ob~1
+  .
+
+  (* Fixpoint interp_n_cycles *)
+  (*   n (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)) *)
+  (* : env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val) := *)
+  (*   match n with *)
+  (*   | O => ctx *)
+  (*   | S n' => interp_n_cycles n' ( *)
+  (*     UntypedIndSemantics.interp_cycle *)
+  (*       RV32I.rv_urules ctx ext_sigma schedule ctx' -> *)
+  (*   ) *)
+
+  (* Definition is_sink_state *)
+  (*   (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)) *)
+  (* : Prop := *)
+  (*   forall n ctx', *)
+  (*   UntypedIndSemantics.interp_n_cycles n ctx' = ctx. *)
 
   (* Proofs *)
   (* Auxiliary lemmas *)
 
   (* Main lemmas *)
   Lemma halt_leads_to_a_sink_state:
-    (* TODO not quite this *)
-    halt_set -> cycle_end_state ctx = cycle_end_state (cycle_end_state ctx).
+    forall (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)),
+    halt_set ctx -> is_sink_state ctx.
   Proof.
   Qed.
 
