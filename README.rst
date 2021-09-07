@@ -865,12 +865,16 @@ The following list shows the current state of the repo:
       - |examples/rv/InstructionsFixedRs2.v|_: Definitions related to the rs2 instruction field
       - |examples/rv/InstructionsProperties.v|_: Definition of functions helpful for filtering instructions
       - |examples/rv/RVCore.v|_: Implementation of our RISC-V core
+      - |examples/rv/RVCoreNoShadowStack.v|_: Implementation of our RISC-V core
       - |examples/rv/RVCoreProperties.v|_: Proofs about our RISC-V implementation
       - |examples/rv/RVEncoding.v|_: Encoding-related constants
+      - |examples/rv/RVShadowStackProperties.v|_: Proofs about the behavior of our basic shadow stack mechanism
       - |examples/rv/Scoreboard.v|_: Implementation of a scoreboard
-      - |examples/rv/Stack.v|_: Implementation of an address stack module
+      - |examples/rv/ShadowStack.v|_: Implementation of an address stack module
       - |examples/rv/rv32.v|_: Definition of a pipelined schedule
+      - |examples/rv/rv32NoShadowStack.v|_: Definition of a pipelined schedule
       - |examples/rv/rv32i.v|_: Pipelined instantiation of an RV32I core
+      - |examples/rv/rv32iNoShadowStack.v|_: Pipelined instantiation of an RV32I core
 
    ``uart.v.etc/``
       - |examples/uart.v.etc/top.v|_: UART testbench
@@ -1077,6 +1081,8 @@ The following list shows the current state of the repo:
 .. _coq/UntypedSemantics.v: coq/UntypedSemantics.v
 .. |coq/Vect.v| replace:: ``Vect.v``
 .. _coq/Vect.v: coq/Vect.v
+.. |coq/Wt.v| replace:: ``Wt.v``
+.. _coq/Wt.v: coq/Wt.v
 .. |etc/configure| replace:: ``configure``
 .. _etc/configure: etc/configure
 .. |etc/vagrant/provision.sh| replace:: ``provision.sh``
@@ -1157,14 +1163,18 @@ The following list shows the current state of the repo:
 .. _examples/rv/ModuleInstructions.v: examples/rv/ModuleInstructions.v
 .. |examples/rv/RVCore.v| replace:: ``RVCore.v``
 .. _examples/rv/RVCore.v: examples/rv/RVCore.v
+.. |examples/rv/RVCoreNoShadowStack.v| replace:: ``RVCoreNoShadowStack.v``
+.. _examples/rv/RVCoreNoShadowStack.v: examples/rv/RVCoreNoShadowStack.v
 .. |examples/rv/RVCoreProperties.v| replace:: ``RVCoreProperties.v``
 .. _examples/rv/RVCoreProperties.v: examples/rv/RVCoreProperties.v
 .. |examples/rv/RVEncoding.v| replace:: ``RVEncoding.v``
 .. _examples/rv/RVEncoding.v: examples/rv/RVEncoding.v
+.. |examples/rv/RVShadowStackProperties.v| replace:: ``RVShadowStackProperties.v``
+.. _examples/rv/RVShadowStackProperties.v: examples/rv/RVShadowStackProperties.v
 .. |examples/rv/Scoreboard.v| replace:: ``Scoreboard.v``
 .. _examples/rv/Scoreboard.v: examples/rv/Scoreboard.v
-.. |examples/rv/Stack.v| replace:: ``Stack.v``
-.. _examples/rv/Stack.v: examples/rv/Stack.v
+.. |examples/rv/ShadowStack.v| replace:: ``ShadowStack.v``
+.. _examples/rv/ShadowStack.v: examples/rv/ShadowStack.v
 .. |examples/rv/StructsBuilding.v| replace:: ``StructsBuilding.v``
 .. _examples/rv/StructsBuilding.v: examples/rv/StructsBuilding.v
 .. |examples/rv/etc/cvc64.sh| replace:: ``cvc64.sh``
@@ -1201,10 +1211,14 @@ The following list shows the current state of the repo:
 .. _examples/rv/etc/top_ulx3s.v: examples/rv/etc/top_ulx3s.v
 .. |examples/rv/rv32.v| replace:: ``rv32.v``
 .. _examples/rv/rv32.v: examples/rv/rv32.v
+.. |examples/rv/rv32NoShadowStack.v| replace:: ``rv32NoShadowStack.v``
+.. _examples/rv/rv32NoShadowStack.v: examples/rv/rv32NoShadowStack.v
 .. |examples/rv/rv32i.ml| replace:: ``rv32i.ml``
 .. _examples/rv/rv32i.ml: examples/rv/rv32i.ml
 .. |examples/rv/rv32i.v| replace:: ``rv32i.v``
 .. _examples/rv/rv32i.v: examples/rv/rv32i.v
+.. |examples/rv/rv32iNoShadowStack.v| replace:: ``rv32iNoShadowStack.v``
+.. _examples/rv/rv32iNoShadowStack.v: examples/rv/rv32iNoShadowStack.v
 .. |examples/save_restore.v| replace:: ``save_restore.v``
 .. _examples/save_restore.v: examples/save_restore.v
 .. |examples/uart.v| replace:: ``uart.v``
