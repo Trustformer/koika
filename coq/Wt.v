@@ -844,10 +844,10 @@ Section WT.
       clear - IN.
       revert IN. induction aa; simpl; intros; eauto. easy.
       destruct IN; subst. lia. apply IHaa in H. lia.
-  Qed.
+    - 
+  Admitted.
 
-End WT.
-Require Import Desugaring.
+  Require Import Desugaring.
 Lemma type_desugared_action_wt:
   forall ua tau sig a ta pos,
   desugar_action pos ua = ta ->
@@ -857,3 +857,1101 @@ Proof.
   intros ua tau sig a ta pos H.
   apply type_action_wt.
 Qed.
+
+Require Import UntypedIndSemantics.
+
+Definition wt_renv (REnv: Env reg_t) ctx :=
+  forall x,
+    wt_val (R x) (getenv REnv ctx x).
+
+Definition wt_log (REnv: Env reg_t) (l: UntypedSemantics.Log REnv) :=
+  forall idx le,
+    In le (getenv REnv l idx) ->
+    kind le = Logs.LogWrite ->
+    wt_val (R idx) (val le).
+
+(* Definition wt_env (sig: tsig var_t) (l: list (var_t * BitsToLists.val)) := *)
+(*   forall v x t, *)
+(*     list_assoc l v = Some x -> *)
+(*     wt_var var_t sig v t -> *)
+(*     wt_val t x. *)
+
+Inductive wt_env : tsig var_t -> list (var_t * BitsToLists.val) -> Prop :=
+| wt_env_nil: wt_env [] []
+| wt_env_cons:
+    forall sig ctx t x v,
+    wt_env sig ctx ->
+    wt_val t x ->
+    wt_env ((v,t)::sig) ((v,x)::ctx).
+
+Variable sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val.
+Hypothesis sigma_wt: forall fn v, wt_val (arg1Sig (Sigma fn)) v ->
+                                  wt_val (retSig (Sigma fn)) (sigma fn v).
+
+Variable REnv: Env reg_t.
+Variable r: env_t REnv (fun _ => BitsToLists.val).
+
+Require Import Coq.Program.Equality.
+
+Ltac trim H :=
+  match type of H with
+  | ?a -> ?b =>
+    let x := fresh "H" in
+    assert(x: a);[|specialize(H x); clear x]
+  end.
+
+Lemma wt_var_determ:
+  forall sig v t1 t2,
+    wt_var var_t sig v t1 ->
+    wt_var var_t sig v t2 ->
+    t1 = t2.
+Proof.
+  intros sig v t1 t2 H H0. inv H; inv H0. congruence.
+Qed.
+
+Ltac iinv A :=
+  inv A;
+  repeat match goal with
+           H: existT _ _ _ = existT _ _ _ |- _ =>
+           apply Eqdep.EqdepTheory.inj_pair2 in H; try subst
+         end.
+
+
+Lemma wt_env_list_assoc:
+  forall sig ctx,
+    wt_env sig ctx ->
+    forall var v t,
+      list_assoc ctx var = Some v ->
+      wt_var var_t sig var t ->
+      wt_val t v.
+Proof.
+  intros sig ctx WTE var v t LA WTV.
+  inv WTV.
+  revert var v LA tm H.
+  induction WTE; simpl; intros; eauto. congruence.
+  destr_in H0; subst.
+  - inv LA.
+    unfold eq_rect_r in H0. rewrite eq_dec_rew_type_family in H0. inv H0. simpl. auto.
+  - repeat destr_in H0; inv H0. simpl.
+    eapply IHWTE in LA. 2: eauto. simpl in LA. auto.
+Qed.
+
+Lemma wt_env_set:
+  forall sig k t0 Gamma v0,
+    wt_var var_t sig k t0 ->
+    wt_env sig Gamma ->
+    wt_val t0 v0 ->
+    wt_env sig (list_assoc_set Gamma k v0).
+Proof.
+  intros sig k t0 Gamma v0 WTV WTE WTv.
+  inv WTV. revert v0 tm WTv H.
+  induction WTE; simpl; intros; eauto. easy.
+  repeat destr_in H0; inv H0.
+  + unfold eq_rect_r in H2. rewrite eq_dec_rew_type_family in H2. inv H2.
+    simpl in *. constructor; auto.
+  + simpl in *. constructor; eauto. eapply IHWTE; eauto. simpl; auto.
+Qed.
+
+Lemma list_find_op_spec:
+  forall {A B} (f: A -> option B) l v,
+    list_find_opt f l = Some v ->
+    exists x, In x l /\ f x = Some v.
+Proof.
+  induction l; simpl; intros; eauto. easy.
+  destr_in H. inv H. exists a; split; eauto.
+  edestruct IHl as (xx & IN & SOME); eauto.
+Qed.
+Lemma log_find_wt:
+  forall {T} l idx f v,
+    log_find (T:=T) l idx f = Some v ->
+    forall (FF: forall x y, f x = Some y -> kind x = Logs.LogWrite),
+      wt_log REnv l ->
+      exists x,
+        f x = Some v /\
+        wt_val (R idx) (val x).
+Proof.
+  intros.
+  red in H0.
+  unfold log_find in H.
+  edestruct @list_find_op_spec as (x & F & IN). eauto.
+  generalize IN; intro IN'.
+  apply FF in IN.
+  apply H0 in F; auto.
+  eauto.
+Qed.
+
+Lemma wt_log_app:
+  forall l1 l2,
+    wt_log REnv l1 ->
+    wt_log REnv l2 ->
+    wt_log REnv (log_app l1 l2).
+Proof.
+  unfold wt_log. intros.
+  revert H1.
+  unfold log_app.
+  rewrite getenv_map2. rewrite in_app_iff. intros [?|?]; eauto.
+Qed.
+
+
+
+Instance reg_eq : EqDec reg_t.
+Proof.
+  eapply EqDec_FiniteType. Unshelve.
+  apply finite_keys. auto.
+Qed.
+
+
+Lemma wt_log_cons:
+  forall l1 le idx,
+    wt_log REnv l1 ->
+    (kind le = Logs.LogWrite -> wt_val (R idx) (val le)) ->
+    wt_log REnv (log_cons idx le l1).
+Proof.
+  unfold wt_log. intros.
+  revert H1.
+  unfold log_cons.
+
+  destruct (eq_dec idx idx0); subst.
+  rewrite get_put_eq. simpl; intros; eauto. destruct H1; subst; simpl in *. eauto. eauto.
+  rewrite get_put_neq. eauto. auto.
+Qed.
+
+
+Inductive wt_unop : PrimUntyped.ufn1 -> type -> type -> Prop :=
+| wt_unop_display_utf8 sg:
+    array_type sg = bits_t 8 ->
+    wt_unop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) (array_t sg) unit_t
+| wt_unop_display_value opts tau:
+    wt_unop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) tau unit_t
+| wt_unop_upack tau:
+    wt_unop (PrimUntyped.UConv PrimUntyped.UPack) tau (bits_t (type_sz tau))
+| wt_unop_uunpack tau:
+    wt_unop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) (bits_t (type_sz tau)) tau
+| wt_unop_uignore tau:
+    wt_unop (PrimUntyped.UConv PrimUntyped.UIgnore) tau unit_t
+| wt_unop_unot sz:
+    wt_unop (PrimUntyped.UBits1 PrimUntyped.UNot) (bits_t sz) (bits_t sz)
+| wt_unop_usext sz width:
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) (bits_t sz) (bits_t (Nat.max sz width))
+| wt_unop_uzextl sz width:
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) (bits_t sz) (bits_t (Nat.max sz width))
+| wt_unop_uzextr sz width:
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) (bits_t sz) (bits_t (Nat.max sz width))
+| wt_unop_urepeat sz times:
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) (bits_t sz) (bits_t (times * sz))
+| wt_unop_uslice sz ofs width:
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.USlice ofs width)) (bits_t sz) (bits_t width)
+| wt_unop_ugetfield sg name idx:
+    PrimTypeInference.find_field sg name = Success idx ->
+    wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) (struct_t sg) (field_type sg idx)
+| wt_unop_ugetfieldbits sg name idx:
+    PrimTypeInference.find_field sg name = Success idx ->
+    wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx)
+| wt_unop_ugetelement sg idx idx0:
+    PrimTypeInference.check_index sg idx = Success idx0 ->
+    wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) (array_t sg) (array_type sg)
+| wt_unop_ugetelementbits sg idx idx0:
+    PrimTypeInference.check_index sg idx = Success idx0 ->
+    wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg))
+.
+
+Inductive wt_binop : PrimUntyped.ufn2 -> type -> type -> type -> Prop :=
+  | wt_binop_eq neg tau:
+      wt_binop (PrimUntyped.UEq neg) tau tau (bits_t 1)
+  | wt_binop_and sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAnd) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_or sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UOr) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_xor sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UXor) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_lsl sz sh_sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsl) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+  | wt_binop_lsr sz sh_sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+  | wt_binop_asr sz sh_sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+  | wt_binop_concat sz1 sz2:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UConcat) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
+  | wt_binop_sel sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.USel) (bits_t sz) (bits_t (log2 sz)) (bits_t 1)
+  | wt_binop_slice_subst sz ofs w:
+      wt_binop (PrimUntyped.UBits2 (PrimUntyped.USliceSubst ofs w)) (bits_t sz) (bits_t w) (bits_t sz)
+  | wt_binop_indexedslice sz w:
+      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) (bits_t sz) (bits_t (log2 sz)) (bits_t w)
+  | wt_binop_plus sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UPlus) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_minus sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMinus) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_mul sz1 sz2:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMul) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
+  | wt_binop_compare signed bc sz:
+      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UCompare signed bc)) (bits_t sz) (bits_t sz) (bits_t 1)
+  | wt_binop_substfield name sg idx:
+      PrimTypeInference.find_field sg name = Success idx ->
+      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) (struct_t sg) (field_type sg idx) (struct_t sg)
+  | wt_binop_substfieldbits name sg idx:
+      PrimTypeInference.find_field sg name = Success idx ->
+      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx) (struct_bits_t sg)
+  | wt_binop_substelement sg idx idx0:
+      PrimTypeInference.check_index sg idx = Success idx0 ->
+      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) (array_t sg) (array_type sg) (array_t sg)
+  | wt_binop_substelementbits sg idx idx0:
+      PrimTypeInference.check_index sg idx = Success idx0 ->
+      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg)) (bits_t (array_sz sg))
+.
+
+
+
+Fixpoint typsz (t: type) : nat :=
+  match t with
+  | bits_t sz => 1
+  | enum_t sg => 1
+  | struct_t sg => 1 + list_sum (map (fun '(_,t) => typsz t) (struct_fields sg))
+  | array_t sg => 1 + typsz (array_type sg)
+  end.
+
+Lemma type_ind' :
+  forall (P: type -> Prop)
+         (Pb: forall sz, P (bits_t sz))
+         (Pe: forall sg, P (enum_t sg))
+         (Ps: forall sg (IH: forall v t, In (v, t) (struct_fields sg) -> P t),
+             P (struct_t sg)
+         )
+         (Pa: forall sg (IH: P (array_type sg)),
+             P (array_t sg)
+         ),
+  forall t, P t.
+Proof.
+  intros P Pb Pe Ps Pa t.
+  eapply (strong_ind_type (fun n => forall t, typsz t = n -> P t)).
+  3: reflexivity. 2: reflexivity.
+  intros. subst.
+  assert (IH: forall t, typsz t < typsz t0 -> P t).
+  {
+    intros; eapply H; eauto.
+  } clear H.
+  destruct t0; auto.
+  - apply Ps.
+    intros. eapply IH.
+    clear - H.
+    simpl.
+    revert H. generalize (struct_fields sig).
+    induction l; simpl; intros; eauto. easy.
+    destruct a.
+    destruct H; subst; simpl in *; eauto. inv H. lia.
+    apply IHl in H. lia.
+Qed.
+
+Lemma uvalue_of_struct_bits_rew :
+  forall fields l,
+    (fix uvalue_of_struct_bits (fields : list (string * type)) (bs : list bool) {struct fields} :
+       option (list BitsToLists.val) :=
+       match fields with
+       | [] => Some []
+       | (_, tau) :: fields0 =>
+         match take_drop (Datatypes.length bs - type_sz tau) bs with
+         | Some (b0, b1) =>
+           match uvalue_of_struct_bits fields0 b0 with
+           | Some x0 =>
+             match uvalue_of_bits (tau:=tau) b1 with
+             | Some x1 => Some (x1 :: x0)
+             | None => None
+             end
+           | None => None
+           end
+         | None => None
+         end
+       end) fields l = uvalue_of_struct_bits fields l.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma bits_splitn_inv:
+  forall n sz l1 l2,
+    bits_splitn n sz l1 = Some l2 ->
+    Forall (fun x => List.length x = sz) l2 /\ List.length l2 = n.
+Proof.
+  induction n; simpl; intros; eauto. inv H; split; constructor.
+  unfold opt_bind in H. repeat destr_in H; inv H.
+  edestruct IHn; eauto. subst. simpl.
+  split; auto.
+  constructor; eauto. eapply take_drop_spec in Heqo. tauto.
+Qed.
+Lemma uvalue_of_list_bits_inv:
+  forall (tau : type) (l : list (list bool))
+         (l0 : list BitsToLists.val)
+         (F: Forall (fun x => List.length x = type_sz tau) l)
+         ( IH : forall (v1 : list bool) (v : BitsToLists.val),
+             Datatypes.length v1 = type_sz tau ->
+             uvalue_of_bits (tau:=tau) v1 = Some v -> wt_val tau v
+         ),
+    uvalue_of_list_bits (tau:=tau) l = Some l0 ->
+    Forall (fun y => wt_val tau y) l0 /\ List.length l0 = List.length l.
+Proof.
+  induction l; simpl; intros; eauto.
+  - inv H; split; constructor.
+  - unfold opt_bind in H. repeat destr_in H; inv H.
+    split.
+    constructor; eauto.
+    eapply IH; eauto. inv F; eauto.
+    inv F. eapply IHl; eauto.
+    simpl; auto.
+    edestruct IHl; eauto. inv F; auto.
+Qed.
+
+Lemma uvalue_of_list_bits_app:
+  forall tau l1 l2 l1' l2',
+    uvalue_of_list_bits (tau:=tau) l1 = Some l1' ->
+    uvalue_of_list_bits (tau:=tau) l2 = Some l2' ->
+    uvalue_of_list_bits (tau:=tau) (l1 ++ l2) = Some (l1' ++ l2').
+Proof.
+  induction l1; simpl; intros; eauto. inv H; auto.
+  unfold opt_bind in H. repeat destr_in H; inv H.
+  simpl. erewrite IHl1; eauto. simpl. auto.
+Qed.
+
+
+Lemma uvalue_of_list_bits_rev:
+  forall tau l l',
+    uvalue_of_list_bits (tau:=tau) l = Some l' ->
+    uvalue_of_list_bits (tau:=tau) (rev l) = Some (rev l').
+Proof.
+  induction l; simpl; intros; eauto. inv H; auto.
+  unfold opt_bind in H. repeat destr_in H; inv H.
+  simpl. eapply uvalue_of_list_bits_app. eauto. simpl. rewrite Heqo. reflexivity.
+Qed.
+
+
+Lemma uvalue_of_struct_bits_wt:
+  forall fields l v
+         (IH : forall (v : string) (t : type),
+             In (v, t) fields ->
+             forall (v1 : list bool) (v0 : BitsToLists.val),
+               Datatypes.length v1 = type_sz t -> uvalue_of_bits (tau:=t) v1 = Some v0 -> wt_val t v0
+         )
+         (LEN: List.length l = struct_fields_sz fields),
+    uvalue_of_struct_bits fields l = Some v ->
+    Forall2 wt_val (map snd fields) v.
+Proof.
+  induction fields; simpl; intros; eauto. inv H. constructor.
+  unfold opt_bind in H. repeat destr_in H; inv H.
+  simpl.
+  constructor; eauto.
+  eapply IH; eauto.
+  eapply take_drop_spec in Heqo. intuition. rewrite H2.
+  rewrite LEN. unfold struct_fields_sz. simpl. lia.
+  eapply IHfields; eauto.
+  eapply take_drop_spec in Heqo. intuition. rewrite H1.
+  rewrite LEN. unfold struct_fields_sz; simpl. lia.
+Qed.
+
+Lemma uvalue_of_bits_wt:
+  forall tau v1 v,
+    List.length v1 = type_sz tau ->
+    uvalue_of_bits (tau:=tau) v1 = Some v ->
+    wt_val tau v.
+Proof.
+  intros tau. pattern tau.
+  eapply type_ind'; simpl; intros; eauto.
+  - inv H0. constructor. auto.
+  - unfold opt_bind in H0; repeat destr_in H0; inv H0.
+    constructor; auto.
+    eapply take_drop_spec in Heqo; eauto. tauto.
+  - unfold opt_bind in H0; repeat destr_in H0; inv H0.
+    rewrite uvalue_of_struct_bits_rew in Heqo.
+    constructor.
+    eapply uvalue_of_struct_bits_wt; eauto.
+  - unfold opt_bind in H0; repeat destr_in H0; inv H0.
+    rewrite UntypedSemantics.uvalue_of_list_bits_rew in Heqo0.
+    apply bits_splitn_inv in Heqo. destruct Heqo.
+    apply uvalue_of_list_bits_rev in Heqo0.
+    rewrite rev_involutive in Heqo0.
+    eapply uvalue_of_list_bits_inv in Heqo0; eauto.
+    destruct Heqo0.
+    constructor.
+    rewrite <- (rev_involutive).
+    eapply UntypedSemantics.Forall_rev. auto.
+    rewrite <- H1, <- H3, rev_length. auto.
+Qed.
+
+Lemma wt_val_bits:
+  forall n m l,
+    n = m ->
+    m = List.length l ->
+    wt_val (bits_t n) (Bits m l).
+Proof.
+  intros; subst; constructor; auto.
+Qed.
+
+Lemma wt_unop_sigma1:
+  forall u ta tr v0 v,
+    wt_unop u ta tr ->
+    wt_val ta v0 ->
+    UntypedSemantics.sigma1 u v0 = Some v ->
+    wt_val tr v.
+Proof.
+  intros u ta tr v0 v WTU WTv SIG.
+  inv WTU; simpl in *.
+  - inv SIG; constructor; reflexivity.
+  - inv SIG; constructor; reflexivity.
+  - inv SIG. erewrite ubits_of_value_len'; eauto. constructor.
+    apply ubits_of_value_len'. auto.
+  - unfold opt_bind in SIG. repeat destr_in SIG; inv SIG.
+    inv WTv.
+    eapply uvalue_of_bits_wt; eauto.
+  - inv SIG; constructor; auto.
+  - inv WTv. simpl in *. inv SIG.
+    rewrite map_length. constructor. apply map_length.
+  - inv WTv. simpl in *. inv SIG.
+    apply wt_val_bits; auto.
+    rewrite app_length. rewrite repeat_length. lia.
+  - inv WTv. simpl in *. inv SIG.
+    apply wt_val_bits; auto.
+    rewrite app_length. rewrite repeat_length. lia.
+  - inv WTv. simpl in *. inv SIG.
+    apply wt_val_bits; auto.
+    rewrite app_length. rewrite repeat_length. lia.
+  - inv WTv. simpl in *. inv SIG.
+    apply wt_val_bits; auto.
+    erewrite length_concat_same. rewrite repeat_length. eauto.
+    rewrite Forall_forall; intros x IN.
+    apply repeat_spec in IN. subst. auto.
+  - inv WTv. simpl in *.
+    repeat destr_in SIG.
+    unfold opt_bind in SIG; repeat destr_in SIG; inv SIG.
+    generalize (take_drop'_spec2 _ _ _ _ Heqp).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp0).
+    generalize (take_drop'_spec _ _ _ _ Heqp).
+    generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
+    apply wt_val_bits; auto.
+    rewrite app_length.
+    rewrite repeat_length. lia.
+  - inv WTv. simpl in *.
+    unfold PrimTypeInference.find_field in H. unfold opt_result in H.
+    destr_in H; inv H.
+    revert H1 SIG Heqo. unfold field_type.
+    revert idx. clear. generalize (struct_fields sg).
+    intro l; revert lv.
+    induction l. simpl. easy.
+    intros. Opaque eq_dec. simpl in *.
+    repeat destr_in Heqo; inv Heqo.
+    + repeat destr_in SIG; inv SIG. inv H1. simpl; auto.
+      simpl in n. congruence.
+    + repeat destr_in SIG; inv SIG. simpl in n; congruence.
+      eapply IHl; eauto.
+      inv H1. simpl; auto.
+  - inv WTv. simpl in *.
+    unfold PrimTypeInference.find_field in H. unfold opt_result in H.
+    destr_in H; inv H.
+    revert H1 SIG Heqo. unfold field_sz, field_type.
+    intros. unfold opt_bind in SIG.
+    repeat destr_in SIG; inv SIG.
+    repeat destr_in Heqo1; inv Heqo1.
+    apply wt_val_bits; auto.
+    generalize (take_drop'_spec2 _ _ _ _ Heqp).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp0).
+    generalize (take_drop'_spec _ _ _ _ Heqp).
+    generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
+    rewrite app_length, repeat_length, H7, H10, H8, H1.
+    clear H H4 H0 H7 H2 H8 H3 H9 H5 H10 Heqp Heqp0.
+    unfold struct_sz. simpl. transitivity n0. 2: lia.
+    revert idx Heqo Heqo0. generalize (struct_fields sg). clear.
+    induction l; simpl; intros; eauto. easy.
+    repeat destr_in Heqo; inv Heqo.
+    + repeat destr_in Heqo0; inv Heqo0; simpl in *. reflexivity.
+      congruence.
+    + repeat destr_in Heqo0; inv Heqo0; simpl in *. congruence. eauto.
+  - inv WTv.
+    rewrite Forall_forall in H1. apply H1.
+    eapply nth_error_In; eauto.
+  - inv WTv. simpl in *.
+    unfold opt_bind in SIG.
+    repeat destr_in SIG; inv SIG.
+    repeat destr_in Heqo; inv Heqo.
+    eapply wt_val_bits; eauto.
+    generalize (take_drop'_spec2 _ _ _ _ Heqp).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp0).
+    generalize (take_drop'_spec _ _ _ _ Heqp).
+    generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
+    rewrite app_length, repeat_length. lia.
+Qed.
+
+
+Lemma bitwise_length:
+  forall f a b,
+    List.length a = List.length b ->
+    List.length (bitwise f a b) = List.length a.
+Proof.
+  induction a; simpl; intros; eauto.
+  - destruct b; simpl in *; try congruence.
+  - destruct b; simpl in *; try congruence.
+    erewrite IHa; eauto.
+Qed.
+
+Lemma wt_binop_sigma1:
+  forall u ta tb tr v0 v1 v,
+    wt_binop u ta tb tr ->
+    wt_val ta v0 ->
+    wt_val tb v1 ->
+    UntypedSemantics.sigma2 u v0 v1 = Some v ->
+    wt_val tr v.
+Proof.
+  intros u ta tb tr v0 b1 v WTB WTv1 WTv2 SIG.
+  inv WTB; simpl in *.
+  - destruct neg; inv SIG; constructor; auto.
+  - repeat destr_in SIG; inv SIG. apply wt_val_bits; auto.
+    inv WTv1. inv WTv2.
+    erewrite bitwise_length; eauto.
+  - repeat destr_in SIG; inv SIG. apply wt_val_bits; auto.
+    inv WTv1. inv WTv2.
+    erewrite bitwise_length; eauto.
+  - repeat destr_in SIG; inv SIG. apply wt_val_bits; auto.
+    inv WTv1. inv WTv2.
+    erewrite bitwise_length; eauto.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    Lemma iter_length:
+      forall {A} n (f: list A -> list A) (l: list A) len,
+        List.length l = len ->
+        (forall l, List.length l = len -> List.length (f l) = len) ->
+      List.length (Nat.iter n f l) = List.length l.
+    Proof.
+      induction n; simpl; intros; eauto.
+      rewrite H0; eauto. erewrite IHn; eauto.
+    Qed.
+    erewrite iter_length. auto. eauto. intros.
+    rewrite <- H.
+    Transparent eq_dec. destruct l. simpl; auto.
+    Opaque removelast. simpl. f_equal.
+    Lemma removelast_length: forall {A} (l: list A), List.length (removelast l) = List.length l - 1.
+    Proof.
+      Transparent removelast.
+      induction l; simpl; intros; eauto.
+      destruct l. reflexivity. Opaque removelast.
+      simpl. rewrite IHl. simpl. lia.
+    Qed.
+    rewrite removelast_length. simpl. lia.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    erewrite iter_length. auto. eauto. intros.
+    rewrite <- H.
+    destruct l. simpl; auto.
+    simpl. rewrite app_length; simpl. lia.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    erewrite iter_length. auto. eauto. intros.
+    rewrite <- H.
+    destruct l; simpl; auto.
+    rewrite app_length; simpl. lia.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    rewrite app_length; simpl. lia.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    destr. destr. unfold fst. destr.
+    generalize (take_drop'_spec _ _ _ _ Heqp).
+    generalize (take_drop'_spec _ _ _ _ Heqp0).
+    generalize (take_drop'_spec _ _ _ _ Heqp1).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp0).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
+    rewrite H6. rewrite ! app_length.
+    rewrite H13. lia.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    destr. destr.
+    generalize (take_drop'_spec _ _ _ _ Heqp).
+    generalize (take_drop'_spec _ _ _ _ Heqp0).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp0).
+    intuition.
+    rewrite app_length, repeat_length. lia.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    rewrite vect_to_list_length. auto.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    rewrite vect_to_list_length. auto.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
+    rewrite vect_to_list_length. auto.
+  - inv WTv1. inv WTv2. destruct eq_dec; try congruence. inv SIG. apply wt_val_bits; auto.
+  - inv WTv1.
+    unfold opt_bind in SIG. repeat destr_in SIG; inv SIG. constructor. auto.
+    unfold PrimTypeInference.find_field in H.
+    unfold opt_result in H. destr_in H; inv H.
+    revert Heqo Heqo0 H1.
+    destruct sg. simpl in *.
+    revert idx WTv2. unfold field_type. simpl.
+    Opaque eq_dec.
+    revert lv l.
+    induction struct_fields; simpl; intros; eauto.
+    inv Heqo0.
+    repeat destr_in Heqo; inv Heqo. simpl in *.
+    rewrite Heqs0 in Heqo0. inv Heqo0. inv H1; constructor; eauto.
+    simpl in *.
+    rewrite Heqs0 in Heqo0. inv Heqo0.
+    unfold opt_bind in H0. destr_in H0; inv H0.
+    destr_in H2; inv H2. inv H1; constructor; eauto.
+  - inv WTv1. inv WTv2.
+    unfold opt_bind in SIG. repeat destr_in SIG; inv SIG. apply wt_val_bits; auto.
+    unfold PrimTypeInference.find_field in H.
+    unfold opt_result in H. destr_in H; inv H.
+    rewrite <- H1.
+    unfold fst. destr.
+    generalize (take_drop'_spec _ _ _ _ Heqp).
+    generalize (take_drop'_spec _ _ _ _ Heqp2).
+    generalize (take_drop'_spec _ _ _ _ Heqp1).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp2).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
+    rewrite H10, ! app_length.
+    rewrite H8, H15, H9.
+    cut (n0 = List.length bs0). lia.
+    rewrite H2. clear - Heqo Heqo0.
+    revert idx Heqo Heqo0.
+    unfold field_sz, field_type. generalize (struct_fields sg). induction l; simpl; intros; eauto.
+    easy.
+    repeat destr_in Heqo; inv Heqo; simpl in *;
+      rewrite Heqs0 in Heqo0; inv Heqo0. reflexivity.
+    destr_in H1; inv H1; eauto.
+  - inv WTv1.
+    unfold opt_bind in SIG. repeat destr_in SIG; inv SIG.
+    generalize (take_drop_spec _ _ _ _ Heqo); intuition. subst. constructor.
+    2: rewrite <- H2, ! app_length; simpl; auto.
+    Lemma Forall_app:
+      forall {A} (P: A -> Prop) l1 l2,
+        Forall P (l1 ++ l2) <-> (Forall P l1 /\ Forall P l2).
+    Proof.
+      induction l1; simpl; intros; eauto.
+      split. split; auto. intuition.
+      intuition. inv H; constructor; auto. rewrite IHl1 in H3; intuition.
+      inv H. rewrite IHl1 in H3; intuition.
+      inv H0. constructor. auto. rewrite IHl1; tauto.
+    Qed.
+    rewrite Forall_app in H1 |- *. destruct H1; split; auto.
+    inv H1; constructor; auto.
+  - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits. auto.
+    destr. destr. unfold fst. destr.
+    generalize (take_drop'_spec _ _ _ _ Heqp).
+    generalize (take_drop'_spec _ _ _ _ Heqp0).
+    generalize (take_drop'_spec _ _ _ _ Heqp1).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp0).
+    generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
+    rewrite H9, ! app_length.
+    rewrite H11, H16. lia.
+Qed.
+
+
+
+Lemma interp_unop_wt_preserves:
+  forall (ctx ctx' : list (var_t * BitsToLists.val)) (sig : tsig var_t)
+         (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
+         (v : BitsToLists.val) u a ta tr,
+    wt_renv REnv r ->
+    wt_env sig ctx ->
+    wt_log REnv action_log ->
+    wt_log REnv sched_log ->
+    wt_unop u ta tr ->
+    wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig a ta ->
+    interp_action r sigma ctx action_log sched_log (UUnop u a) action_log' v ctx' ->
+    (forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+            (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
+            (v : BitsToLists.val),
+        wt_renv REnv r ->
+        wt_env sig ctx ->
+        wt_log REnv action_log ->
+        wt_log REnv sched_log ->
+        wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig a t ->
+        interp_action r sigma ctx action_log sched_log a action_log' v ctx' ->
+        wt_env sig ctx' /\ wt_val t v /\ wt_log REnv action_log'
+    ) ->
+    wt_env sig ctx' /\ wt_val tr v /\ wt_log REnv action_log'.
+Proof.
+  intros ctx ctx' sig action_log sched_log action_log' v u a ta tr WTR WTE WTLA WTLS WTU WTA INT IH.
+  iinv INT.
+  eapply IH in H16; eauto.
+  destruct H16 as (WTE' & WTv & WTLA'). repeat split; eauto.
+  eapply wt_unop_sigma1; eauto.
+Qed.
+
+
+
+Lemma interp_binop_wt_preserves:
+  forall (ctx ctx' : list (var_t * BitsToLists.val)) (sig : tsig var_t)
+         (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
+         (v : BitsToLists.val) u a b ta tb tr,
+    wt_renv REnv r ->
+    wt_env sig ctx ->
+    wt_log REnv action_log ->
+    wt_log REnv sched_log ->
+    wt_binop u ta tb tr ->
+    wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig a ta ->
+    wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig b tb ->
+    interp_action r sigma ctx action_log sched_log (UBinop u a b) action_log' v ctx' ->
+    (forall ua, ua = a \/ ua = b -> forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+            (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
+            (v : BitsToLists.val),
+        wt_renv REnv r ->
+        wt_env sig ctx ->
+        wt_log REnv action_log ->
+        wt_log REnv sched_log ->
+        wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua t ->
+        interp_action r sigma ctx action_log sched_log ua action_log' v ctx' ->
+        wt_env sig ctx' /\ wt_val t v /\ wt_log REnv action_log'
+    ) ->
+    wt_env sig ctx' /\ wt_val tr v /\ wt_log REnv action_log'.
+Proof.
+  intros ctx ctx' sig action_log sched_log action_log' v u a b ta tb tr WTR WTE WTLA WTLS WTU WTA WTB INT IH.
+  iinv INT.
+  eapply IH in H17; eauto.
+  destruct H17 as (WTE' & WTv & WTLA').
+  eapply IH in H18; eauto.
+  destruct H18 as (WTE'' & WTv' & WTLA'').
+  repeat split; eauto.
+  eapply wt_binop_sigma1; eauto.
+Qed.
+
+
+
+Lemma interp_list_ctx_wt:
+  forall (i: list (var_t * BitsToLists.val) ->
+             UntypedSemantics.Log REnv ->
+             UntypedSemantics.Log REnv ->
+             uaction pos_t var_t fn_name_t reg_t ext_fn_t ->
+             UntypedSemantics.Log REnv -> BitsToLists.val -> list (var_t * BitsToLists.val) ->
+             Prop) args argtypes
+         (WTR: wt_renv REnv r)
+         (ARGS: Forall2 (fun '(_, a) t =>
+                           forall sig ctx ctx' action_log sched_log action_log' v,
+                             wt_env sig ctx ->
+                             wt_log REnv action_log ->
+                             wt_log REnv sched_log ->
+                             wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig a t ->
+                             i ctx action_log sched_log a action_log' v ctx' ->
+                             wt_env sig ctx' /\ wt_val t v /\ wt_log REnv action_log'
+                        ) args argtypes),
+  forall sig ctx action_log sched_log,
+    wt_env sig ctx ->
+    wt_log REnv action_log ->
+    wt_log REnv sched_log ->
+    forall (WTL: wt_list sig args argtypes),
+    forall action_log' ctx',
+      interp_list_ctx
+        r sigma i ctx action_log sched_log args action_log' ctx' ->
+      wt_env (rev (map (fun '(name, _, t) => (name,t)) (combine args argtypes)) ++ sig) ctx' /\
+      wt_log REnv action_log'.
+Proof.
+  induction args; simpl; intros; eauto.
+  - inv ARGS. inv H2. split; eauto.
+  - inv ARGS. inv H2.
+    inv WTL.
+    eapply H5 in H10; eauto.
+    destruct H10 as (WTE' & WTv' & WTLA').
+    eapply IHargs in H13; eauto.
+    2: constructor; auto. destruct H13. split; auto.
+    simpl.
+    rewrite <- app_assoc. simpl. auto.
+Qed.
+
+
+Lemma wt_action_preserves_wt_env:
+  forall a ctx ctx' t sig action_log sched_log action_log' v,
+    wt_renv REnv r ->
+    wt_env sig ctx ->
+    wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig a t ->
+    wt_log REnv action_log ->
+    wt_log REnv sched_log ->
+    UntypedIndSemantics.interp_action r sigma ctx action_log sched_log a action_log' v ctx' ->
+    wt_env sig ctx' /\ wt_val t v /\ wt_log REnv action_log'.
+Proof.
+  intros ua.
+  remember (size_uaction ua).
+  revert ua Heqn.
+  pattern n.
+  eapply Nat.strong_right_induction with (z:=0).
+  { red. red. intros. subst. tauto. } 2: lia.
+  intros n0 _ Plt ua Heqn. subst.
+  assert (Plt':
+            forall
+              (ua': Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t),
+              size_uaction ua' < size_uaction ua ->
+              forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+                     (action_log sched_log action_log' : UntypedSemantics.Log REnv) (v : BitsToLists.val),
+                wt_renv REnv r ->
+                wt_env sig ctx ->
+                wt_log REnv action_log ->
+                wt_log REnv sched_log ->
+                wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua' t ->
+                interp_action r sigma ctx action_log sched_log ua' action_log' v ctx' -> wt_env sig ctx' /\ wt_val t v /\ wt_log REnv action_log').
+  { intros. eapply Plt. 3: reflexivity. lia. auto. eauto. eauto. 5: eauto. all: eauto. } clear Plt.
+  rename Plt' into IHua. clear n.
+  intros ctx ctx' t sig action_log sched_log action_log' v WTR WTE WTA WTLa WTLs INT.
+  inv WTA.
+  - iinv INT.
+  - iinv INT. repeat split; auto.
+    eapply wt_env_list_assoc; eauto.
+  - iinv INT. repeat split; auto. apply wt_val_of_value.
+  - iinv INT.
+    eapply IHua in H18. 2: simpl; lia. all: eauto.
+    destruct H18 as (? & ? & ?).
+    repeat split; eauto.
+    + eapply wt_env_set; eauto.
+    + constructor; reflexivity.
+  - iinv INT.
+    eapply (IHua) in H18; eauto. 2: simpl; lia.
+    eapply (IHua) in H19; eauto. simpl; lia. tauto. tauto.
+  - iinv INT.
+    eapply (IHua) in H19; eauto. 2: simpl; lia.
+    eapply (IHua) in H20; eauto. 2: simpl; lia.
+    + intuition.
+      inv H5. simpl; auto.
+    + intuition. constructor; auto.
+    + tauto.
+  - iinv INT.
+    eapply (IHua) in H20; eauto. 2: simpl; lia.
+    eapply (IHua) in H21; eauto. destruct b; simpl; lia. tauto. tauto.
+    destruct b; auto.
+  - iinv INT. repeat split; auto.
+    destr. eauto.
+    + destr; eauto. unfold latest_write0 in Heqo.
+
+      edestruct @log_find_wt. apply Heqo.  intros. destruct x; simpl in H0.
+      repeat destr_in H0; inv H0. reflexivity.
+
+      eapply wt_log_app; eauto. destruct H0.
+      unfold log_latest_write0_fn in H0. repeat destr_in H0; inv H0. simpl in *; auto.
+    + eapply wt_log_cons; eauto. simpl. congruence.
+  - iinv INT.
+    eapply IHua in H18. 2: simpl; lia. all: eauto.
+    destruct H18 as (? & ? & ?).
+    repeat split. 2: constructor; reflexivity. auto.
+    eapply wt_log_cons; eauto.
+  -
+
+    eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H1; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H2; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H2; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H2; subst; simpl; lia. all: eauto.
+  - eapply interp_binop_wt_preserves. 8: eauto. all: eauto. econstructor; eauto.
+    intros; eapply IHua. 7: eauto. destruct H2; subst; simpl; lia. all: eauto.
+  - iinv INT.
+    edestruct IHua as (WTE' & WTv & WTLA'). 7: eauto. all: eauto.
+  - iinv INT.
+
+    Lemma interp_list_wt:
+      forall (i: list (var_t * BitsToLists.val) ->
+  UntypedSemantics.Log REnv ->
+  UntypedSemantics.Log REnv ->
+  uaction pos_t var_t fn_name_t reg_t ext_fn_t ->
+  UntypedSemantics.Log REnv -> BitsToLists.val -> list (var_t * BitsToLists.val) -> Prop) args argtypes
+             sig
+             (WTR: wt_renv REnv r)
+             (ARGS: Forall2 (fun a t =>
+                               forall ctx ctx' action_log sched_log action_log' v,
+                                 wt_env sig ctx ->
+                                 wt_log REnv action_log ->
+                                 wt_log REnv sched_log ->
+                                 i ctx action_log sched_log a action_log' v ctx' ->
+                                 wt_env sig ctx' /\ wt_val t v /\ wt_log REnv action_log'
+                            ) args argtypes),
+             forall ctx action_log sched_log,
+               wt_env sig ctx ->
+               wt_log REnv action_log ->
+               wt_log REnv sched_log ->
+               forall action_log' ctx' lv,
+                 interp_list
+                   r sigma i ctx action_log sched_log args action_log' lv ctx' ->
+                 wt_env sig ctx' /\
+                 Forall2 (fun v t => wt_val t v) (rev lv) argtypes /\
+                 wt_log REnv action_log'.
+    Proof.
+      induction args; simpl; intros; eauto.
+      - inv ARGS. inv H2. simpl; repeat split; eauto.
+      - inv ARGS. inv H2.
+        eapply H5 in H10; eauto. rewrite rev_app_distr. simpl.
+        destruct H10 as (WTE' & WTv' & WTLA').
+        eapply IHargs in H14; eauto.
+        intuition.
+    Qed.
+    edestruct interp_list_wt as (WTE' & WTLV & WTLA'). 6: eauto. all: eauto.
+
+    Lemma Forall2_impl:
+      forall {A B} (P1 P2: A -> B -> Prop) l1 l2,
+        Forall2 P1 l1 l2 ->
+        (forall x y, In x l1 -> In y l2 -> P1 x y -> P2 x y) ->
+        Forall2 P2 l1 l2.
+    Proof.
+      induction 1; simpl; intros; eauto.
+      constructor; eauto.
+    Qed.
+
+    Lemma wt_env_app:
+      forall sig1 ctx1,
+        wt_env sig1 ctx1 ->
+        forall sig2 ctx2,
+        wt_env sig2 ctx2 ->
+        wt_env (sig1 ++ sig2) (ctx1 ++ ctx2).
+    Proof.
+      induction 1; simpl; intros; eauto.
+      constructor; auto.
+    Qed.
+
+    Lemma wt_env_rev:
+      forall sig ctx,
+        wt_env sig ctx ->
+        wt_env (rev sig) (rev ctx).
+    Proof.
+      induction 1; simpl; intros; eauto. constructor.
+      apply wt_env_app. auto. repeat constructor. auto.
+    Qed.
+
+    Lemma forall2_wt_wt_env:
+      forall lv lt,
+      Forall2 (fun v t => wt_val t v) lv (map snd lt) ->
+      wt_env (rev lt) (map (fun '(name, _, v0) => (name, v0)) (combine (rev lt) (rev lv))).
+    Proof.
+      intros. rewrite <- UntypedSemantics.combine_rev.
+      2: erewrite (Forall2_length _ _ _ H), map_length; eauto.
+      rewrite map_rev.
+      apply wt_env_rev.
+      revert lt H.
+      induction lv; simpl; intros; eauto.
+      - inv H. destruct lt; simpl in *; try congruence. constructor.
+      - inv H. destruct lt; simpl in *; try congruence.
+        destr. simpl in *. inv H2. constructor; eauto.
+    Qed.
+    eapply Forall2_impl. eauto.
+    intros; eauto.
+    eapply IHua. 7: eauto. all: eauto. simpl.
+    clear - H3. revert H3; induction args; simpl; intros; eauto. easy.
+    destruct H3; subst; simpl in *; eauto. lia.
+    apply IHargs in H. lia.
+    eapply IHua in H19; eauto. tauto. simpl; lia.
+    eapply forall2_wt_wt_env in WTLV.
+    rewrite rev_involutive in WTLV. auto.
+  - iinv INT.
+    eapply IHua. 7: eauto. all: eauto.
+  - iinv INT.
+    repeat split; eauto. constructor; reflexivity.
+  - iinv INT.
+    repeat split; eauto. apply wt_val_bits; auto. unfold l; rewrite vect_to_list_length. auto.
+  - iinv INT.
+    repeat split; eauto. constructor.
+    2: rewrite map_length, vect_to_list_length; reflexivity. simpl.
+    rewrite Forall_forall. intro. rewrite in_map_iff. intros (x0 & EQ & IN). subst.
+    apply wt_val_bits; auto.
+  - iinv INT. repeat split; eauto.
+    apply wt_val_of_value.
+  - iinv INT.
+    edestruct interp_list_wt as (WTE' & WTLV & WTLA'). 6: eauto. all: eauto.
+    instantiate (1:=map (fun _ => unit_t) aa).
+    assert (Forall2 (fun a t => wt_action _ _ _ _ _ R Sigma sig a t) aa (map (fun _ => unit_t) aa)). {
+      clear - H. revert H. induction aa; simpl; intros; eauto. constructor; eauto.
+    }
+    eapply Forall2_impl. eauto.
+    intros; eauto.
+    eapply IHua. 7: eauto. all: eauto. simpl.
+    clear - H2. revert H2; induction aa; simpl; intros; eauto. easy.
+    destruct H2; subst; simpl in *; eauto. lia.
+    apply IHaa in H. lia.
+    repeat split; eauto.
+    apply UntypedSemantics.Forall2_rev in WTLV. rewrite rev_involutive in WTLV. inv WTLV.
+    simpl; constructor; auto.
+    simpl.
+    assert (IN: In y (y :: l')) by (simpl; auto).
+    rewrite H1 in IN. rewrite <- In_rev in IN.
+    rewrite in_map_iff in IN.
+    decompose [ex and] IN. subst. auto.
+  - iinv INT.
+
+    assert (IHua': forall ua' : uaction pos_t var_t fn_name_t reg_t ext_fn_t,
+               In ua' (map snd bindings) ->
+               forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+                      (action_log sched_log action_log' : UntypedSemantics.Log REnv)
+                      (v : BitsToLists.val),
+                 wt_renv REnv r ->
+                 wt_env sig ctx ->
+                 wt_log REnv action_log ->
+                 wt_log REnv sched_log ->
+                 wt_action pos_t fn_name_t var_t ext_fn_t reg_t R Sigma sig ua' t ->
+                 interp_action r sigma ctx action_log sched_log ua' action_log' v ctx' ->
+                 wt_env sig ctx' /\ wt_val t v /\ wt_log REnv action_log'
+           ).
+    {
+      intros; eapply IHua. 7: eauto. all: eauto.
+      simpl. clear - H3. revert H3.
+      induction bindings; simpl; intros; eauto. easy.
+      destruct a, H3; simpl in *; subst. lia.
+      apply IHbindings in H. lia.
+    }
+
+    clear H. assert(H: wt_list sig bindings bind_taus). admit.
+
+    edestruct interp_list_ctx_wt as (WTE' & WTLA'). 7: eauto. all: eauto.
+
+    eapply Forall2_impl. eauto.
+    intros. simpl in H5. destruct x.  intros. eapply IHua. 7: eauto.
+    all: eauto. simpl. clear -H3.
+    revert H3.
+    induction bindings; simpl; intros; eauto. easy.
+    destruct H3. subst. simpl. lia.
+    apply IHbindings in H. lia. simpl in H5; auto.
+Qed.
+
+End WT.

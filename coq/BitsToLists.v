@@ -1207,6 +1207,15 @@ Section WT.
   | wt_var_intro: forall sig v t tm,
     assoc v sig = Some tm -> projT1 tm = t -> wt_var sig v t.
 
+
+  Inductive wt_list (P: tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop)
+    : tsig var_t -> list (var_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t) -> list type -> Prop :=
+  | wt_list_nil sig : wt_list P sig [] []
+  | wt_list_cons sig v a l t lt:
+      P sig a t ->
+      wt_list P ((v,t)::sig) l lt ->
+      wt_list P sig ((v,a)::l) (t::lt).
+
   Inductive wt_action
     : tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop
   :=
@@ -1422,7 +1431,8 @@ Section WT.
     (forall a, In a aa -> wt_action sig a unit_t) ->
     wt_action sig (USugar (UProgn aa)) (bits_t 0)
   | wt_action_ulet: forall sig bindings body (bind_taus : list type) body_tau,
-    Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus ->
+      wt_list wt_action sig bindings bind_taus ->
+    (* Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus -> *)
     wt_action (snd (
     List.fold_left
       (fun (p: (nat * list (var_t * type))) v =>
