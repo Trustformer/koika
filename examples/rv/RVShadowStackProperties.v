@@ -30,7 +30,8 @@ Section ShadowStackProperties.
   : Prop :=
     getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.size))
     = @val_of_value
-      (bits_t RV32I.ShadowStack.index_sz) (Bits.of_nat (RV32I.ShadowStack.index_sz) 0).
+      (bits_t RV32I.ShadowStack.index_sz)
+      (Bits.of_nat (RV32I.ShadowStack.index_sz) 0).
 
   Definition stack_full
     (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
@@ -151,7 +152,8 @@ Section ShadowStackProperties.
     let index := index_of_nat (pow2 RV32I.ShadowStack.index_sz) index_nat in
     match index with
     | Some x =>
-      let data_raw := (getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.stack x))) in
+      let data_raw :=
+        (getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.stack x))) in
       Some (Bits.of_N 32 (Bits.to_N (vect_of_list (ubits_of_value data_raw))))
     | None => None
     end.
@@ -181,8 +183,7 @@ Section ShadowStackProperties.
     forall ctx',
     UntypedIndSemantics.interp_cycle
       RV32I.rv_urules ctx ext_sigma schedule ctx' ->
-    getenv REnv ctx' RV32I.halt = @val_of_value (bits_t 1) Ob~1
-  .
+    getenv REnv ctx' RV32I.halt = @val_of_value (bits_t 1) Ob~1.
 
   (* Fixpoint interp_n_cycles *)
   (*   n (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)) *)
@@ -190,9 +191,10 @@ Section ShadowStackProperties.
   (*   match n with *)
   (*   | O => ctx *)
   (*   | S n' => interp_n_cycles n' ( *)
-  (*     UntypedIndSemantics.interp_cycle *)
-  (*       RV32I.rv_urules ctx ext_sigma schedule ctx' -> *)
-  (*   ) *)
+  (*       UntypedIndSemantics.interp_cycle *)
+  (*         RV32I.rv_urules ctx ext_sigma schedule *)
+  (*     ) *)
+  (*   end. *)
 
   (* Definition is_sink_state *)
   (*   (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)) *)

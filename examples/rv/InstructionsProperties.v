@@ -1126,11 +1126,6 @@ Definition get_fct7 (b : list bool) : option fct7_type :=
   | nil       => None
   end.
 
-Compute get_fct3 (
-  vect_to_list
-  (Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0~0~1~1)
-).
-
 Definition filter_by_opcode (o : opcode_name) (instrs : list instruction)
   : list instruction
 := List.filter (fun i => opcode_name_beq o (instruction_opcode i)) instrs.
@@ -1184,11 +1179,6 @@ Definition filter_by_fct7_decode (fct7 : fct7_type) (instrs : list instruction)
 
 (* Definition decode (b : bits_t 32) (instrs : list instruction) : instruction := *)
 (*   let bits := vect_to_list b in. *)
-
-(* Compute get_opcode ( *)
-(*   vect_to_list *)
-(*   (Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0~0~1~1) *)
-(* ). *)
 
 (* TODO refactor *)
 (* Definition filter_by_opcode (o : opcode_name) (instrs : list instruction) *)

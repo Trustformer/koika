@@ -34,7 +34,6 @@ Section RVHelpers.
   |}.
 
   Definition inst_field := get_inst_fields_struct_from_ISA isa.
-  Compute inst_field.
 
   Definition getFields
     `{finite_reg: FiniteType reg_t}
@@ -1115,50 +1114,6 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
     if (read0(halt) == Ob~1) then fail else pass;
     write0(cycle_count, read0(cycle_count) + |32`d1|)
   }}.
-
-  Definition rv_register_name {n} (v: Vect.index n) :=
-    match index_to_nat v with
-    | 0  => "x00_zero"  (* hardwired zero *)
-    | 1  => "x01_ra"    (* caller-saved, return address *)
-    | 2  => "x02_sp"    (* callee-saved, stack pointer *)
-    | 3  => "x03_gp"    (* global pointer *)
-    | 4  => "x04_tp"    (* thread pointer *)
-    | 5  => "x05_t0"    (* caller-saved, temporary registers *)
-    | 6  => "x06_t1"    (* caller-saved, temporary registers *)
-    | 7  => "x07_t2"    (* caller-saved, temporary registers *)
-    | 8  => "x08_s0_fp" (* callee-saved, saved register/frame pointer *)
-    | 9  => "x09_s1"    (* callee-saved, saved register *)
-    | 10 => "x10_a0"    (* caller-saved, function arguments/return values *)
-    | 11 => "x11_a1"    (* caller-saved, function arguments/return values *)
-    | 12 => "x12_a2"    (* caller-saved, function arguments *)
-    | 13 => "x13_a3"    (* caller-saved, function arguments *)
-    | 14 => "x14_a4"    (* caller-saved, function arguments *)
-    | 15 => "x15_a5"    (* caller-saved, function arguments *)
-    | 16 => "x16_a6"    (* caller-saved, function arguments *)
-    | 17 => "x17_a7"    (* caller-saved, function arguments *)
-    | 18 => "x18_s2"    (* callee-saved, saved registers *)
-    | 19 => "x19_s3"    (* callee-saved, saved registers *)
-    | 20 => "x20_s4"    (* callee-saved, saved registers *)
-    | 21 => "x21_s5"    (* callee-saved, saved registers *)
-    | 22 => "x22_s6"    (* callee-saved, saved registers *)
-    | 23 => "x23_s7"    (* callee-saved, saved registers *)
-    | 24 => "x24_s8"    (* callee-saved, saved registers *)
-    | 25 => "x25_s9"    (* callee-saved, saved registers *)
-    | 26 => "x26_s10"   (* callee-saved, saved registers *)
-    | 27 => "x27_s11"   (* callee-saved, saved registers *)
-    | 28 => "x28_t3"    (* caller-saved, temporary registers *)
-    | 29 => "x29_t4"    (* caller-saved, temporary registers *)
-    | 30 => "x30_t5"    (* caller-saved, temporary registers *)
-    | 31 => "x31_t6"    (* caller-saved, temporary registers *)
-    | _  => ""
-    end.
-
-  Instance Show_rf : Show (Rf.reg_t) :=
-    {| show '(Rf.rData v) := rv_register_name v |}.
-
-  Instance Show_scoreboard : Show (Scoreboard.reg_t) := {|
-    show '(Scoreboard.Scores (Scoreboard.Rf.rData v)) := rv_register_name v
-  |}.
 
   Existing Instance ShadowStack.Show_reg_t.
   Instance Show_reg_t : Show reg_t := _.

@@ -29,10 +29,8 @@ Module RVProofs.
   Definition initial_env := create REnv RV32I.r.
 
   Definition CEnv := @ContextEnv RV32I.reg_t RV32I.FiniteType_reg_t.
-  Set NativeCompute Profiling.
   Definition initial_context_env := CEnv.(create) (RV32I.r).
 
-  Compute @initial_context_env.
   Definition f_init := fun x => val_of_value (initial_context_env.[x]).
 
   Theorem osef : initial_context_env.[RV32I.on_off] = Ob~0.
