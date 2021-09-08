@@ -1200,11 +1200,27 @@ Section WT.
   Context {eq_dec_var_t: EqDec var_t}.
 
   Inductive wt_var
-    {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
-    {Sigma: ext_fn_t -> ExternalSignature}
   : tsig var_t -> var_t -> type -> Prop :=
   | wt_var_intro: forall sig v t tm,
     assoc v sig = Some tm -> projT1 tm = t -> wt_var sig v t.
+
+
+  Inductive wt_list
+            {ext_fn_t: Type} {reg_t: Type}
+            (P: tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop)
+    : tsig var_t -> list (var_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t) -> list type -> Prop :=
+  | wt_list_nil sig : wt_list P sig [] []
+  | wt_list_cons sig v a l t lt:
+      P sig a t ->
+      wt_list P ((v,t)::sig) l lt ->
+      wt_list P sig ((v,a)::l) (t::lt).
+
+  Inductive sig_of_bindings {A:Type} : list (var_t * A) -> list type -> tsig var_t -> Prop :=
+  | sig_of_bindings_nil: sig_of_bindings [] [] []
+  | sig_of_bindings_cons:
+      forall bindings bind_taus sig v x t,
+        sig_of_bindings bindings bind_taus sig ->
+        sig_of_bindings ((x,v)::bindings) (t::bind_taus) ((x,t)::sig).
 
   Inductive wt_action
     {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
@@ -1213,11 +1229,11 @@ Section WT.
   :=
   | wt_action_fail: forall sig t, wt_action sig (UFail t) t
   | wt_action_var: forall sig var t,
-    @wt_var ext_fn_t reg_t R Sigma sig var t -> wt_action sig (UVar var) t
+    wt_var sig var t -> wt_action sig (UVar var) t
   | wt_action_const: forall sig tau cst,
     wt_action sig (@UConst _ _ _ _ _ tau cst) tau
   | wt_action_assign: forall sig k a t,
-    wt_action sig a t -> @wt_var ext_fn_t reg_t R Sigma sig k t ->
+    wt_action sig a t -> wt_var sig k t ->
     wt_action sig (UAssign k a) (bits_t 0)
   | wt_action_seq: forall sig a1 a2 t2,
     wt_action sig a1 unit_t -> wt_action sig a2 t2 -> wt_action sig (USeq a1 a2) t2
@@ -1422,34 +1438,29 @@ Section WT.
   | wt_action_uprogn: forall sig aa,
     (forall a, In a aa -> wt_action sig a unit_t) ->
     wt_action sig (USugar (UProgn aa)) (bits_t 0)
-  | wt_action_ulet: forall sig bindings body (bind_taus : list type) body_tau,
-    Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus ->
-    wt_action (snd (
-    List.fold_left
-      (fun (p: (nat * list (var_t * type))) v =>
-        (* Forall2 ensures that nth never returns the default value *)
-        ((fst p)+1, (fst v, List.nth (fst p) bind_taus unit_t)::(snd p))
-      )
-      bindings (0, [])
-    ) ++ sig) body body_tau ->
+  | wt_action_ulet: forall sig sig' bindings body (bind_taus : list type) body_tau,
+      wt_list wt_action sig bindings bind_taus ->
+      (* Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus -> *)
+      sig_of_bindings bindings bind_taus sig' ->
+    wt_action (rev sig' ++ sig) body body_tau ->
     wt_action sig (USugar (ULet bindings body)) body_tau
-  | wt_action_uwhen: forall sig cond body tau,
+  | wt_action_uwhen: forall sig cond body,
     wt_action sig cond (bits_t 1) ->
-    wt_action sig body tau ->
+    wt_action sig body unit_t ->
     (* XXX See related FIXME comment in Desugaring.v *)
-    wt_action sig (USugar (UWhen cond body)) tau
+    wt_action sig (USugar (UWhen cond body)) unit_t
   | wt_action_uswitch: forall sig var default branches tau tau',
     wt_action sig var tau ->
-    wt_action sig default tau ->
+    wt_action sig default tau' ->
     Forall (
       fun b => wt_action sig (fst b) tau /\ wt_action sig (snd b) tau'
     ) branches ->
     wt_action sig (USugar (USwitch var default branches)) tau'
   | wt_action_ustructinit: forall sig (sg: struct_sig) fields,
     Forall (
-      fun f => exists n x y,
-      List.nth_error (struct_fields sg) n = Some (fst f, x)
-      /\ wt_action sig (snd f) (snd (List.nth n (struct_fields sg) (y, unit_t)))
+        fun f => exists idx,
+            PrimTypeInference.find_field sg (fst f) = Success idx /\
+            wt_action sig (snd f) (snd (List_nth (struct_fields sg) idx))
     ) fields ->
     wt_action sig (USugar (UStructInit sg fields)) (struct_t sg)
   | wt_action_uarrayinit: forall sig tau elements,
@@ -1472,4 +1483,5 @@ Section WT.
       (fun x => Sigma (fSigma x)) (List.rev fn.(int_argspec)) (int_body fn)
       (int_retSig fn) ->
     wt_action sig (USugar (UCallModule fR fSigma fn args)) (fn.(int_retSig)).
+
 End WT.
