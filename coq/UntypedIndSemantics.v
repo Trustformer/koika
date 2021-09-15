@@ -470,7 +470,7 @@ Section Interp.
     -> interp_action
       r sigma Gamma sched_log action_log (URead prt idx)
       (log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log)
-      ( match prt with
+      (match prt with
         | P0 => REnv.(getenv) r idx
         | P1 =>
           match latest_write0 (V:=val) (log_app action_log sched_log) idx with
@@ -550,7 +550,7 @@ Section Interp.
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
       (sigma: forall f: ext_fn_t, val -> val) (Gamma: list (var_t * val))
-      (sched_log: Log REnv) (action_log: Log REnv) ,
+      (sched_log: Log REnv) (action_log: Log REnv),
       interp_action
         r sigma Gamma sched_log action_log (USugar USkip) action_log
         (Bits 0 []) Gamma
