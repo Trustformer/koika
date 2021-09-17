@@ -1010,8 +1010,6 @@ Section Interp.
         Some (fLog' fR REnv REnv' action_log1 action_log, v, Gamma0)
     end.
 
-  Compute log_empty.
-
   (* TODO remove *)
   Fixpoint interp_action_2
     {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))

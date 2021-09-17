@@ -140,7 +140,7 @@ Section Interp.
       (Pintcall: forall (sig : tsig var_t) (tau : type) (fn : fn_name_t) (argspec : tsig var_t)
                         (args : context
                                   (fun k_tau : var_t * type =>
-                                     TypedSyntax.action pos_t var_t fn_name_t R Sigma sig (snd k_tau)) 
+                                     TypedSyntax.action pos_t var_t fn_name_t R Sigma sig (snd k_tau))
                                   (rev argspec))
                         (body : TypedSyntax.action pos_t var_t fn_name_t R Sigma (rev argspec) tau)
                         (Pargs: forall k (m: member k (rev argspec)),
@@ -513,7 +513,7 @@ Section Interp.
       forall
         (P : forall (sched_log: Log)(sig : tsig var_t) (tau : type),
             tcontext sig -> Log -> action sig tau -> Log -> tau -> tcontext sig -> Prop)
-        (Pvar : forall (sched_log : Log) (sig : list (var_t * type)) (tau : type) (Gamma : tcontext sig) 
+        (Pvar : forall (sched_log : Log) (sig : list (var_t * type)) (tau : type) (Gamma : tcontext sig)
                        (action_log : Log) (k : var_t) (m : member (k, tau) sig),
             P sched_log sig tau Gamma action_log (Var m) action_log (cassoc m Gamma) Gamma)
         (Pcst : forall (sched_log : Log) (sig : tsig var_t) (tau : type) (Gamma : tcontext sig) (action_log : Log) (cst : tau),
@@ -526,8 +526,8 @@ Section Interp.
             ind_interp_action sched_log Gamma' action_log' a2 action_log'' v2 Gamma'' ->
             P sched_log sig tau2 Gamma' action_log' a2 action_log'' v2 Gamma'' ->
             P sched_log sig tau2 Gamma action_log (Seq a1 a2) action_log'' v2 Gamma'')
-        (Passign : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log) 
-                          (k : var_t) (tau : type) (m : member (k, tau) sig) (a : action sig tau) 
+        (Passign : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log)
+                          (k : var_t) (tau : type) (m : member (k, tau) sig) (a : action sig tau)
                           (action_log' : Log) (Gamma' : tcontext sig) (v : tau),
             ind_interp_action sched_log Gamma action_log a action_log' v Gamma' ->
             P sched_log sig tau Gamma action_log a action_log' v Gamma' ->
@@ -543,7 +543,7 @@ Section Interp.
             P sched_log ((var, tau1) :: sig) tau2 (CtxCons (var, tau1) v1 Gamma') action_log' a2 action_log'' v2
               Gamma'' -> P sched_log sig tau2 Gamma action_log (Bind var a1 a2) action_log'' v2 (ctl Gamma''))
         (Piftrue: forall (sched_log : Log) (sig : tsig var_t) (tau2 : type) (Gamma : tcontext sig) (action_log : Log)
-                         (cond : action sig (bits_t 1)) (action_log' action_log'' : Log) 
+                         (cond : action sig (bits_t 1)) (action_log' action_log'' : Log)
                          (v1 : bits_t 1) (v2 : tau2) (Gamma' Gamma'' : tcontext sig)
                          (tbranch fbranch : action sig tau2),
             ind_interp_action sched_log Gamma action_log cond action_log' v1 Gamma' ->
@@ -553,7 +553,7 @@ Section Interp.
             P sched_log sig tau2 Gamma' action_log' tbranch action_log'' v2 Gamma'' ->
             P sched_log sig tau2 Gamma action_log (If cond tbranch fbranch) action_log'' v2 Gamma'')
         (Piffalse : forall (sched_log : Log) (sig : tsig var_t) (tau2 : type) (Gamma : tcontext sig) (action_log : Log)
-                           (cond : action sig (bits_t 1)) (action_log' action_log'' : Log) 
+                           (cond : action sig (bits_t 1)) (action_log' action_log'' : Log)
                            (v1 : bits_t 1) (v2 : tau2) (Gamma' Gamma'' : tcontext sig)
                            (tbranch fbranch : action sig tau2),
             ind_interp_action sched_log Gamma action_log cond action_log' v1 Gamma' ->
@@ -566,39 +566,39 @@ Section Interp.
             may_read sched_log prt idx = true ->
             prt = P0 ->
             P sched_log sig (R idx) Gamma action_log (Read prt idx)
-              (log_cons idx {| kind := LogRead; port := prt; val := tt |} action_log) 
+              (log_cons idx {| kind := LogRead; port := prt; val := tt |} action_log)
               (getenv REnv r idx) Gamma)
-        (Pread1_latest : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : _Log) 
+        (Pread1_latest : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : _Log)
                                 (prt : Port) (idx : reg_t) (v : R idx),
             may_read sched_log prt idx = true ->
             prt = P1 ->
             latest_write0 (log_app action_log sched_log) idx = Some v ->
             P sched_log sig (R idx) Gamma action_log (Read prt idx)
               (log_cons idx {| kind := LogRead; port := prt; val := tt |} action_log) v Gamma)
-        (Pread1_unchanged : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : _Log) 
+        (Pread1_unchanged : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : _Log)
                                    (prt : Port) (idx : reg_t),
             may_read sched_log prt idx = true ->
             prt = P1 ->
             latest_write0 (log_app action_log sched_log) idx = None ->
             P sched_log sig (R idx) Gamma action_log (Read prt idx)
-              (log_cons idx {| kind := LogRead; port := prt; val := tt |} action_log) 
+              (log_cons idx {| kind := LogRead; port := prt; val := tt |} action_log)
               (getenv REnv r idx) Gamma)
         (Pwrite : forall (sched_log : Log) (idx : reg_t) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log)
-                         (a : action sig (R idx)) (action_log' : Log) (Gamma' : tcontext sig) 
+                         (a : action sig (R idx)) (action_log' : Log) (Gamma' : tcontext sig)
                          (v : R idx) (prt : Port),
             ind_interp_action sched_log Gamma action_log a action_log' v Gamma' ->
             P sched_log sig (R idx) Gamma action_log a action_log' v Gamma' ->
             may_write sched_log action_log' prt idx = true ->
             P sched_log sig unit_t Gamma action_log (Write prt idx a)
               (log_cons idx {| kind := LogWrite; port := prt; val := v |} action_log') Ob Gamma')
-        (Punop : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log) 
+        (Punop : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log)
                         (fn : PrimTyped.fn1) (a : action sig (arg1Sig (PrimSignatures.Sigma1 fn)))
                         (action_log' : Log) (Gamma' : tcontext sig) (v : arg1Sig (PrimSignatures.Sigma1 fn)),
             ind_interp_action sched_log Gamma action_log a action_log' v Gamma' ->
             P sched_log sig (arg1Sig (PrimSignatures.Sigma1 fn)) Gamma action_log a action_log' v Gamma' ->
             P sched_log sig (retSig (PrimSignatures.Sigma1 fn)) Gamma action_log (Unop fn a) action_log'
               (PrimSpecs.sigma1 fn v) Gamma')
-        (Pbinop : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log) 
+        (Pbinop : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log)
                          (fn : PrimTyped.fn2) (a1 : action sig (arg1Sig (PrimSignatures.Sigma2 fn)))
                          (a2 : action sig (arg2Sig (PrimSignatures.Sigma2 fn))) (action_log' : Log)
                          (Gamma' : tcontext sig) (action_log'' : Log) (Gamma'' : tcontext sig)
@@ -609,12 +609,12 @@ Section Interp.
             P sched_log sig (arg2Sig (PrimSignatures.Sigma2 fn)) Gamma' action_log' a2 action_log'' v2 Gamma'' ->
             P sched_log sig (retSig (PrimSignatures.Sigma2 fn)) Gamma action_log (Binop fn a1 a2) action_log''
               (PrimSpecs.sigma2 fn v1 v2) Gamma'')
-        (Pextcall : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log) 
+        (Pextcall : forall (sched_log : Log) (sig : tsig var_t) (Gamma : tcontext sig) (action_log : Log)
                            (fn : ext_fn_t) (a : action sig (arg1Sig (Sigma fn))) (action_log' : Log)
                            (Gamma' : tcontext sig) (v : arg1Sig (Sigma fn)),
             ind_interp_action sched_log Gamma action_log a action_log' v Gamma' ->
             P sched_log sig (arg1Sig (Sigma fn)) Gamma action_log a action_log' v Gamma' ->
-            P sched_log sig (retSig (Sigma fn)) Gamma action_log (ExternalCall fn a) action_log' 
+            P sched_log sig (retSig (Sigma fn)) Gamma action_log (ExternalCall fn a) action_log'
               (sigma fn v) Gamma')
         (Pintcall : forall (sched_log : Log) (sig0 : tsig var_t) (tau0 : type) (argspec : list (var_t * type))
                            (Gamma : tcontext sig0) (action_log action_log' : Log) (name : fn_name_t)
@@ -629,8 +629,8 @@ Section Interp.
               ind_interp_action sched_log ctx action_log' a action_log'' v Gamma'' ->
               P sched_log (rev argspec) tau0 ctx action_log' a action_log'' v Gamma'' ->
               P sched_log sig0 tau0 Gamma action_log (InternalCall name args a) action_log'' v Gamma')
-        (Papos : forall (sched_log : Log) (sig : tsig var_t) (tau : type) (Gamma : tcontext sig) (action_log : Log) 
-                        (p : pos_t) (a : action sig tau) (action_log' : Log) (Gamma' : tcontext sig) 
+        (Papos : forall (sched_log : Log) (sig : tsig var_t) (tau : type) (Gamma : tcontext sig) (action_log : Log)
+                        (p : pos_t) (a : action sig tau) (action_log' : Log) (Gamma' : tcontext sig)
                         (v : tau),
             ind_interp_action sched_log Gamma action_log a action_log' v Gamma' ->
             P sched_log sig tau Gamma action_log a action_log' v Gamma' ->
