@@ -402,11 +402,11 @@ Section ShadowStackProperties.
       => apply invert_callmodule in H;
       do 6 (let a := fresh in destruct H as (a & H))
     | interp_action ?ctx ?sigma ?Gamma ?sched_log ?action_log ?term ?action_log'
-        ?v ?Gamma' => invert_next H
+        ?v ?Gamma' => try invert_next H
     end; subst.
 
-  Lemma no_write_to_reg_r_in_tree_implies_no_write_to_reg_r_in_trace:
-    forall ()
+  (* Lemma no_write_to_reg_r_in_tree_implies_no_write_to_reg_r_in_trace: *)
+  (*   forall () *)
 
   Lemma stack_violation_results_in_halt:
     forall (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)),
@@ -436,61 +436,13 @@ Section ShadowStackProperties.
     (* writeback *)
     unfold RV32I.writeback in H1.
     dependent destruction H1.
-    repeat (invert_next H0).
-    repeat (invert_next H50).
-    repeat (invert_next H46).
-    repeat (invert_next H54).
-    repeat (invert_next H64).
-    repeat (invert_next H58).
-    dependent destruction H55.
-    repeat (invert_next H0).
-    dependent destruction H55.
-    repeat (invert_next H57).
-    clear x.
-    invert_next H22.
-    invert_next H64.
-    invert_next H68.
-    invert_next H64.
-    invert_next H30.
-    invert_next H34.
-    invert_next H34.
-    invert_next H38.
-    invert_next H38.
-    invert_next H42.
-    invert_next H66.
-    invert_next H38.
-    dependent destruction H34.
+    invert_full H0.
+    simpl in H40. injection H40 as H40.
+    destruct (getenv REnv ctx RV32I.halt). cbn in H40.
+    destruct (val_eq_dec (Bits sz v0) (Bits 1 [true])) in H40.
+    subst.
 
-
-    invert_next H22.
-    apply invert_seq in H1.
-    repeat destruct H1.
-    destruct H11.
-    destruct H11.
-    destruct H12.
-    apply invert_if in H12.
-    repeat destruct H12.
-    destruct H14 as (H14a & H14).
-    destruct H14 as (H14b & H14).
-    destruct H14 as (H14c & H14).
-    apply invert_binop in H14c.
-    destruct H14c as (H14cl1 & H14c).
-    destruct H14c as (H14cl2 & H14c).
-    destruct H14c as (H14cal1 & H14c).
-    destruct H14c as (H14cal2 & H14c).
-    destruct H14c as (H14v1 & H14c).
-    destruct H14c as (H14v2 & H14c).
-    destruct H14c as (H14ca & H14c).
-    destruct H14c as (H14cb & H14c).
-    destruct H14c as (H14cc & H14c).
-    destruct H14c as (H14cd & H14c).
-    apply invert_if in H14c.
-
-    dependent destruction H0.
-    (* repeat destruct H0. *)
-    (* destruct H11. *)
-    (* destruct H11. *)
-    (* destruct H0. *)
+    injection H40 as H40. unfold val_eq_dec in H40.
 
     inv H10.
     dependent destruction H0. dependent destruction H1.
