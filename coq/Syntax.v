@@ -41,7 +41,6 @@ Section Syntax.
   | UCallModule {module_reg_t module_ext_fn_t: Type}
                 `{finite_reg: FiniteType module_reg_t}
                 (fR: module_reg_t -> reg_t)
-                (* `{fR_injective: Inj _ _ fR} *)
                 (fSigma: @Lift module_ext_fn_t ext_fn_t)
                 (fn: InternalFunction var_t fn_name_t (@uaction module_reg_t module_ext_fn_t))
                 (args: list uaction).

@@ -671,7 +671,7 @@ Module RVCoreNoShadowStack (RVP: RVParams).
     | epoch        => Bits.zero
     | debug        => Bits.zero
     | on_off       => Bits.zero
-    | halt         => Bits.zero
+    | halt         => Bits.zero
     end.
 
   (* External functions, used to model memory *)
