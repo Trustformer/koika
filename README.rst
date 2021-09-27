@@ -1075,6 +1075,8 @@ The following list shows the current state of the repo:
 .. _coq/UntypedCompactLogs.v: coq/UntypedCompactLogs.v
 .. |coq/UntypedIndSemantics.v| replace:: ``UntypedIndSemantics.v``
 .. _coq/UntypedIndSemantics.v: coq/UntypedIndSemantics.v
+.. |coq/UntypedIndTactics.v| replace:: ``UntypedIndTactics.v``
+.. _coq/UntypedIndTactics.v: coq/UntypedIndTactics.v
 .. |coq/UntypedLogs.v| replace:: ``UntypedLogs.v``
 .. _coq/UntypedLogs.v: coq/UntypedLogs.v
 .. |coq/UntypedSemantics.v| replace:: ``UntypedSemantics.v``

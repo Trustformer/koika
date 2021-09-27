@@ -1,7 +1,7 @@
 (*! Proofs about the behavior of our basic shadow stack mechanism !*)
 Require Import Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Frontend Koika.UntypedSemantics
-  Koika.UntypedIndSemantics.
+  Koika.UntypedIndSemantics Koika.UntypedIndTactics.
 Require Import rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 (* Require Import rv.RVCoreNoShadowStack rv.rv32NoShadowStack *)
 (*   rv.rv32iNoShadowStack. *)
@@ -231,6 +231,27 @@ Section ShadowStackProperties.
     |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
     end.
 
+  Definition is_write_halt
+    (reg_t ext_fn_t: Type)
+    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+    (fR: reg_t -> RV32I.reg_t) (fSigma: ext_fn_t -> RV32I.ext_fn_t)
+  : bool :=
+    match ua with
+    | UWrite _ r _ =>
+      match (fR r) with
+      | RV32I.halt => true
+      | _ => false
+      end
+    | _ => false
+    end.
+
+  Compute (
+    existsb_uaction RV32I.update_on_off is_write_halt (fun x => x) (fun x => x)
+  ).
+  Compute (
+    existsb_uaction RV32I.execute_1 is_write_halt (fun x => x) (fun x => x)
+  ).
+
   Ltac inv H := inversion H; try subst; clear H.
 
   Lemma stack_violation_results_in_halt:
@@ -267,69 +288,6 @@ Section ShadowStackProperties.
     destruct (val_eq_dec (Bits sz v0) (Bits 1 [true])) in H40.
     subst.
 
-    injection H40 as H40. unfold val_eq_dec in H40.
-
-    inv H10.
-    dependent destruction H0. dependent destruction H1.
-    dependent destruction H2. dependent destruction H3.
-    dependent destruction H4. dependent destruction H5.
-    dependent destruction H6. dependent destruction H7.
-    dependent destruction H8. dependent destruction H9.
-    move Gamma'0 after Gamma'. move Gamma'1 after Gamma'.
-    move Gamma'2 after Gamma'. move Gamma'3 after Gamma'.
-    move Gamma'4 after Gamma'. move Gamma'5 after Gamma'.
-    move Gamma'6 after Gamma'. move Gamma'7 after Gamma'.
-    move Gamma'8 after Gamma'.
-    move v0 after v. move v1 after v. move v2 after v. move v3 after v.
-    move v4 after v. move v5 after v. move v6 after v. move v7 after v.
-    move v8 after v.
-    dependent destruction H0. dependent destruction H0.
-    dependent destruction H2. dependent destruction H3.
-    dependent destruction H4. dependent destruction H5.
-    dependent destruction H6. dependent destruction H7.
-    dependent destruction H8. dependent destruction H9.
-    dependent destruction H10.
-    move v0 before H. move v1 before v0. move v2 before v1. move v3 before v2.
-    move v4 before v3. move v5 before v4. move v6 before v5. move v7 before v6.
-    move v8 before v7. move v9 before v8. move v10 before v9.
-    move v11 before v10. move v12 before v11. move v13 before v12.
-    move v14 before v13. move v15 before v14. move v16 before v15.
-    move v17 before v16. move v18 before v17. move v19 before v18.
-    move Gamma'9 after Gamma'. move Gamma'10 after Gamma'.
-    move Gamma'11 after Gamma'. move Gamma'12 after Gamma'.
-    move Gamma'13 after Gamma'. move Gamma'14 after Gamma'.
-    move Gamma'15 after Gamma'. move Gamma'16 after Gamma'.
-    move Gamma'17 after Gamma'. move Gamma'18 after Gamma'.
-    move action_log'1 before action_log'0.
-    move action_log'2 before action_log'1.
-    move action_log'3 before action_log'2.
-    move action_log'4 before action_log'3.
-    move action_log'5 before action_log'4.
-    move action_log'6 before action_log'5.
-    move action_log'7 before action_log'6.
-    move action_log'8 before action_log'7.
-    move action_log'9 before action_log'8.
-    (* Helps progress but very RAM heavy *)
-    dependent destruction H0_.
-    dependent destruction H0_0.
-    dependent destruction H2_.
-    dependent destruction H2_0.
-    dependent destruction H2_1.
-    dependent destruction H2_1_1.
-    dependent destruction H2_1_2.
-    dependent destruction H2_2.
-    (* dependent destruction H2_0_1. *)
-    (* dependent destruction H2_0_1. *)
-    (* dependent destruction H2_0_2. *)
-    (* dependent destruction H2_0_1_1. *)
-    (* dependent destruction H2_0_1_2. *)
-    (* dependent destruction H2_0_2_2. *)
-    (* dependent destruction H2_0_2_1. *)
-    (* dependent destruction H2_0_1_1_1. *)
-    (* dependent destruction H2_0_1_1_2. *)
-    (* dependent destruction H2_0_2_2_1. *)
-    (* dependent destruction H2_0_2_2_2. *)
-    (* dependent destruction H2_0_1_1_1_2. *)
   Qed.
 
   Lemma no_stack_violation_behaves_as_if_no_stack:
