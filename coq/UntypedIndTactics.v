@@ -248,154 +248,185 @@ Definition is_write
 
 Inductive breadcrumb := here | through_nth_branch (n: nat) (b: breadcrumb).
 
-(* Open Scope nat. *)
-(* Definition zoom_result_type *)
-(*   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} *)
-(*   (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) *)
-(* : Type := *)
-(*   match bc with *)
-(*   | here => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb) *)
-(*   | through_nth_branch n o => *)
-(*     match ua with *)
-(*     | USugar s => *)
-(*       match s with *)
-(*       | @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ _ _ => *)
-(*           if (1 =? n) then *)
-(*             option (uaction pos_t var_t fn_name_t module_reg_t module_ext_fn_t * breadcrumb) *)
-(*           else *)
-(*             option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb) *)
-(*       | _ => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb) *)
-(*       end *)
-(*     | _ => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb) *)
-(*     end *)
-(*   end. *)
-(* Check @UCallModule. *)
+Open Scope nat.
+Set Printing All.
+Definition zoom_result_type
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: Type :=
+  match bc with
+  | here => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+  | through_nth_branch n o =>
+    match ua with
+    | USugar (@UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t test _ _ _ _) =>
+        match n with
+        | O => option (
+          uaction pos_t var_t fn_name_t module_reg_t module_ext_fn_t
+          * breadcrumb
+        )
+        | _ => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+        end
+    | _ => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+    end
+  end.
 
-(* Set Printing All. *)
-(* Compute zoom_result_type (through_nth_branch 1 _) *)
-(*   (USugar (@UCallModule _ _ _ _ _ _ _ _ _ _ _ _)). *)
+Definition zoom_breadcrumb
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: (zoom_result_type bc ua) :=
+  match bc as bc0 return zoom_result_type bc0 ua with
+  | here => None
+  | through_nth_branch n sbc =>
+    match ua as ua0 return zoom_result_type (through_nth_branch n sbc) ua0 with
+    | UAssign v a =>
+      if n =? 0 return zoom_result_type (through_nth_branch n sbc) (UAssign v a)
+      then Some (a, sbc)
+      else None
+    | USeq a1 a2 =>
+      if n =? 0 then Some (a1, sbc) else if n =? 1 then Some (a2, sbc) else None
+    | UBind _ expr body =>
+      if n =? 0 then Some (expr, sbc)
+      else if n =? 1 then Some (body, sbc)
+      else None
+    | UIf cond tbranch fbranch =>
+      if n =? 0 then Some (cond, sbc)
+      else if n =? 1 then Some (tbranch, sbc)
+      else if n =? 2 then Some (fbranch, sbc)
+      else None
+    | UWrite _ _ v => if n =? 0 then Some (v, sbc) else None
+    | UUnop _ a1 => if n =? 0 then Some (a1, sbc) else None
+    | UBinop _ a1 a2 =>
+      if n =? 0 then Some (a1, sbc) else if n =? 1 then Some (a2, sbc) else None
+    | UExternalCall _ a => if n =? 0 then Some (a, sbc) else None
+    | UInternalCall ufn la =>
+      if n =? 0 then Some (int_body ufn, sbc)
+      else
+        match nth_error la (n - 1) with
+        | Some a => Some (a, sbc)
+        | None => None
+        end
+    | UAPos _ e => if n =? 0 then Some (e, sbc) else None
+    | USugar s =>
+      match s as s0 return zoom_result_type (through_nth_branch n sbc) (USugar s0) with
+      | UProgn la =>
+        match nth_error la n with
+        | Some a => Some (a, sbc)
+        | None => None
+        end
+      | ULet bnd body =>
+        if n =? (List.length bnd) then Some (body, sbc)
+        else
+          match nth_error bnd n with
+          | Some (_, a) => Some (a, sbc)
+          | None => None
+          end
+      | UWhen cond body =>
+        if n =? 0 then Some (cond, sbc)
+        else if n =? 1 then Some (body, sbc)
+        else None
+      | USwitch v def branches =>
+        if n =? 0 then Some (v, sbc)
+        else if n =? 1 then Some (def, sbc)
+        else
+          match nth_error branches ((n - 2)/2) with
+          | Some (a, b) =>
+            if (n mod 2 =? 0) then Some (a, sbc) else Some (b, sbc)
+          | None => None
+          end
+      | UStructInit _ fields =>
+        match nth_error fields n with
+        | Some (_, a) => Some (a, sbc)
+        | None => None
+        end
+      | UArrayInit _ elts =>
+        match nth_error elts n with
+        | Some a => Some (a, sbc)
+        | None => None
+        end
+      | @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ fn args =>
+          match n with
+          | O => Some (int_body fn, sbc)
+          | _ =>
+            match nth_error args n with
+            | Some a => Some (a, sbc)
+            | None => None
+            end
+          end
+      | UErrorInAst => None
+      | USkip => None
+      | UConstBits _ => None
+      | UConstString _ => None
+      | UConstEnum _ _ => None
+      end
+    | UError _ => None
+    | UFail _ => None
+    | UVar _ => None
+    | UConst _ => None
+    | URead _ _ => None
+    end
+  end.
+Close Scope nat.
 
-(* Definition zoom_breadcrumb *)
-(*   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} *)
-(*   (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) *)
-(* : (zoom_result_type bc ua) := *)
-(*   match bc as bc0 return zoom_result_type bc0 ua with *)
-(*   | here => None *)
-(*   | through_nth_branch n sbc => *)
-(*     match ua as ua0 return zoom_result_type (through_nth_branch n sbc) ua0 with *)
-(*     | UAssign v a => *)
-(*       if n =? 0 return zoom_result_type (through_nth_branch n sbc) (UAssign v a) *)
-(*       then Some (a, sbc) *)
-(*       else None *)
-(*     | USeq a1 a2 => *)
-(*       if n =? 0 then Some (a1, sbc) else if n =? 1 then Some (a2, sbc) else None *)
-(*     | UBind _ expr body => *)
-(*       if n =? 0 then Some (expr, sbc) *)
-(*       else if n =? 1 then Some (body, sbc) *)
-(*       else None *)
-(*     | UIf cond tbranch fbranch => *)
-(*       if n =? 0 then Some (cond, sbc) *)
-(*       else if n =? 1 then Some (tbranch, sbc) *)
-(*       else if n =? 2 then Some (fbranch, sbc) *)
-(*       else None *)
-(*     | UWrite _ _ v => if n =? 0 then Some (v, sbc) else None *)
-(*     | UUnop _ a1 => if n =? 0 then Some (a1, sbc) else None *)
-(*     | UBinop _ a1 a2 => *)
-(*       if n =? 0 then Some (a1, sbc) else if n =? 1 then Some (a2, sbc) else None *)
-(*     | UExternalCall _ a => if n =? 0 then Some (a, sbc) else None *)
-(*     | UInternalCall ufn la => *)
-(*       if n =? 0 then Some (int_body ufn, sbc) *)
-(*       else *)
-(*         match nth_error la (n - 1) with *)
-(*         | Some a => Some (a, sbc) *)
-(*         | None => None *)
-(*         end *)
-(*     | UAPos _ e => if n =? 0 then Some (e, sbc) else None *)
-(*     | USugar s => *)
-(*       match s as s0 return zoom_result_type (through_nth_branch n sbc) (USugar s0) with *)
-(*       | UProgn la => *)
-(*         match nth_error la n with *)
-(*         | Some a => Some (a, sbc) *)
-(*         | None => None *)
-(*         end *)
-(*       | ULet bnd body => *)
-(*         if n =? (List.length bnd) then Some (body, sbc) *)
-(*         else *)
-(*           match nth_error bnd n with *)
-(*           | Some (_, a) => Some (a, sbc) *)
-(*           | None => None *)
-(*           end *)
-(*       | UWhen cond body => *)
-(*         if n =? 0 then Some (cond, sbc) *)
-(*         else if n =? 1 then Some (body, sbc) *)
-(*         else None *)
-(*       | USwitch v def branches => *)
-(*         if n =? 0 then Some (v, sbc) *)
-(*         else if n =? 1 then Some (def, sbc) *)
-(*         else *)
-(*           match nth_error branches ((n - 2)/2) with *)
-(*           | Some (a, b) => *)
-(*             if (n mod 2 =? 0) then Some (a, sbc) else Some (b, sbc) *)
-(*           | None => None *)
-(*           end *)
-(*       | UStructInit _ fields => *)
-(*         match nth_error fields n with *)
-(*         | Some (_, a) => Some (a, sbc) *)
-(*         | None => None *)
-(*         end *)
-(*       | UArrayInit _ elts => *)
-(*         match nth_error elts n with *)
-(*         | Some a => Some (a, sbc) *)
-(*         | None => None *)
-(*         end *)
-(*       | @UCallModule _ _ _ _ _ reg_t' ext_fn_t' _ _ _ fn args => *)
-(*           if n =? 0 then Some (int_body fn, sbc) *)
-(*           else *)
-(*             match nth_error args n with *)
-(*             | Some a => Some (a, sbc) *)
-(*             | None => None *)
-(*             end *)
-(*       | UErrorInAst => None *)
-(*       | USkip => None *)
-(*       | UConstBits _ => None *)
-(*       | UConstString _ => None *)
-(*       | UConstEnum _ _ => None *)
-(*       end *)
-(*     | UError _ => None *)
-(*     | UFail _ => None *)
-(*     | UVar _ => None *)
-(*     | UConst _ => None *)
-(*     | URead _ _ => None *)
-(*     end *)
-(*   end. *)
-(* Close Scope nat. *)
+Fixpoint zoom_n_result_type
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
+: Type :=
+  match n return Type with
+  | O => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+  | S n' =>
+    match bc with
+    | here => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+    | through_nth_branch b sbc =>
+      match ua with
+      | USugar (
+          @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ _ _
+        ) =>
+        match b with
+        | O =>
+          match (zoom_breadcrumb bc ua) with
+          | None =>
+            option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+          | Some (sua, sbc) => @zoom_n_result_type _ _ _ module_reg_t module_reg_t
+          end
+        | _ =>
+          option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+        end
+      | _ =>
+        match (zoom_breadcrumb bc ua) with
+        | None =>
+          option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+        | Some (sua, sbc) =>
+          @zoom_n_result_type _ _ _ reg_t ext_fn_t sbc sua
+        end
+      end
+    end
+  end.
 
-(* Fixpoint zoom_n_breadcrumb := *)
-(*   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} *)
-(*   (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) *)
-(*   (n : nat) *)
-(*   : Some (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb) := *)
-(*   match n with *)
-(*   | O => Some (ua, bc) *)
-(*   | S n' => *)
-(*     match zoom_breadcrumb with *)
-(*     | None => None *)
-(*     | Some (ua', bc') => zoom_n_breadcrumb bc' ua' n' *)
-(*     end *)
-(*   end. *)
+Fixpoint zoom_n_breadcrumb
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
+: zoom_n_result_type bc ua n :=
+  match n with
+  | O => Some (ua, bc)
+  | S n' =>
+    match zoom_breadcrumb bc ua with
+    | None => None
+    | Some (ua', bc') => zoom_n_breadcrumb bc' ua' n'
+    end
+  end.
 
-(* Fixpoint access_breadcrumb *)
-(*   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} *)
-(*   (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) *)
-(* : Some uaction pos_t var_t fn_name_t reg_t ext_fn_t := *)
-(*   match bc with *)
-(*   | here => Some ua *)
-(*   | through_nth_branch _ _ => *)
-(*       match zoom_breadcrumb with *)
-(*       | None => None *)
-(*       | Some (ua', bc') => access_breadcrumb bc' ua' *)
-(*       end *)
-(*   end. *)
+Fixpoint access_breadcrumb
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: Some uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  match bc with
+  | here => Some ua
+  | through_nth_branch _ _ =>
+      match zoom_breadcrumb with
+      | None => None
+      | Some (ua', bc') => access_breadcrumb bc' ua'
+      end
+  end.
 
 Fixpoint findsb_uaction
   {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
@@ -751,11 +782,14 @@ Which format?
 (* TODO How to express this formally? Is it even useful? *)
 (* If the conditions for the nodes for which P is true were to be false at the
 beginning of the cycle(/action?), then the actions in question won't have any
-effect. *)
-(* Effects could be expressed in terms of traces.
-   Same question as above: why so general?
-*)
-(* Theorem findsb_all_uaction_complete : . *)
+effect. Note that one of the conditions in question is that if there is a rule
+writing to the same register on the same slot during the cycle, then whether it
+should be executed or not depends on the order of the schedule.
+
+Effects could be expressed in terms of traces.
+Same question as above: why so general?
+
+Theorem findsb_all_uaction_complete : . *)
 
 (* TODO Should be easy to prove and would allo*)
 (* Lemma no_write_to_reg_r_in_tree_implies_no_write_to_reg_r_in_trace: *)
