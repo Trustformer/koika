@@ -249,7 +249,6 @@ Definition is_write
 Inductive breadcrumb := here | through_nth_branch (n: nat) (b: breadcrumb).
 
 Open Scope nat.
-Set Printing All.
 Definition zoom_result_type
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
@@ -258,7 +257,7 @@ Definition zoom_result_type
   | here => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
   | through_nth_branch n o =>
     match ua with
-    | USugar (@UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t test _ _ _ _) =>
+    | USugar (@UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ _ _) =>
         match n with
         | O => option (
           uaction pos_t var_t fn_name_t module_reg_t module_ext_fn_t
@@ -365,7 +364,6 @@ Definition zoom_breadcrumb
     | URead _ _ => None
     end
   end.
-Close Scope nat.
 
 Fixpoint zoom_n_result_type
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
@@ -376,31 +374,134 @@ Fixpoint zoom_n_result_type
   | S n' =>
     match bc with
     | here => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-    | through_nth_branch b sbc =>
+    | through_nth_branch b o =>
       match ua with
-      | USugar (
-          @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ _ _
-        ) =>
+      | UAssign _ a =>
         match b with
-        | O =>
-          match (zoom_breadcrumb bc ua) with
-          | None =>
-            option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-          | Some (sua, sbc) => @zoom_n_result_type _ _ _ module_reg_t module_reg_t
-          end
+        | O => zoom_n_result_type o a n'
+        | _ => zoom_result_type bc ua
+        end
+      | USeq a1 a2 =>
+        match b with
+        | O => zoom_n_result_type o a1 n'
+        | S O => zoom_n_result_type o a2 n'
+        | _ => zoom_result_type bc ua
+        end
+      | UBind _ expr body =>
+        match b with
+        | O => zoom_n_result_type o expr n'
+        | S O => zoom_n_result_type o body n'
+        | _ => zoom_result_type bc ua
+        end
+      | UIf cond tbranch fbranch =>
+        match b with
+        | O => zoom_n_result_type o cond n'
+        | S O => zoom_n_result_type o tbranch n'
+        | S (S O) => zoom_n_result_type o fbranch n'
+        | _ => zoom_result_type bc ua
+        end
+      | UWrite _ _ v =>
+        match b with
+        | O => zoom_n_result_type o v n'
+        | _ => zoom_result_type bc ua
+        end
+      | UUnop _ a1 =>
+        match b with
+        | O => zoom_n_result_type o a1 n'
+        | _ => zoom_result_type bc ua
+        end
+      | UBinop _ a1 a2 =>
+        match b with
+        | O => zoom_n_result_type o a1 n'
+        | S O => zoom_n_result_type o a2 n'
+        | _ => zoom_result_type bc ua
+        end
+      | UExternalCall _ a =>
+        match b with
+        | O => zoom_n_result_type o a n'
+        | _ => zoom_result_type bc ua
+        end
+      | UInternalCall ufn la =>
+        match b with
+        | O => zoom_n_result_type o (int_body ufn) n'
         | _ =>
-          option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+          match (nth_error la (b - 1)) with
+          | Some a => zoom_n_result_type o a n'
+          | None => zoom_result_type bc ua
+          end
         end
-      | _ =>
-        match (zoom_breadcrumb bc ua) with
-        | None =>
-          option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-        | Some (sua, sbc) =>
-          @zoom_n_result_type _ _ _ reg_t ext_fn_t sbc sua
+      | UAPos _ e =>
+        match b with
+        | O => zoom_n_result_type o e n'
+        | _ => zoom_result_type bc ua
         end
+      | USugar s =>
+        match s with
+        | UProgn la =>
+          match nth_error la b with
+          | Some a => zoom_n_result_type o a n'
+          | None => zoom_result_type bc ua
+          end
+        | ULet bnd body =>
+          if (List.length bnd =? b) then
+            zoom_n_result_type o body n'
+          else
+            match nth_error bnd n with
+            | Some (_, a) => zoom_n_result_type o a n'
+            | None => zoom_result_type bc ua
+            end
+        | UWhen cond body =>
+          match b with
+          | O => zoom_n_result_type o cond n'
+          | S O => zoom_n_result_type o body n'
+          | _ => zoom_result_type bc ua
+          end
+        | USwitch v def branches =>
+          match b with
+          | O => zoom_n_result_type o v n'
+          | S O => zoom_n_result_type o def n'
+          | _ =>
+            match nth_error branches ((b - 2)/2) with
+            | Some (a1, a2) =>
+              match (n mod 2) with
+              | O => zoom_n_result_type o a1 n'
+              | _ => zoom_n_result_type o a2 n'
+              end
+            | None => zoom_result_type bc ua
+            end
+          end
+        | UStructInit _ fields =>
+          match nth_error fields b with
+          | Some (_, a) => zoom_n_result_type o a n'
+          | None => zoom_result_type bc ua
+          end
+        | UArrayInit _ elts =>
+          match (nth_error elts b) with
+          | Some a => zoom_n_result_type o a n'
+          | None => zoom_result_type bc ua
+          end
+        | @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ fn args =>
+          match n with
+          | O =>
+            @zoom_n_result_type pos_t var_t fn_name_t module_reg_t module_ext_fn_t
+              o (int_body fn) n'
+          | _ =>
+            match nth_error args n with
+            | Some a =>
+              @zoom_n_result_type pos_t var_t fn_name_t reg_t ext_fn_t o a n'
+            | None =>
+              option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
+            end
+          end
+        | _ => zoom_result_type bc ua
+        end
+      | _ => zoom_result_type bc ua
       end
     end
   end.
+Close Scope nat.
+
+Compute zoom_n_result_type here (UError _) 0.
 
 Fixpoint zoom_n_breadcrumb
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
