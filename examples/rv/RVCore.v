@@ -18,7 +18,7 @@ Definition isa : ISA := {|
 Section RVHelpers.
   Definition instructions := (ISA_instructions_set isa).
 
-  Context {reg_t : Type}.
+  Context {reg_t: Type}.
 
   Definition imm_type := {|
     enum_name        := "immType";
@@ -519,8 +519,9 @@ Section RVHelpers.
 End RVHelpers.
 
 Module Type RVParams.
-  Parameter NREGS : nat.
-  Parameter WIDTH : nat.
+  Parameter NREGS: nat.
+  Parameter WIDTH: nat.
+  Parameter HAS_SHADOW_STACK: bool.
 End RVParams.
 
 Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
@@ -864,32 +865,37 @@ Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
         byte_en := byte_en; addr := addr; data := data
       })
     else if (isControlInst(dInst)) then
-      (* See table 2.1. of the unpriviledged ISA specification for *)
-      (* details *)
+      (* See table 2.1. of the unpriviledged ISA specification for details *)
       set data := (pc + |32`d4|); (* For jump and link *)
-      (
-        let res := Ob~0 in
-        let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
-        (
-          if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
-            && (rd_val == |5`d1| || rd_val == |5`d5|))
-          then set res := stack.(ShadowStack.push)(data)
-          else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
-            if (rd_val == |5`d1| || rd_val == |5`d5|) then
-              if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
-                set res := stack.(ShadowStack.push)(data)
-              ) else (
-                set res := stack.(ShadowStack.pop)(addr);
-                set res := res || stack.(ShadowStack.push)(data)
+      `
+        if (HAS_SHADOW_STACK) then ({{
+          (
+            let res := Ob~0 in
+            let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
+            (
+              if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
+                && (rd_val == |5`d1| || rd_val == |5`d5|))
+              then set res := stack.(ShadowStack.push)(data)
+              else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
+                if (rd_val == |5`d1| || rd_val == |5`d5|) then
+                  if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
+                    set res := stack.(ShadowStack.push)(data)
+                  ) else (
+                    set res := stack.(ShadowStack.pop)(addr);
+                    set res := res || stack.(ShadowStack.push)(data)
+                  )
+                else if (rs1 == |5`d1| || rs1 == |5`d5|) then
+                  set res := stack.(ShadowStack.pop)(addr)
+                else pass
               )
-            else if (rs1 == |5`d1| || rs1 == |5`d5|) then
-              set res := stack.(ShadowStack.pop)(addr)
-            else pass
+              else pass
+            );
+            write0(halt, res)
           )
-          else pass
-        );
-        write0(halt, res)
-      )
+        }}) else (
+          {{ pass }}
+        )
+    `
     else
       pass;
     let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in

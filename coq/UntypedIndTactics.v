@@ -177,110 +177,20 @@ Ltac invert_full H :=
       ?v ?Gamma' => try invert_next H
   end; subst.
 
-Fixpoint existsb_uaction
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (ua: uaction pos_t var_t fn_name_t reg_t' ext_fn_t')
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t) -> (ext_fn_t'' -> ext_fn_t)
-    -> bool
-  )
-  (fR: reg_t' -> reg_t) (fSigma: ext_fn_t' -> ext_fn_t)
-: bool :=
-  pred reg_t' ext_fn_t' ua fR fSigma ||
-  match ua with
-  | UAssign _ ex => existsb_uaction ex pred fR fSigma
-  | USeq a1 a2 => existsb_uaction a1 pred fR fSigma || existsb_uaction a2 pred fR fSigma
-  | UBind _ ex b => existsb_uaction ex pred fR fSigma || existsb_uaction b pred fR fSigma
-  | UIf c t f => existsb_uaction c pred fR fSigma || existsb_uaction t pred fR fSigma
-    || existsb_uaction f pred fR fSigma
-  | UWrite _ _ a => existsb_uaction a pred fR fSigma
-  | UUnop _ a => existsb_uaction a pred fR fSigma
-  | UBinop _ a1 a2 => existsb_uaction a1 pred fR fSigma || existsb_uaction a2 pred fR fSigma
-  | UExternalCall _ a => existsb_uaction a pred fR fSigma
-  | UInternalCall ufn al =>
-    existsb_uaction (int_body ufn) pred fR fSigma
-    || existsb (fun a => existsb_uaction a pred fR fSigma) al
-  | UAPos _ e => existsb_uaction e pred fR fSigma
-  | USugar s => existsb_usugar s pred fR fSigma
-  | _ => false
-  end
-with existsb_usugar
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (us: usugar pos_t var_t fn_name_t reg_t' ext_fn_t')
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t) -> (ext_fn_t'' -> ext_fn_t)
-    -> bool
-  )
-  (fR: reg_t' -> reg_t) (fSigma: ext_fn_t' -> ext_fn_t)
-: bool :=
-  match us with
-  | UProgn aa => existsb (fun a => existsb_uaction a pred fR fSigma) aa
-  | ULet bindings body =>
-    existsb (fun '(_, u) => existsb_uaction u pred fR fSigma) bindings
-    || existsb_uaction body pred fR fSigma
-  | UWhen c b => existsb_uaction c pred fR fSigma || existsb_uaction b pred fR fSigma
-  | USwitch v d b => existsb_uaction v pred fR fSigma || existsb_uaction d pred fR fSigma
-    || existsb (
-      fun '(u1, u2) => existsb_uaction u1 pred fR fSigma || existsb_uaction u2 pred fR fSigma
-    ) b
-  | UStructInit _ f => existsb (fun '(_, u) => existsb_uaction u pred fR fSigma) f
-  | UArrayInit _ elts => existsb (fun u => existsb_uaction u pred fR fSigma) elts
-  | UCallModule fR' fSigma' fn args =>
-    existsb_uaction (int_body fn) pred
-      (fun x => fR (fR' x)) (fun x => fSigma (fSigma' x))
-    || existsb (fun u => existsb_uaction u pred fR fSigma) args
-  | _ => false
-  end.
-
-Definition is_write
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  (fR: reg_t -> reg_t') (fSigma: ext_fn_t -> ext_fn_t')
-: bool :=
-  match ua with
-  | UWrite _ _ _ => true
-  | _ => false
-  end.
-
-Inductive breadcrumb := here | through_nth_branch (n: nat) (b: breadcrumb).
+Inductive zipper := here | through_nth_branch (n: nat) (b: zipper).
 
 Open Scope nat.
-Definition zoom_result_type
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-: Type :=
-  match bc with
-  | here => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-  | through_nth_branch n o =>
-    match ua with
-    | USugar (@UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ _ _) =>
-        match n with
-        | O => option (
-          uaction pos_t var_t fn_name_t module_reg_t module_ext_fn_t
-          * breadcrumb
-        )
-        | _ => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-        end
-    | _ => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-    end
-  end.
 
-Definition zoom_breadcrumb
+Definition zoom_zipper
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-: (zoom_result_type bc ua) :=
-  match bc as bc0 return zoom_result_type bc0 ua with
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (bc: zipper)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * zipper) :=
+  match bc with
   | here => None
   | through_nth_branch n sbc =>
-    match ua as ua0 return zoom_result_type (through_nth_branch n sbc) ua0 with
+    match ua with
     | UAssign v a =>
-      if n =? 0 return zoom_result_type (through_nth_branch n sbc) (UAssign v a)
-      then Some (a, sbc)
-      else None
+      if n =? 0 then Some (a, sbc) else None
     | USeq a1 a2 =>
       if n =? 0 then Some (a1, sbc) else if n =? 1 then Some (a2, sbc) else None
     | UBind _ expr body =>
@@ -305,596 +215,127 @@ Definition zoom_breadcrumb
         | None => None
         end
     | UAPos _ e => if n =? 0 then Some (e, sbc) else None
-    | USugar s =>
-      match s as s0 return zoom_result_type (through_nth_branch n sbc) (USugar s0) with
-      | UProgn la =>
-        match nth_error la n with
-        | Some a => Some (a, sbc)
-        | None => None
-        end
-      | ULet bnd body =>
-        if n =? (List.length bnd) then Some (body, sbc)
-        else
-          match nth_error bnd n with
-          | Some (_, a) => Some (a, sbc)
-          | None => None
-          end
-      | UWhen cond body =>
-        if n =? 0 then Some (cond, sbc)
-        else if n =? 1 then Some (body, sbc)
-        else None
-      | USwitch v def branches =>
-        if n =? 0 then Some (v, sbc)
-        else if n =? 1 then Some (def, sbc)
-        else
-          match nth_error branches ((n - 2)/2) with
-          | Some (a, b) =>
-            if (n mod 2 =? 0) then Some (a, sbc) else Some (b, sbc)
-          | None => None
-          end
-      | UStructInit _ fields =>
-        match nth_error fields n with
-        | Some (_, a) => Some (a, sbc)
-        | None => None
-        end
-      | UArrayInit _ elts =>
-        match nth_error elts n with
-        | Some a => Some (a, sbc)
-        | None => None
-        end
-      | @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ fn args =>
-          match n with
-          | O => Some (int_body fn, sbc)
-          | _ =>
-            match nth_error args n with
-            | Some a => Some (a, sbc)
-            | None => None
-            end
-          end
-      | UErrorInAst => None
-      | USkip => None
-      | UConstBits _ => None
-      | UConstString _ => None
-      | UConstEnum _ _ => None
-      end
-    | UError _ => None
-    | UFail _ => None
-    | UVar _ => None
-    | UConst _ => None
-    | URead _ _ => None
+    | _ => None
     end
   end.
 
-Fixpoint zoom_n_result_type
+Fixpoint zoom_n_zipper
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
-: Type :=
-  match n return Type with
-  | O => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-  | S n' =>
-    match bc with
-    | here => option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-    | through_nth_branch b o =>
-      match ua with
-      | UAssign _ a =>
-        match b with
-        | O => zoom_n_result_type o a n'
-        | _ => zoom_result_type bc ua
-        end
-      | USeq a1 a2 =>
-        match b with
-        | O => zoom_n_result_type o a1 n'
-        | S O => zoom_n_result_type o a2 n'
-        | _ => zoom_result_type bc ua
-        end
-      | UBind _ expr body =>
-        match b with
-        | O => zoom_n_result_type o expr n'
-        | S O => zoom_n_result_type o body n'
-        | _ => zoom_result_type bc ua
-        end
-      | UIf cond tbranch fbranch =>
-        match b with
-        | O => zoom_n_result_type o cond n'
-        | S O => zoom_n_result_type o tbranch n'
-        | S (S O) => zoom_n_result_type o fbranch n'
-        | _ => zoom_result_type bc ua
-        end
-      | UWrite _ _ v =>
-        match b with
-        | O => zoom_n_result_type o v n'
-        | _ => zoom_result_type bc ua
-        end
-      | UUnop _ a1 =>
-        match b with
-        | O => zoom_n_result_type o a1 n'
-        | _ => zoom_result_type bc ua
-        end
-      | UBinop _ a1 a2 =>
-        match b with
-        | O => zoom_n_result_type o a1 n'
-        | S O => zoom_n_result_type o a2 n'
-        | _ => zoom_result_type bc ua
-        end
-      | UExternalCall _ a =>
-        match b with
-        | O => zoom_n_result_type o a n'
-        | _ => zoom_result_type bc ua
-        end
-      | UInternalCall ufn la =>
-        match b with
-        | O => zoom_n_result_type o (int_body ufn) n'
-        | _ =>
-          match (nth_error la (b - 1)) with
-          | Some a => zoom_n_result_type o a n'
-          | None => zoom_result_type bc ua
-          end
-        end
-      | UAPos _ e =>
-        match b with
-        | O => zoom_n_result_type o e n'
-        | _ => zoom_result_type bc ua
-        end
-      | USugar s =>
-        match s with
-        | UProgn la =>
-          match nth_error la b with
-          | Some a => zoom_n_result_type o a n'
-          | None => zoom_result_type bc ua
-          end
-        | ULet bnd body =>
-          if (List.length bnd =? b) then
-            zoom_n_result_type o body n'
-          else
-            match nth_error bnd n with
-            | Some (_, a) => zoom_n_result_type o a n'
-            | None => zoom_result_type bc ua
-            end
-        | UWhen cond body =>
-          match b with
-          | O => zoom_n_result_type o cond n'
-          | S O => zoom_n_result_type o body n'
-          | _ => zoom_result_type bc ua
-          end
-        | USwitch v def branches =>
-          match b with
-          | O => zoom_n_result_type o v n'
-          | S O => zoom_n_result_type o def n'
-          | _ =>
-            match nth_error branches ((b - 2)/2) with
-            | Some (a1, a2) =>
-              match (n mod 2) with
-              | O => zoom_n_result_type o a1 n'
-              | _ => zoom_n_result_type o a2 n'
-              end
-            | None => zoom_result_type bc ua
-            end
-          end
-        | UStructInit _ fields =>
-          match nth_error fields b with
-          | Some (_, a) => zoom_n_result_type o a n'
-          | None => zoom_result_type bc ua
-          end
-        | UArrayInit _ elts =>
-          match (nth_error elts b) with
-          | Some a => zoom_n_result_type o a n'
-          | None => zoom_result_type bc ua
-          end
-        | @UCallModule _ _ _ _ _ module_reg_t module_ext_fn_t _ _ _ fn args =>
-          match n with
-          | O =>
-            @zoom_n_result_type pos_t var_t fn_name_t module_reg_t module_ext_fn_t
-              o (int_body fn) n'
-          | _ =>
-            match nth_error args n with
-            | Some a =>
-              @zoom_n_result_type pos_t var_t fn_name_t reg_t ext_fn_t o a n'
-            | None =>
-              option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * breadcrumb)
-            end
-          end
-        | _ => zoom_result_type bc ua
-        end
-      | _ => zoom_result_type bc ua
-      end
-    end
-  end.
-Close Scope nat.
-
-Compute zoom_n_result_type here (UError _) 0.
-
-Fixpoint zoom_n_breadcrumb
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
-: zoom_n_result_type bc ua n :=
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat) (bc: zipper)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * zipper) :=
   match n with
   | O => Some (ua, bc)
   | S n' =>
-    match zoom_breadcrumb bc ua with
+    match zoom_zipper ua bc with
     | None => None
-    | Some (ua', bc') => zoom_n_breadcrumb bc' ua' n'
+    | Some (ua', bc') => zoom_n_zipper ua' n' bc'
     end
   end.
 
-Fixpoint access_breadcrumb
+Fixpoint access_zipper
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (bc: breadcrumb) (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-: Some uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (bc: zipper)
+  {struct bc}
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
   match bc with
   | here => Some ua
-  | through_nth_branch _ _ =>
-      match zoom_breadcrumb with
-      | None => None
-      | Some (ua', bc') => access_breadcrumb bc' ua'
-      end
-  end.
-
-Fixpoint findsb_uaction
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t') -> (ext_fn_t'' -> ext_fn_t')
-    -> bool
-  )
-  (fR: reg_t -> reg_t') (fSigma: ext_fn_t -> ext_fn_t')
-: option breadcrumb :=
-  if pred reg_t ext_fn_t ua fR fSigma then Some here
-  else match ua with
-  | UAssign _ ex =>
-    match findsb_uaction ex pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None => None
-    end
-  | USeq a1 a2 =>
-    match findsb_uaction a1 pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None =>
-      match findsb_uaction a2 pred fR fSigma with
-      | Some x => Some (through_nth_branch 1 x)
-      | None => None
-      end
-    end
-  | UBind _ ex b =>
-      match findsb_uaction ex pred fR fSigma with
-      | Some x => Some (through_nth_branch 0 x)
-      | None =>
-        match findsb_uaction b pred fR fSigma with
-        | Some x => Some (through_nth_branch 1 x)
+  | through_nth_branch n sbc =>
+    match ua with
+    | UAssign v a => if n =? 0 then access_zipper a sbc else None
+    | USeq a1 a2 =>
+      if n =? 0 then access_zipper a1 sbc
+      else if n =? 1 then access_zipper a2 sbc
+     else None
+    | UBind _ expr body =>
+      if n =? 0 then access_zipper expr sbc
+      else if n =? 1 then access_zipper body sbc
+      else None
+    | UIf cond tbranch fbranch =>
+      if n =? 0 then access_zipper cond sbc
+      else if n =? 1 then access_zipper tbranch sbc
+      else if n =? 2 then access_zipper fbranch sbc
+      else None
+    | UWrite _ _ v => if n =? 0 then access_zipper v sbc else None
+    | UUnop _ a1 => if n =? 0 then access_zipper a1 sbc else None
+    | UBinop _ a1 a2 =>
+      if n =? 0 then access_zipper a1 sbc
+      else if n =? 1 then access_zipper a2 sbc
+      else None
+    | UExternalCall _ a => if n =? 0 then access_zipper a sbc else None
+    | UInternalCall ufn la =>
+      if n =? 0 then access_zipper (int_body ufn) sbc
+      else
+        match nth_error la (n - 1) with
+        | Some a => access_zipper a sbc
         | None => None
         end
-      end
-  | UIf c t f =>
-    match findsb_uaction c pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None =>
-      match findsb_uaction t pred fR fSigma with
-      | Some x => Some (through_nth_branch 1 x)
-      | None =>
-        match findsb_uaction f pred fR fSigma with
-        | Some x => Some (through_nth_branch 2 x)
-        | None => None
-        end
-      end
+    | UAPos _ e => if n =? 0 then access_zipper e sbc else None
+    | _ => None
     end
-  | UWrite _ _ a =>
-    match findsb_uaction a pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None => None
-    end
-  | UUnop _ a =>
-    match findsb_uaction a pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None => None
-    end
-  | UBinop _ a1 a2 =>
-    match findsb_uaction a1 pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None =>
-      match findsb_uaction a2 pred fR fSigma with
-      | Some x => Some (through_nth_branch 1 x)
-      | None => None
-      end
-    end
-  | UExternalCall _ a =>
-    match findsb_uaction a pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None => None
-    end
-  | UInternalCall ufn al =>
-    match findsb_uaction (int_body ufn) pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None => findsb_uaction_in_list al pred fR fSigma 1
-    end
-  | UAPos _ e =>
-    match findsb_uaction e pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None => None
-    end
-  | USugar s =>
-    match findsb_usugar s pred fR fSigma with
-    | Some x => Some (through_nth_branch 0 x)
-    | None => None
-    end
-  | _ => None
-  end
-with findsb_usugar
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (us: usugar pos_t var_t fn_name_t reg_t ext_fn_t)
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t') -> (ext_fn_t'' -> ext_fn_t')
-    -> bool
-  )
-  (fR: reg_t -> reg_t') (fSigma: ext_fn_t -> ext_fn_t')
-: option breadcrumb :=
-  match us with
-  | UProgn aa => findsb_uaction_in_list aa pred fR fSigma 0
-  | ULet bindings body =>
-    (* TODO reactivate *)
-    (* let bactions := List.map (fun '(_, b) => b) bindings in *)
-    (* match findsb_uaction_in_list bactions pred fR fSigma 0 with *)
-    (* | Some bc => Some bc *)
-    (* | None => *)
-    (*   match findsb_uaction body pred fR fSigma with *)
-    (*   | Some bc => Some (through_nth_branch (List.length bindings) bc) *)
-    (*   | None => None *)
-    (*   end *)
-    (* end *)
-    None
-  | UWhen c b =>
-    match findsb_uaction c pred fR fSigma with
-    | Some bc => Some (through_nth_branch 0 bc)
-    | None =>
-      match findsb_uaction b pred fR fSigma with
-      | Some bc => Some (through_nth_branch 1 bc)
-      | None => None
-      end
-    end
-  | USwitch v d b =>
-    match findsb_uaction v pred fR fSigma with
-    | Some bc => Some (through_nth_branch 0 bc)
-    | None =>
-      match findsb_uaction d pred fR fSigma with
-      | Some bc => Some (through_nth_branch 1 bc)
-      | None => (
-        fix f l n :=
-          match l with
-          | (a1, a2)::t =>
-            match findsb_uaction a1 pred fR fSigma with
-            | Some bc => Some (through_nth_branch n bc)
-            | None =>
-              match findsb_uaction a2 pred fR fSigma with
-              | Some bc => Some (through_nth_branch (S n) bc)
-              | None => f t (S (S n))
-              end
-            end
-          | nil => None
-          end
-      ) b 2
-      end
-    end
-  | UStructInit _ f =>
-    (* TODO reactivate *)
-    (* let factions := List.map (fun '(_, b) => b) f in *)
-    (* findsb_uaction_in_list factions pred fR fSigma 0 *)
-    None
-  | UArrayInit _ elts => findsb_uaction_in_list elts pred fR fSigma 0
-  | UCallModule fR' fSigma' fn args =>
-    match
-      findsb_uaction (int_body fn) pred
-      (fun x => fR (fR' x)) (fun x => fSigma (fSigma' x))
-    with
-    | Some bc => Some (through_nth_branch 0 bc)
-    | None => findsb_uaction_in_list args pred fR fSigma 1
-    end
-  | _ => None
-  end
-with findsb_uaction_in_list
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (al: list (uaction pos_t var_t fn_name_t reg_t ext_fn_t))
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t') -> (ext_fn_t'' -> ext_fn_t') -> bool
-  )
-  (fR: reg_t -> reg_t') (fSigma: ext_fn_t -> ext_fn_t')
-  (shift: nat)
-: option breadcrumb :=
-  match al with
-  | nil => None
-  | h::t => None
-    (* TODO reactivate *)
-    (* match (findsb_uaction h pred fR fSigma) with *)
-    (* | Some bc => Some (through_nth_branch shift bc) *)
-    (* | None => findsb_uaction_in_list t pred fR fSigma (S shift) *)
-    (* end *)
   end.
 
-Fixpoint findsb_all_uactions
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+Fixpoint find_all_uaction
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t') -> (ext_fn_t'' -> ext_fn_t') -> bool
-  )
-  (fR: reg_t -> reg_t') (fSigma: ext_fn_t -> ext_fn_t')
-: list breadcrumb :=
-  if pred reg_t ext_fn_t ua fR fSigma then [here]
+  (pred: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> bool)
+: list zipper :=
+  if pred ua then [here]
   else match ua with
   | UAssign _ ex =>
-    map (fun bc => through_nth_branch 0 bc)
-      (findsb_all_uactions ex pred fR fSigma)
+    map (fun bc => through_nth_branch 0 bc) (find_all_uaction ex pred)
   | USeq a1 a2 =>
     app
-      (map (fun bc => through_nth_branch 0 bc)
-        (findsb_all_uactions a1 pred fR fSigma))
-      (map (fun bc => through_nth_branch 1 bc)
-        (findsb_all_uactions a2 pred fR fSigma))
+      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction a1 pred))
+      (map (fun bc => through_nth_branch 1 bc) (find_all_uaction a2 pred))
   | UBind _ ex b =>
     app
-      (map (fun bc => through_nth_branch 0 bc)
-        (findsb_all_uactions ex pred fR fSigma))
-      (map (fun bc => through_nth_branch 1 bc)
-        (findsb_all_uactions b pred fR fSigma))
+      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction ex pred))
+      (map (fun bc => through_nth_branch 1 bc) (find_all_uaction b pred))
   | UIf c t f =>
     app
       (app
-        (map (fun bc => through_nth_branch 0 bc)
-          (findsb_all_uactions c pred fR fSigma))
-        (map (fun bc => through_nth_branch 1 bc)
-          (findsb_all_uactions t pred fR fSigma))
+        (map (fun bc => through_nth_branch 0 bc) (find_all_uaction c pred))
+        (map (fun bc => through_nth_branch 1 bc) (find_all_uaction t pred))
       )
-      (map (fun bc => through_nth_branch 2 bc)
-        (findsb_all_uactions f pred fR fSigma))
+      (map (fun bc => through_nth_branch 2 bc) (find_all_uaction f pred))
   | UWrite _ _ a =>
-    map (fun bc => through_nth_branch 0 bc)
-      (findsb_all_uactions a pred fR fSigma)
+    map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
   | UUnop _ a =>
-    map (fun bc => through_nth_branch 0 bc)
-      (findsb_all_uactions a pred fR fSigma)
+    map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
   | UBinop _ a1 a2 =>
     app
-      (map (fun bc => through_nth_branch 0 bc)
-        (findsb_all_uactions a1 pred fR fSigma))
-      (map (fun bc => through_nth_branch 1 bc)
-        (findsb_all_uactions a2 pred fR fSigma))
+      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction a1 pred))
+      (map (fun bc => through_nth_branch 1 bc) (find_all_uaction a2 pred))
   | UExternalCall _ a =>
-    map (fun bc => through_nth_branch 0 bc)
-      (findsb_all_uactions a pred fR fSigma)
+    map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
   | UInternalCall ufn al =>
     app
-      (map (fun bc => through_nth_branch 0 bc)
-        (findsb_all_uactions (int_body ufn) pred fR fSigma))
-      (findsb_all_uactions_in_list al pred fR fSigma 1)
+      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction (int_body ufn) pred))
+      (List.concat (snd (fold_left
+        (fun acc ua => (S (fst acc), (find_all_uaction ua pred) :: (snd acc)))
+        al (1, [])
+      )))
   | UAPos _ e =>
-    map (fun bc => through_nth_branch 0 bc)
-      (findsb_all_uactions e pred fR fSigma)
-  | USugar s =>
-    map (fun bc => through_nth_branch 0 bc)
-      (findsb_all_usugar s pred fR fSigma)
+    map (fun bc => through_nth_branch 0 bc) (find_all_uaction e pred)
   | _ => nil
-  end
-with findsb_all_usugar
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (us: usugar pos_t var_t fn_name_t reg_t ext_fn_t)
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t') -> (ext_fn_t'' -> ext_fn_t') -> bool
-  )
-  (fR: reg_t -> reg_t') (fSigma: ext_fn_t -> ext_fn_t')
-: list breadcrumb :=
-  match us with
-  | UProgn aa => findsb_all_uactions_in_list aa pred fR fSigma 0
-  | ULet bindings body => nil
-    (* TODO reactivate *)
-    (* app *)
-    (*   (let bactions := List.map (fun '(_, b) => b) bindings in *)
-    (*   findsb_all_uactions_in_list bactions pred fR fSigma 0) *)
-    (*   (map (fun bc => through_nth_branch (List.length bindings) bc) *)
-    (*     (findsb_all_uactions body pred fR fSigma)) *)
-  | UWhen c b =>
-    app
-      (map (fun bc => through_nth_branch 0 bc)
-        (findsb_all_uactions c pred fR fSigma))
-      (map (fun bc => through_nth_branch 1 bc)
-        (findsb_all_uactions b pred fR fSigma))
-  | USwitch v d b =>
-    app
-      (app
-        (map (fun bc => through_nth_branch 0 bc)
-          (findsb_all_uactions v pred fR fSigma))
-        (map (fun bc => through_nth_branch 1 bc)
-          (findsb_all_uactions d pred fR fSigma))
-      )
-      ((fix f l n acc : list breadcrumb :=
-        match l with
-        | (a1, a2)::t =>
-          app
-            acc
-            (app
-              (map (fun bc => through_nth_branch n bc)
-                (findsb_all_uactions a1 pred fR fSigma))
-              (map (fun bc => through_nth_branch (S n) bc)
-                (findsb_all_uactions a2 pred fR fSigma))
-            )
-        | nil => acc
-        end
-      ) b 2 nil)
-  | UStructInit _ f => nil
-    (* TODO reactivate *)
-    (* let factions := List.map (fun '(_, b) => b) f in *)
-    (* findsb_all_uactions_in_list factions pred fR fSigma 0 *)
-  | UArrayInit _ elts => findsb_all_uactions_in_list elts pred fR fSigma 0
-  | UCallModule fR' fSigma' fn args =>
-    app
-      (map
-        (fun bc => through_nth_branch 0 bc)
-        (findsb_all_uactions (int_body fn) pred (fun x => fR (fR' x))
-          (fun x => fSigma (fSigma' x)))
-      )
-      (findsb_all_uactions_in_list args pred fR fSigma 1)
-  | _ => nil
-  end
-with findsb_all_uactions_in_list
-  {reg_t' ext_fn_t' pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (al: list (uaction pos_t var_t fn_name_t reg_t ext_fn_t))
-  (pred:
-    forall (reg_t'' ext_fn_t'': Type),
-    uaction pos_t var_t fn_name_t reg_t'' ext_fn_t''
-    -> (reg_t'' -> reg_t') -> (ext_fn_t'' -> ext_fn_t') -> bool
-  )
-  (fR: reg_t -> reg_t') (fSigma: ext_fn_t -> ext_fn_t')
-  (shift: nat)
-: list breadcrumb :=
-  match al with
-  | nil => nil
-  | h::t => nil
-    (* TODO reactivate *)
-    (* app *)
-    (*  (map (fun bc => through_nth_branch shift bc) *)
-    (*    (findsb_all_uactions h pred fR fSigma)) *)
-    (*   (findsb_all_uactions_in_list t pred fR fSigma (S shift)) *)
+  end.
+Close Scope nat.
+
+Definition is_write
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: bool :=
+  match ua with
+  | UWrite _ _ _ => true
+  | _ => false
   end.
 
-(* existsb findsb findsb_all for rules and schedules (should be easy) *)
+(* Fixpoint find_all_in_schedule (s: scheduler): list (rv_rule_t * list zipper) := *)
+(*   match s with *)
+(*   | Done => [] *)
+(*   | Const r s' => find_all_uaction r *)
+(*   | Try _ s1 s2 => (1* TODO ??? *1) *)
+(*   | SPos _ s' => [] *)
+(*   end. *)
 
-(* TODO Use an inductive predicate instead (not useful in our situation, but
-could be for hairy ones)? Inverting an lt check forces us to consider intervals.
-Do something less general instead?
-
-Inductive predicates + appropriate tactics have all the upsides of such a
-function without the downsides (see invert_all).
-
-Conditions are meant to be expressed in terms of the initial values of the
-registers at the of the cycle. Of course, external calls could be involved.
-However, given how Kôika handles those to this day this won't be problematic in
-our case (if it ever changes, a notion of undeterminate value would have to be
-added).
-
-Which format?
-*)
-(* Fixpoint extract_condition (bc: breadcrumb): ? *)
-
-(* TODO How to express this formally? Is it even useful? *)
-(* If the conditions for the nodes for which P is true were to be false at the
-beginning of the cycle(/action?), then the actions in question won't have any
-effect. Note that one of the conditions in question is that if there is a rule
-writing to the same register on the same slot during the cycle, then whether it
-should be executed or not depends on the order of the schedule.
-
-Effects could be expressed in terms of traces.
-Same question as above: why so general?
-
-Theorem findsb_all_uaction_complete : . *)
-
-(* TODO Should be easy to prove and would allo*)
-(* Lemma no_write_to_reg_r_in_tree_implies_no_write_to_reg_r_in_trace: *)
-(*   forall ctx sigma Gamma sched_log action_log rule action_log' v Gamma', *)
-(*   interp_action ctx sigma Gamma sched_log action_log rule action_log' v Gamma' *)
-(*   -> *)
-(*   . *)
+(* TODO define fold on syntactic tree *)

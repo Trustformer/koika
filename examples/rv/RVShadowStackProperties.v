@@ -287,7 +287,6 @@ Section ShadowStackProperties.
     destruct (getenv REnv ctx RV32I.halt). cbn in H40.
     destruct (val_eq_dec (Bits sz v0) (Bits 1 [true])) in H40.
     subst.
-
   Qed.
 
   Lemma no_stack_violation_behaves_as_if_no_stack:

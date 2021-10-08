@@ -9,6 +9,7 @@ Ltac _tc_strategy ::= exact TC_native.
 Module RVIParams <: RVParams.
   Definition NREGS := 32.
   Definition WIDTH := 32.
+  Definition HAS_SHADOW_STACK := true.
 End RVIParams.
 
 Module RV32I <: Core.
