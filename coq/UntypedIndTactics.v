@@ -330,12 +330,26 @@ Definition is_write
   | _ => false
   end.
 
-(* Fixpoint find_all_in_schedule (s: scheduler): list (rv_rule_t * list zipper) := *)
-(*   match s with *)
-(*   | Done => [] *)
-(*   | Const r s' => find_all_uaction r *)
-(*   | Try _ s1 s2 => (1* TODO ??? *1) *)
-(*   | SPos _ s' => [] *)
-(*   end. *)
+Definition find_all_rule
+  {rule_name_t pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (urule: rule_name_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  (r: rule_name_t) (pred: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> bool)
+: list zipper :=
+  find_all_uaction (urule r) pred.
 
-(* TODO define fold on syntactic tree *)
+Fixpoint find_all_schedule
+  {rule_name_t pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (urule: rule_name_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  (s: scheduler pos_t rule_name_t)
+  (pred: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> bool)
+: list (rule_name_t * list zipper) :=
+  match s with
+  | Done => []
+  | Cons r s' =>
+    (r, find_all_rule urule r pred)::(find_all_schedule urule s' pred)
+  | Try r s1 s2 =>
+    (r, find_all_rule urule r pred)::(
+      app (find_all_schedule urule s1 pred) (find_all_schedule urule s2 pred)
+    )
+  | SPos _ s' => find_all_schedule urule s' pred
+  end.
