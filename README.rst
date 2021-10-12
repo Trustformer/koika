@@ -1215,8 +1215,6 @@ The following list shows the current state of the repo:
 .. _examples/rv/rv32.v: examples/rv/rv32.v
 .. |examples/rv/rv32NoShadowStack.v| replace:: ``rv32NoShadowStack.v``
 .. _examples/rv/rv32NoShadowStack.v: examples/rv/rv32NoShadowStack.v
-.. |examples/rv/rv32i.ml| replace:: ``rv32i.ml``
-.. _examples/rv/rv32i.ml: examples/rv/rv32i.ml
 .. |examples/rv/rv32i.v| replace:: ``rv32i.v``
 .. _examples/rv/rv32i.v: examples/rv/rv32i.v
 .. |examples/rv/rv32iNoShadowStack.v| replace:: ``rv32iNoShadowStack.v``
