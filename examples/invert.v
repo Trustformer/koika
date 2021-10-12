@@ -21,19 +21,10 @@ Module Move.
     | r1 => Bits.of_nat sz 0
     end.
 
-  Compute Bits.of_nat sz 130.
-
-  Definition uintf: UInternalFunction reg_t empty_ext_fn_t := {{
-    fun uintf (pc: bits_t sz) : bits_t sz =>
-      let pc := Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1 in
-      pc
-  }}.
-
   (* Could be swapped in just one tick but we're not in a hurry *)
   Definition _tick : uaction reg_t empty_ext_fn_t := {{
     let target := #(Bits.of_nat sz 135) in
-    set target := uintf(Ob~0~0~0~0~0~0~0~0~1~0~0~0~0~0~1~0);
-    (* set target := Ob~0~0~0~0~0~0~0~0~1~0~0~0~0~0~1~0; *)
+    set target := Ob~0~0~0~0~0~0~0~0~1~0~0~0~0~0~1~0;
 
     if (read0(r0) > #(Bits.of_nat sz 150)) then write0(r0, target) else pass;
 
