@@ -85,8 +85,6 @@ Module Move.
       vp_ext_fn_specs := empty_ext_fn_props
     |}
   |}.
-
-  Compute (interp_cycle rules rule_name_t invert r).
 End Move.
 
 Definition prog := Interop.Backends.register Move.package.
