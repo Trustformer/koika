@@ -475,8 +475,7 @@ Section RVHelpers.
     struct_fields := ("nextPC", bits_t 32) :: ("taken", bits_t 1) :: nil
   |}.
 
-  Definition execControl32
-    `{finite_reg: FiniteType reg_t}
+  Definition execControl32 `{finite_reg: FiniteType reg_t}
   : UInternalFunction reg_t empty_ext_fn_t := {{
     fun execControl32 (inst : bits_t 32) (rs1_val : bits_t 32)
       (rs2_val : bits_t 32) (imm_val : bits_t 32) (pc : bits_t 32)

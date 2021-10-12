@@ -15,7 +15,8 @@ Module Nothing.
 
   Definition r idx : R idx :=
     match idx with
-    | r0 => Bits.of_nat sz 168
+    | r0 =>
+        Bits.of_nat sz 168
     end.
 
   Definition _tick : uaction reg_t empty_ext_fn_t := {{ fail }}.

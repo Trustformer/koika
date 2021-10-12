@@ -4,7 +4,8 @@ Require Export Koika.Common Koika.Primitives Koika.Types Koika.ErrorReporting.
 Section Syntax.
   Context {pos_t var_t rule_name_t fn_name_t: Type}.
   Class Lift {from to: Type} := lift: from -> to.
-  Class Inj {from to: Type} (f: from -> to) := inj: forall i j, i <> j -> f i <> f j.
+  Class Inj {from to: Type} (f: from -> to) :=
+    inj: forall i j, i <> j -> f i <> f j.
   Hint Mode Lift - ! : typeclass_instances.
 
   Inductive uaction {reg_t ext_fn_t} :=
@@ -21,7 +22,8 @@ Section Syntax.
   | UUnop (ufn1: PrimUntyped.ufn1) (arg1: uaction)
   | UBinop (ufn2: PrimUntyped.ufn2) (arg1: uaction) (arg2: uaction)
   | UExternalCall (ufn: ext_fn_t) (arg: uaction)
-  | UInternalCall (ufn: InternalFunction var_t fn_name_t uaction) (args: list uaction)
+  | UInternalCall (ufn: InternalFunction var_t fn_name_t uaction)
+    (args: list uaction)
   | UAPos (p: pos_t) (e: uaction)
   | USugar (s: usugar)
   with usugar {reg_t ext_fn_t} :=
@@ -33,17 +35,16 @@ Section Syntax.
   | UProgn (aa: list uaction)
   | ULet (bindings: list (var_t * uaction)) (body: uaction)
   | UWhen (cond: uaction) (body: uaction)
-  | USwitch (var: uaction)
-            (default: uaction)
-            (branches: list (uaction * uaction))
+  | USwitch (var: uaction) (default: uaction)
+    (branches: list (uaction * uaction))
   | UStructInit (sig: struct_sig) (fields: list (string * uaction))
   | UArrayInit (tau: type) (elements: list uaction)
   | UCallModule {module_reg_t module_ext_fn_t: Type}
-                `{finite_reg: FiniteType module_reg_t}
-                (fR: module_reg_t -> reg_t)
-                (fSigma: @Lift module_ext_fn_t ext_fn_t)
-                (fn: InternalFunction var_t fn_name_t (@uaction module_reg_t module_ext_fn_t))
-                (args: list uaction).
+    `{finite_reg: FiniteType module_reg_t} (fR: module_reg_t -> reg_t)
+    (fSigma: @Lift module_ext_fn_t ext_fn_t)
+    (fn: InternalFunction var_t fn_name_t (
+      @uaction module_reg_t module_ext_fn_t
+    )) (args: list uaction).
 
   Inductive scheduler :=
   | Done

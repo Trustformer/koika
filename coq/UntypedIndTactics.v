@@ -180,7 +180,6 @@ Ltac invert_full H :=
 Inductive zipper := here | through_nth_branch (n: nat) (b: zipper).
 
 Open Scope nat.
-
 Definition zoom_zipper
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (bc: zipper)
@@ -352,4 +351,196 @@ Fixpoint find_all_schedule
       app (find_all_schedule urule s1 pred) (find_all_schedule urule s2 pred)
     )
   | SPos _ s' => find_all_schedule urule s' pred
+  end.
+
+Fixpoint map_uaction
+  {rule_name_t pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  (f: uaction pos_t var_t fn_name_t reg_t ext_fn_t
+    -> uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  match ua with
+  | USeq a1 a2 => USeq (f a1) (f a2)
+  | UBind v ex body => UBind v (f ex) (f body)
+  | UIf cond tbranch fbranch => UIf (f cond) (f tbranch) (f fbranch)
+  | UWrite port idx value => UWrite port idx (f value)
+  | UUnop ufn1 arg1 => UUnop ufn1 (f arg1)
+  | UBinop ufn2 arg1 arg2 => UBinop ufn2 (f arg1) (f arg2)
+  | UExternalCall ufn arg => UExternalCall ufn (f arg)
+  | UInternalCall ufn args =>
+    UInternalCall {|
+      int_name := int_name ufn;
+      int_argspec := int_argspec ufn;
+      int_retSig := int_retSig ufn;
+      int_body := f (int_body ufn);
+    |} (map (f) args)
+  | UAPos p e => UAPos p (f e)
+  | _ => ua
+  end.
+
+Fixpoint fold_uaction
+  {pos_t var_t fn_name_t reg_t ext_fn_t A: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  (f: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> A -> A) (acc: A)
+: A :=
+  let acc' := f ua acc in
+  match ua with
+  | USeq a1 a2 => fold_uaction a2 f (fold_uaction a1 f acc')
+  | UBind _ ex body => fold_uaction body f (fold_uaction ex f acc')
+  | UIf cond tbranch fbranch =>
+    fold_uaction fbranch f (fold_uaction tbranch f (fold_uaction cond f acc'))
+  | UWrite _ _ value => fold_uaction value f acc'
+  | UUnop _ arg1 => fold_uaction arg1 f acc'
+  | UBinop _ arg1 arg2 => fold_uaction arg2 f (fold_uaction arg1 f acc')
+  | UExternalCall _ arg => fold_uaction arg f acc'
+  | UInternalCall ufn args =>
+    fold_right
+      (fun a ac => fold_uaction a (f) ac) (fold_uaction (int_body ufn) f acc')
+      args
+  | UAPos _ e => fold_uaction e f acc'
+  | _ => acc'
+  end.
+
+Definition apply_over_one_step
+  {pos_t var_t fn_name_t reg_t ext_fn_t A: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  (f: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> A -> A) (acc: A)
+: A :=
+  match ua with
+  | USeq a1 a2 => f a2 (f a1 acc)
+  | UBind _ ex body => f body (f ex acc)
+  | UIf cond tbranch fbranch => f fbranch (f tbranch (f cond acc))
+  | UWrite _ _ value => f value acc
+  | UUnop _ arg1 => f arg1 acc
+  | UBinop _ arg1 arg2 => f arg2 (f arg1 acc)
+  | UExternalCall _ arg => f arg acc
+  | UInternalCall ufn args => fold_right (f) (f (int_body ufn) acc) args
+  | UAPos _ e => f e acc
+  | _ => acc
+  end.
+
+(* match ua with *)
+(* | UError e => *)
+(* | UFail t => *)
+(* | UVar v => *)
+(* | UConst cst => *)
+(* | UAssign v ex => *)
+(* | USeq a1 a2 => *)
+(* | UBind v ex body => *)
+(* | UIf cond tbranch fbranch => *)
+(* | URead port idx => *)
+(* | UWrite port idx value => *)
+(* | UUnop ufn1 arg1 => *)
+(* | UBinop ufn2 arg1 arg2 => *)
+(* | UExternalCall ufn arg => *)
+(* | UInternalCall ufn args => *)
+(* | UAPos p e => *)
+(* | _ => *)
+(* end. *)
+
+Fixpoint obtain_used_names_aux
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (l: list var_t)
+: list var_t :=
+  match ua with
+  | UBind v ex body =>
+    obtain_used_names_aux body (obtain_used_names_aux ex (v::l))
+  | UInternalCall ufn args => obtain_used_names_aux (int_body ufn) l
+  | _ => apply_over_one_step ua (obtain_used_names_aux) l
+  end.
+
+Definition obtain_used_names
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: list var_t :=
+  obtain_used_names_aux ua nil.
+
+Fixpoint replace_variable_with_expr
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (vr: var_t)
+  (rex: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  (* TODO pass beq_var_t as arg *)
+  match ua with
+  | UAssign v ex =>
+      let (ra1, post_val_1) := replace_variable_with_expr ex vr rex in
+      if (eq_dec v vr) then (UConst (tau := bits_t 1) (Bits.of_nat 1 0), ra1)
+      else (UAssign v ra1, post_val_1)
+  | USeq a1 a2 =>
+    let (ra1, post_val_1) := replace_variable_with_expr a1 vr rex in
+    let (ra2, post_val_2) := replace_variable_with_expr a2 vr post_val_1 in
+    (USeq ra1 ra2, post_val_2)
+  | UBind v ex body =>
+    let (ra1, post_val_1) := replace_variable_with_expr ex vr rex in
+    if (eq_dec v vr) then
+      (* vr is shadowed, don't replace in body *)
+      (UBind v ra1 body, post_val_1)
+    else
+      let (ra2, post_val_2) := replace_variable_with_expr ex vr post_val_1 in
+      (UBind v ra1 ra2, post_val_2)
+  | UIf cond tbranch fbranch =>
+    let (ra1, post_val_1) := replace_variable_with_expr cond vr rex in
+    let (rat, post_val_t) := replace_variable_with_expr tbranch vr post_val_1 in
+    let (raf, post_val_f) := replace_variable_with_expr fbranch vr post_val_1 in
+    (UIf ra1 rat raf, UIf ra1 post_val_t post_val_f)
+  | UWrite port idx value =>
+    let (ra1, post_val_1) := replace_variable_with_expr value vr rex in
+    (UWrite port idx ra1, post_val_1)
+  | UUnop ufn1 arg1 =>
+    let (ra1, post_val_1) := replace_variable_with_expr arg1 vr rex in
+    (UUnop ufn1 ra1, post_val_1)
+  | UBinop ufn2 arg1 arg2 =>
+    let (ra1, post_val_1) := replace_variable_with_expr arg1 vr rex in
+    let (ra2, post_val_2) := replace_variable_with_expr arg2 vr post_val_1 in
+    (UBinop ufn2 ra1 ra2, post_val_2)
+  | UExternalCall ufn arg =>
+    let (ra1, post_val_1) := replace_variable_with_expr arg vr rex in
+    (UExternalCall ufn ra1, post_val_1)
+  | UInternalCall ufn args =>
+    let (rargs, post_val_args) := (
+      fold_right
+        (fun arg '(l, rex') =>
+          let (ran, post_val) := replace_variable_with_expr arg vr rex' in
+          (ran::l, post_val)
+        )
+        (nil, rex)
+        args
+    ) in
+    (UInternalCall ufn rargs, post_val_args)
+  | UAPos p e =>
+    let (ra1, post_val_1) := replace_variable_with_expr e vr rex in
+    (UAPos p ra1, post_val_1)
+  | _ => (ua, rex)
+  end.
+
+Fixpoint inline_internal_calls
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  (* TODO use map_uaction to simplify *)
+  match ua with
+  | UAssign v ex => UAssign v (inline_internal_calls ex)
+  | USeq a1 a2 => USeq (inline_internal_calls a1) (inline_internal_calls a2)
+  | UBind v ex body =>
+    UBind v (inline_internal_calls ex) (inline_internal_calls body)
+  | UIf cond tbranch fbranch =>
+    UIf (inline_internal_calls cond) (inline_internal_calls tbranch)
+    (inline_internal_calls fbranch)
+  | UWrite port idx value => UWrite port idx (inline_internal_calls value)
+  | UUnop ufn1 arg1 => UUnop ufn1 (inline_internal_calls arg1)
+  | UBinop ufn2 arg1 arg2 =>
+    UBinop ufn2 (inline_internal_calls arg1) (inline_internal_calls arg2)
+  | UExternalCall ufn arg => UExternalCall ufn (inline_internal_calls arg)
+  | UInternalCall ufn args =>
+    fold_right
+      (fun '(arg_n, arg_v) bd => fst (replace_variable_with_expr bd arg_n arg_v))
+      (inline_internal_calls (int_body ufn))
+      (combine
+        (fst (split (int_argspec ufn)))
+        (map (inline_internal_calls) args)
+      )
+  | UAPos p e => UAPos p (inline_internal_calls e)
+  | _ => ua
   end.

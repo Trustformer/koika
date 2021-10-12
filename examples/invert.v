@@ -21,18 +21,32 @@ Module Move.
     | r1 => Bits.of_nat sz 0
     end.
 
+  Compute Bits.of_nat sz 130.
+
+  Definition uintf: UInternalFunction reg_t empty_ext_fn_t := {{
+    fun uintf (pc: bits_t sz) : bits_t sz =>
+      let pc := Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1 in
+      pc
+  }}.
+
   (* Could be swapped in just one tick but we're not in a hurry *)
   Definition _tick : uaction reg_t empty_ext_fn_t := {{
-    let v := read0(r0) in
-    let w := read0(r1) in
+    let target := #(Bits.of_nat sz 135) in
+    set target := uintf(Ob~0~0~0~0~0~0~0~0~1~0~0~0~0~0~1~0);
+    (* set target := Ob~0~0~0~0~0~0~0~0~1~0~0~0~0~0~1~0; *)
+
+    if (read0(r0) > #(Bits.of_nat sz 150)) then write0(r0, target) else pass;
+
+    let v := read1(r0) in
+    let w := read1(r1) in
     if v != |16`d0| then
-      write0(r0,v - |16`d1|);
-      write0(r1,w + |16`d1|)
+      write1(r0,v - |16`d1|);
+      write1(r1,w + |16`d1|)
     else
       fail
   }}.
 
-  Definition move : scheduler := tick |> done.
+  Definition invert : scheduler := tick |> done.
 
   Definition cr := ContextEnv.(create) r.
 
@@ -41,7 +55,7 @@ Module Move.
     tc_rules R empty_Sigma (fun r => match r with tick => _tick end).
 
   Definition cycle_log :=
-    tc_compute (interp_scheduler cr empty_sigma rules move).
+    tc_compute (interp_scheduler cr empty_sigma rules invert).
 
   Definition tick_result :=
     tc_compute (
@@ -52,7 +66,7 @@ Module Move.
 
   Definition external (r: rule_name_t) := false.
 
-  Definition circuits := compile_scheduler rules external move.
+  Definition circuits := compile_scheduler rules external invert.
   Definition circuits_result :=
     tc_compute (
       interp_circuits empty_sigma circuits (lower_r (ContextEnv.(create) r))
@@ -69,8 +83,8 @@ Module Move.
       koika_ext_fn_types := empty_Sigma;
       koika_rules := rules;
       koika_rule_external := external;
-      koika_scheduler := move;
-      koika_module_name := "move"
+      koika_scheduler := invert;
+      koika_module_name := "invert"
     |};
     ip_sim := {|
       sp_ext_fn_specs := empty_ext_fn_props;
@@ -80,6 +94,8 @@ Module Move.
       vp_ext_fn_specs := empty_ext_fn_props
     |}
   |}.
+
+  Compute (interp_cycle rules rule_name_t invert r).
 End Move.
 
 Definition prog := Interop.Backends.register Move.package.
