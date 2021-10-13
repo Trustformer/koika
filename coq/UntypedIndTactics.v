@@ -591,7 +591,9 @@ Fixpoint remove_bindings_aux
     (USeq ra1 ra2, post_gamma_2)
   | UBind v ex body =>
     let (ra1, post_gamma_1) := remove_bindings_aux ex Gamma in
-    let (ra2, post_gamma_2) := remove_bindings_aux ex ((v, ex)::post_gamma_1) in
+    let (ra2, post_gamma_2) :=
+      remove_bindings_aux body ((v, ex)::post_gamma_1)
+    in
     (USeq ra1 ra2, tl post_gamma_2)
   | UIf cond tbranch fbranch =>
     let (ra1, post_gamma_1) := remove_bindings_aux cond Gamma in
