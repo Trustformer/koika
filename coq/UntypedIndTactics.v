@@ -669,8 +669,44 @@ Fixpoint remove_bindings_aux
   end.
 
 Definition remove_bindings
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  {beq_var_t: EqDec var_t}
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
 : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
   fst (remove_bindings_aux ua nil).
+
+(* XXX Supposes desugared, no internal calls, no bindings *)
+Fixpoint remove_uapos
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  match ua with
+  | USeq a1 a2 => USeq (remove_uapos a1) (remove_uapos a2)
+  | UIf cond tbranch fbranch =>
+    UIf (remove_uapos cond) (remove_uapos tbranch) (remove_uapos fbranch)
+  | UWrite port idx value => UWrite port idx (remove_uapos value)
+  | UUnop ufn1 arg1 => UUnop ufn1 (remove_uapos arg1)
+  | UBinop ufn2 arg1 arg2 => UBinop ufn2 (remove_uapos arg1) (remove_uapos arg2)
+  | UExternalCall ufn arg => UExternalCall ufn (remove_uapos arg)
+  | UAPos p e => remove_uapos e
+  | _ => ua
+  end.
+
+(* XXX Supposes desugared, no internal calls, no bindings, no uapos *)
+(* Fixpoint remove_external_calls *)
+(*   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} *)
+(*   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) *)
+(* : uaction pos_t var_t fn_name_t reg_t ext_fn_t := *)
+(*   match ua with *)
+(*   | USeq a1 a2 => USeq (remove_external_calls a1) (remove_external_calls a2) *)
+(*   | UIf cond tbranch fbranch => *)
+(*     UIf *)
+(*       (remove_external_calls cond) (remove_external_calls tbranch) *)
+(*       (remove_external_calls fbranch) *)
+(*   | UWrite port idx value => UWrite port idx (remove_external_calls value) *)
+(*   | UUnop ufn1 arg1 => UUnop ufn1 (remove_external_calls arg1) *)
+(*   | UBinop ufn2 arg1 arg2 => *)
+(*     UBinop ufn2 (remove_external_calls arg1) (remove_external_calls arg2) *)
+(*   | UExternalCall ufn arg => *)
+(*     UExternalCall ufn (remove_external_calls arg) *)
+(*   | _ => ua *)
+(*   end. *)
