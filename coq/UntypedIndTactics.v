@@ -419,25 +419,6 @@ Definition apply_over_one_step
   | _ => acc
   end.
 
-(* match ua with *)
-(* | UError e => *)
-(* | UFail t => *)
-(* | UVar v => *)
-(* | UConst cst => *)
-(* | UAssign v ex => *)
-(* | USeq a1 a2 => *)
-(* | UBind v ex body => *)
-(* | UIf cond tbranch fbranch => *)
-(* | URead port idx => *)
-(* | UWrite port idx value => *)
-(* | UUnop ufn1 arg1 => *)
-(* | UBinop ufn2 arg1 arg2 => *)
-(* | UExternalCall ufn arg => *)
-(* | UInternalCall ufn args => *)
-(* | UAPos p e => *)
-(* | _ => *)
-(* end. *)
-
 Fixpoint obtain_used_names_aux
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (l: list var_t)
@@ -455,18 +436,48 @@ Definition obtain_used_names
 : list var_t :=
   obtain_used_names_aux ua nil.
 
+Fixpoint remove_writes
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  match ua with
+  | UAssign v ex => UAssign v (remove_writes ex)
+  | USeq a1 a2 => USeq (remove_writes a1) (remove_writes a2)
+  | UBind v ex body =>
+    UBind v (remove_writes ex) (remove_writes body)
+  | UIf cond tbranch fbranch =>
+    UIf
+      (remove_writes cond) (remove_writes tbranch)
+      (remove_writes fbranch)
+  | UWrite port idx value => (remove_writes value)
+  | UUnop ufn1 arg1 => UUnop ufn1 (remove_writes arg1)
+  | UBinop ufn2 arg1 arg2 =>
+    UBinop ufn2 (remove_writes arg1) (remove_writes arg2)
+  | UExternalCall ufn arg => UExternalCall ufn (remove_writes arg)
+  | UInternalCall ufn args =>
+    UInternalCall {|
+      int_name := int_name ufn;
+      int_argspec := int_argspec ufn;
+      int_retSig := int_retSig ufn;
+      int_body := remove_writes (int_body ufn);
+    |} (map (remove_writes) args)
+  | UAPos p e => UAPos p (remove_writes e)
+  | _ => ua
+  end.
+
 Fixpoint replace_variable_with_expr
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (vr: var_t)
   (rex: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-: uaction pos_t var_t fn_name_t reg_t ext_fn_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
-  (* TODO pass beq_var_t as arg *)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t
+  * uaction pos_t var_t fn_name_t reg_t ext_fn_t
+:=
   match ua with
   | UAssign v ex =>
-      let (ra1, post_val_1) := replace_variable_with_expr ex vr rex in
-      if (eq_dec v vr) then (UConst (tau := bits_t 1) (Bits.of_nat 1 0), ra1)
-      else (UAssign v ra1, post_val_1)
+    let (ra1, post_val_1) := replace_variable_with_expr ex vr rex in
+    if (eq_dec v vr) then (UConst (tau := bits_t 1) (Bits.of_nat 1 0), ra1)
+    else (UAssign v ra1, post_val_1)
   | USeq a1 a2 =>
     let (ra1, post_val_1) := replace_variable_with_expr a1 vr rex in
     let (ra2, post_val_2) := replace_variable_with_expr a2 vr post_val_1 in
@@ -514,12 +525,12 @@ Fixpoint replace_variable_with_expr
   | _ => (ua, rex)
   end.
 
+(* XXX Supposes desugared *)
 Fixpoint inline_internal_calls
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
 : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
-  (* TODO use map_uaction to simplify *)
   match ua with
   | UAssign v ex => UAssign v (inline_internal_calls ex)
   | USeq a1 a2 => USeq (inline_internal_calls a1) (inline_internal_calls a2)
@@ -534,13 +545,112 @@ Fixpoint inline_internal_calls
     UBinop ufn2 (inline_internal_calls arg1) (inline_internal_calls arg2)
   | UExternalCall ufn arg => UExternalCall ufn (inline_internal_calls arg)
   | UInternalCall ufn args =>
-    fold_right
-      (fun '(arg_n, arg_v) bd => fst (replace_variable_with_expr bd arg_n arg_v))
-      (inline_internal_calls (int_body ufn))
-      (combine
-        (fst (split (int_argspec ufn)))
-        (map (inline_internal_calls) args)
-      )
+    let args_eval :=
+      fold_right (fun arg acc => USeq acc (inline_internal_calls arg))
+      (UConst (tau := bits_t 1) (Bits.of_nat 1 0)) args
+    in
+    let inlined_call :=
+      fold_right
+        (fun '(arg_n, arg_v) bd =>
+          fst (replace_variable_with_expr bd arg_n arg_v)
+        )
+        (inline_internal_calls (int_body ufn))
+        (combine
+          (fst (split (int_argspec ufn)))
+          (map (fun arg => remove_writes (inline_internal_calls arg)) args)
+        )
+    in
+    USeq args_eval inlined_call
   | UAPos p e => UAPos p (inline_internal_calls e)
   | _ => ua
   end.
+
+(* XXX Supposes desugared, no internal calls *)
+(* TODO Beware about side effects in assignments/bindings defs *)
+(* TODO rename post_gamma_x to Gamma''...' *)
+Fixpoint remove_bindings_aux
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  (Gamma: list (var_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t))
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t
+  * list (var_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+:=
+  match ua with
+  | UVar var =>
+    match list_assoc Gamma var with
+    | Some lar => (lar, Gamma)
+    (* Should never happen in well-formed rules *)
+    | None => (UConst (tau := bits_t 1) (Bits.of_nat 1 0), Gamma)
+    end
+  | UAssign v ex =>
+    let (ra1, post_gamma_1) := remove_bindings_aux ex Gamma in
+    (ra1, list_assoc_set post_gamma_1 v (remove_writes ra1))
+  | USeq a1 a2 =>
+    let (ra1, post_gamma_1) := remove_bindings_aux a1 Gamma in
+    let (ra2, post_gamma_2) := remove_bindings_aux a2 post_gamma_1 in
+    (USeq ra1 ra2, post_gamma_2)
+  | UBind v ex body =>
+    let (ra1, post_gamma_1) := remove_bindings_aux ex Gamma in
+    let (ra2, post_gamma_2) := remove_bindings_aux ex ((v, ex)::post_gamma_1) in
+    (USeq ra1 ra2, tl post_gamma_2)
+  | UIf cond tbranch fbranch =>
+    let (ra1, post_gamma_1) := remove_bindings_aux cond Gamma in
+    let (rat, post_gamma_t) := remove_bindings_aux tbranch post_gamma_1 in
+    let (raf, post_gamma_f) := remove_bindings_aux fbranch post_gamma_1 in
+    (* TODO most cases could be simplified *)
+    let final_gamma :=
+      fold_right
+        (fun v acc =>
+          list_assoc_set acc v (
+            UIf ra1 (
+              match list_assoc post_gamma_t v with
+              | Some lar => lar
+              | None => UConst (tau := bits_t 1) (Bits.of_nat 1 0)
+              end
+            ) (
+              match list_assoc post_gamma_f v with
+              | Some lar => lar
+              | None => UConst (tau := bits_t 1) (Bits.of_nat 1 0)
+              end
+            )
+          )
+        )
+        post_gamma_1 (fst (split post_gamma_1))
+    in
+    (UIf ra1 rat raf, final_gamma)
+  | UWrite port idx value =>
+    let (ra1, post_gamma_1) := remove_bindings_aux value Gamma in
+    (UWrite port idx ra1, post_gamma_1)
+  | UUnop ufn1 arg1 =>
+    let (ra1, post_gamma_1) := remove_bindings_aux arg1 Gamma in
+    (UUnop ufn1 ra1, post_gamma_1)
+  | UBinop ufn2 arg1 arg2 =>
+    let (ra1, post_gamma_1) := remove_bindings_aux arg1 Gamma in
+    let (ra2, post_gamma_2) := remove_bindings_aux arg2 post_gamma_1 in
+    (UBinop ufn2 ra1 ra2, post_gamma_2)
+  | UExternalCall ufn arg =>
+    let (ra1, post_gamma_1) := remove_bindings_aux arg Gamma in
+    (UExternalCall ufn ra1, post_gamma_1)
+  | UInternalCall ufn args =>
+    let (rargs, post_gamma_args) := (
+      fold_right
+        (fun arg '(l, Gamma') =>
+          let (ran, post_val) := remove_bindings_aux arg Gamma' in
+          (ran::l, post_val)
+        )
+        (nil, Gamma)
+        args
+    ) in
+    (UInternalCall ufn rargs, post_gamma_args)
+  | UAPos p e =>
+    let (ra1, post_gamma_1) := remove_bindings_aux e Gamma in
+    (UAPos p ra1, post_gamma_1)
+  | _ => (ua, Gamma)
+  end.
+
+Definition remove_bindings
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  fst (remove_bindings_aux ua nil).
