@@ -437,7 +437,7 @@ Definition obtain_used_names
   obtain_used_names_aux ua nil.
 
 Fixpoint remove_writes
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
 : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
   match ua with
@@ -465,6 +465,25 @@ Fixpoint remove_writes
   | _ => ua
   end.
 
+Fixpoint to_unit_t
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  match ua with
+  | UAssign v ex => UAssign v ex
+  | USeq a1 a2 => USeq a1 (to_unit_t a2)
+  | UBind v ex body => UBind v ex body
+  | UIf cond tbranch fbranch => UIf cond (to_unit_t tbranch) (to_unit_t fbranch)
+  | URead port idx => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+  | UWrite port idx value => UWrite port idx value
+  | UUnop ufn1 arg1 => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+  | UBinop ufn2 arg1 arg2 => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+  | UExternalCall ufn arg => UExternalCall ufn arg
+  | UInternalCall ufn args => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+  | UAPos p e => UAPos p (to_unit_t e)
+  | _ => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+  end.
+
 Fixpoint replace_variable_with_expr
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   {beq_var_t: EqDec var_t}
@@ -476,7 +495,7 @@ Fixpoint replace_variable_with_expr
   match ua with
   | UAssign v ex =>
     let (ra1, post_val_1) := replace_variable_with_expr ex vr rex in
-    if (eq_dec v vr) then (UConst (tau := bits_t 1) (Bits.of_nat 1 0), ra1)
+    if (eq_dec v vr) then (UConst (tau := bits_t 0) (Bits.of_nat 0 0), ra1)
     else (UAssign v ra1, post_val_1)
   | USeq a1 a2 =>
     let (ra1, post_val_1) := replace_variable_with_expr a1 vr rex in
@@ -547,7 +566,7 @@ Fixpoint inline_internal_calls
   | UInternalCall ufn args =>
     let args_eval :=
       fold_right (fun arg acc => USeq acc (inline_internal_calls arg))
-      (UConst (tau := bits_t 1) (Bits.of_nat 1 0)) args
+      (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) args
     in
     let inlined_call :=
       fold_right
@@ -560,13 +579,12 @@ Fixpoint inline_internal_calls
           (map (fun arg => remove_writes (inline_internal_calls arg)) args)
         )
     in
-    USeq args_eval inlined_call
+    USeq (to_unit_t args_eval) inlined_call
   | UAPos p e => UAPos p (inline_internal_calls e)
   | _ => ua
   end.
 
 (* XXX Supposes desugared, no internal calls *)
-(* TODO Beware about side effects in assignments/bindings defs *)
 (* TODO rename post_gamma_x to Gamma''...' *)
 Fixpoint remove_bindings_aux
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
@@ -580,11 +598,11 @@ Fixpoint remove_bindings_aux
     match list_assoc Gamma var with
     | Some lar => (lar, Gamma)
     (* Should never happen in well-formed rules *)
-    | None => (UConst (tau := bits_t 1) (Bits.of_nat 1 0), Gamma)
+    | None => (UConst (tau := bits_t 0) (Bits.of_nat 0 0), Gamma)
     end
   | UAssign v ex =>
     let (ra1, post_gamma_1) := remove_bindings_aux ex Gamma in
-    (ra1, list_assoc_set post_gamma_1 v (remove_writes ra1))
+    (to_unit_t ra1, list_assoc_set post_gamma_1 v (remove_writes ra1))
   | USeq a1 a2 =>
     let (ra1, post_gamma_1) := remove_bindings_aux a1 Gamma in
     let (ra2, post_gamma_2) := remove_bindings_aux a2 post_gamma_1 in
@@ -594,7 +612,7 @@ Fixpoint remove_bindings_aux
     let (ra2, post_gamma_2) :=
       remove_bindings_aux body ((v, ex)::post_gamma_1)
     in
-    (USeq ra1 ra2, tl post_gamma_2)
+    (USeq (to_unit_t ra1) ra2, tl post_gamma_2)
   | UIf cond tbranch fbranch =>
     let (ra1, post_gamma_1) := remove_bindings_aux cond Gamma in
     let (rat, post_gamma_t) := remove_bindings_aux tbranch post_gamma_1 in
@@ -607,12 +625,12 @@ Fixpoint remove_bindings_aux
             UIf ra1 (
               match list_assoc post_gamma_t v with
               | Some lar => lar
-              | None => UConst (tau := bits_t 1) (Bits.of_nat 1 0)
+              | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
               end
             ) (
               match list_assoc post_gamma_f v with
               | Some lar => lar
-              | None => UConst (tau := bits_t 1) (Bits.of_nat 1 0)
+              | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
               end
             )
           )
