@@ -70,9 +70,10 @@ Section Syntax.
     Hypothesis UExternalCall_case:
       forall ufn arg, P arg -> P (UExternalCall ufn arg).
     Hypothesis UInternalCall_case:
-      forall ufn args, Forall P args -> P (UInternalCall ufn args).
+      forall ufn args,
+      P (int_body ufn) -> Forall P args -> P (UInternalCall ufn args).
     Hypothesis UAPos_case: forall p e, P e -> P (UAPos p e).
-    (* We don't need the mutually inductive part. *)
+    (* We don't care about the mutually inductive part. *)
     Hypothesis USugar_case: forall s, P (USugar s).
 
     Fixpoint uaction_ind' ua: P ua :=
@@ -95,7 +96,7 @@ Section Syntax.
         UBinop_case ufn2 arg1 arg2 (uaction_ind' arg1) (uaction_ind' arg2)
       | UExternalCall ufn arg => UExternalCall_case ufn arg (uaction_ind' arg)
       | UInternalCall ufn args =>
-        UInternalCall_case ufn args ((
+        UInternalCall_case ufn args (uaction_ind' (int_body ufn)) ((
           fix uaction_list_ind' args: Forall P args :=
             match args with
             | [] => Forall_nil P
