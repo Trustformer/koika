@@ -3,8 +3,8 @@
 Require Import Koika.Frontend.
 
 Module Move.
-  Inductive reg_t := r0 | r1.
-  Inductive rule_name_t := tick.
+  Inductive reg_t := r0 | r1 | r2.
+  Inductive rule_name_t := tick | tack.
 
   Definition logsz := 4.
   Notation sz := (pow2 logsz).
@@ -13,37 +13,54 @@ Module Move.
     match r with
     | r0   => bits_t sz
     | r1   => bits_t sz
+    | r2   => bits_t sz
     end.
 
   Definition r idx : R idx :=
     match idx with
     | r0 => Bits.of_nat sz 168
     | r1 => Bits.of_nat sz 0
+    | r2 => Bits.of_nat sz 65535
     end.
 
   (* Could be swapped in just one tick but we're not in a hurry *)
   Definition _tick : uaction reg_t empty_ext_fn_t := {{
     let target := #(Bits.of_nat sz 135) in
-    set target := Ob~0~0~0~0~0~0~0~0~1~0~0~0~0~0~1~0;
+    set target := Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1;
 
     if (read0(r0) > #(Bits.of_nat sz 150)) then write0(r0, target) else pass;
 
     let v := read1(r0) in
-    let w := read1(r1) in
+    let w := read1(r0) in (
     if v != |16`d0| then
       write1(r0,v - |16`d1|);
       write1(r1,w + |16`d1|)
     else
       fail
+    );
+    let x := read0(r0) in pass
   }}.
 
-  Definition invert : scheduler := tick |> done.
+  Require Import Koika.UntypedIndTactics.
+  Compute (_tick).
+  Compute (remove_bindings _tick).
+
+  Definition _tack : uaction reg_t empty_ext_fn_t := {{
+    let a := Ob~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0 in
+    write0(r2, a)
+  }}.
+  Definition dstack := desugar_action tt _tack.
+  Compute (remove_bindings dstack).
+
+  Definition invert : scheduler := tick |> tack |> done.
 
   Definition cr := ContextEnv.(create) r.
 
   (* Typechecking  *)
   Definition rules :=
-    tc_rules R empty_Sigma (fun r => match r with tick => _tick end).
+    tc_rules R empty_Sigma (fun r =>
+      match r with tick => _tick | tack => (remove_bindings dstack) end
+    ).
 
   Definition cycle_log :=
     tc_compute (interp_scheduler cr empty_sigma rules invert).
@@ -52,8 +69,15 @@ Module Move.
     tc_compute (
       interp_action cr empty_sigma CtxEmpty log_empty log_empty (rules tick)
     ).
+  Definition tack_result :=
+    tc_compute (
+      interp_action cr empty_sigma CtxEmpty log_empty log_empty (rules tack)
+    ).
+  Print tick_result.
+  Print tack_result.
 
   Definition result := tc_compute (commit_update cr cycle_log).
+  Print result.
 
   Definition external (r: rule_name_t) := false.
 

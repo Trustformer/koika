@@ -38,6 +38,28 @@ Module RV32I <: Core.
     | EndExecution => end_execution
     end.
 
+  Require Import Koika.UntypedIndTactics.
+  Check inline_internal_calls fetch.
+  Check desugar_action.
+  Definition init := execute.
+  Definition pre := desugar_action tt init.
+  Definition post := inline_internal_calls pre.
+  Print init.
+  Time Compute pre.
+  Time Compute post.
+  Definition post2 := remove_first_n_bindings post 1.
+  Time Compute post2.
+  Definition post4 := remove_bindings post.
+  Time Compute post4.
+  Definition post3 := remove_first_n_bindings post2 1.
+  Time Compute post3.
+  Definition post4 := remove_first_n_bindings post3 1.
+  Time Compute post4.
+  Definition post5 := remove_first_n_bindings post4 1.
+  Time Compute post5.
+  Definition post4 := remove_bindings post.
+  Time Compute post4.
+
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with
     | Fetch        => tc_rule R Sigma fetch
