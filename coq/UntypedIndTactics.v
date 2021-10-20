@@ -784,34 +784,34 @@ Fixpoint remove_uapos
   end.
 
 (* XXX Supposes no internal calls, desugared *)
-Fixpoint remove_first_binding
+Fixpoint remove_bindings_depth_1
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
 : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
   match ua with
-  | USeq a1 a2 => USeq (remove_first_binding a1) (remove_first_binding a2)
+  | USeq a1 a2 => USeq (remove_bindings_depth_1 a1) (remove_bindings_depth_1 a2)
   | UBind v ex body =>
     USeq
       (to_unit_t ex)
       (fst (replace_variable_with_expr body v (remove_writes ex)))
   | UIf cond tbranch fbranch =>
-    UIf (remove_first_binding cond) (remove_first_binding tbranch)
-      (remove_first_binding fbranch)
-  | UWrite port idx value => UWrite port idx (remove_first_binding value)
-  | UUnop ufn1 arg1 => UUnop ufn1 (remove_first_binding arg1)
-  | UBinop ufn2 arg1 arg2 => UBinop ufn2 (remove_first_binding arg1) (remove_first_binding arg2)
-  | UExternalCall ufn arg => UExternalCall ufn (remove_first_binding arg)
-  | UAPos p e => UAPos p (remove_first_binding e)
+    UIf (remove_bindings_depth_1 cond) (remove_bindings_depth_1 tbranch)
+      (remove_bindings_depth_1 fbranch)
+  | UWrite port idx value => UWrite port idx (remove_bindings_depth_1 value)
+  | UUnop ufn1 arg1 => UUnop ufn1 (remove_bindings_depth_1 arg1)
+  | UBinop ufn2 arg1 arg2 => UBinop ufn2 (remove_bindings_depth_1 arg1) (remove_bindings_depth_1 arg2)
+  | UExternalCall ufn arg => UExternalCall ufn (remove_bindings_depth_1 arg)
+  | UAPos p e => UAPos p (remove_bindings_depth_1 e)
   | _ => ua
   end.
 
-Fixpoint remove_first_n_bindings
+Fixpoint remove_bindings_depth_n
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
 : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
   match n with
   | O => ua
-  | S n' => remove_first_n_bindings (remove_first_binding ua) n'
+  | S n' => remove_bindings_depth_n (remove_bindings_depth_1 ua) n'
   end.
 
 Fixpoint replace_at_zipper
@@ -820,7 +820,7 @@ Fixpoint replace_at_zipper
   (zr: uaction pos_t var_t fn_name_t reg_t ext_fn_t) {struct z}
 : option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
   match z with
-  | here => Some ua
+  | here => Some zr
   | through_nth_branch n sz =>
     match ua with
     | UAssign v a =>
@@ -904,12 +904,234 @@ Definition replace_at_zipper_with
   | None => None
   end.
 
-Fixpoint remove_this_binding
+Definition is_binding
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: bool :=
+  match ua with
+  | UBind _ _ _ => true
+  | _ => false
+  end.
+
+Definition remove_this_binding
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
 : option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
-  (* TODO return none when zipper does not point to a binding *)
-  replace_at_zipper_with ua z remove_first_binding.
+  match (access_zipper ua z) with
+  | Some x =>
+    match x with
+    | UBind _ _ _ =>
+      replace_at_zipper_with
+        ua z
+        (fun e =>
+          match e with
+          | UBind v ex body =>
+            USeq
+              (to_unit_t ex)
+              (fst (replace_variable_with_expr body v (remove_writes ex)))
+          | _ => e
+          end
+        )
+    | _ => None
+    end
+  | None => None
+  end.
+
+Fixpoint remove_first_n_bindings_aux
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (lz: list zipper) (n: nat)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  match n with
+  | O => Some ua
+  | S n' =>
+    match lz with
+    | h::t =>
+      match remove_this_binding ua h with
+      | Some x => remove_first_n_bindings_aux x t n'
+      | None => None
+      end
+    | nil => None
+    end
+  end.
+
+Definition remove_first_n_bindings
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  let matches := find_all_uaction ua (is_binding) in
+  remove_first_n_bindings_aux ua matches n.
+
+Definition remove_first_binding
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  remove_first_n_bindings ua 1.
+
+Definition remove_this_internal_call
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  match (access_zipper ua z) with
+  | Some x =>
+    match x with
+    | UInternalCall _ _ =>
+      replace_at_zipper_with
+        ua z
+        (fun e =>
+          match e with
+          | UInternalCall ufn args =>
+            let args_eval :=
+              fold_right (USeq)
+              (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) args
+            in
+            let inlined_call :=
+              fold_right
+                (fun '(arg_n, arg_v) bd =>
+                  fst (replace_variable_with_expr bd arg_n arg_v)
+                )
+                (int_body ufn)
+                (combine
+                  (fst (split (int_argspec ufn))) (map remove_writes args)
+                )
+            in
+            USeq (to_unit_t args_eval) inlined_call
+          | _ => UConst (tau := bits_t 5) (Bits.of_nat 5 5)
+          end
+        )
+    | _ => None
+    end
+  | None =>
+    Some (UConst (tau := bits_t 4) (Bits.of_nat 4 4))
+  end.
+
+(* TODO uses the same structure as above, reformat *)
+Definition is_internal_call
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: bool :=
+  match ua with
+  | UInternalCall _ _ => true
+  | _ => false
+  end.
+
+Fixpoint remove_first_n_internal_calls_aux
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (lz: list zipper) (n: nat)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  match n with
+  | O => Some ua
+  | S n' =>
+    match lz with
+    | h::t =>
+      match remove_this_internal_call ua h with
+      | Some x => remove_first_n_internal_calls_aux x t n'
+      | None =>
+        Some (UConst (tau := bits_t 3) (Bits.of_nat 3 3))
+      end
+    | nil =>
+      Some (UConst (tau := bits_t 2) (Bits.of_nat 2 2))
+    end
+  end.
+
+Definition remove_first_n_internal_calls
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  let matches := find_all_uaction ua (is_internal_call) in
+  match matches with
+  | nil => Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1))
+  | _ => remove_first_n_internal_calls_aux ua matches n
+  end.
+
+Definition remove_first_internal_call
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  remove_first_n_internal_calls ua 1.
+
+Definition get_init_value
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+:=
+  let lz := find_all_uaction ua (is_internal_call) in
+  match lz with
+  | h::t => access_zipper ua h
+  | nil => None
+  end.
+
+Definition get_final_value
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  let lz := find_all_uaction ua (is_internal_call) in
+  match lz with
+  | h::t =>
+    match (access_zipper ua h) with
+    | Some zv =>
+      Some ((fun e =>
+        match e with
+        | UInternalCall ufn args =>
+          let args_eval :=
+            fold_right (USeq)
+            (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) args
+          in
+          let inlined_call :=
+            fold_right
+              (fun '(arg_n, arg_v) bd =>
+                fst (replace_variable_with_expr bd arg_n arg_v)
+              )
+              (int_body ufn)
+              (combine
+                (fst (split (int_argspec ufn))) (map remove_writes args)
+              )
+          in
+          USeq (to_unit_t args_eval) inlined_call
+        | _ => UConst (tau := bits_t 5) (Bits.of_nat 5 5)
+        end
+      ) zv)
+    | None => None
+    end
+  | nil => None
+  end.
+
+Fixpoint remove_first_internal_call_second_shot
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  let final_v := get_final_value ua in
+  let maybe_z := hd_error (find_all_uaction ua (is_internal_call)) in
+
+  match maybe_z with
+  | Some z =>
+    match final_v with
+    | Some f => replace_at_zipper ua z f
+    | None => None
+    end
+  | None => None
+  end.
+
+Fixpoint remove_first_internal_call_mock
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  let final_v := get_final_value ua in
+  let maybe_z := hd_error (find_all_uaction ua (is_internal_call)) in
+
+  match maybe_z with
+  | Some z =>
+    match final_v with
+    | Some f =>
+      replace_at_zipper ua z (UConst (tau := bits_t 5) (Bits.of_nat 5 5))
+    | None => None
+    end
+  | None => None
+  end.
+
+Definition get_zip
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: option zipper :=
+  hd_error (find_all_uaction ua (is_internal_call)).
 (* TODO How to deal with external calls? This depends on what we mean by
      functional equivalence.
 
