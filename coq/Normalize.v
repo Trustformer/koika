@@ -8,8 +8,8 @@ Open Scope nat.
    the state of the model at the end of the cycle. For example, reading an
    otherwise unaccessed variable is not considered a side-effect. *)
 
-(* The normal form in question is a single rule instead of a schedule, followed
-   by a sequence of writes guarded by a single if each. *)
+(* The normal form in question is a single rule (instead of a schedule)
+   containing a sequence of writes guarded by a single if each. *)
 
 (* 1. Internal calls inlining - supposes desugared *)
 (* 1.1. Side-effects management functions *)
@@ -374,58 +374,56 @@ Fixpoint remove_bindings_aux
     | None => (UConst (tau := bits_t 0) (Bits.of_nat 0 0), Gamma)
     end
   | UAssign v ex =>
-    let (ra1, post_gamma_1) := remove_bindings_aux ex Gamma in
-    (to_unit_t ra1, list_assoc_set post_gamma_1 v (remove_writes ra1))
+    let (ra1, Gamma') := remove_bindings_aux ex Gamma in
+    (to_unit_t ra1, list_assoc_set Gamma' v (remove_writes ra1))
   | USeq a1 a2 =>
-    let (ra1, post_gamma_1) := remove_bindings_aux a1 Gamma in
-    let (ra2, post_gamma_2) := remove_bindings_aux a2 post_gamma_1 in
-    (USeq ra1 ra2, post_gamma_2)
+    let (ra1, Gamma') := remove_bindings_aux a1 Gamma in
+    let (ra2, Gamma'') := remove_bindings_aux a2 Gamma' in
+    (USeq ra1 ra2, Gamma'')
   | UBind v ex body =>
-    let (ra1, post_gamma_1) := remove_bindings_aux ex Gamma in
-    let (ra2, post_gamma_2) :=
-      remove_bindings_aux body ((v, ex)::post_gamma_1)
-    in
-    (USeq (to_unit_t ra1) ra2, tl post_gamma_2)
+    let (ra1, Gamma') := remove_bindings_aux ex Gamma in
+    let (ra2, Gamma'') := remove_bindings_aux body ((v, ex)::Gamma') in
+    (USeq (to_unit_t ra1) ra2, tl Gamma'')
   | UIf cond tbranch fbranch =>
-    let (ra1, post_gamma_1) := remove_bindings_aux cond Gamma in
-    let (rat, post_gamma_t) := remove_bindings_aux tbranch post_gamma_1 in
-    let (raf, post_gamma_f) := remove_bindings_aux fbranch post_gamma_1 in
+    let (ra1, Gamma_cond) := remove_bindings_aux cond Gamma in
+    let (rat, Gamma_t) := remove_bindings_aux tbranch Gamma_cond in
+    let (raf, Gamma_f) := remove_bindings_aux fbranch Gamma_cond in
     (* TODO most cases could be simplified *)
-    let final_gamma :=
+    let Gamma' :=
       fold_right
         (fun v acc =>
           list_assoc_set acc v (
             UIf ra1 (
-              match list_assoc post_gamma_t v with
+              match list_assoc Gamma_t v with
               | Some lar => lar
               | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
               end
             ) (
-              match list_assoc post_gamma_f v with
+              match list_assoc Gamma_f v with
               | Some lar => lar
               | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
               end
             )
           )
         )
-        post_gamma_1 (fst (split post_gamma_1))
+        Gamma_cond (fst (split Gamma_cond))
     in
-    (UIf ra1 rat raf, final_gamma)
+    (UIf ra1 rat raf, Gamma')
   | UWrite port idx value =>
-    let (ra1, post_gamma_1) := remove_bindings_aux value Gamma in
-    (UWrite port idx ra1, post_gamma_1)
+    let (ra1, Gamma') := remove_bindings_aux value Gamma in
+    (UWrite port idx ra1, Gamma')
   | UUnop ufn1 arg1 =>
-    let (ra1, post_gamma_1) := remove_bindings_aux arg1 Gamma in
-    (UUnop ufn1 ra1, post_gamma_1)
+    let (ra1, Gamma') := remove_bindings_aux arg1 Gamma in
+    (UUnop ufn1 ra1, Gamma')
   | UBinop ufn2 arg1 arg2 =>
-    let (ra1, post_gamma_1) := remove_bindings_aux arg1 Gamma in
-    let (ra2, post_gamma_2) := remove_bindings_aux arg2 post_gamma_1 in
-    (UBinop ufn2 ra1 ra2, post_gamma_2)
+    let (ra1, Gamma') := remove_bindings_aux arg1 Gamma in
+    let (ra2, Gamma'') := remove_bindings_aux arg2 Gamma' in
+    (UBinop ufn2 ra1 ra2, Gamma'')
   | UExternalCall ufn arg =>
-    let (ra1, post_gamma_1) := remove_bindings_aux arg Gamma in
-    (UExternalCall ufn ra1, post_gamma_1)
+    let (ra1, Gamma') := remove_bindings_aux arg Gamma in
+    (UExternalCall ufn ra1, Gamma')
   | UInternalCall ufn args =>
-    let (rargs, post_gamma_args) := (
+    let (rargs, Gamma_args) := (
       fold_right
         (fun arg '(l, Gamma') =>
           let (ran, post_val) := remove_bindings_aux arg Gamma' in
@@ -434,10 +432,10 @@ Fixpoint remove_bindings_aux
         (nil, Gamma)
         args
     ) in
-    (UInternalCall ufn rargs, post_gamma_args)
+    (UInternalCall ufn rargs, Gamma_args)
   | UAPos p e =>
-    let (ra1, post_gamma_1) := remove_bindings_aux e Gamma in
-    (UAPos p ra1, post_gamma_1)
+    let (ra1, Gamma') := remove_bindings_aux e Gamma in
+    (UAPos p ra1, Gamma')
   | _ => (ua, Gamma)
   end.
 
