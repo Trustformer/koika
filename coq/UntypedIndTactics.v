@@ -278,55 +278,47 @@ Fixpoint find_all_uaction
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
   (pred: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> bool)
 : list zipper :=
-  if pred ua then [here]
-  else match ua with
-  | UAssign _ ex =>
-    map (fun bc => through_nth_branch 0 bc) (find_all_uaction ex pred)
-  | USeq a1 a2 =>
-    app
-      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction a1 pred))
-      (map (fun bc => through_nth_branch 1 bc) (find_all_uaction a2 pred))
-  | UBind _ ex b =>
-    app
-      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction ex pred))
-      (map (fun bc => through_nth_branch 1 bc) (find_all_uaction b pred))
-  | UIf c t f =>
-    app
-      (app
-        (map (fun bc => through_nth_branch 0 bc) (find_all_uaction c pred))
-        (map (fun bc => through_nth_branch 1 bc) (find_all_uaction t pred))
-      )
-      (map (fun bc => through_nth_branch 2 bc) (find_all_uaction f pred))
-  | UWrite _ _ a =>
-    map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
-  | UUnop _ a =>
-    map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
-  | UBinop _ a1 a2 =>
-    app
-      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction a1 pred))
-      (map (fun bc => through_nth_branch 1 bc) (find_all_uaction a2 pred))
-  | UExternalCall _ a =>
-    map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
-  | UInternalCall ufn al =>
-    app
-      (map (fun bc => through_nth_branch 0 bc) (find_all_uaction (int_body ufn) pred))
-      (List.concat (snd (fold_left
-        (fun acc ua => (S (fst acc), (find_all_uaction ua pred) :: (snd acc)))
-        al (1, [])
-      )))
-  | UAPos _ e =>
-    map (fun bc => through_nth_branch 0 bc) (find_all_uaction e pred)
-  | _ => nil
-  end.
-
-Definition is_write
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-: bool :=
-  match ua with
-  | UWrite _ _ _ => true
-  | _ => false
-  end.
+  app
+    (if pred ua then [here] else [])
+    (match ua with
+    | UAssign _ ex =>
+      map (fun bc => through_nth_branch 0 bc) (find_all_uaction ex pred)
+    | USeq a1 a2 =>
+      app
+        (map (fun bc => through_nth_branch 0 bc) (find_all_uaction a1 pred))
+        (map (fun bc => through_nth_branch 1 bc) (find_all_uaction a2 pred))
+    | UBind _ ex b =>
+      app
+        (map (fun bc => through_nth_branch 0 bc) (find_all_uaction ex pred))
+        (map (fun bc => through_nth_branch 1 bc) (find_all_uaction b pred))
+    | UIf c t f =>
+      app
+        (app
+          (map (fun bc => through_nth_branch 0 bc) (find_all_uaction c pred))
+          (map (fun bc => through_nth_branch 1 bc) (find_all_uaction t pred))
+        )
+        (map (fun bc => through_nth_branch 2 bc) (find_all_uaction f pred))
+    | UWrite _ _ a =>
+      map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
+    | UUnop _ a =>
+      map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
+    | UBinop _ a1 a2 =>
+      app
+        (map (fun bc => through_nth_branch 0 bc) (find_all_uaction a1 pred))
+        (map (fun bc => through_nth_branch 1 bc) (find_all_uaction a2 pred))
+    | UExternalCall _ a =>
+      map (fun bc => through_nth_branch 0 bc) (find_all_uaction a pred)
+    | UInternalCall ufn al =>
+      app
+        (map (fun bc => through_nth_branch 0 bc) (find_all_uaction (int_body ufn) pred))
+        (List.concat (snd (fold_left
+          (fun acc ua => (S (fst acc), (find_all_uaction ua pred) :: (snd acc)))
+          al (1, [])
+        )))
+    | UAPos _ e =>
+      map (fun bc => through_nth_branch 0 bc) (find_all_uaction e pred)
+    | _ => nil
+    end).
 
 Definition find_all_rule
   {rule_name_t pos_t var_t fn_name_t reg_t ext_fn_t: Type}
@@ -1000,8 +992,7 @@ Definition remove_this_internal_call
         )
     | _ => None
     end
-  | None =>
-    Some (UConst (tau := bits_t 4) (Bits.of_nat 4 4))
+  | None => Some (UConst (tau := bits_t 4) (Bits.of_nat 4 4))
   end.
 
 (* TODO uses the same structure as above, reformat *)
@@ -1025,11 +1016,9 @@ Fixpoint remove_first_n_internal_calls_aux
     | h::t =>
       match remove_this_internal_call ua h with
       | Some x => remove_first_n_internal_calls_aux x t n'
-      | None =>
-        Some (UConst (tau := bits_t 3) (Bits.of_nat 3 3))
+      | None => Some (UConst (tau := bits_t 3) (Bits.of_nat 3 3))
       end
-    | nil =>
-      Some (UConst (tau := bits_t 2) (Bits.of_nat 2 2))
+    | nil => Some (UConst (tau := bits_t 2) (Bits.of_nat 2 2))
     end
   end.
 
@@ -1037,7 +1026,7 @@ Definition remove_first_n_internal_calls
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
 : option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
-  let matches := find_all_uaction ua (is_internal_call) in
+  let matches := rev (find_all_uaction ua (is_internal_call)) in
   match matches with
   | nil => Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1))
   | _ => remove_first_n_internal_calls_aux ua matches n
@@ -1053,7 +1042,7 @@ Definition get_init_value
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
 :=
-  let lz := find_all_uaction ua (is_internal_call) in
+  let lz := rev (find_all_uaction ua (is_internal_call)) in
   match lz with
   | h::t => access_zipper ua h
   | nil => None
@@ -1063,7 +1052,7 @@ Definition get_final_value
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
 : option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
-  let lz := find_all_uaction ua (is_internal_call) in
+  let lz := rev (find_all_uaction ua (is_internal_call)) in
   match lz with
   | h::t =>
     match (access_zipper ua h) with
@@ -1071,21 +1060,12 @@ Definition get_final_value
       Some ((fun e =>
         match e with
         | UInternalCall ufn args =>
-          let args_eval :=
-            fold_right (USeq)
-            (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) args
-          in
-          let inlined_call :=
-            fold_right
-              (fun '(arg_n, arg_v) bd =>
-                fst (replace_variable_with_expr bd arg_n arg_v)
-              )
-              (int_body ufn)
-              (combine
-                (fst (split (int_argspec ufn))) (map remove_writes args)
-              )
-          in
-          USeq (to_unit_t args_eval) inlined_call
+          fold_right
+            (fun '(arg_n, arg_v) bd =>
+              fst (replace_variable_with_expr bd arg_n arg_v)
+            )
+            (int_body ufn)
+            (firstn 1 (rev (combine (fst (split (int_argspec ufn))) (args))))
         | _ => UConst (tau := bits_t 5) (Bits.of_nat 5 5)
         end
       ) zv)
@@ -1094,44 +1074,81 @@ Definition get_final_value
   | nil => None
   end.
 
-Fixpoint remove_first_internal_call_second_shot
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
-  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
-  let final_v := get_final_value ua in
-  let maybe_z := hd_error (find_all_uaction ua (is_internal_call)) in
-
-  match maybe_z with
-  | Some z =>
-    match final_v with
-    | Some f => replace_at_zipper ua z f
-    | None => None
-    end
-  | None => None
-  end.
-
-Fixpoint remove_first_internal_call_mock
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
-  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
-  let final_v := get_final_value ua in
-  let maybe_z := hd_error (find_all_uaction ua (is_internal_call)) in
-
-  match maybe_z with
-  | Some z =>
-    match final_v with
-    | Some f =>
-      replace_at_zipper ua z (UConst (tau := bits_t 5) (Bits.of_nat 5 5))
-    | None => None
-    end
-  | None => None
-  end.
-
 Definition get_zip
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
 : option zipper :=
-  hd_error (find_all_uaction ua (is_internal_call)).
+  hd_error (rev (find_all_uaction ua (is_internal_call))).
+
+Definition get_count
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: nat :=
+  List.length (find_all_uaction ua (is_internal_call)).
+
+Definition bind
+  {A B: Type} (o: option A) (f: A -> option B)
+: option B :=
+  match o with
+  | None => None
+  | Some x => f x
+  end.
+Notation "A >>= F" := (bind A F) (at level 42, left associativity).
+
+Definition get_nth_replacement
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  let lz := rev (find_all_uaction ua (is_internal_call)) in
+  match lz with
+  | h::t =>
+    match (access_zipper ua h) with
+    | Some x =>
+      match x with
+      | UInternalCall ufn args =>
+        match nth_error (fst (split (int_argspec ufn))) n with
+        | Some y =>
+          let inlined_call :=
+            fst (replace_variable_with_expr (int_body ufn) y )
+          in
+          Some inlined_call
+        | None => None
+        end
+      | _ => None
+      end
+    | None => None
+    end
+  | nil => None
+  end.
+
+Open Scope nat.
+Fixpoint get_size
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: nat :=
+  1 +
+  match ua with
+  | UError _ => 0
+  | UFail _ => 0
+  | UVar _ => 0
+  | UConst _ => 0
+  | UAssign _ ex => get_size ex
+  | USeq a1 a2 => get_size a1 + get_size a2
+  | UBind _ ex body => get_size ex + get_size body
+  | UIf cond tbranch fbranch => get_size cond + get_size tbranch + get_size fbranch
+  | URead _ _ => 0
+  | UWrite _ _ value => get_size value
+  | UUnop _ arg1 => get_size arg1
+  | UBinop _ arg1 arg2 => get_size arg1 + get_size arg2
+  | UExternalCall _ arg => get_size arg
+  | UInternalCall ufn args =>
+    get_size (int_body ufn)
+    + List.fold_left (fun acc ua => acc + (get_size ua)) args 0
+  | UAPos _ e => get_size e
+  | USugar _ => 0
+  end.
+Close Scope nat.
+
 (* TODO How to deal with external calls? This depends on what we mean by
      functional equivalence.
 
@@ -1144,9 +1161,7 @@ Definition get_zip
 
    We know that we are not reasoning on raw logs since we ultimately want to get
    rid of the write1s. Maybe something that associates a new expression that
-   including .
-
-   What about impure external calls?
+   includ
 *)
 
 (* XXX Supposes desugared, no internal calls, no bindings, no uapos *)
