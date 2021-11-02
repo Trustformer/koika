@@ -3,12 +3,15 @@ Require Import Koika.Frontend.
 Require Import rv.RVCore rv.rv32.
 Require Import rv.ShadowStack.
 
+(* TODO remove, imported for temporary tests *)
+Require Import rv.InstructionsProperties Koika.Normalize.
+
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
 
 Module RVIParams <: RVParams.
-  Definition NREGS := 32.
-  Definition WIDTH := 32.
+  Definition NREGS: nat := 32.
+  Definition WIDTH: nat := 32.
   Definition HAS_SHADOW_STACK := true.
 End RVIParams.
 
@@ -16,13 +19,36 @@ Module RV32I <: Core.
   Module ShadowStack := ShadowStackF.
   Include (RVCore RVIParams ShadowStack).
 
-  Definition _reg_t := reg_t.
-  Definition _ext_fn_t := ext_fn_t.
-
   Instance FiniteType_rf : FiniteType Rf.reg_t := _.
   Instance FiniteType_scoreboard_rf : FiniteType Scoreboard.Rf.reg_t := _.
   Instance FiniteType_scoreboard : FiniteType Scoreboard.reg_t := _.
   Instance FiniteType_reg_t : FiniteType reg_t := _.
+  (* TODO generalize: more usable FiniteType instanciation. Does this make a
+     difference in practice? *)
+  Instance FiniteType_reg_t2: FiniteType reg_t.
+  Proof.
+    eapply (@Build_FiniteType
+      _ (@finite_index _ FiniteType_reg_t) (@finite_elements _ FiniteType_reg_t)
+    ).
+    abstract (exact (@finite_surjective _ FiniteType_reg_t)).
+    abstract (exact (@finite_injective _ FiniteType_reg_t)).
+  Defined.
+
+Definition is_module_call
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (ua: uaction pos_t var_t )
+: bool :=
+  match ua with
+  | USugar s =>
+    match s with
+    | UCallModule _ _ _ _ => true
+    | _ => false
+    end
+  | _ => false
+  end.
+
+  Definition _reg_t := reg_t.
+  Definition _ext_fn_t := ext_fn_t.
 
   Definition rv_urules (rl: rv_rules_t) : uaction reg_t ext_fn_t :=
     match rl with
@@ -38,27 +64,31 @@ Module RV32I <: Core.
     | EndExecution => end_execution
     end.
 
-  Require Import Koika.UntypedIndTactics.
-  Check inline_internal_calls fetch.
-  Check desugar_action.
-  Definition init := execute.
-  Definition pre := desugar_action tt init.
-  Definition post := inline_internal_calls pre.
-  Print init.
-  Time Compute pre.
-  Time Compute post.
-  Definition post2 := remove_first_n_bindings post 1.
-  Time Compute post2.
-  Definition post4 := remove_bindings post.
-  Time Compute post4.
-  Definition post3 := remove_first_n_bindings post2 1.
-  Time Compute post3.
-  Definition post4 := remove_first_n_bindings post3 1.
-  Time Compute post4.
-  Definition post5 := remove_first_n_bindings post4 1.
-  Time Compute post5.
-  Definition post4 := remove_bindings post.
-  Time Compute post4.
+  Definition initial_rule := execute.
+  Definition desugared := desugar_action tt initial_rule.
+
+  Time Eval native_compute in (get_opcodes_from_instructions_list instructions).
+  Print getImmediateType.
+  Definition post1 := remove_first_n_internal_calls desugared 1.
+  Definition post2 := remove_first_n_internal_calls desugared 2.
+  Definition post3 := remove_first_n_internal_calls desugared 3.
+  Definition post4 := remove_first_n_internal_calls desugared 4.
+  Definition post5 := remove_first_n_internal_calls desugared 5.
+  Definition post6 := remove_first_n_internal_calls desugared 6.
+  Definition post7 := remove_first_n_internal_calls desugared 7.
+  Definition post8 := remove_first_n_internal_calls desugared 8.
+  Definition post9 := remove_first_n_internal_calls desugared 9.
+  Definition post10 := remove_first_n_internal_calls desugared 10.
+  Time Compute (option_map get_size post1).
+  Time Compute (option_map get_size post2).
+  Time Compute (option_map get_size post3).
+  Time Compute (option_map get_size post4).
+  Time Compute (option_map get_size post5).
+  Time Compute (option_map get_size post6).
+  Time Compute (option_map get_size post7).
+  Time Compute (option_map get_size post8).
+  Time Compute (option_map get_size post9).
+  (* Time Compute (option_map get_size post10). XXX slow *)
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with

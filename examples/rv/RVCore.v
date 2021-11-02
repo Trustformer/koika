@@ -1,6 +1,5 @@
 (*! Implementation of our RISC-V core !*)
-
-Require Import Coq.Lists.List.
+Require Import List.
 Import ListNotations.
 
 Require Import Koika.Frontend Koika.Std.
@@ -17,7 +16,6 @@ Definition isa : ISA := {|
 
 Section RVHelpers.
   Definition instructions := (ISA_instructions_set isa).
-
   Context {reg_t: Type}.
 
   Definition imm_type := {|
@@ -35,8 +33,7 @@ Section RVHelpers.
 
   Definition inst_field := get_inst_fields_struct_from_ISA isa.
 
-  Definition getFields
-    `{finite_reg: FiniteType reg_t}
+  Definition getFields `{finite_reg: FiniteType reg_t}
   : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "getFields";
     int_argspec := [prod_of_argsig
@@ -215,6 +212,32 @@ Section RVHelpers.
       ))]))) opcodes)))
   |}.
 
+  (* TODO remove once testing over *)
+  Definition getImmediateTypeTesting `{finite_reg: FiniteType reg_t}
+  : UInternalFunction reg_t empty_ext_fn_t := {|
+    int_name    := "getImmediateType";
+    int_argspec := [("inst", bits_t 32)];
+    int_retSig  := enum_t imm_type;
+    int_body    :=
+      UBind "__reserved__matchPattern"
+        ({{|5`d0|}})
+        (USugar (USwitch
+          {{__reserved__matchPattern}}
+          {{{invalid (enum_t imm_type)} ()}}
+          ([(
+            {{|5`d0|}},
+            USugar (
+              UStructInit {|
+                struct_name   := "maybe_immType";
+                struct_fields :=
+                  [ ("valid", bits_t 1); ("data", enum_t imm_type) ]
+              |}
+              [ ("data", {{ enum imm_type {ImmI} }}) ]
+            )
+          )])
+        ))
+  |}.
+
   Definition usesRS1 : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "usesRS1";
     int_argspec := [prod_of_argsig
@@ -338,26 +361,26 @@ Section RVHelpers.
     : uaction reg_t empty_ext_fn_t
   :=
     match i with
-    | ADDI_32I   => {{ a + b }}
-    | SLTI_32I   => {{ zeroExtend(a <s b, 32) }}
-    | SLTIU_32I  => {{ zeroExtend(a < b, 32) }}
-    | XORI_32I   => {{ a ^ b }}
-    | ORI_32I    => {{ a || b }}
-    | ANDI_32I   => {{ a && b }}
-    | SLLI_32I   => {{ a << shamt }}
-    | SRLI_32I   => {{ a >> shamt }}
-    | SRAI_32I   => {{ a >>> shamt }}
-    | ADD_32I    => {{ a + b }}
-    | SUB_32I    => {{ a - b }}
-    | SLL_32I    => {{ a << shamt }}
-    | SLT_32I    => {{ zeroExtend(a <s b, 32) }}
-    | SLTU_32I   => {{ zeroExtend(a < b, 32) }}
-    | XOR_32I    => {{ a ^ b }}
-    | SRL_32I    => {{ a >> shamt }}
-    | SRA_32I    => {{ a >>> shamt }}
-    | OR_32I     => {{ a || b }}
-    | AND_32I    => {{ a && b }}
-    | _          => USugar (USkip) (* TODO rm through dep. types, i_type *)
+    | ADDI_32I  => {{ a + b }}
+    | SLTI_32I  => {{ zeroExtend(a <s b, 32) }}
+    | SLTIU_32I => {{ zeroExtend(a < b, 32) }}
+    | XORI_32I  => {{ a ^ b }}
+    | ORI_32I   => {{ a || b }}
+    | ANDI_32I  => {{ a && b }}
+    | SLLI_32I  => {{ a << shamt }}
+    | SRLI_32I  => {{ a >> shamt }}
+    | SRAI_32I  => {{ a >>> shamt }}
+    | ADD_32I   => {{ a + b }}
+    | SUB_32I   => {{ a - b }}
+    | SLL_32I   => {{ a << shamt }}
+    | SLT_32I   => {{ zeroExtend(a <s b, 32) }}
+    | SLTU_32I  => {{ zeroExtend(a < b, 32) }}
+    | XOR_32I   => {{ a ^ b }}
+    | SRL_32I   => {{ a >> shamt }}
+    | SRA_32I   => {{ a >>> shamt }}
+    | OR_32I    => {{ a || b }}
+    | AND_32I   => {{ a && b }}
+    | _         => USugar (USkip) (* TODO rm through dep. types, i_type *)
     end.
 
   Definition alu32 : UInternalFunction reg_t empty_ext_fn_t := {{
@@ -523,7 +546,7 @@ Module Type RVParams.
   Parameter HAS_SHADOW_STACK: bool.
 End RVParams.
 
-Module RVCore (RVP: RVParams) (ShadowStack : ShadowStackInterface).
+Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   Import ListNotations.
   Import RVP.
 

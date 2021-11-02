@@ -38,17 +38,17 @@ Module ShadowStackF <: ShadowStackInterface.
     | stack n => Bits.zero
     end.
 
-  Definition read_vect_sequential idx : uaction reg_t empty_ext_fn_t :=
+  Definition read_vect_sequential idx: uaction reg_t empty_ext_fn_t :=
     {{ `UCompleteSwitch (SequentialSwitch (bits_t 32) "tmp") index_sz idx
       (fun idx => {{ read0(stack idx) }})` }}.
 
-  Definition write0_stack : UInternalFunction reg_t empty_ext_fn_t :=
+  Definition write0_stack: UInternalFunction reg_t empty_ext_fn_t :=
     {{ fun write0_queue (idx : bits_t index_sz) (val: bits_t 32) : unit_t =>
          `UCompleteSwitch (SequentialSwitchTt) index_sz "idx"
               (fun idx => {{ write0(stack idx, val) }})` }}.
 
-  Definition push : UInternalFunction reg_t empty_ext_fn_t := {{
-    fun push (address : bits_t 32) : bits_t 1 =>
+  Definition push: UInternalFunction reg_t empty_ext_fn_t := {{
+    fun push (address: bits_t 32) : bits_t 1 =>
       let s0 := read0(size) in
       if (s0 == #(Bits.of_nat index_sz capacity)) then (* overflow *)
         Ob~1
