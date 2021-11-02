@@ -41,7 +41,8 @@ Module Move.
     let x := read0(r0) in pass
   }}.
 
-  Require Import Koika.UntypedIndTactics.
+  (* TODO remove tests *)
+  Require Import Koika.Normalize.
   Compute (_tick).
   Compute (remove_bindings _tick).
 
