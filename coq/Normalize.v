@@ -1,6 +1,6 @@
 (*! Proving | Transformation of a schedule to a single rule in normal form !*)
 Require Import Coq.Program.Equality.
-Require Import Koika.BitsToLists Koika.Zipper.
+Require Import Koika.BitsToLists Koika.Helpers Koika.Zipper.
 Open Scope nat.
 
 (* In this file, whenever side-effects or equivalence are mentionned, bear in
@@ -331,6 +331,52 @@ Fixpoint get_size
   | USugar _ => 0
   end.
 
+Definition get_nth_call
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
+: option zipper :=
+  nth_error (rev (find_all_in_uaction ua (is_internal_call))) n.
+
+Definition get_replacement
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  match access_zipper ua z with
+  | Some (UInternalCall ufn args) => Some (
+    let args_eval :=
+      fold_right (USeq) (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) args
+    in
+    let inlined_call :=
+      fold_right
+        (fun '(arg_n, arg_v) bd =>
+          fst (replace_variable_with_expr bd arg_n arg_v)
+        )
+        (int_body ufn)
+        (combine (fst (split (int_argspec ufn))) (map remove_writes args))
+    in
+    USeq (to_unit_t args_eval) inlined_call
+  )
+  | _ => None
+  end.
+
+Definition get_nth_replacement
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+    (nth_error (rev (find_all_in_uaction ua (is_internal_call))) n)
+    >>=
+    (get_replacement ua)
+.
+
+Definition get_nth_arg
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper) (n: nat)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  match access_zipper ua z with
+  | Some (UInternalCall ufn args) => nth_error args n
+  | _ => None
+  end.
+
 (* Definition get_nth_replacement *)
 (*   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t} *)
 (*   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat) *)
@@ -556,14 +602,4 @@ Fixpoint remove_uapos
   | UAPos p e => remove_uapos e
   | _ => ua
   end.
-
-(* 4.X. Misc. *)
-Definition bind
-  {A B: Type} (o: option A) (f: A -> option B)
-: option B :=
-  match o with
-  | None => None
-  | Some x => f x
-  end.
-Notation "A >>= F" := (bind A F) (at level 42, left associativity).
 Close Scope nat.

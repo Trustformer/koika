@@ -237,4 +237,12 @@ Definition replace_at_zipper_with
   | Some x => replace_at_zipper ua z (f x)
   | None => None
   end.
+
+(* TODO Remove once tests over *)
+Fixpoint get_zipper_depth (z: zipper) : nat :=
+  match z with
+  | through_nth_branch _ z' => S (get_zipper_depth z')
+  | here => 0
+  end.
+
 Close Scope nat.

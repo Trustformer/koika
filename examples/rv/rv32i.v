@@ -4,7 +4,8 @@ Require Import rv.RVCore rv.rv32.
 Require Import rv.ShadowStack.
 
 (* TODO remove, imported for temporary tests *)
-Require Import rv.InstructionsProperties Koika.Normalize.
+Require Import rv.InstructionsProperties Koika.Helpers Koika.Normalize
+  Koika.Zipper.
 
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
@@ -66,19 +67,45 @@ Definition is_module_call
 
   Definition initial_rule := execute.
   Definition desugared := desugar_action tt initial_rule.
+  Compute (
+    option_map
+      get_size
+      ((get_nth_call desugared 7) >>= (get_replacement desugared))
+  ).
+  Compute (
+    option_map
+      get_size
+      ((get_nth_call desugared 7) >>= (access_zipper desugared))
+  ).
+  Compute (
+    (get_nth_call desugared 7) >>= (access_zipper desugared)
+  ).
+  Compute (
+    (get_nth_call desugared 7) >>= (get_replacement desugared)
+  ).
 
-  Time Eval native_compute in (get_opcodes_from_instructions_list instructions).
-  Print getImmediateType.
-  Definition post1 := remove_first_n_internal_calls desugared 1.
-  Definition post2 := remove_first_n_internal_calls desugared 2.
-  Definition post3 := remove_first_n_internal_calls desugared 3.
-  Definition post4 := remove_first_n_internal_calls desugared 4.
-  Definition post5 := remove_first_n_internal_calls desugared 5.
-  Definition post6 := remove_first_n_internal_calls desugared 6.
-  Definition post7 := remove_first_n_internal_calls desugared 7.
-  Definition post8 := remove_first_n_internal_calls desugared 8.
-  Definition post9 := remove_first_n_internal_calls desugared 9.
-  Definition post10 := remove_first_n_internal_calls desugared 10.
+  Time Compute (remove_first_n_internal_calls desugared 8).
+  Definition post0 := remove_first_n_internal_calls desugared 1.
+  Definition post1 := remove_first_n_internal_calls desugared 2.
+  Definition post2 := remove_first_n_internal_calls desugared 3.
+  Definition post3 := remove_first_n_internal_calls desugared 4.
+  Definition post4 := remove_first_n_internal_calls desugared 5.
+  Definition post5 := remove_first_n_internal_calls desugared 6.
+  Definition post6 := remove_first_n_internal_calls desugared 7.
+  Definition post7 := remove_first_n_internal_calls desugared 8.
+  Definition post8 := remove_first_n_internal_calls desugared 9.
+  Definition post9 := remove_first_n_internal_calls desugared 10.
+
+  (* Compute (option_map (access_zipper post4) (post4 >>= get_zip)). *)
+  (* Compute (option(get_nth_call desugared 4)). *)
+
+  (* Compute ( *)
+  (*   option_map (access_zipper desugared) (get_nth_call desugared call_n) *)
+  (* ). *)
+  (* Compute ( *)
+  (*   get_nth_call desugared call_n >>= (fun x => get_nth_arg desugared x 0) *)
+  (* ). *)
+
   Time Compute (option_map get_size post1).
   Time Compute (option_map get_size post2).
   Time Compute (option_map get_size post3).
