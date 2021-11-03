@@ -404,7 +404,6 @@ Definition get_nth_arg
 (*   end. *)
 
 (* 2. Bindings removal - supposes desugared, no internal calls *)
-(* TODO rename post_gamma_x to Gamma''...' *)
 Fixpoint remove_bindings_aux
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type} {beq_var_t: EqDec var_t}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
