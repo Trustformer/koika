@@ -126,13 +126,6 @@ Section Syntax.
       - apply false.
     Qed.
 
-    Fixpoint forall2b {A: Type} (l1 l2: list A) (P: A -> A -> bool) :=
-      match l1, l2 with
-      | [], [] => true
-      | h::t, h'::t' => if (P h h') then forall2b t t' P else false
-      | _, _ => false
-      end.
-
     Fixpoint uaction_func_equiv (x y: @uaction reg_t ext_fn_t) : bool :=
       match x, y with
       | UError _, UError _ => true
