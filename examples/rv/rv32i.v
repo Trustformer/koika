@@ -4,7 +4,7 @@ Require Import rv.RVCore rv.rv32.
 Require Import rv.ShadowStack.
 
 (* TODO remove, imported for temporary tests *)
-Require Import rv.InstructionsProperties Koika.Helpers Koika.Normalize
+Require Import rv.InstructionsProperties Koika.Normalize Koika.Utils
   Koika.Zipper.
 
 (* TC_native adds overhead but makes typechecking large rules faster *)

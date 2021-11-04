@@ -1,6 +1,6 @@
 (*! Proving | Transformation of a schedule to a single rule in normal form !*)
 Require Import Coq.Program.Equality.
-Require Import Koika.BitsToLists Koika.Helpers Koika.Zipper.
+Require Import Koika.BitsToLists Koika.Utils Koika.Zipper.
 Open Scope nat.
 
 (* In this file, whenever side-effects or equivalence are mentionned, bear in
@@ -105,6 +105,7 @@ Fixpoint replace_variable_with_expr
     let (ra1, post_val_1) := replace_variable_with_expr cond vr rex in
     let (rat, post_val_t) := replace_variable_with_expr tbranch vr post_val_1 in
     let (raf, post_val_f) := replace_variable_with_expr fbranch vr post_val_1 in
+    if (post_val_t post_val_f)
     (UIf ra1 rat raf, UIf ra1 post_val_t post_val_f)
   | UWrite port idx value =>
     let (ra1, post_val_1) := replace_variable_with_expr value vr rex in

@@ -3,6 +3,8 @@ Require Export Koika.Common Koika.Primitives Koika.Types Koika.ErrorReporting.
 
 Section Syntax.
   Context {pos_t var_t rule_name_t fn_name_t: Type}.
+  Context {var_t_eq_dec: EqDec var_t}.
+
   Class Lift {from to: Type} := lift: from -> to.
   Class Inj {from to: Type} (f: from -> to) :=
     inj: forall i j, i <> j -> f i <> f j.
@@ -45,6 +47,7 @@ Section Syntax.
     (fn: InternalFunction var_t fn_name_t (
       @uaction module_reg_t module_ext_fn_t
     )) (args: list uaction).
+  (* Combined Scheme Equality for uaction from . *)
 
   Section uaction_ind'.
     Context {reg_t ext_fn_t: Type}.
@@ -107,6 +110,63 @@ Section Syntax.
       | USugar s => USugar_case s
       end.
   End uaction_ind'.
+
+  Section uaction_eq_dec.
+    (* TODO move to Normalize.v *)
+    Context {reg_t ext_fn_t: Type}.
+    Context {reg_t_eq_dec: EqDec reg_t}.
+    Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
+
+    Program Definition beq_type_vals
+      {tau tau': type} (a: type_denote tau) (b: type_denote tau')
+    : bool.
+    Proof.
+      destruct (beq_dec tau tau') eqn:eq1.
+      - rewrite beq_dec_iff in eq1. rewrite eq1 in a. apply (beq_dec a b).
+      - apply false.
+    Qed.
+
+    Fixpoint forall2b {A: Type} (l1 l2: list A) (P: A -> A -> bool) :=
+      match l1, l2 with
+      | [], [] => true
+      | h::t, h'::t' => if (P h h') then forall2b t t' P else false
+      | _, _ => false
+      end.
+
+    Fixpoint uaction_func_equiv (x y: @uaction reg_t ext_fn_t) : bool :=
+      match x, y with
+      | UError _, UError _ => true
+      | UFail _, UFail _ => true
+      | UVar var, UVar var' => beq_dec var var'
+      | @UConst _ _ tau cst, @UConst _ _ tau' cst' => beq_type_vals cst cst'
+      | UAssign v ex, UAssign v' ex' =>
+        beq_dec v v' && uaction_func_equiv ex ex'
+      | USeq a1 a2, USeq a1' a2' =>
+        uaction_func_equiv a1 a1' && uaction_func_equiv a2 a2'
+      | UBind v ex body, UBind v' ex' body' =>
+        beq_dec v v' && uaction_func_equiv ex ex'
+        && uaction_func_equiv body body'
+      | UIf cond tbranch fbranch, UIf cond' tbranch' fbranch' =>
+        uaction_func_equiv cond cond' && uaction_func_equiv tbranch tbranch'
+        && uaction_func_equiv fbranch fbranch'
+      | URead port idx, URead port' idx' =>
+        beq_dec port port' && beq_dec idx idx'
+      | UWrite port idx value, UWrite port' idx' value' =>
+        beq_dec port port' && beq_dec idx idx'
+        && uaction_func_equiv value value'
+      | UUnop ufn1 arg1, UUnop ufn1' arg1' =>
+        beq_dec ufn1 ufn1' && uaction_func_equiv arg1 arg1'
+      | UBinop ufn2 arg1 arg2, UBinop ufn2' arg1' arg2' =>
+        beq_dec ufn2 ufn2' && uaction_func_equiv arg1 arg1'
+        && uaction_func_equiv arg2 arg2'
+      | UExternalCall ufn arg, UExternalCall ufn' arg' =>
+        beq_dec ufn ufn' && uaction_func_equiv arg arg'
+      | UAPos _ e, UAPos _ e' => uaction_func_equiv e e'
+      (* No UInternalCall nor USugar: we don't intend to apply this function on
+         trees featuring these items *)
+      | _, _ => false
+      end.
+    End uaction_eq_dec.
 
   Inductive scheduler :=
   | Done
