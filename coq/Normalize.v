@@ -591,3 +591,4 @@ Section Normalize.
     | _ => ua
     end.
   Close Scope nat.
+End Normalize.
