@@ -67,55 +67,8 @@ Definition is_module_call
 
   Definition initial_rule := execute.
   Definition desugared := desugar_action tt initial_rule.
-  Compute (
-    option_map
-      get_size
-      ((get_nth_call desugared 7) >>= (get_replacement desugared))
-  ).
-  Compute (
-    option_map
-      get_size
-      ((get_nth_call desugared 7) >>= (access_zipper desugared))
-  ).
-  Compute (
-    (get_nth_call desugared 7) >>= (access_zipper desugared)
-  ).
-  Compute (
-    (get_nth_call desugared 7) >>= (get_replacement desugared)
-  ).
-
-  Time Compute (remove_first_n_internal_calls desugared 8).
-  Definition post0 := remove_first_n_internal_calls desugared 1.
-  Definition post1 := remove_first_n_internal_calls desugared 2.
-  Definition post2 := remove_first_n_internal_calls desugared 3.
-  Definition post3 := remove_first_n_internal_calls desugared 4.
-  Definition post4 := remove_first_n_internal_calls desugared 5.
-  Definition post5 := remove_first_n_internal_calls desugared 6.
-  Definition post6 := remove_first_n_internal_calls desugared 7.
-  Definition post7 := remove_first_n_internal_calls desugared 8.
-  Definition post8 := remove_first_n_internal_calls desugared 9.
-  Definition post9 := remove_first_n_internal_calls desugared 10.
-
-  (* Compute (option_map (access_zipper post4) (post4 >>= get_zip)). *)
-  (* Compute (option(get_nth_call desugared 4)). *)
-
-  (* Compute ( *)
-  (*   option_map (access_zipper desugared) (get_nth_call desugared call_n) *)
-  (* ). *)
-  (* Compute ( *)
-  (*   get_nth_call desugared call_n >>= (fun x => get_nth_arg desugared x 0) *)
-  (* ). *)
-
-  Time Compute (option_map get_size post1).
-  Time Compute (option_map get_size post2).
-  Time Compute (option_map get_size post3).
-  Time Compute (option_map get_size post4).
-  Time Compute (option_map get_size post5).
-  Time Compute (option_map get_size post6).
-  Time Compute (option_map get_size post7).
-  Time Compute (option_map get_size post8).
-  Time Compute (option_map get_size post9).
-  (* Time Compute (option_map get_size post10). XXX slow *)
+  Definition no_ic := inline_internal_calls desugared.
+  Definition no_binds := inline_internal_calls desugared.
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with

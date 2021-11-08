@@ -117,14 +117,21 @@ Section Syntax.
     Context {reg_t_eq_dec: EqDec reg_t}.
     Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
 
-    Program Definition beq_type_vals
-      {tau tau': type} (a: type_denote tau) (b: type_denote tau')
-    : bool.
+    Program Definition beq_type_test
+      {tau tau': type} (a: type_denote tau') (Htau: tau = tau')
+    : type_denote tau.
     Proof.
-      destruct (beq_dec tau tau') eqn:eq1.
-      - rewrite beq_dec_iff in eq1. rewrite eq1 in a. apply (beq_dec a b).
-      - apply false.
-    Qed.
+      rewrite <- Htau in a.
+      apply a.
+    Defined.
+
+    Definition beq_type_vals
+      {tau tau': type} (a: type_denote tau) (b: type_denote tau')
+    : bool :=
+      match eq_dec tau tau' with
+      | left HEQ => beq_dec a (beq_type_test b HEQ)
+      | right HNEQ => false
+      end.
 
     Fixpoint uaction_func_equiv (x y: @uaction reg_t ext_fn_t) : bool :=
       match x, y with

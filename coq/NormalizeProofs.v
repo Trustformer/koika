@@ -43,6 +43,7 @@ Section NormalizeProofs.
       apply app_eq_nil. split.
       + apply app_eq_nil. split; apply map_nil_nil; auto.
       + apply map_nil_nil. apply IHua3; auto.
-    - apply map_nil_nil. apply IHua. apply map_nil_nil' in H. apply H.
+    - apply map_nil_nil. apply IHua; try assumption. apply map_nil_nil' in H.
+      apply H.
   Qed.
 End NormalizeProofs.

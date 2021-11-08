@@ -1,4 +1,5 @@
-(*! Proving | Transformation of a schedule to a single rule in normal form !*)
+(*! Proving | Transformation of a schedule to a single rule with a limited
+    syntax !*)
 Require Import Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Utils Koika.Zipper.
 Open Scope nat.
@@ -306,9 +307,7 @@ Section Normalize.
   : nat :=
     List.length (find_all_in_uaction ua (is_internal_call)).
 
-  Fixpoint get_size
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : nat :=
+  Fixpoint get_size (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) : nat :=
     1 +
     match ua with
     | UError _ => 0
@@ -490,7 +489,8 @@ Section Normalize.
     (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
   : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
     match ua with
-    | USeq a1 a2 => USeq (remove_bindings_depth_1 a1) (remove_bindings_depth_1 a2)
+    | USeq a1 a2 =>
+      USeq (remove_bindings_depth_1 a1) (remove_bindings_depth_1 a2)
     | UBind v ex body =>
       USeq
         (to_unit_t ex)
