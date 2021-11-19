@@ -67,8 +67,11 @@ Definition is_module_call
 
   Definition initial_rule := execute.
   Definition desugared := desugar_action tt initial_rule.
+  Compute desugared.
   Definition no_ic := inline_internal_calls desugared.
-  Definition no_binds := inline_internal_calls desugared.
+  About no_ic.
+  Definition no_binds := remove_bindings no_ic.
+  Time Compute (no_binds).
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with

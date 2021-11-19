@@ -216,22 +216,17 @@ Section Normalize.
       let (ra1, Gamma_cond) := remove_bindings_aux cond Gamma in
       let (rat, Gamma_t) := remove_bindings_aux tbranch Gamma_cond in
       let (raf, Gamma_f) := remove_bindings_aux fbranch Gamma_cond in
-      (* TODO most cases could be simplified *)
       let Gamma' :=
         fold_right
           (fun v acc =>
             list_assoc_set acc v (
-              UIf ra1 (
-                match list_assoc Gamma_t v with
-                | Some lar => lar
-                | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
-                end
-              ) (
-                match list_assoc Gamma_f v with
-                | Some lar => lar
-                | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
-                end
-              )
+              match list_assoc Gamma_t v, list_assoc Gamma_f v with
+              | Some lar, Some lar' =>
+                if uaction_func_equiv lar lar'
+                then lar else UIf ra1 lar lar'
+              | _, _ => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+              (* Shouldn't happen *)
+              end
             )
           )
           Gamma_cond (fst (split Gamma_cond))
