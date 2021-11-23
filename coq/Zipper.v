@@ -1,7 +1,6 @@
 (*! Proving | Zippers for uactions as well as functions for searching the
    syntactic tree !*)
-
-Require Import List.
+Require Import List Orders Sorting.
 Require Import Koika.Syntax.
 Open Scope nat.
 
@@ -238,11 +237,25 @@ Definition replace_at_zipper_with
   | None => None
   end.
 
-(* TODO Remove once tests over *)
+(* Sorting *)
 Fixpoint get_zipper_depth (z: zipper) : nat :=
   match z with
   | through_nth_branch _ z' => S (get_zipper_depth z')
   | here => 0
   end.
 
+Module ZipperShallowOrder <: TotalLeBool.
+  Definition t := zipper.
+  Definition leb :=
+    fun z1 z2 => Nat.leb (get_zipper_depth z1) (get_zipper_depth z2).
+
+  Lemma leb_total : forall z1 z2 : t, leb z1 z2 = true \/ leb z2 z1 = true.
+  Proof.
+    intros.
+    unfold leb.
+    repeat (rewrite Nat.leb_le).
+    apply Nat.le_ge_cases.
+  Qed.
+End ZipperShallowOrder.
+Module ZipperShallowSort := Sort ZipperShallowOrder.
 Close Scope nat.
