@@ -113,6 +113,7 @@ Section Normalize.
       let (rex, Gamma') := remove_pure_bindings_aux ex Gamma in
       if (is_pure rex) then (
         match list_assoc Gamma v with
+        (* We leave the assignment untouched here! See UIf for explanation. *)
         | Some _ => (UAssign v rex, list_assoc_set Gamma' v (pure_binding rex))
         | None => (* Should never happen in well-formed rules *)
           (UConst (tau := bits_t 0) (Bits.of_nat 0 0), Gamma')
@@ -161,10 +162,9 @@ Section Normalize.
                  situation is by never removing assigns, which might sound
                  like it defeats the purpose of this whole function. However,
                  we know that there is no such situation before the first
-                 impurity of our model, which is the only property we need.
-                 Assigns before this first impurity can therefore be safely
-                 removed.
-              *)
+                 impure element of our model, which is the only property we
+                 need. Assigns before this first impure item can therefore be
+                 safely removed. *)
               (impure_binding)
             | _, _ => (* Should never happen in well-formed rules *)
               (impure_binding)
@@ -199,19 +199,41 @@ Section Normalize.
   : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
     USeq (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) ua.
 
-  (* Assumption: no earlier extcall *)
+  Definition extract_condition_one_step
+    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  : option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+    match ua with
+    | UIf cond _ _ => Some cond
+    | _ => None
+    end.
+
+  (* Assumption: no impurities nor vars in conditions.
+     Maybe some reads though. *)
   Definition extract_conditions
     (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
-  : list (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  : list (option (uaction pos_t var_t fn_name_t reg_t ext_fn_t)) :=
+    match (access_zipper_tracking ua z extract_condition_one_step) with
+    | Some (_, l) => l
+    | None => nil
+    end.
 
-  .
-
-  Definition extract_bi
-
-  Fixpoint normalize_no_extcalls
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+  Definition merge_conditions
+    (cs: list (option (uaction pos_t var_t fn_name_t reg_t ext_fn_t)))
   : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
-  .
+    match cs with
+    | (Some c)::t => UBinop merge_conditions
+    | None::t => merge_conditions t
+    | nil => UConst
+    end.
+
+  (* Should delegate to remove_pure_bindings_aux *)
+  Definition bindings_simplification_pass :=.
+
+  (* Although UVars are replaced whenever the current value of th*)
+  Definition remove_unused_bindings :=.
+
+  Definition deal_with_first_impure :=.
+  Definition normalize :=.
 
   (* B. Schedule merging *)
 
