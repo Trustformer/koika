@@ -71,7 +71,8 @@ Definition is_module_call
   Definition no_ic := inline_internal_calls desugared.
   About no_ic.
   Definition no_binds := remove_bindings no_ic.
-  Time Compute (no_binds).
+  Definition no_uapos := remove_uapos no_binds.
+  Time Compute (no_uapos).
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with
