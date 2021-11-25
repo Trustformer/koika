@@ -9,66 +9,112 @@ Inductive zipper := here | through_nth_branch (n: nat) (b: zipper).
 Definition zoom_zipper
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
-: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * zipper) :=
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
   match z with
   | here => None
   | through_nth_branch n sz =>
     match ua with
-    | UAssign v a => if n =? 0 then Some (a, sz) else None
-    | USeq a1 a2 =>
-      if n =? 0 then Some (a1, sz) else if n =? 1 then Some (a2, sz) else None
+    | UAssign v a => if n =? 0 then Some a else None
+    | USeq a1 a2 => if n =? 0 then Some a1 else if n =? 1 then Some a2 else None
     | UBind _ expr body =>
-      if n =? 0 then Some (expr, sz)
-      else if n =? 1 then Some (body, sz)
-      else None
+      if n =? 0 then Some expr else if n =? 1 then Some body else None
     | UIf cond tbranch fbranch =>
-      if n =? 0 then Some (cond, sz)
-      else if n =? 1 then Some (tbranch, sz)
-      else if n =? 2 then Some (fbranch, sz)
+      if n =? 0 then Some cond
+      else if n =? 1 then Some tbranch
+      else if n =? 2 then Some fbranch
       else None
-    | UWrite _ _ v => if n =? 0 then Some (v, sz) else None
-    | UUnop _ a1 => if n =? 0 then Some (a1, sz) else None
+    | UWrite _ _ v => if n =? 0 then Some v else None
+    | UUnop _ a1 => if n =? 0 then Some a1 else None
     | UBinop _ a1 a2 =>
-      if n =? 0 then Some (a1, sz) else if n =? 1 then Some (a2, sz) else None
-    | UExternalCall _ a => if n =? 0 then Some (a, sz) else None
+      if n =? 0 then Some a1 else if n =? 1 then Some a2 else None
+    | UExternalCall _ a => if n =? 0 then Some a else None
     | UInternalCall ufn la =>
-      if n =? 0 then Some (int_body ufn, sz)
+      if n =? 0 then Some (int_body ufn)
       else
         match nth_error la (n - 1) with
-        | Some a => Some (a, sz)
+        | Some a => Some a
         | None => None
         end
-    | UAPos _ e => if n =? 0 then Some (e, sz) else None
+    | UAPos _ e => if n =? 0 then Some e else None
     | _ => None
-    end
-  end.
-
-Fixpoint zoom_n_zipper
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (n: nat) (z: zipper)
-: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * zipper) :=
-  match n with
-  | O => Some (ua, z)
-  | S n' =>
-    match zoom_zipper ua z with
-    | Some (ua', z') => zoom_n_zipper ua' n' z'
-    | None => None
     end
   end.
 
 Fixpoint access_zipper
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
   (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
-  {struct z}
 : option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
   match z with
   | here => Some ua
   | through_nth_branch n sz =>
     match zoom_zipper ua z with
-    | Some (ua', _) => access_zipper ua' sz
+    | Some ua' => access_zipper ua' sz
     | None => None
     end
   end.
+
+Definition zoom_zipper_tracking
+  {pos_t var_t fn_name_t reg_t ext_fn_t A: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
+  (f: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> A)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * A) :=
+  match z with
+  | here => None
+  | through_nth_branch n sz =>
+    match ua with
+    | UAssign v a => if n =? 0 then Some (a, f ua) else None
+    | USeq a1 a2 =>
+      if n =? 0 then Some (a1, f ua)
+      else if n =? 1 then Some (a2, f ua)
+      else None
+    | UBind _ expr body =>
+      if n =? 0 then Some (expr, f ua)
+      else if n =? 1 then Some (body, f ua)
+      else None
+    | UIf cond tbranch fbranch =>
+      if n =? 0 then Some (cond, f ua)
+      else if n =? 1 then Some (tbranch, f ua)
+      else if n =? 2 then Some (fbranch, f ua)
+      else None
+    | UWrite _ _ v => if n =? 0 then Some (v, f ua) else None
+    | UUnop _ a1 => if n =? 0 then Some (a1, f ua) else None
+    | UBinop _ a1 a2 =>
+      if n =? 0 then Some (a1, f ua)
+      else if n =? 1 then Some (a2, f ua)
+      else None
+    | UExternalCall _ a => if n =? 0 then Some (a, f ua) else None
+    | UInternalCall ufn la =>
+      if n =? 0 then Some (int_body ufn, f ua)
+      else
+        match nth_error la (n - 1) with
+        | Some a => Some (a, f ua)
+        | None => None
+        end
+    | UAPos _ e => if n =? 0 then Some (e, f ua) else None
+    | _ => None
+    end
+  end.
+
+Fixpoint access_zipper_tracking_aux
+  {pos_t var_t fn_name_t reg_t ext_fn_t A: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
+  (f: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> A) (l: list A)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * list A) :=
+  match z with
+  | here => Some (ua, l)
+  | through_nth_branch n sz =>
+    match zoom_zipper_tracking ua z f with
+    | Some (ua', r) => access_zipper_tracking_aux ua' sz f (r::l)
+    | None => None
+    end
+  end.
+
+Definition access_zipper_tracking
+  {pos_t var_t fn_name_t reg_t ext_fn_t A: Type}
+  (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
+  (f: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> A)
+: option (uaction pos_t var_t fn_name_t reg_t ext_fn_t * list A) :=
+  access_zipper_tracking_aux ua z f nil.
 
 Fixpoint find_all_in_uaction
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
