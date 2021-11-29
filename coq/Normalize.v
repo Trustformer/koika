@@ -77,6 +77,7 @@ Section Normalize.
       (fun (ua: uact) =>
         match ua with
         | UExternalCall _ _ => true
+        | URead _ _ => true
         | UWrite _ _ _ => true
         | _ => false
         end).
@@ -183,9 +184,6 @@ Section Normalize.
     | _ => (ua, Gamma)
     end.
 
-  (* TODO remove assigns before first impure *)
-  (* TODO remove assigns in first impure *)
-
   Definition remove_pure_bindings (ua: uact) : uact * list (var_t * binding) :=
     remove_pure_bindings_aux ua nil.
 
@@ -193,15 +191,16 @@ Section Normalize.
   Definition prepare_extcalls_dumping_ground (ua: uact) : uact :=
     USeq (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) ua.
 
-  Definition extract_condition_one_step (ua: uact) : option uact :=
-    match ua with
-    | UIf cond _ _ => Some cond
-    | _ => None
-    end.
-
   (* Assumption: no impurities nor vars in conditions.
      Maybe some reads though. *)
   Definition extract_conditions (ua: uact) (z: zipper) : list (option uact) :=
+    let extract_condition_one_step :=
+      fun ua => (
+        match ua with
+        | UIf cond _ _ => Some cond
+        | _ => None
+        end
+    ) in
     match (access_zipper_tracking ua z extract_condition_one_step) with
     | Some (_, l) => l
     | None => nil
@@ -243,7 +242,9 @@ Section Normalize.
   Definition propagate_binding :=
   .
 
-  Fixpoint to_list_of_impures (ua: uact): list (uact * uact) :=
+  (* Return type: (reads occurrences, other impure occurrences) *)
+  Fixpoint to_list_of_impures (ua: uact)
+  : ((list (uact * uact)) * (list (uact * uact))) :=
     (* Remove pure bindings up to the first impure *)
     let pua := remove_bindings_up_to_first_impure (remove_pure_bindings ua) in
     let impures := get_impures pua in
