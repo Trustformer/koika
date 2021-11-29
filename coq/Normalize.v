@@ -13,18 +13,17 @@ Open Scope nat.
    containing a sequence of writes guarded by a single if each. *)
 
 Section Normalize.
-  Context {pos_t var_t fn_name_t reg_t ext_fn_t: Type}.
+  Context {pos_t var_t reg_t ext_fn_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {var_t_eq_dec: EqDec var_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
+  Definition uact := uaction pos_t var_t string reg_t ext_fn_t.
 
   (* A. Rule simplification *)
   (* A.1. Early simplification pass - we start by simplifying some elements that
      do not pose any issues with regard to purity *)
   (* Assumption: desugared *)
-  Fixpoint remove_uapos
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  Fixpoint remove_uapos (ua: uact) : uact :=
     match ua with
     | UAssign v ex => UAssign v (remove_uapos ex)
     | USeq a1 a2 => USeq (remove_uapos a1) (remove_uapos a2)
@@ -48,9 +47,7 @@ Section Normalize.
     end.
 
   (* Assumptions: desugared, no uapos *)
-  Fixpoint inline_internal_calls
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  Fixpoint inline_internal_calls (ua: uact) : uact :=
     match ua with
     | UAssign v ex => UAssign v (inline_internal_calls ex)
     | USeq a1 a2 => USeq (inline_internal_calls a1) (inline_internal_calls a2)
@@ -75,32 +72,30 @@ Section Normalize.
     | _ => ua
     end.
 
-  (* XXX Note that we consider reads to be pure *)
-  Definition is_pure (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : bool :=
-    (* find_all_in_uaction is a bit overkill, but this is unlikely to be a
-       liability in practice *)
-    List.length
-      (find_all_in_uaction ua
-        (fun (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) =>
-          match ua with
-          | UExternalCall _ _ => true
-          | UWrite _ _ _ => true
-          | _ => false
-          end))
-    =? 0.
+  Definition get_impures (ua: uact) : list zipper :=
+    find_all_in_uaction ua
+      (fun (ua: uact) =>
+        match ua with
+        | UExternalCall _ _ => true
+        | UWrite _ _ _ => true
+        | _ => false
+        end).
+
+  (* Note that we consider reads to be pure *)
+  Definition is_pure (ua: uact) : bool :=
+    (* get_impures is a bit overkill, but this is unlikely to be a liability in
+       practice *)
+    List.length (get_impures ua) =? 0.
 
   Inductive binding :=
-  | pure_binding: uaction pos_t var_t fn_name_t reg_t ext_fn_t -> binding
+  | pure_binding: uact -> binding
   | impure_binding.
 
   (* Assumptions: desugared, no uapos, no internal calls *)
   (* We have to be careful about the fact that bindings may be pure at some
      point and then become impure and the other way around. *)
-  Fixpoint remove_pure_bindings_aux
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-    (Gamma: list (var_t * binding))
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t * list (var_t * binding) :=
+  Fixpoint remove_pure_bindings_aux (ua: uact) (Gamma: list (var_t * binding))
+  : uact * list (var_t * binding) :=
     match ua with
     | UVar var =>
       match list_assoc Gamma var with
@@ -165,9 +160,9 @@ Section Normalize.
                  impure element of our model, which is the only property we
                  need. Assigns before this first impure item can therefore be
                  safely removed. *)
-              (impure_binding)
+              impure_binding
             | _, _ => (* Should never happen in well-formed rules *)
-              (impure_binding)
+              impure_binding
             end
           )) Gamma_cond (fst (split Gamma_cond))
       in
@@ -188,20 +183,17 @@ Section Normalize.
     | _ => (ua, Gamma)
     end.
 
-  Definition remove_pure_bindings
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t * list (var_t * binding) :=
+  (* TODO remove assigns before first impure *)
+  (* TODO remove assigns in first impure *)
+
+  Definition remove_pure_bindings (ua: uact) : uact * list (var_t * binding) :=
     remove_pure_bindings_aux ua nil.
 
   (* A.2. Extcalls management *)
-  Definition prepare_extcalls_dumping_ground
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  Definition prepare_extcalls_dumping_ground (ua: uact) : uact :=
     USeq (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) ua.
 
-  Definition extract_condition_one_step
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : option (uaction pos_t var_t fn_name_t reg_t ext_fn_t) :=
+  Definition extract_condition_one_step (ua: uact) : option uact :=
     match ua with
     | UIf cond _ _ => Some cond
     | _ => None
@@ -209,33 +201,106 @@ Section Normalize.
 
   (* Assumption: no impurities nor vars in conditions.
      Maybe some reads though. *)
-  Definition extract_conditions
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (z: zipper)
-  : list (option (uaction pos_t var_t fn_name_t reg_t ext_fn_t)) :=
+  Definition extract_conditions (ua: uact) (z: zipper) : list (option uact) :=
     match (access_zipper_tracking ua z extract_condition_one_step) with
     | Some (_, l) => l
     | None => nil
     end.
 
-  Definition merge_conditions
-    (cs: list (option (uaction pos_t var_t fn_name_t reg_t ext_fn_t)))
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  Fixpoint merge_conditions (cs: list (option uact)) : uact :=
     match cs with
-    | (Some c)::t => UBinop merge_conditions
+    | (Some c)::t =>
+      UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) c (merge_conditions t)
     | None::t => merge_conditions t
-    | nil => UConst
+    | nil => UConst (tau := bits_t 1) (Bits.of_nat 1 1)
     end.
 
-  (* Should delegate to remove_pure_bindings_aux *)
-  Definition bindings_simplification_pass :=.
+  (* TODO what if write in extcall? *)
+  (* Assumption: dumping ground present, not necessarily empty at this stage *)
+  Definition move_impure (ua: uact) (z: zipper) : uact :=
+    let condition := merge_conditions (extract_conditions ua z) in
+    let impure := access_zipper ua z in
+    let post_replacement :=
+      replace_at_zipper ua z (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
+    in
+    match ua, impure, post_replacement with
+    | USeq effects body, Some i, Some p =>
+      USeq
+        (USeq
+          (UIf condition i (UConst (tau := bits_t 0) (Bits.of_nat 0 0))) effects
+        )
+        p
+    | _, _, _ => (* Should never happen *)
+      UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+    end.
 
-  (* Although UVars are replaced whenever the current value of th*)
-  Definition remove_unused_bindings :=.
+  (* Although UVars are replaced whenever the current value of the binding is
+     pure, all UAssigns and UBinds remain untouched, even though they could be
+     removed. in some cases. *)
+  Definition remove_pure_bindings_up_to_the_first_impure :=
+  .
 
-  Definition deal_with_first_impure :=.
-  Definition normalize :=.
+  Definition propagate_binding :=
+  .
+
+  Fixpoint to_list_of_impures (ua: uact): list (uact * uact) :=
+    (* Remove pure bindings up to the first impure *)
+    let pua := remove_bindings_up_to_first_impure (remove_pure_bindings ua) in
+    let impures := get_impures pua in
+    match impures with
+    | h::t => (* h is a zipper to the first interpreted impure element *)
+      let cond := merge_conditions (extract_conditions pua h) in
+      let sub_impures_list :=
+        map
+          (fun '(cond', act) =>
+            (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', act)
+          )
+          (to_list_of_impures (access_zipper h))
+      in
+      app
+        sub_impures_list
+        (to_list_of_impures (skipn (length sub_impures_list) t))
+  | nil => nil
+  end.
+
+  Fixpoint normalize_aux (ua: uact): list (uact * uact) :=
+    let impures := get_impures tree_without_pure_bindings in
+    match impures with
+    | h::t =>
+      (* h is the first interpreted impure element *)
+      let condition := merge_conditions (extract_conditions ua h) in
+      let normalized_subtree := normalize_aux (prepare_uaction ua) in
+      let impure := access_zipper ua z in
+      let post_replacement :=
+        replace_at_zipper ua z (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
+      in
+        match normalized_subtree, impure, post_replacement with
+        | USeq effects body, Some i, Some p =>
+          USeq
+            (USeq
+              (UIf condition i (UConst (tau := bits_t 0) (Bits.of_nat 0 0)))
+              effects
+            )
+            p
+        | _, _, _ => (* Should never happen *)
+      UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+      match normalized_subtree with
+      | 
+      | 
+      end
+    | nil => 
+    end.
+
+  Definition normalize (ua: uact): uact := normalize_aux (prepare_uaction ua).
+
+  Definition prepare_uaction (ua: uact) :=
+    remove_pure_bindings (prepare_extcalls_dumping_ground ua).
 
   (* B. Schedule merging *)
+  Definition detect_cancellation_conditions :=
+
+  Definition merge_rules (rules: list (uact * uact)) :=
+    
 
   (* 1. Internal calls inlining - supposes desugared *)
   (* 1.1. Side-effects management functions *)
@@ -247,8 +312,8 @@ Section Normalize.
   (* What if external call? The value needs to be stored somehow. Some
      restricted notion of binding needs to  remain. *)
   Fixpoint remove_side_effects
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t := (*
+    (ua: uact)
+  : uact := (*
     This function is used to avoid duplicating side-effects when arguments are
     inlined. We do not have to care about reads at all as whenever at least
     a read occurs in a rule, subsequent reads are not a problem. *)
@@ -276,8 +341,8 @@ Section Normalize.
     end.
 
   Fixpoint to_unit_t
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t := (*
+    (ua: uact)
+  : uact := (*
     This function transforms any uaction to an uaction of type unit_t but with
     the same side-effects. It is used to ensure that the arguments passed to
     any function are indeed evaluated at the point where the function is
@@ -300,9 +365,9 @@ Section Normalize.
 
   (* 1.2. Arguments inlining *)
   Fixpoint replace_variable_with_expr
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t) (vr: var_t)
-    (rex: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t
+    (ua: uact) (vr: var_t)
+    (rex: uact)
+  : uact
     * uaction pos_t var_t fn_name_t reg_t ext_fn_t
   :=
     match ua with
@@ -368,8 +433,8 @@ Section Normalize.
 
   (* 1.3. Internal calls inlining *)
   Fixpoint inline_internal_calls
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+    (ua: uact)
+  : uact :=
     match ua with
     | UAssign v ex => UAssign v (inline_internal_calls ex)
     | USeq a1 a2 => USeq (inline_internal_calls a1) (inline_internal_calls a2)
@@ -409,14 +474,14 @@ Section Normalize.
     contains contains a write? Use replace_variable_with_expr I guess. *)
 
   Definition remove_bindings
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+    (ua: uact)
+  : uact :=
     fst (remove_bindings_aux ua nil).
 
   (* 3. UAPos removal - supposes desugared, no internal calls, no bindings *)
   Fixpoint remove_uapos
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-  : uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+    (ua: uact)
+  : uact :=
     match ua with
     | USeq a1 a2 => USeq (remove_uapos a1) (remove_uapos a2)
     | UIf cond tbranch fbranch =>
@@ -439,7 +504,7 @@ Section Normalize.
   (* 4. Schedule to single rule - supposes desugared, no internal calls, no
     bindings, no uapos *)
   Fixpoint extract_preconditions_aux
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+    (ua: uact)
     (guard: list (uaction pos_t var_t fn_name_t reg_t ext_fn_t))
   : list (
     list (uaction pos_t var_t fn_name_t reg_t ext_fn_t)
@@ -467,14 +532,14 @@ Section Normalize.
     end.
 
   Definition extract_preconditions
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+    (ua: uact)
   : list (uaction reg_t ext_fn_t * uaction reg_t ext_fn_t) :=
     match ua with
     | UWrite
     end.
 
   Definition extract_postconditions
-    (ua: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+    (ua: uact)
   : list (uaction reg_t ext_fn_t * uaction reg_t ext_fn_t) :=
     match
   .
