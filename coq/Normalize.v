@@ -1,6 +1,6 @@
 (*! Proving | Transformation of a schedule to a single rule with a limited
     syntax !*)
-Require Import Coq.Numbers.DecimalString Coq.Program.Equality.
+Require Import Coq.Numbers.DecimalString Coq.Program.Equality Coq.Strings.Ascii.
 Require Import Koika.BitsToLists Koika.Primitives Koika.Utils Koika.Zipper.
 Open Scope nat.
 
@@ -15,9 +15,8 @@ Open Scope nat.
 Section Normalize.
   Context {pos_t var_t reg_t ext_fn_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
-  Context {var_t_eq_dec: EqDec var_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
-  Definition uact := uaction pos_t var_t string reg_t ext_fn_t.
+  Definition uact := uaction pos_t string string reg_t ext_fn_t.
 
   (* A. Rule simplification *)
   (* A.1. Early simplification pass - we start by simplifying some elements that
@@ -88,13 +87,6 @@ Section Normalize.
        practice *)
     List.length (get_impures ua) =? 0.
 
-  Definition generate_name (n: nat) : (string * nat) :=
-    (* TODO automatically skip all "binding_n" already in use *)
-    (
-      String.append "binding_" (NilEmpty.string_of_uint (Init.Nat.to_uint n)),
-      S n
-    ).
-
   Inductive binding :=
   | pure_binding: uact -> binding
   | impure_binding.
@@ -102,8 +94,8 @@ Section Normalize.
   (* Assumptions: desugared, no uapos, no internal calls *)
   (* We have to be careful about the fact that bindings may be pure at some
      point and then become impure and the other way around. *)
-  Fixpoint remove_pure_bindings_aux (ua: uact) (Gamma: list (var_t * binding))
-  : uact * list (var_t * binding) :=
+  Fixpoint remove_pure_bindings_aux (ua: uact) (Gamma: list (string * binding))
+  : uact * list (string * binding) :=
     match ua with
     | UVar var =>
       match list_assoc Gamma var with
@@ -192,7 +184,7 @@ Section Normalize.
     | _ => (ua, Gamma)
     end.
 
-  Definition remove_pure_bindings (ua: uact) : uact * list (var_t * binding) :=
+  Definition remove_pure_bindings (ua: uact) : uact * list (string * binding) :=
     remove_pure_bindings_aux ua nil.
 
   (* A.2. Extcalls management *)
@@ -241,44 +233,58 @@ Section Normalize.
       UConst (tau := bits_t 0) (Bits.of_nat 0 0)
     end.
 
-  (* TODO really useful? *)
-  Fixpoint remove_assignments (ua: uact) : uact :=
-    match ua with
-    | UAssign v ex => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
-      (* TODO cleanup phase afterwards? *)
-    | USeq a1 a2 => USeq (remove_assignments a1) (remove_assignments a2)
-    | UBind v ex body =>
-      UBind v (remove_assignments ex) (remove_assignments body)
-    | UWrite port idx value => UWrite port idx (remove_assignments value)
-    | UUnop ufn1 arg1 => UUnop ufn1 (remove_assignments arg1)
-    | UBinop ufn2 arg1 arg2 =>
-      UBinop ufn2 (remove_assignments arg1) (remove_assignments arg2)
-    | UInternalCall ufn args =>
-      UInternalCall {|
-        int_name := int_name ufn; int_argspec := int_argspec ufn;
-        int_retSig := int_retSig ufn;
-        int_body := remove_assignments (int_body ufn);
-      |} (map (remove_assignments) args)
-    | UExternalCall ufn arg => UExternalCall ufn (remove_assignments arg)
-    | _ => ua
+  Definition is_digit (c: ascii) : bool :=
+    let n := nat_of_ascii c in
+    ((Nat.leb 48 n) && (Nat.leb n 57)).
+
+  Fixpoint digits_to_nat_aux (d: list ascii) (acc: nat) : nat :=
+    match d with
+    | h::t => digits_to_nat_aux t (10 * acc + (nat_of_ascii h - 48))
+    | nil => acc
     end.
 
-  (* Although UVars are replaced whenever the current value of the binding is
-     pure, all UAssigns and UBinds remain untouched, even though they could be
-     removed. in some cases. *)
-  Fixpoint remove_assignments_up_to_zipper (ua: uact) (z: zipper) : uact :=
-    match z with
-    | here => ua
-    | through_nth_branch n z' =>
-      match ua with
-      | UAssign v ex => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
-        (* TODO cleanup phase afterwards? *)
-      | 
+  (* Assumption: d contains digits only *)
+  Definition digits_to_nat (d: list ascii) : nat :=
+    digits_to_nat_aux d 0.
+
+  Scheme Equality for option.
+  Definition get_highest_binding_number (ua: uact): nat :=
+    let extract_digits (s: string) : list ascii :=
+      String.list_ascii_of_string (String.substring 8 (String.length s - 8) s)
+    in
+    let bindings := find_all_in_uaction ua (fun a =>
+      match a with
+      | UBind _ _ _ => true
+      | _ => false
       end
-    end.
+    ) in
+    let binding_names := List.map (fun z =>
+      match access_zipper ua z with
+      | Some (UBind v _ _) => v
+      | _ => "" (* Should never happen *)
+      end
+    ) bindings in
+    let matching_bindings := List.filter (fun s =>
+      let maybe_digits := extract_digits s in
+      (String.prefix "binding_" s)
+      && (negb (Nat.eqb (List.length maybe_digits) 0))
+      && (List.forallb is_digit maybe_digits)
+      && (negb
+        (option_beq
+          ascii
+          (Ascii.eqb)
+          (List.hd_error maybe_digits)
+          (Some "0"%char)
+        )
+      )
+    ) binding_names in
+    let binding_numbers :=
+      List.map (fun s => digits_to_nat (extract_digits s)) matching_bindings
+    in
+    List.list_max binding_numbers.
 
-  Definition propagate_binding :=
-  .
+  Definition generate_binding_name (n: nat) : string :=
+    String.append "binding_" (NilEmpty.string_of_uint (Init.Nat.to_uint n)).
 
   (* Return type: (reads occurrences, other impure occurrences) *)
   Fixpoint to_list_of_impures (ua: uact)
@@ -302,7 +308,8 @@ Section Normalize.
   | nil => nil
   end.
 
-  Fixpoint normalize_aux (ua: uact): list (uact * uact) :=
+  Fixpoint normalize_aux (ua: uact) (next_binding_id: uint)
+  : list (string * uact * uact) :=
     let impures := get_impures tree_without_pure_bindings in
     match impures with
     | h::t =>
@@ -310,6 +317,9 @@ Section Normalize.
       let condition := merge_conditions (extract_conditions ua h) in
       let normalized_subtree := normalize_aux (prepare_uaction ua) in
       let impure := access_zipper ua z in
+      let (binding_name, next_binding_id') :=
+        generate_next_binding_name ua next_binding_id
+      in
       let post_replacement :=
         replace_at_zipper ua z (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
       in
@@ -330,7 +340,7 @@ Section Normalize.
     | nil => 
     end.
 
-  Definition normalize (ua: uact): uact := normalize_aux (prepare_uaction ua).
+  Definition normalize (ua: uact): uact := normalize_aux (prepare_uaction ua) 0.
 
   Definition prepare_uaction (ua: uact) :=
     remove_pure_bindings (prepare_extcalls_dumping_ground ua).
