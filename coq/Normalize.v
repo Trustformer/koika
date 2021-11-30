@@ -1,6 +1,6 @@
 (*! Proving | Transformation of a schedule to a single rule with a limited
     syntax !*)
-Require Import Coq.Program.Equality.
+Require Import Coq.Numbers.DecimalString Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Primitives Koika.Utils Koika.Zipper.
 Open Scope nat.
 
@@ -88,6 +88,13 @@ Section Normalize.
        practice *)
     List.length (get_impures ua) =? 0.
 
+  Definition generate_name (n: nat) : (string * nat) :=
+    (* TODO automatically skip all "binding_n" already in use *)
+    (
+      String.append "binding_" (NilEmpty.string_of_uint (Init.Nat.to_uint n)),
+      S n
+    ).
+
   Inductive binding :=
   | pure_binding: uact -> binding
   | impure_binding.
@@ -101,12 +108,12 @@ Section Normalize.
     | UVar var =>
       match list_assoc Gamma var with
       | Some (pure_binding pval) => (pval, Gamma)
-      | Some impure_binding => (UVar var, Gamma)
-      | None => (* Should never happen in well-formed rules *)
-        (UConst (tau := bits_t 0) (Bits.of_nat 0 0), Gamma)
-      end
-    | UAssign v ex =>
-      let (rex, Gamma') := remove_pure_bindings_aux ex Gamma in
+      | _ => (* impure or None (the "None" case is used for bindings to already
+                managed impure elements) *)
+          (UVar var, Gamma)
+        end
+      | UAssign v ex =>
+        let (rex, Gamma') := remove_pure_bindings_aux ex Gamma in
       if (is_pure rex) then (
         match list_assoc Gamma v with
         (* We leave the assignment untouched here! See UIf for explanation. *)
@@ -153,14 +160,15 @@ Section Normalize.
               if uaction_func_equiv lar lar' then pure_binding lar
               else pure_binding (UIf ra1 lar lar')
             | Some x, Some y =>
-              (* Here, a pure binding is turned into an impure one. This is a
-                 very special case! The way we currently deal with this
-                 situation is by never removing assigns, which might sound
-                 like it defeats the purpose of this whole function. However,
-                 we know that there is no such situation before the first
-                 impure element of our model, which is the only property we
-                 need. Assigns before this first impure item can therefore be
-                 safely removed. *)
+              (* Here, one binding is pure and the other is impure. We end up
+                 turning the whole binding resulting from this function into
+                 something impure. This is an important special case! The way we
+                 currently deal with this situation is by never removing
+                 assigns, which might sound like it defeats the purpose of this
+                 whole function. However, we know that there is no such
+                 situation before the first impure element of our model, which
+                 is the only property we need. Assigns before this first impure
+                 item can therefore be safely removed. *)
               impure_binding
             | _, _ => (* Should never happen in well-formed rules *)
               impure_binding
@@ -214,7 +222,7 @@ Section Normalize.
     | nil => UConst (tau := bits_t 1) (Bits.of_nat 1 1)
     end.
 
-  (* TODO what if write in extcall? *)
+  (* TODO remove? *)
   (* Assumption: dumping ground present, not necessarily empty at this stage *)
   Definition move_impure (ua: uact) (z: zipper) : uact :=
     let condition := merge_conditions (extract_conditions ua z) in
@@ -233,11 +241,41 @@ Section Normalize.
       UConst (tau := bits_t 0) (Bits.of_nat 0 0)
     end.
 
+  (* TODO really useful? *)
+  Fixpoint remove_assignments (ua: uact) : uact :=
+    match ua with
+    | UAssign v ex => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+      (* TODO cleanup phase afterwards? *)
+    | USeq a1 a2 => USeq (remove_assignments a1) (remove_assignments a2)
+    | UBind v ex body =>
+      UBind v (remove_assignments ex) (remove_assignments body)
+    | UWrite port idx value => UWrite port idx (remove_assignments value)
+    | UUnop ufn1 arg1 => UUnop ufn1 (remove_assignments arg1)
+    | UBinop ufn2 arg1 arg2 =>
+      UBinop ufn2 (remove_assignments arg1) (remove_assignments arg2)
+    | UInternalCall ufn args =>
+      UInternalCall {|
+        int_name := int_name ufn; int_argspec := int_argspec ufn;
+        int_retSig := int_retSig ufn;
+        int_body := remove_assignments (int_body ufn);
+      |} (map (remove_assignments) args)
+    | UExternalCall ufn arg => UExternalCall ufn (remove_assignments arg)
+    | _ => ua
+    end.
+
   (* Although UVars are replaced whenever the current value of the binding is
      pure, all UAssigns and UBinds remain untouched, even though they could be
      removed. in some cases. *)
-  Definition remove_pure_bindings_up_to_the_first_impure :=
-  .
+  Fixpoint remove_assignments_up_to_zipper (ua: uact) (z: zipper) : uact :=
+    match z with
+    | here => ua
+    | through_nth_branch n z' =>
+      match ua with
+      | UAssign v ex => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+        (* TODO cleanup phase afterwards? *)
+      | 
+      end
+    end.
 
   Definition propagate_binding :=
   .

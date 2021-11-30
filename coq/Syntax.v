@@ -47,7 +47,6 @@ Section Syntax.
     (fn: InternalFunction var_t fn_name_t (
       @uaction module_reg_t module_ext_fn_t
     )) (args: list uaction).
-  (* Combined Scheme Equality for uaction from . *)
 
   Section uaction_ind'.
     Context {reg_t ext_fn_t: Type}.
