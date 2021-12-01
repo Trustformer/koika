@@ -187,10 +187,6 @@ Section Normalize.
   Definition remove_pure_bindings (ua: uact) : uact * list (string * binding) :=
     remove_pure_bindings_aux ua nil.
 
-  (* A.2. Extcalls management *)
-  Definition prepare_extcalls_dumping_ground (ua: uact) : uact :=
-    USeq (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) ua.
-
   (* Assumption: no impurities nor vars in conditions.
      Maybe some reads though. *)
   Definition extract_conditions (ua: uact) (z: zipper) : list (option uact) :=
@@ -214,25 +210,6 @@ Section Normalize.
     | nil => UConst (tau := bits_t 1) (Bits.of_nat 1 1)
     end.
 
-  (* TODO remove? *)
-  (* Assumption: dumping ground present, not necessarily empty at this stage *)
-  Definition move_impure (ua: uact) (z: zipper) : uact :=
-    let condition := merge_conditions (extract_conditions ua z) in
-    let impure := access_zipper ua z in
-    let post_replacement :=
-      replace_at_zipper ua z (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
-    in
-    match ua, impure, post_replacement with
-    | USeq effects body, Some i, Some p =>
-      USeq
-        (USeq
-          (UIf condition i (UConst (tau := bits_t 0) (Bits.of_nat 0 0))) effects
-        )
-        p
-    | _, _, _ => (* Should never happen *)
-      UConst (tau := bits_t 0) (Bits.of_nat 0 0)
-    end.
-
   Definition is_digit (c: ascii) : bool :=
     let n := nat_of_ascii c in
     ((Nat.leb 48 n) && (Nat.leb n 57)).
@@ -247,11 +224,22 @@ Section Normalize.
   Definition digits_to_nat (d: list ascii) : nat :=
     digits_to_nat_aux d 0.
 
+  Definition extract_custom_binding_digits (s: string) : list ascii :=
+    String.list_ascii_of_string (String.substring 8 (String.length s - 8) s).
+
   Scheme Equality for option.
+  Definition matches_control_binding_form (s: string) : bool :=
+    let maybe_digits := extract_custom_binding_digits s in
+    (String.prefix "binding_" s)
+    && (negb (Nat.eqb (List.length maybe_digits) 0))
+    && (List.forallb is_digit maybe_digits)
+    && (negb
+      (option_beq
+        ascii (Ascii.eqb) (List.hd_error maybe_digits) (Some "0"%char)
+      )
+    ).
+
   Definition get_highest_binding_number (ua: uact): nat :=
-    let extract_digits (s: string) : list ascii :=
-      String.list_ascii_of_string (String.substring 8 (String.length s - 8) s)
-    in
     let bindings := find_all_in_uaction ua (fun a =>
       match a with
       | UBind _ _ _ => true
@@ -264,27 +252,22 @@ Section Normalize.
       | _ => "" (* Should never happen *)
       end
     ) bindings in
-    let matching_bindings := List.filter (fun s =>
-      let maybe_digits := extract_digits s in
-      (String.prefix "binding_" s)
-      && (negb (Nat.eqb (List.length maybe_digits) 0))
-      && (List.forallb is_digit maybe_digits)
-      && (negb
-        (option_beq
-          ascii
-          (Ascii.eqb)
-          (List.hd_error maybe_digits)
-          (Some "0"%char)
-        )
-      )
-    ) binding_names in
+    let matching_bindings :=
+      List.filter matches_control_binding_form binding_names
+    in
     let binding_numbers :=
-      List.map (fun s => digits_to_nat (extract_digits s)) matching_bindings
+      List.map
+        (fun s => digits_to_nat (extract_custom_binding_digits s))
+        matching_bindings
     in
     List.list_max binding_numbers.
 
   Definition generate_binding_name (n: nat) : string :=
     String.append "binding_" (NilEmpty.string_of_uint (Init.Nat.to_uint n)).
+
+  Definition is_controlled_binding (s: string) (min_binding: nat) : bool :=
+    (matches_control_binding_form s)
+    && (Nat.leb min_binding (digits_to_nat (extract_custom_binding_digits s))).
 
   (* Return type: (reads occurrences, other impure occurrences) *)
   Fixpoint to_list_of_impures (ua: uact)
@@ -308,18 +291,21 @@ Section Normalize.
   | nil => nil
   end.
 
-  Fixpoint normalize_aux (ua: uact) (next_binding_id: uint)
-  : list (string * uact * uact) :=
-    let impures := get_impures tree_without_pure_bindings in
+  Definition prepare_uaction (ua: uact) := remove_pure_bindings ua.
+
+  Fixpoint normalize_aux (ua: uact) (next_binding_id: nat)
+  : (list (string * uact * uact) * nat) :=
+    let prepared_tree := remove_pure_bindings ua in
+    let impures := get_impures prepared_tree in
     match impures with
     | h::t =>
       (* h is the first interpreted impure element *)
       let condition := merge_conditions (extract_conditions ua h) in
-      let normalized_subtree := normalize_aux (prepare_uaction ua) in
-      let impure := access_zipper ua z in
-      let (binding_name, next_binding_id') :=
-        generate_next_binding_name ua next_binding_id
+      let impure_subtree := access_zipper ua z in
+      let (managed_impures, next_binding_id') :=
+        normalize_aux impure_subtree next_binding_id
       in
+      let binding_name := generate_next_binding_name next_binding_id' in
       let post_replacement :=
         replace_at_zipper ua z (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
       in
@@ -335,15 +321,13 @@ Section Normalize.
       UConst (tau := bits_t 0) (Bits.of_nat 0 0)
       match normalized_subtree with
       | 
-      | 
+      |
       end
-    | nil => 
+    | nil => (nil, next_binding_id)
     end.
 
-  Definition normalize (ua: uact): uact := normalize_aux (prepare_uaction ua) 0.
-
-  Definition prepare_uaction (ua: uact) :=
-    remove_pure_bindings (prepare_extcalls_dumping_ground ua).
+  Definition normalize (ua: uact): uact :=
+    normalize_aux (prepare_uaction ua) (get_highest_binding_number ua + 1).
 
   (* B. Schedule merging *)
   Definition detect_cancellation_conditions :=
