@@ -265,11 +265,118 @@ Section Normalize.
   Definition generate_binding_name (n: nat) : string :=
     String.append "binding_" (NilEmpty.string_of_uint (Init.Nat.to_uint n)).
 
-  Definition is_controlled_binding (s: string) (min_binding: nat) : bool :=
+  Definition is_controlled_binding (s: string) (first_controlled: nat) : bool :=
     (matches_control_binding_form s)
-    && (Nat.leb min_binding (digits_to_nat (extract_custom_binding_digits s))).
+    && (Nat.leb first_controlled (
+      digits_to_nat (extract_custom_binding_digits s)
+    )).
+
+  Fixpoint simplify_till_impure_aux
+    (ua: uact) (first_controlled: nat) (Gamma: list (string * uact))
+  (* return type: resulting tree * bindings * impure met *)
+  : uact * list (string * uact) * bool :=
+    let fc := first_controlled in
+    match ua with
+    | UVar var =>
+      if is_controlled_binding var fc then
+        match list_assoc Gamma var with
+        | Some pval => (pval, Gamma, false)
+        | _ => (UVar var, Gamma, true) (* Should never happen *)
+        end
+      else (UVar var, Gamma, false)
+    | UAssign v ex =>
+      let '(rex, Gamma', impure) := simplify_till_impure_aux ex fc Gamma in
+      if impure then (UAssign v rex, Gamma', true)
+      else (
+        match list_assoc Gamma v with
+        | Some _ =>
+          (UAssign v rex, list_assoc_set Gamma' v rex, false)
+        | None => (* Should never happen *)
+          (UConst (tau := bits_t 0) (Bits.of_nat 0 0), Gamma', true)
+        end
+      )
+    | UBind v ex body =>
+      let '(rex, Gamma', impure) := simplify_till_impure_aux ex fc Gamma in
+      if impure then (UBind v rex body, Gamma', true)
+      else
+        let '(rbody, Gamma'', impure') :=
+          simplify_till_impure_aux body fc ((v, rex)::Gamma')
+        in
+        (UBind v rex rbody, tl Gamma'', impure')
+    | USeq a1 a2 =>
+      let '(ra1, Gamma', impure) := simplify_till_impure_aux a1 fc Gamma in
+      if impure then (USeq ra1 a2, Gamma', true)
+      else
+        let '(ra2, Gamma'', impure') := simplify_till_impure_aux a2 fc Gamma' in
+        (USeq ra1 ra2, Gamma'', impure')
+    | UIf cond tbranch fbranch =>
+      let '(rac, Gamma_cond, impure) :=
+        simplify_till_impure_aux cond fc Gamma
+      in
+      if impure then (UIf rac tbranch fbranch, Gamma_cond, true)
+      else
+        let '(rat, Gamma_t, impure') :=
+          simplify_till_impure_aux tbranch fc Gamma_cond
+        in
+        if impure' then (UIf rac rat fbranch, Gamma_t, true)
+        else
+          let '(raf, Gamma_f, impure'') :=
+            simplify_till_impure_aux fbranch fc Gamma_cond
+          in
+          let Gamma' :=
+            fold_right
+              (fun v acc => list_assoc_set acc v (
+                match list_assoc Gamma_t v, list_assoc Gamma_f v with
+                | Some lar, Some lar' =>
+                  if uaction_func_equiv lar lar' then lar else UIf rac lar lar'
+                | _, _ => (* Should never happen in well-formed rules *)
+                  (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
+                end
+              )) Gamma_cond (fst (split Gamma_cond))
+          in
+          (UIf rac rat raf, Gamma', impure'')
+    | UWrite port idx value =>
+      let '(ra1, Gamma', _) := simplify_till_impure_aux value fc Gamma in
+      (UWrite port idx ra1, Gamma', true)
+    | URead port idx => (URead port idx, Gamma, true)
+    | UUnop ufn1 arg1 =>
+      let '(ra1, Gamma', impure) := simplify_till_impure_aux arg1 fc Gamma in
+      (UUnop ufn1 ra1, Gamma', impure)
+    | UBinop ufn2 arg1 arg2 =>
+      let '(ra1, Gamma', impure) := simplify_till_impure_aux arg1 fc Gamma in
+      if impure then (UBinop ufn2 ra1 arg2, Gamma', true)
+      else
+        let '(ra2, Gamma'', impure') :=
+          simplify_till_impure_aux arg2 fc Gamma'
+        in
+        (UBinop ufn2 ra1 ra2, Gamma'', impure')
+    | UExternalCall ufn arg =>
+      let '(ra1, Gamma', _) := simplify_till_impure_aux arg fc Gamma in
+      (UExternalCall ufn ra1, Gamma', true)
+    | _ => (ua, Gamma, false)
+    end.
+
+  Definition simplify_till_impure (ua: uact) (first_controlled: nat) : uact :=
+    let '(res, _, _) := simplify_till_impure_aux ua first_controlled nil in res.
 
   (* Return type: (reads occurrences, other impure occurrences) *)
+  (* Note that the resulting list may not be ordered in a way that would
+     preserve the semantics if written sequentially.
+
+     Consider the following programs:
+     * P0: if (rd0 x) then wr1 y (rd1 z) else wr1 z (rd1 y)
+     * P1: wr0 x (rd1 y)
+     * P2: if (rd0 x) then wr0 y (rd1 z) else wr0 z (rd1 y)
+
+     Sorting the actions according by order of occurrence for P0 would mean that
+     we would have a (wr0 z) occuring after a (rd1 z). Sorting according to
+     (rd0 < wr0 < rd1 < wr1) would not work for P1. Sorting according to this
+     order for each variable individually could not work for P0 either.
+
+     This is not a problem because in the end only rd0 and wr0 will remain.
+     In this intermediate form, we already have the interesting property that
+     all the conditions and conflicts internal to a rule are explicitly stated.
+     We need to keep rd1 and wr1 for the management of inter-rules conflicts. *)
   Fixpoint to_list_of_impures (ua: uact)
   : ((list (uact * uact)) * (list (uact * uact))) :=
     (* Remove pure bindings up to the first impure *)
@@ -320,7 +427,7 @@ Section Normalize.
         | _, _, _ => (* Should never happen *)
       UConst (tau := bits_t 0) (Bits.of_nat 0 0)
       match normalized_subtree with
-      | 
+      |
       |
       end
     | nil => (nil, next_binding_id)
@@ -330,10 +437,9 @@ Section Normalize.
     normalize_aux (prepare_uaction ua) (get_highest_binding_number ua + 1).
 
   (* B. Schedule merging *)
-  Definition detect_cancellation_conditions :=
+  Definition detect_cancellation_conditions :=.
 
-  Definition merge_rules (rules: list (uact * uact)) :=
-    
+  Definition merge_rules (rules: list (uact * uact)) :=.
 
   (* 1. Internal calls inlining - supposes desugared *)
   (* 1.1. Side-effects management functions *)
