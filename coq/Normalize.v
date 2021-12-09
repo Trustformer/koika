@@ -359,7 +359,275 @@ Section Normalize.
   Definition simplify_till_impure (ua: uact) (first_controlled: nat) : uact :=
     let '(res, _, _) := simplify_till_impure_aux ua first_controlled nil in res.
 
-  (* Return type: (reads occurrences, other impure occurrences) *)
+  Inductive assigns :=
+  | assign_nil
+  | assign (var: string) (val: uact) (queue: assigns)
+  | conditional_assign
+    (cond: uact) (lt: assigns) (lf: assigns) (queue: assigns).
+
+  Inductive failures :=
+  | not_a_failure
+  | failure
+  | conditional_failure
+    (cond: uact) (lt: failures) (lf: failures) (queue: failures).
+
+  Fixpoint append_assigns (a1 a2: assigns) : assigns :=
+    match a1 with
+    | assign_nil => a2
+    | assign var val q => append_assigns q (assign var val a2)
+    | conditional_assign cond lt lf q =>
+      append_assigns q (conditional_assign cond lt lf a2)
+    end.
+
+  Fixpoint append_failures (f1 f2: failures) : failures :=
+    match f1 with
+    | not_a_failure => f2
+    | failure => failure
+    | conditional_failure cond lt lf q =>
+      conditional_failure cond lt lf (append_failures q f2)
+    end.
+
+  (* Limited filter function (variable name only) for assigns, required for
+     dealing with shadowing *)
+  Fixpoint assigns_filter (f: string -> bool) (a: assigns) : assigns :=
+    match a with
+    | assign_nil => assign_nil
+    | assign var val q =>
+      if (f var) then assign var val (assigns_filter f q)
+      else assigns_filter f q
+    | conditional_assign cond lt lf q =>
+      conditional_assign
+        cond (assigns_filter f lt) (assigns_filter f lf) (assigns_filter f q)
+    end.
+
+  (* TODO shared precondition: no USugar, no UInternalCall, no UApos *)
+
+  (* Pure bindings need to have been forwarded as much as possible *)
+  (* Precondition: no impure elements *)
+  (* Precondition: no uncontrolled UVars *)
+  Fixpoint remove_assigns_aux (ua: uact) : uact :=
+    match ua with
+    | UAssign _ _ => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+    | UBind _ _ body => body
+    | USeq a1 a2 => USeq (remove_assigns_aux a1) (remove_assigns_aux a2)
+    | UIf cond tbranch fbranch =>
+      UIf
+        (remove_assigns_aux cond) (remove_assigns_aux tbranch)
+        (remove_assigns_aux fbranch)
+    | UBinop ufn2 arg1 arg2 =>
+      UBinop ufn2 (remove_assigns_aux arg1) (remove_assigns_aux arg2)
+    | UUnop ufn1 arg1 => UUnop ufn1 (remove_assigns_aux arg1)
+    | _ => ua
+    end.
+
+  (* Precondition: no uncontrolled UVars *)
+  Definition remove_assigns (ua: uact) : uact :=
+    match ua with
+    | UWrite port reg ex => UWrite port reg (remove_assigns_aux ex)
+    | UExternalCall ufn arg => UExternalCall ufn (remove_assigns_aux arg)
+    | _ => UConst (tau := bits_t 0) (Bits.of_nat 0 0) (* Includes URead *)
+    end.
+
+  (* Precondition: no impure elements *)
+  (* Precondition: no uncontrolled UVars *)
+  (* Precondition: no assigns/binds *)
+  Fixpoint remove_failures_aux (ua: uact) : uact :=
+    match ua with
+    | USeq a1 a2 => USeq (remove_failures_aux a1) (remove_failures_aux a2)
+    | UIf cond tbranch fbranch =>
+      UIf
+        (remove_failures_aux cond) (remove_failures_aux tbranch)
+        (remove_failures_aux fbranch)
+    | UBinop ufn a1 a2 =>
+      UBinop ufn (remove_failures_aux a1) (remove_failures_aux a2)
+    | UUnop ufn a => UUnop ufn (remove_failures_aux a)
+    | UError _ => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+    | UFail _ => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+    | _ => ua
+    end.
+
+  (* Precondition: impure root and no other impure elements *)
+  (* Precondition: no uncontrolled UVars *)
+  (* Precondition: no assigns/binds *)
+  Definition remove_failures (ua: uact) : uact :=
+    match ua with
+    | UWrite port reg ex => UWrite port reg (remove_failures_aux ex)
+    | UExternalCall ufn arg => UExternalCall ufn (remove_failures_aux arg)
+    | URead reg port => URead reg port
+    | _ => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+    end.
+
+  (* Precondition: no impure elements *)
+  (* Precondition: All UVar replaced except if controlled *)
+  Fixpoint extract_assigns_aux (ua: uact) : assigns :=
+    match ua with
+    | UAssign v ex => assign v ex assign_nil
+    | UBind v ex body =>
+      let tr := extract_assigns_aux body in
+      (* Remove all assigns to v at the end: shadowing *)
+      assigns_filter (fun name => negb (String.eqb name v)) tr
+    | USeq a1 a2 =>
+      append_assigns (extract_assigns_aux a1) (extract_assigns_aux a2)
+    | UIf cond tb fb =>
+      let rt := extract_assigns_aux tb in
+      let rf := extract_assigns_aux fb in
+      match rt, rf with
+      | assign_nil, assign_nil => assign_nil
+      | _, _ =>
+        conditional_assign (remove_failures (remove_assigns cond)) rt rf
+        assign_nil
+      end
+    | UUnop _ a1 => extract_assigns_aux a1
+    | UBinop _ a1 a2 =>
+      append_assigns (extract_assigns_aux a1) (extract_assigns_aux a2)
+    | _ => assign_nil
+    end.
+
+  (* Precondition: impure root *)
+  Definition extract_assigns (ua: uact) : assigns :=
+    match ua with
+    | UWrite _ _ ex => extract_assigns_aux ex
+    | UExternalCall _ arg => extract_assigns_aux arg
+    | _ => assign_nil (* Includes URead *)
+    end.
+
+  (* Precondition: no impure elements *)
+  (* Precondition: no uncontrolled UVars *)
+  Fixpoint extract_failures_aux (ua: uact) : failures :=
+    match ua with
+    | UBind _ val body =>
+      append_failures (extract_failures_aux val) (extract_failures_aux body)
+    | UAssign _ val => extract_failures_aux val
+    | USeq a1 a2 =>
+      append_failures (extract_failures_aux a1) (extract_failures_aux a2)
+    | UIf cond tb fb =>
+      (* TODO cond may contain assigns, check if managed correctly (also remove
+         failures) *)
+      let cf := extract_failures_aux cond in
+      let tf := extract_failures_aux tb in
+      let ff := extract_failures_aux fb in
+      match tf, ff with
+      | not_a_failure, not_a_failure => cf
+      | _, _ =>
+        append_failures
+          cf (conditional_failure (remove_failures cond) tf ff not_a_failure)
+      end
+    | UBinop ufn a1 a2 =>
+      append_failures (extract_failures_aux a1) (extract_failures_aux a2)
+    | UUnop ufn a => extract_failures_aux a
+    | UError _ => failure
+    | UFail _ => failure
+    | _ => not_a_failure
+    end.
+
+  (* Precondition: impure root and no other impure elements *)
+  (* Precondition: no uncontrolled UVars *)
+  (* Precondition: no assigns/binds *)
+  Definition extract_failures (ua: uact) : failures :=
+    match ua with
+    | UWrite port reg ex => extract_failures_aux ex
+    | UExternalCall ufn arg => extract_failures_aux arg
+    | _ => not_a_failure (* Includes URead *)
+    end.
+
+  Fixpoint assigns_to_action (a: assigns) : uact :=
+    match a with
+    | assign_nil => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+    | assign var val q => USeq (UAssign var val) (assigns_to_action q)
+    | conditional_assign cond lt lf q =>
+      USeq
+        (UIf cond (assigns_to_action lt) (assigns_to_action lf))
+        (assigns_to_action q)
+    end.
+
+  Fixpoint failures_to_action (f: failures) : uact :=
+    match f with
+    | not_a_failure => UConst (tau := bits_t 1) (Bits.of_nat 1 0)
+    | failure => UConst (tau := bits_t 1) (Bits.of_nat 1 1)
+    | conditional_failure cond tf ff q =>
+      UBinop
+        (PrimUntyped.UBits2 PrimUntyped.UOr)
+        (UBinop
+          (PrimUntyped.UBits2 PrimUntyped.UOr)
+          (
+            UBinop
+              (PrimUntyped.UBits2 PrimUntyped.UAnd) cond (failures_to_action tf)
+          )
+          (
+            UBinop
+              (PrimUntyped.UBits2 PrimUntyped.UAnd)
+              (UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) cond)
+              (failures_to_action ff)
+          )
+        )
+        (failures_to_action q)
+    end.
+
+  (* Precondition: ua's root is impure *)
+  Definition remove_impure (ua: uact) (last_controlled: nat) : uact * nat :=
+    match ua with
+    | UExternalCall _ _ =>
+      (UVar (generate_binding_name (S last_controlled)), S last_controlled)
+    | URead _ _ =>
+      (UVar (generate_binding_name (S last_controlled)), S last_controlled)
+    | _ => (* Includes UWrite *)
+      (UConst (tau := bits_t 0) (Bits.of_nat 0 0), last_controlled)
+    end.
+
+  (* Precondition: impures sorted by order of occurrence. It is meant to use the
+     output of find_all_in_xxx. *)
+  Fixpoint to_list_of_impures_aux
+    (ua: uact) (first_controlled: nat) (last_controlled: nat)
+    (impures: list zipper) (al: list (uact * uact))
+  : list (uact * uact) * list (uact) * nat * uact :=
+    match impures with
+    | nil => (al, last_controlled)
+    | h::t =>
+      let cond := merge_conditions (extract_conditions ua) in
+      (* An impure may contain other impures (e.g. write0(x, read0(y))). Deal
+         with these first. *)
+      let subtree := access_zipper ua h in
+      let '(subimpures_list, last_controlled', subtree') :=
+        to_list_of_impures_aux
+          subtree first_controlled last_controlled (get_impures subtree) []
+      in
+      (* Prepend sublist of actions with the local condition. *)
+      let sal :=
+        al ++
+          (List.map
+            (fun `(c, a) => (merge_conditions c cond, a))
+            subimpures_list
+          )
+      in
+      (* The recursive call may already have dealt with other impures which we
+         may now remove from the list. *)
+      let t' := List.skipn (List.length subimpures_list) t in
+      (* The impure elements that we remove may contain assignments. We don't
+         want assignments to remain in the action list yet we can't leave
+         anything impure behind in the tree. We therefore have to extract
+         them. *)
+      let subtree'' := simplify_till_impure subtree' first_controlled' in
+      let assignments_in_subtree := extract_assignments subtree'' in
+      let failures_in_subtree := extract_failures subtree'' in
+      let h_cleaned := remove_failures (remove_assignments subtree'') in
+      let ua' :=
+        replace_at_zipper ua h (USeq assignments_in_subtree (replace_impure ))
+      in
+      (* TODO binding *)
+      if (requires_binding subtree) then
+        generate_binding_name last_controlled
+        last_controlled' := last_controlled' + 1
+      else
+
+      (impures_list, failures_list, last_controlled', updated_tree)
+    end.
+
+  Definition to_list_of_impures (ua: uact) : list (uact * uact) * uact :=
+    let bn := get_highest_binding_number ua in
+    let (res, _, _) :=
+      to_list_of_impures_aux ua bn bn nil (get_impures (prepare_uaction ua)) nil
+    in res.
+
   (* Note that the resulting list may not be ordered in a way that would
      preserve the semantics if written sequentially.
 
@@ -368,7 +636,7 @@ Section Normalize.
      * P1: wr0 x (rd1 y)
      * P2: if (rd0 x) then wr0 y (rd1 z) else wr0 z (rd1 y)
 
-     Sorting the actions according by order of occurrence for P0 would mean that
+     Sorting the actions according to order of occurrence for P0 would mean that
      we would have a (wr0 z) occuring after a (rd1 z). Sorting according to
      (rd0 < wr0 < rd1 < wr1) would not work for P1. Sorting according to this
      order for each variable individually could not work for P0 either.
@@ -377,79 +645,67 @@ Section Normalize.
      In this intermediate form, we already have the interesting property that
      all the conditions and conflicts internal to a rule are explicitly stated.
      We need to keep rd1 and wr1 for the management of inter-rules conflicts. *)
-  Fixpoint to_list_of_impures (ua: uact)
-  : ((list (uact * uact)) * (list (uact * uact))) :=
-    (* Remove pure bindings up to the first impure *)
-    let pua := remove_bindings_up_to_first_impure (remove_pure_bindings ua) in
-    let impures := get_impures pua in
+  Fixpoint to_list_of_impures_aux_old
+    (ua: uact) (first_controlled: nat) (next_controlled: nat)
+  : list (uact * uact) * nat :=
+    let fc := first_controlled in
+    let nc := next_controlled in
+    (* Remove pure bindings up to the first impure. *)
+    let sua := simplify_till_impure ua first_controlled in
+    let impures := get_impures sua in
     match impures with
     | h::t => (* h is a zipper to the first interpreted impure element *)
-      let cond := merge_conditions (extract_conditions pua h) in
-      let sub_impures_list :=
-        map
-          (fun '(cond', act) =>
-            (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', act)
-          )
-          (to_list_of_impures (access_zipper h))
+      let cond := merge_conditions (extract_conditions sua h) in
+      (* Mind the fact that the first impure might contain other impures (e.g.
+         write(0, x, read(0, y))). We call to_list_of_impures recursively to
+         deal with this situation. *)
+      let '(sub_impures_list, nc') :=
+        to_list_of_impures (access_zipper h) fc nc
       in
-      app
-        sub_impures_list
-        (to_list_of_impures (skipn (length sub_impures_list) t))
-  | nil => nil
-  end.
+      let sub_impures_list_with_cond :=
+        List.map
+          (fun '(cond', act) =>
+            UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond'
+          )
+          sub_impures_list
+      in
+        (* TODO Important property: replace_at_zipper z doesn't invalidate
+           zippers obtained using the initial tree as long as they were not at
+           or below z. *)
+
+        app
+          (app
+            sub_impures_list_with_cond [(cond, (* TODO simplified uact *))]
+          )
+          (to_list_of_impures (skipn (length sub_impures_list) t), S nc')
+    | nil => (nil, next_controlled)
+    end.
+
+  Definition to_list_of_impures_old
+    (ua: uact) ()
 
   Definition prepare_uaction (ua: uact) := remove_pure_bindings ua.
 
-  Fixpoint normalize_aux (ua: uact) (next_binding_id: nat)
-  : (list (string * uact * uact) * nat) :=
-    let prepared_tree := remove_pure_bindings ua in
-    let impures := get_impures prepared_tree in
-    match impures with
-    | h::t =>
-      (* h is the first interpreted impure element *)
-      let condition := merge_conditions (extract_conditions ua h) in
-      let impure_subtree := access_zipper ua z in
-      let (managed_impures, next_binding_id') :=
-        normalize_aux impure_subtree next_binding_id
-      in
-      let binding_name := generate_next_binding_name next_binding_id' in
-      let post_replacement :=
-        replace_at_zipper ua z (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
-      in
-        match normalized_subtree, impure, post_replacement with
-        | USeq effects body, Some i, Some p =>
-          USeq
-            (USeq
-              (UIf condition i (UConst (tau := bits_t 0) (Bits.of_nat 0 0)))
-              effects
-            )
-            p
-        | _, _, _ => (* Should never happen *)
-      UConst (tau := bits_t 0) (Bits.of_nat 0 0)
-      match normalized_subtree with
-      |
-      |
-      end
-    | nil => (nil, next_binding_id)
-    end.
-
-  Definition normalize (ua: uact): uact :=
+  (* We don't return the next binding: we deal with the identifiers merging
+     tedium during the rules merging phase only. *)
+  Definition extract_impures_from_rule (r: rule) : list (uact * uact) :=
     normalize_aux (prepare_uaction ua) (get_highest_binding_number ua + 1).
 
+  Definition extract_impures_from_rules (lr: list rules)
+  : list (list (uact * uact)) :=
+    List.map extract_impures_from_rules lr.
+
+  (* TODO Actions list simplification stage: e.g. merge multiple writes
+          occuring in the same rule. *)
+
   (* B. Schedule merging *)
+  Definition detect_double_writes :=.
+  Definition detect_wrong_orderings :=.
+
   Definition detect_cancellation_conditions :=.
 
   Definition merge_rules (rules: list (uact * uact)) :=.
 
-  (* 1. Internal calls inlining - supposes desugared *)
-  (* 1.1. Side-effects management functions *)
-  (* Some internal calls expect arguments and those behave like let-in bindings.
-     Importantly, the side-effects related to the evaluation of the expressions
-     passed as arguments should occur exactly once right before the function is
-     called. Merely inlining those expressions would lead to trouble. *)
-  (* Assumes no internal calls. *)
-  (* What if external call? The value needs to be stored somehow. Some
-     restricted notion of binding needs to  remain. *)
   Fixpoint remove_side_effects
     (ua: uact)
   : uact := (*
@@ -457,7 +713,6 @@ Section Normalize.
     inlined. We do not have to care about reads at all as whenever at least
     a read occurs in a rule, subsequent reads are not a problem. *)
     match ua with
-    (* TODO remove assigns as well. Mind the effects there as well! *)
     | UAssign v ex => UAssign v (remove_writes ex)
     | USeq a1 a2 => USeq (remove_writes a1) (remove_writes a2)
     | UBind v ex body => UBind v (remove_writes ex) (remove_writes body)
@@ -479,13 +734,11 @@ Section Normalize.
     | _ => ua
     end.
 
-  Fixpoint to_unit_t
-    (ua: uact)
-  : uact := (*
-    This function transforms any uaction to an uaction of type unit_t but with
-    the same side-effects. It is used to ensure that the arguments passed to
-    any function are indeed evaluated at the point where the function is
-    called. *)
+  Fixpoint to_unit_t (ua: uact) : uact :=
+    (* This function transforms any uaction to an uaction of type unit_t but
+       with the same side-effects. It is used to ensure that the arguments
+       passed to any function are indeed evaluated at the point where the
+       function is called. *)
     match ua with
     | UAssign v ex => UAssign v ex
     | USeq a1 a2 => USeq a1 (to_unit_t a2)
@@ -504,11 +757,8 @@ Section Normalize.
 
   (* 1.2. Arguments inlining *)
   Fixpoint replace_variable_with_expr
-    (ua: uact) (vr: var_t)
-    (rex: uact)
-  : uact
-    * uaction pos_t var_t fn_name_t reg_t ext_fn_t
-  :=
+    (ua: uact) (vr: var_t) (rex: uact)
+  : uact * uact :=
     match ua with
     | UAssign v ex =>
       let (ra1, post_val_1) := replace_variable_with_expr ex vr rex in
@@ -571,9 +821,7 @@ Section Normalize.
     end.
 
   (* 1.3. Internal calls inlining *)
-  Fixpoint inline_internal_calls
-    (ua: uact)
-  : uact :=
+  Fixpoint inline_internal_calls (ua: uact) : uact :=
     match ua with
     | UAssign v ex => UAssign v (inline_internal_calls ex)
     | USeq a1 a2 => USeq (inline_internal_calls a1) (inline_internal_calls a2)
@@ -612,9 +860,7 @@ Section Normalize.
   (* TODO What if a binding contains an external call? What if a binding
     contains contains a write? Use replace_variable_with_expr I guess. *)
 
-  Definition remove_bindings
-    (ua: uact)
-  : uact :=
+  Definition remove_bindings (ua: uact) : uact :=
     fst (remove_bindings_aux ua nil).
 
   (* 3. UAPos removal - supposes desugared, no internal calls, no bindings *)
