@@ -340,6 +340,7 @@ Section Normalize.
     | Some x => x
     end.
 
+  (* TODO issue with failure conditions *)
   Fixpoint distill_aux
     (* No need to pass failures as failures impact the whole rule - taking note
        of all of them and factoring the conditions in is enough. Conflicts
@@ -357,7 +358,8 @@ Section Normalize.
       in
       let '(ret_body, Gamma_body, failures_body, al_body, lc_body) :=
         distill_aux
-          body (list_assoc_set Gamma_val var (reduce ret_val)) guard al lc_val
+          body (list_assoc_set Gamma_val var (reduce ret_val)) guard al_val
+          lc_val
       in
       (None, List.skipn 1 Gamma_body, (* Remove the binding to var *)
        merge_failures failures_val failures_body, al_body, lc_body)
@@ -486,8 +488,7 @@ Section Normalize.
         | P1 => add_write1 actions_val guard (reduce ret_val) reg
         end
       in
-      (None, Gamma_val, merge_failures failures_val failure_wr, actions_val,
-       lc_val)
+      (None, Gamma_val, merge_failures failures_val failure_wr, al_wr, lc_val)
     | UExternalCall ufn arg =>
       let '(ret_arg, Gamma_arg, failures_arg, actions_arg, lc_arg) :=
         distill_aux arg Gamma guard al lc
@@ -994,6 +995,8 @@ Section Normalize.
     | _ => []
     end.
 
+  (* TODO desugar! *)
+
   (* Precondition: only Cons and Done in schedule. *)
   Definition schedule_to_normal_form (s: schedule) : normal_form :=
     (* Get list of uact from scheduler *)
@@ -1026,4 +1029,7 @@ Section Normalize.
        external_calls := extcalls schedule_info_simpl
     |}.
 End Normalize.
+
+(* TODO switching back to register names instead of "bind<n>" at the end would
+   be helpful *)
 Close Scope nat.
