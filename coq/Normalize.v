@@ -185,7 +185,7 @@ Section Normalize.
   (* The rule_information structure is defined in A.1. *)
   (* C.1. Addition of a new action into an existing rule_information *)
   (* C.1.a. Merger of failure conditions *)
-  Fixpoint or_conds (conds: list uact) :=
+  Definition or_conds (conds: list uact) :=
     List.fold_left
       (fun acc c =>
         match acc with
@@ -634,7 +634,7 @@ Section Normalize.
       ).
 
   (* D.2. Conflicts with any prior rule *)
-  Fixpoint detect_conflicts_any_prior
+  Definition detect_conflicts_any_prior
     (r: rule_information) (prior_rules: list rule_information)
   : rule_information :=
     List.fold_left
@@ -672,19 +672,20 @@ Section Normalize.
      fact, the failure condition was just a building block: we can remove it
      without losing information as long as we integrate it into the conditions
      of all the actions of the rule it guarded. *)
-  Fixpoint prepend_condition_reads (cond: uact) (rl: read_log) : read_log :=
+  Definition prepend_condition_reads (cond: uact) (rl: read_log) : read_log :=
     List.map
       (fun '(reg, (cond', name)) =>
         (reg, (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', name))
       )
       rl.
-  Fixpoint prepend_condition_writes (cond: uact) (wl: write_log) : write_log :=
+  Definition prepend_condition_writes (cond: uact) (wl: write_log)
+  : write_log :=
     List.map
       (fun '(reg, (cond', val)) =>
         (reg, (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', val))
       )
       wl.
-  Fixpoint prepend_condition_extcalls (cond: uact) (el: extcall_log)
+  Definition prepend_condition_extcalls (cond: uact) (el: extcall_log)
   : extcall_log :=
     List.map
       (fun '(ufn, (cond', name, arg)) =>
