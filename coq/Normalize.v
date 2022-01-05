@@ -340,7 +340,6 @@ Section Normalize.
     | Some x => x
     end.
 
-  (* TODO issue with failure conditions *)
   Fixpoint distill_aux
     (* No need to pass failures as failures impact the whole rule - taking note
        of all of them and factoring the conditions in is enough. Conflicts
@@ -409,7 +408,28 @@ Section Normalize.
       in
       (merge_uacts cond ret_tb ret_fb,
        merge_Gammas cond Gamma_fb Gamma_tb,
-       merge_failures failures_tb failures_fb, al_fb, lc_fb)
+       match ret_cond with
+       | None => (* Should never happen in a well-formed rule *)
+         None
+       | Some x =>
+         merge_failures
+          failures_cond
+          (merge_failures
+            (option_map
+              (fun y => UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) x y)
+              failures_tb
+            )
+            (option_map
+              (fun y =>
+                (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd)
+                  (UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x) y
+                )
+              )
+              failures_fb
+            )
+          )
+        end,
+        al_fb, lc_fb)
     | UUnop ufn a =>
       let '(ret_a, Gamma_a, failures_a, al_a, lc_a) :=
         distill_aux a Gamma guard al lc

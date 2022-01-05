@@ -67,12 +67,13 @@ Definition is_module_call
 
   Definition initial_rule := execute.
   Definition desugared := desugar_action tt initial_rule.
+  Set Printing All.
   Compute desugared.
-  Definition no_ic := inline_internal_calls desugared.
-  About no_ic.
-  Definition no_binds := remove_bindings no_ic.
-  Definition no_uapos := remove_uapos no_binds.
-  Time Compute (no_uapos).
+  Definition last_controlled := get_highest_binding_number desugared.
+  Compute last_controlled.
+  Definition rule_info := distill desugared last_controlled.
+  Unset Printing All.
+  Compute rule_info.
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with
@@ -87,6 +88,8 @@ Definition is_module_call
     | UpdateOnOff  => tc_rule R Sigma update_on_off
     | EndExecution => tc_rule R Sigma end_execution
     end.
+
+    Compute sch
 End RV32I.
 
 Module RV32IPackage := Package RV32I.
