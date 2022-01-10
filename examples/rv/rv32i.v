@@ -65,15 +65,21 @@ Definition is_module_call
     | EndExecution => end_execution
     end.
 
-  Definition initial_rule := execute.
-  Definition desugared := desugar_action tt initial_rule.
-  Set Printing All.
-  Compute desugared.
-  Definition last_controlled := get_highest_binding_number desugared.
-  Compute last_controlled.
-  Definition rule_info := distill desugared last_controlled.
-  Unset Printing All.
-  Compute rule_info.
+(* Definition rv_schedule : scheduler := *)
+(*   UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem *)
+(*   |> Dmem |> Tick |> EndExecution |> done. *)
+
+  (* Definition initial_rule := writeback. *)
+  (* Definition desugared := desugar_action tt initial_rule. *)
+  (* Definition last_controlled_act := get_highest_binding_id action desugared. *)
+  (* Definition last_controlled_expr := get_highest_binding_id expr desugared. *)
+  (* Time Compute distill desugared last_controlled_act last_controlled_expr. *)
+
+Definition sch : scheduler :=
+  UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem
+  |> Dmem |> Tick |> EndExecution |> done.
+Definition rules_desug := (fun x => (desugar_action tt (rv_urules x))).
+Time Compute (schedule_to_normal_form rules_desug sch).
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with
@@ -88,8 +94,6 @@ Definition is_module_call
     | UpdateOnOff  => tc_rule R Sigma update_on_off
     | EndExecution => tc_rule R Sigma end_execution
     end.
-
-    Compute sch
 End RV32I.
 
 Module RV32IPackage := Package RV32I.

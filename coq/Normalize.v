@@ -759,34 +759,41 @@ Section Normalize.
       )
       el.
 
-  Definition prepend_failure_actions (ri: rule_information) : action_logs :=
-    let not_failure :=
-      UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (reduce (failure_cond ri))
-    in
-    let al := actions ri in {|
-      read0s := prepend_condition_reads not_failure (read0s al);
-      read1s := prepend_condition_reads not_failure (read1s al);
-      write0s := prepend_condition_writes not_failure (write0s al);
-      write1s := prepend_condition_writes not_failure (write1s al);
-      extcalls := prepend_condition_extcalls not_failure (extcalls al);
+  Definition prepend_failure_actions (al: action_logs) (fail_var_name: string)
+  : action_logs :=
+    let cond := (UVar fail_var_name) in {|
+      read0s := prepend_condition_reads cond (read0s al);
+      read1s := prepend_condition_reads cond (read1s al);
+      write0s := prepend_condition_writes cond (write0s al);
+      write1s := prepend_condition_writes cond (write1s al);
+      extcalls := prepend_condition_extcalls cond (extcalls al);
     |}.
 
-  Definition integrate_failures (ri: list rule_information)
-  : list rule_information :=
-    List.map
-      (fun r => {|
-         actions := prepend_failure_actions r;
-         failure_cond := None;
-         var_val_map := var_val_map r
-       |}
+  Definition integrate_failures (ri: list rule_information) (last_expr_id: nat)
+  : list rule_information * nat :=
+    List.fold_left
+      (fun '(acc, le') r =>
+        let fail_var_name := generate_binding_name expr (S last_expr_id) in
+        let not_failure_cond :=
+          UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (reduce (failure_cond r))
+        in
+        (
+          {|
+             actions := prepend_failure_actions (actions r) fail_var_name;
+             failure_cond := None;
+             var_val_map := (fail_var_name, not_failure_cond)::(var_val_map r)
+          |}::acc,
+          S last_expr_id
+        )
       )
-      ri.
+      ri
+      ([], last_expr_id).
 
   (* E.2. Merge duplicated actions across rules *)
   (* At this point, we know that there is at most only one rd0/rd1/wr0/wr1
      targeting a register in each action - see C.1.b. for details. This is not
-     true for external calls however and does not need to be (the same external
-     call can occur multiple times in a single cycle).
+     true for external calls however (and that's fine: calls to the same
+     external function are allowed to occur multiple times in a single cycle).
 
      Note that names need to be updated. For instance in the situation where
      rule 1 reads register r on port 0 and names the result "bind0" whereas rule
@@ -939,9 +946,11 @@ Section Normalize.
     |}.
 
   (* E.2.b. Merge full schedule *)
-  Definition merge_schedule (rules_info: list rule_information)
+  Definition merge_schedule
+    (rules_info: list rule_information) (last_expr_id: nat)
+  (* last_expr_id isn't used past this point *)
   : schedule_information :=
-    let rules_info' := integrate_failures rules_info in
+    let '(rules_info', le') := integrate_failures rules_info last_expr_id in
     (* TODO really necessary? Wouldn't a direct fold left suffice? *)
     match hd_error rules_info' with
     | None => {|
@@ -1138,7 +1147,7 @@ Section Normalize.
       list_max (List.map (get_highest_binding_id expr) rules_l)
     in
     (* Get rule_information from each rule*)
-    let '(rule_info_l, la', _) :=
+    let '(rule_info_l, la', le') :=
       List.fold_right
         (fun r '(ri_acc, la', le') =>
           let '(ri, la'', le'') := distill r la' le' in
@@ -1150,7 +1159,7 @@ Section Normalize.
     (* Detect inter-rules conflicts *)
     let rule_info_with_conflicts_l := detect_all_conflicts rule_info_l in
     (* To schedule info, merge cancel conditions with actions conditions *)
-    let schedule_info := merge_schedule rule_info_with_conflicts_l in
+    let schedule_info := merge_schedule rule_info_with_conflicts_l le' in
     (* Remove read1s and write0s *)
     let schedule_info_simpl :=
       remove_write0s (remove_read1s schedule_info la')
@@ -1163,8 +1172,5 @@ Section Normalize.
     |}.
 End Normalize.
 
-(* TODO switching back to register names instead of "bind<n>" at the end would
-   be helpful *)
-(* TODO what makes passing writeback to distill so slow? Removing
-     Scoreboard.remove and Rf.write_0 fixes this, why? *)
+(* TODO try to pick more helpful names for expressions and actions *)
 Close Scope nat.
