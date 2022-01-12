@@ -780,7 +780,7 @@ Section Normalize.
           {|
              actions := prepend_failure_actions (actions r) fail_var_name;
              failure_cond := None;
-             var_val_map := (fail_var_name, not_failure_cond)::(var_val_map r)
+             var_val_map := (var_val_map r)++[(fail_var_name, not_failure_cond)]
           |}::acc,
           S le'
         )
@@ -939,8 +939,8 @@ Section Normalize.
       |};
       sc_vars :=
         List.concat [
-          map_names_expr name_map_1 (acc_exprs);
-          rule_exprs
+          rule_exprs;
+          map_names_expr name_map_1 (acc_exprs)
         ]
     |}.
 
@@ -1147,13 +1147,13 @@ Section Normalize.
     in
     (* Get rule_information from each rule*)
     let '(rule_info_l, la', le') :=
-      List.fold_right
-        (fun r '(ri_acc, la', le') =>
+      List.fold_left
+        (fun '(ri_acc, la', le') r =>
           let '(ri, la'', le'') := distill r la' le' in
-          (ri::ri_acc, la'', le'')
+          (ri_acc++[ri], la'', le'')
         )
-        ([], last_action_init, last_expr_init)
         rules_l
+        ([], last_action_init, last_expr_init)
     in
     (* Detect inter-rules conflicts *)
     let rule_info_with_conflicts_l := detect_all_conflicts rule_info_l in
