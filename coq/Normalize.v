@@ -16,7 +16,7 @@ Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils
 
 Open Scope nat.
 Section Normalize.
-  Context {pos_t var_t reg_t ext_fn_t rule_name_t: Type}.
+  Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
   Definition uact := uaction pos_t string string reg_t ext_fn_t.
@@ -370,25 +370,25 @@ Section Normalize.
       let '(ret_val, vm_val, vv_val, failures_val, al_val, la_val, le_val) :=
         distill_aux val var_map guard al la le
       in
-      let name := generate_binding_name expr (S last_expr_id) in
+      let name := generate_binding_name expr (S le_val) in
       let '(
         ret_body, vm_body, vv_body, failures_body, al_body, la_body, le_body
       ) :=
         distill_aux
-          body (list_assoc_set vm_val var name) guard al_val la_val le_val
+          body (list_assoc_set vm_val var name) guard al_val la_val (S le_val)
       in
       (
         None, List.skipn 1 vm_body, (* Remove the binding to var *)
-        ((var, reduce ret_val)::vv_val)++vv_body,
+        vv_val++[(name, reduce ret_val)]++vv_body,
         merge_failures failures_val failures_body, al_body, la_body, le_body
       )
     | UAssign var val =>
-      let name := generate_binding_name expr (S last_expr_id) in
       let '(ret_val, vm_val, vv_val, failures_val, al_val, la_val, le_val) :=
         distill_aux val var_map guard al la le
       in
-      (None, list_assoc_set vm_val var name, (var, reduce ret_val)::vv_val,
-       failures_val, al_val, la_val, le_val)
+      let name := generate_binding_name expr (S le_val) in
+      (None, list_assoc_set vm_val var name, vv_val++[(name, reduce ret_val)],
+       failures_val, al_val, la_val, S le_val)
     | UVar var =>
       match list_assoc var_map var with
       (* If there is no binding and the rule is well formed, then the variable
@@ -437,16 +437,16 @@ Section Normalize.
               let name := generate_binding_name expr (S le') in
               (
                 (str, name)::acc,
-                (name, UIf (UVar cond_name) (UVar n1) (UVar n2))::vv',
+                vv'++[(name, UIf (UVar cond_name) (UVar n1) (UVar n2))],
                 S le'
               )
           )
           (List.combine vm_tb vm_fb)
-          ([], [], le_tb)
+          ([], [], le_fb)
       in
       (merge_uacts cond ret_tb ret_fb,
        vm_merge,
-       (cond_name, reduce ret_cond)::vv_merge++vv_cond++vv_tb++vv_fb,
+       vv_cond++[(cond_name, reduce ret_cond)]++vv_tb++vv_fb++vv_merge,
        match ret_cond with
        | None => (* Should never happen in a well-formed rule *)
          None
@@ -497,7 +497,7 @@ Section Normalize.
               let arg_bind_name := generate_binding_name expr (S le_c) in
               (
                 arg_bind_name::names, vm_c,
-                (arg_bind_name, reduce val_c)::vv_c++vv_p,
+                vv_p++vv_c++[(arg_bind_name, reduce val_c)],
                 merge_failures failure_c failures_p, al_c, la_c, S le_c
               )
             )
@@ -516,7 +516,7 @@ Section Normalize.
       in
       (* We drop vm_tmp which contained the temporary map for use in the called
          function. *)
-      (ret_ic, vm_args, vv_ic++vv_args, merge_failures failure_ic failure_args,
+      (ret_ic, vm_args, vv_args++vv_ic, merge_failures failure_ic failure_args,
        al_ic, la_ic, le_ic)
     | UAPos _ e => distill_aux e var_map guard al la le
     | URead port reg =>
@@ -573,7 +573,7 @@ Section Normalize.
   Definition distill (ua: uact) (last_action_id last_expr_id: nat) :
     rule_information * nat * nat
   :=
-    let '(_, _, failure, action_logs, last_action_id', last_expr_id') :=
+    let '(_, _, vvm, failure, action_logs, last_action_id', last_expr_id') :=
       distill_aux
         ua [] (UConst (tau := bits_t 1) (Bits.of_nat 1 1))
         {|
@@ -582,8 +582,7 @@ Section Normalize.
         |}
         last_action_id last_expr_id
     in (
-      (* TODO var_val_map *)
-      {| actions := action_logs; var_val_map := []; failure_cond := failure; |},
+      {| actions := action_logs; var_val_map := vvm; failure_cond := failure |},
       last_action_id', last_expr_id'
     ).
 
@@ -604,7 +603,7 @@ Section Normalize.
       end
     end.
 
-  (* The following functions are meant to be passed as argument to
+  (* The following functions are meant to be passed as arguments to
      detect_conflicts_step. *)
   Definition detect_conflicts_read0s_reg
     (al: action_logs) (cond: uact) (reg: reg_t)
@@ -773,7 +772,7 @@ Section Normalize.
   : list rule_information * nat :=
     List.fold_left
       (fun '(acc, le') r =>
-        let fail_var_name := generate_binding_name expr (S last_expr_id) in
+        let fail_var_name := generate_binding_name expr (S le') in
         let not_failure_cond :=
           UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (reduce (failure_cond r))
         in
@@ -783,7 +782,7 @@ Section Normalize.
              failure_cond := None;
              var_val_map := (fail_var_name, not_failure_cond)::(var_val_map r)
           |}::acc,
-          S last_expr_id
+          S le'
         )
       )
       ri
@@ -1135,7 +1134,7 @@ Section Normalize.
     end.
 
   (* Precondition: only Cons and Done in schedule. *)
-  (* Precondition: rules desugared. *)
+  (* Precondition: rules desugared. TODO desugar from here. *)
   Definition schedule_to_normal_form (s: schedule) : normal_form :=
     (* Get list of uact from scheduler *)
     let rules_l := schedule_to_list_of_rules s in
