@@ -3,18 +3,19 @@ Require Import Coq.Numbers.DecimalString Coq.Program.Equality Coq.Strings.Ascii.
 Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils
   Koika.Zipper.
 
-(* The normal form we want to turn schedules into is a single rule containing a
-   sequence of writes guarded by a single if each. It goes without saying that a
-   normalized schedule should be equivalent to its initial form (in terms of
-   the effects of a cycle on the final state of the registers and the emitted
-   extcalls). TODO explain extcalls. The reason why we go through the trouble of
-   defining this normal form is because reasoning about Kôika models is because
-   quite some stuff happens implicitly (rules merging and cancellation, etc).
-   In the normal form, everything is explicit. In particular, problems such as
-   finding under which conditions the value of a register is updated or proving
-   that the value of register x never reaches 5 become easier. *)
+(* The reason why we go through the trouble of defining this normal form is
+   because the effects of a lot of implicit mechanisms (rules merging and
+   cancellation, etc) have to be explicitly taken into account when reasoning
+   about a schedule. In the normal form, everything is explicit. In particular,
+   problems such as finding under which conditions the value of a register is
+   updated or proving that the value of register x never reaches 5 become
+   easier.
 
-Open Scope nat.
+   It goes without saying that a normalized schedule should be equivalent to
+   its initial form (in terms of the effects of a cycle on the final state of
+   the registers and the emitted extcalls). *)
+
+  Open Scope nat.
 Section Normalize.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
@@ -60,7 +61,7 @@ Section Normalize.
     sc_vars : var_value_map;
   }.
   Record normal_form := mkNormalForm {
-    (* The conditions can be dropped hera, they were only required for managing
+    (* The conditions can be dropped here, they were only required for managing
        conflicts. *)
     reads: list (reg_t * string);
     writes: write_log;
