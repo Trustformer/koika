@@ -40,8 +40,8 @@ Section Normalize.
   Definition var_value_map := list var_value_pair.
   Record action_logs := mkActions {
     read0s: read_log;
-    read1s: read_log;
     write0s: write_log;
+    read1s: read_log;
     write1s: write_log;
     extcalls: extcall_log;
   }.
@@ -60,31 +60,35 @@ Section Normalize.
     sc_vars : var_value_map;
   }.
   Record normal_form := mkNormalForm {
-    reads: read_log;
+    (* The conditions can be dropped hera, they were only required for managing
+       conflicts. *)
+    reads: list (reg_t * string);
     writes: write_log;
     variables: var_value_map;
+    (* The conditions can't really be dropped here, however: even though the
+       extcalls are modeled purely, TODO *)
     external_calls: extcall_log;
   }.
 
   (* A.1.b. Helper functions for structures *)
   Definition upd_read0 (al: action_logs) (nl: read_log) := {|
-    read0s := nl; read1s := read1s al; write0s := write0s al;
-    write1s := write1s al; extcalls := extcalls al
-  |}.
-  Definition upd_read1 (al: action_logs) (nl: read_log) := {|
-    read0s := read0s al; read1s := nl; write0s := write0s al;
+    read0s := nl; write0s := write0s al; read1s := read1s al;
     write1s := write1s al; extcalls := extcalls al
   |}.
   Definition upd_write0 (al: action_logs) (nl: write_log) := {|
-    read0s := read0s al; read1s := read1s al; write0s := nl;
+    read0s := read0s al; write0s := nl; read1s := read1s al;
+    write1s := write1s al; extcalls := extcalls al
+  |}.
+  Definition upd_read1 (al: action_logs) (nl: read_log) := {|
+    read0s := read0s al; write0s := write0s al; read1s := nl;
     write1s := write1s al; extcalls := extcalls al
   |}.
   Definition upd_write1 (al: action_logs) (nl: write_log) := {|
-    read0s := read0s al; read1s := read1s al; write0s := write0s al;
+    read0s := read0s al; write0s := write0s al; read1s := read1s al;
     write1s := nl; extcalls := extcalls al
   |}.
   Definition upd_extcalls (al: action_logs) (nl: extcall_log) := {|
-    read0s := read0s al; read1s := read1s al; write0s := write0s al;
+    read0s := read0s al; write0s := write0s al; read1s := read1s al;
     write1s := write1s al; extcalls := nl
   |}.
 
@@ -93,13 +97,13 @@ Section Normalize.
     | None => None
     | Some (cond, _) => Some cond
     end.
-  Definition extract_write1_cond (al: action_logs) (reg: reg_t) :=
-    match list_assoc (write1s al) reg with
+  Definition extract_read1_cond (al: action_logs) (reg: reg_t) :=
+    match list_assoc (read1s al) reg with
     | None => None
     | Some (cond, _) => Some cond
     end.
-  Definition extract_read1_cond (al: action_logs) (reg: reg_t) :=
-    match list_assoc (read1s al) reg with
+  Definition extract_write1_cond (al: action_logs) (reg: reg_t) :=
+    match list_assoc (write1s al) reg with
     | None => None
     | Some (cond, _) => Some cond
     end.
@@ -222,7 +226,7 @@ Section Normalize.
     match or_conds conds with
     | None => None
     | Some x =>
-      Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) action_cond x)
+      Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) action_cond x)
     end.
 
   (* C.1.b. Merger of actions *)
@@ -352,6 +356,7 @@ Section Normalize.
     | Some x => x
     end.
 
+  (* TODO action expr ordering *)
   Fixpoint distill_aux
     (* No need to pass failures as these impact the whole rule - taking note of
        all of them and factoring the conditions in is enough. Conflicts between
@@ -599,7 +604,7 @@ Section Normalize.
     | Some x =>
       match acc with
       | None => Some x
-      | Some y => Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x y)
+      | Some y => Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) x y)
       end
     end.
 
@@ -613,11 +618,6 @@ Section Normalize.
     let previous_wr1 := extract_write1_cond al reg in
     merge_failures_list
       cond (list_options_to_list [previous_wr0; previous_wr1]).
-  Definition detect_conflicts_read1s_reg
-    (al: action_logs) (cond: uact) (reg: reg_t)
-  : option uact :=
-    let previous_wr1 := extract_write1_cond al reg in
-    merge_failures_list cond (list_options_to_list [previous_wr1]).
   Definition detect_conflicts_write0s_reg
     (al: action_logs) (cond: uact) (reg: reg_t)
   : option uact :=
@@ -626,6 +626,11 @@ Section Normalize.
     let previous_rd1 := extract_read1_cond al reg in
     merge_failures_list
       cond (list_options_to_list [previous_wr0; previous_wr1; previous_rd1]).
+  Definition detect_conflicts_read1s_reg
+    (al: action_logs) (cond: uact) (reg: reg_t)
+  : option uact :=
+    let previous_wr1 := extract_write1_cond al reg in
+    merge_failures_list cond (list_options_to_list [previous_wr1]).
   Definition detect_conflicts_write1s_reg
     (* TODO make cond option instead? *)
     (al: action_logs) (cond: uact) (reg: reg_t)
@@ -644,6 +649,13 @@ Section Normalize.
         detect_conflicts_step acc al cond reg detect_conflicts_read0s_reg
       )
       rl None.
+  Definition detect_conflicts_write0s (al: action_logs) (wl: write_log)
+  : option uact :=
+    List.fold_left
+      (fun acc '(reg, (cond, _)) =>
+        detect_conflicts_step acc al cond reg detect_conflicts_write0s_reg
+      )
+      wl None.
   Definition detect_conflicts_read1s (al: action_logs) (rl: read_log)
   : option uact :=
     List.fold_left
@@ -651,20 +663,13 @@ Section Normalize.
         detect_conflicts_step acc al cond reg detect_conflicts_read1s_reg
       )
       rl None.
-  Definition detect_conflicts_write0s (al: action_logs) (rl: write_log)
-  : option uact :=
-    List.fold_left
-      (fun acc '(reg, (cond, _)) =>
-        detect_conflicts_step acc al cond reg detect_conflicts_write0s_reg
-      )
-      rl None.
-  Definition detect_conflicts_write1s (al: action_logs) (rl: write_log)
+  Definition detect_conflicts_write1s (al: action_logs) (wl: write_log)
   : option uact :=
     List.fold_left
       (fun acc '(reg, (cond, _)) =>
         detect_conflicts_step acc al cond reg detect_conflicts_write1s_reg
       )
-      rl None.
+      wl None.
 
   (* The order of the arguments matters! If there is a conflict between a1 and
      a2, a1 takes precedence. Does not take the fact that rule 1 might fail and
@@ -674,9 +679,9 @@ Section Normalize.
       (merge_failures
         (merge_failures
           (detect_conflicts_read0s a1 (read0s a2))
-          (detect_conflicts_read1s a1 (read1s a2))
+          (detect_conflicts_write0s a1 (write0s a2))
         )
-        (detect_conflicts_write0s a1 (write0s a2))
+        (detect_conflicts_read1s a1 (read1s a2))
       )
       (detect_conflicts_write1s a1 (write1s a2)).
 
@@ -762,24 +767,30 @@ Section Normalize.
   : action_logs :=
     let cond := (UVar fail_var_name) in {|
       read0s := prepend_condition_reads cond (read0s al);
-      read1s := prepend_condition_reads cond (read1s al);
       write0s := prepend_condition_writes cond (write0s al);
+      read1s := prepend_condition_reads cond (read1s al);
       write1s := prepend_condition_writes cond (write1s al);
       extcalls := prepend_condition_extcalls cond (extcalls al);
     |}.
+
+  Definition to_negated_cond (cond: option uact) : uact :=
+    match cond with
+    | Some x => UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x
+    | None => UConst (tau := bits_t 1) (Bits.of_nat 1 1)
+    end.
 
   Definition integrate_failures (ri: list rule_information) (last_expr_id: nat)
   : list rule_information * nat :=
     List.fold_left
       (fun '(acc, le') r =>
         let fail_var_name := generate_binding_name expr (S le') in
-        let not_failure_cond :=
-          UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (reduce (failure_cond r))
-        in
+        let not_failure_cond := to_negated_cond (failure_cond r) in
         (
           {|
              actions := prepend_failure_actions (actions r) fail_var_name;
              failure_cond := None;
+             (* TODO perhaps return not_failure_cond separately and regroup all
+                such variables at the end of the list so as to preserve order *)
              var_val_map := (var_val_map r)++[(fail_var_name, not_failure_cond)]
           |}::acc,
           S le'
@@ -914,7 +925,7 @@ Section Normalize.
       merge_reads_single_rule (read0s acc_log) (read0s rule_logs)
     in
     let (read1s', name_map_1) :=
-      merge_reads_single_rule (read0s acc_log) (read1s rule_logs)
+      merge_reads_single_rule (read1s acc_log) (read1s rule_logs)
     in
     let write0s' :=
       merge_writes_single_rule
@@ -934,14 +945,10 @@ Section Normalize.
         )))
     in {|
       sc_actions := {|
-        read0s := read0s'; read1s := read1s'; write0s := write0s';
+        read0s := read0s'; write0s := write0s'; read1s := read1s';
         write1s := write1s'; extcalls := extcalls'
       |};
-      sc_vars :=
-        List.concat [
-          rule_exprs;
-          map_names_expr name_map_1 (acc_exprs)
-        ]
+      sc_vars := List.concat [rule_exprs; map_names_expr name_map_1 (acc_exprs)]
     |}.
 
   (* E.2.b. Merge full schedule *)
@@ -954,7 +961,7 @@ Section Normalize.
     match hd_error rules_info' with
     | None => {|
         sc_actions := {|
-          read0s := []; read1s := []; write0s := []; write1s := [];
+          read0s := []; write0s := []; read1s := []; write1s := [];
           extcalls := []
         |};
         sc_vars := []
@@ -1028,8 +1035,9 @@ Section Normalize.
     let a := sc_actions s in
     {|
       sc_actions := {|
-        read0s := read0s a; read1s := read1s a;
+        read0s := read0s a;
         write0s := replace_var_by_uact_w (write0s a) from to;
+        read1s := read1s a;
         write1s := replace_var_by_uact_w (write1s a) from to;
         extcalls := replace_var_by_uact_extc (extcalls a) from to
       |};
@@ -1145,11 +1153,13 @@ Section Normalize.
     let last_expr_init :=
       list_max (List.map (get_highest_binding_id expr) rules_l)
     in
-    (* Get rule_information from each rule*)
+    (* Get rule_information from each rule *)
     let '(rule_info_l, la', le') :=
       List.fold_left
         (fun '(ri_acc, la', le') r =>
           let '(ri, la'', le'') := distill r la' le' in
+          (* Not a fold right since we want the first rule to have the lowest
+             indices. *)
           (ri_acc++[ri], la'', le'')
         )
         rules_l
@@ -1164,7 +1174,10 @@ Section Normalize.
       remove_write0s (remove_read1s schedule_info la')
     in
     (* To normal form *)
-    {| reads := read0s (sc_actions schedule_info_simpl);
+    {| reads :=
+        List.map
+          (fun '(reg, (_, name)) => (reg, name))
+          (read0s (sc_actions schedule_info_simpl));
        writes := write1s (sc_actions schedule_info_simpl);
        variables := sc_vars schedule_info_simpl;
        external_calls := extcalls (sc_actions schedule_info_simpl)
