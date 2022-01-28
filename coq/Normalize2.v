@@ -2,127 +2,81 @@
 Require Import Coq.Numbers.DecimalString Coq.Program.Equality Coq.Strings.Ascii.
 Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils
   Koika.Zipper.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 (* The reason why we go through the trouble of defining this normal form is
    because the effects of a lot of implicit mechanisms (rules merging and
    cancellation, etc) have to be explicitly taken into account when reasoning
-   about a schedule. In the normal form, everything is explicit. In particular,
-   problems such as finding under which conditions the value of a register is
-   updated or proving that the value of register x never reaches 5 become
-   easier.
+   about a schedule, and that abstract interpretation would be too slow for
+   complex models.
+
+   In the normal form, everything is explicit. In particular, problems such as
+   finding under which conditions the value of a register is updated or proving
+   that the value of register x never reaches 5 become easier.
 
    It goes without saying that a normalized schedule should be equivalent to
    its initial form (in terms of the effects of a cycle on the final state of
    the registers and the emitted extcalls). *)
 
-  Open Scope nat.
+Open Scope nat.
 Section Normalize.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
   Definition uact := uaction pos_t string string reg_t ext_fn_t.
   Definition schedule := scheduler pos_t rule_name_t.
-  Context (rules: rule_name_t -> uact).
 
   (* A. Basics *)
   (* A.1. Data structures *)
-  (* A.1.a. Structures *)
-  (* reg * (cond * bind_name) *)
-  Definition read_info : Type := reg_t * (uact * string).
-  Definition read_log := list read_info.
-  (* reg * (cond * val) *)
-  Definition write_info : Type := reg_t * (list (uact * uact)).
-  Definition write_log := list write_info.
-  (* ufn * (cond * bind_name * arg) *)
-  Definition extcall_info : Type := ext_fn_t * (uact * string * uact).
-  Definition extcall_log := list extcall_info.
-  (* bind_name * value *)
-  Definition var_value_pair : Type := string * uact.
-  Definition var_value_map := list var_value_pair.
-  Record action_logs := mkActions {
-    read0s: read_log;
-    write0s: write_log;
-    read1s: read_log;
-    write1s: write_log;
-    extcalls: extcall_log;
-  }.
+  Record next_ids := mkNextIds {
+    ctx_id: nat; let_id: nat; extc_id: nat; rcond_id: nat; wcond_id: nat;
+    fcond_c_id: nat; fcond_nc_id: nat; ival_id: nat }.
+  Instance etaNextIds : Settable _ := settable! mkNextIds <
+    ctx_id; let_id; extc_id; rcond_id; wcond_id; fcond_c_id; fcond_nc_id;
+    ival_id >.
+
+  Definition reg_cond := list (reg_t * uact).
+  Record write_info := mkWriteInfo { wcond: string; wval: uact }.
+  Definition write_log := list (reg_t * list (write_info)).
+  Record extcall_info := mkExtcallInfo
+    { econd: string; earg: uact; ebind: string }.
+  Definition extcall_log := list (ext_fn_t * extcall_info).
+  Definition var_value_map := list (string * uact).
+  Record action_logs := mkActionLogs {
+    read0s: reg_cond; write0s: write_log; read1s: reg_cond;
+    write1s: write_log; extcalls: extcall_log }.
+  Instance etaActionLogs : Settable _ :=
+    settable! mkActionLogs < read0s; write0s; read1s; write1s; extcalls >.
+
   Record rule_information := mkRuleInformation {
-    actions: action_logs;
-    var_val_map: var_value_map;
-    (* We do not worry about potential conflicts in action logs. What if we
-       stumble on two write1s on register x? We simply register the write1s as
+    rl_actions: action_logs;
+    rl_vars: var_value_map;
+    (* We do not worry about potential conflicts in action logs. What if there
+       are two write1s targetting register x? We simply register the write1s as
        they stand, but update the following condition for the whole rule: *)
-    failure_cond: option uact;
-  }.
+    rl_failure_cond: option uact }.
   (* Note that we did not reuse uact for that purpose as that could have made
      things confusing (we consider a set of actions and not a sequence). *)
-  Record schedule_information := mkSceduleInformation {
+  Record schedule_information := mkScheduleInformation {
     sc_actions: action_logs;
-    sc_vars: var_value_map;
-  }.
+    sc_vars: var_value_map; }.
   Record normal_form := mkNormalForm {
-    (* The conditions can be dropped here, they were only required for managing
-       conflicts. *)
-    reads: list (reg_t * string);
-    writes: write_log;
-    variables: var_value_map;
-    (* The conditions can't really be dropped here, however: even though the
-       extcalls are modeled purely, TODO *)
-    external_calls: extcall_log;
-  }.
-
-  (* A.1.b. Helper functions for structures *)
-  Definition upd_read0 (al: action_logs) (nl: read_log) := {|
-    read0s := nl; write0s := write0s al; read1s := read1s al;
-    write1s := write1s al; extcalls := extcalls al
-  |}.
-  Definition upd_write0 (al: action_logs) (nl: write_log) := {|
-    read0s := read0s al; write0s := nl; read1s := read1s al;
-    write1s := write1s al; extcalls := extcalls al
-  |}.
-  Definition upd_read1 (al: action_logs) (nl: read_log) := {|
-    read0s := read0s al; write0s := write0s al; read1s := nl;
-    write1s := write1s al; extcalls := extcalls al
-  |}.
-  Definition upd_write1 (al: action_logs) (nl: write_log) := {|
-    read0s := read0s al; write0s := write0s al; read1s := read1s al;
-    write1s := nl; extcalls := extcalls al
-  |}.
-  Definition upd_extcalls (al: action_logs) (nl: extcall_log) := {|
-    read0s := read0s al; write0s := write0s al; read1s := read1s al;
-    write1s := write1s al; extcalls := nl
-  |}.
-
-  Definition extract_write0_cond (al: action_logs) (reg: reg_t) :=
-    match list_assoc (write0s al) reg with
-    | None => None
-    | Some (cond, _) => Some cond
-    end.
-  Definition extract_read1_cond (al: action_logs) (reg: reg_t) :=
-    match list_assoc (read1s al) reg with
-    | None => None
-    | Some (cond, _) => Some cond
-    end.
-  Definition extract_write1_cond (al: action_logs) (reg: reg_t) :=
-    match list_assoc (write1s al) reg with
-    | None => None
-    | Some (cond, _) => Some cond
-    end.
+    final_values: write_log;
+    vars: var_value_map;
+    external_calls: extcall_log; }.
 
   (* A.2. Helper functions *)
   (* Remove Nones from list, turn rest from (Some x) to x. *)
   Definition list_options_to_list (l: list (option uact)) : list uact :=
-    List.map
+    map
       (fun i =>
         match i with
         | Some x => x
-        | None => (* Should never happen *)
-          (UConst (tau := bits_t 0) (Bits.of_nat 0 0))
-        end
-      )
-      (List.filter
-        (fun i => match i with None => false | Some _ => true end) l
-      ).
+        | None => (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) (* Unreachable *)
+        end)
+      (filter
+        (fun i => match i with None => false | Some _ => true end) l).
 
   (* B. Variable names collisions management *)
   (* We will need to generate some new variables when transforming individual
@@ -149,18 +103,17 @@ Section Normalize.
     | nil => acc
     end.
   (* Assumption: d contains digits only *)
-  Definition digits_to_nat (d: list ascii) : nat :=
-    digits_to_nat_aux d 0.
+  Definition digits_to_nat (d: list ascii) : nat := digits_to_nat_aux d 0.
 
   Scheme Equality for option.
-  Definition action_binding_prefix := "action_bind_".
-  Definition expr_binding_prefix := "expr_bind_".
-  Inductive binding_type := action | expr.
+  Inductive binding_type :=
+  | ctxb | letb | extcb | rcondb | wcondb | fcond_cb | fcond_ncb | ivalb.
 
-  Definition get_prefix (b: binding_type) :=
+  Definition get_prefix (b: binding_type) : string :=
     match b with
-    | action => action_binding_prefix
-    | expr => expr_binding_prefix
+    | ctxb => "ctx_" | letb => "let_" | extcb => "extc_" | rcondb => "rcond_"
+    | wcondb => "wcond_" | fcond_cb => "fcond_c_" | fcond_ncb => "fcond_nc_"
+    | ivalb => "ival_"
     end.
 
   Definition extract_custom_binding_digits (b: binding_type) (s: string)
@@ -173,37 +126,51 @@ Section Normalize.
     let maybe_digits := extract_custom_binding_digits b s in
     (String.prefix prefix s)
     && (negb (Nat.eqb (List.length maybe_digits) 0))
-    && (List.forallb is_digit maybe_digits)
+    && (forallb is_digit maybe_digits)
     (* First digit not zero - <binding_prefix>0 does not exist, start at 1*)
     && (negb
       (option_beq
-        ascii (Ascii.eqb) (List.hd_error maybe_digits) (Some "0"%char)
-      )
-    ).
+        ascii (Ascii.eqb) (hd_error maybe_digits) (Some "0"%char))).
 
   (* B.2. Variables generation *)
-  Definition get_highest_binding_id (b: binding_type) (ua: uact) : nat :=
+  Definition get_highest_binding_id_in_uact
+    (b: binding_type) (ua: uact) : nat
+  :=
     let bindings := find_all_in_uaction ua (fun a =>
       match a with
       | UBind _ _ _ => true
       | _ => false
       end
     ) in
-    let binding_names := List.map (fun z =>
-      match access_zipper ua z with
-      | Some (UBind v _ _) => v
-      | _ => "" (* Should never happen *)
-      end
-    ) bindings in
-    let matching_bindings :=
-      List.filter (matches_binding_form b) binding_names
-    in
+    let binding_names :=
+      map
+        (fun z =>
+          match access_zipper ua z with
+          | Some (UBind v _ _) => v
+          | _ => "" (* Unreachable - see above *)
+          end
+        ) bindings in
+    let matching_bindings := filter (matches_binding_form b) binding_names in
     let binding_numbers :=
-      List.map
+      map
         (fun s => digits_to_nat (extract_custom_binding_digits b s))
         matching_bindings
     in
-    List.list_max binding_numbers.
+    list_max binding_numbers.
+  Definition get_highest_binding_id_in_rules
+    (b: binding_type) (rules: list uact) : nat
+  :=
+    list_max (map (get_highest_binding_id_in_uact b) rules).
+  Definition get_highest_bindings_ids (rules: list uact) : next_ids := {|
+    ctx_id := get_highest_binding_id_in_rules ctxb rules;
+    let_id := get_highest_binding_id_in_rules letb rules;
+    extc_id := get_highest_binding_id_in_rules extcb rules;
+    rcond_id := get_highest_binding_id_in_rules rcondb rules;
+    wcond_id := get_highest_binding_id_in_rules wcondb rules;
+    fcond_c_id := get_highest_binding_id_in_rules fcond_cb rules;
+    fcond_nc_id := get_highest_binding_id_in_rules fcond_ncb rules;
+    ival_id := get_highest_binding_id_in_rules ivalb rules
+  |}.
 
   Definition generate_binding_name (b: binding_type) (n: nat) : string :=
     String.append (get_prefix b) (NilEmpty.string_of_uint (Init.Nat.to_uint n)).
@@ -213,129 +180,13 @@ Section Normalize.
   (* C.1. Addition of a new action into an existing rule_information *)
   (* C.1.a. Merger of failure conditions *)
   Definition or_conds (conds: list uact) :=
-    List.fold_left
+    fold_left
       (fun acc c =>
         match acc with
         | None => Some c
         | Some x => Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) c x)
-        end
-      )
+        end)
       conds None.
-
-  Definition merge_failures_list (action_cond: uact) (conds: list uact) :=
-    match or_conds conds with
-    | None => None
-    | Some x =>
-      Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) action_cond x)
-    end.
-
-  (* C.1.b. Merger of actions *)
-  Definition add_read0
-    (al: action_logs) (cond: uact) (reg: reg_t) (fresh_name: string)
-  (* Returns modified action_logs, failure conditions, used name *)
-  : action_logs * option uact * string :=
-    let previous_wr0 := extract_write0_cond al reg in
-    let previous_wr1 := extract_write1_cond al reg in
-    let failure_cond :=
-      merge_failures_list
-        cond (list_options_to_list [previous_wr0; previous_wr1])
-    in
-    match list_assoc (read0s al) reg with
-    | None => (
-      upd_read0 al (list_assoc_set (read0s al) reg (cond, fresh_name)),
-      failure_cond, fresh_name
-    )
-    | Some (cond', name) => (
-      upd_read0 al
-        (list_assoc_set (read0s al) reg
-          (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) cond cond', name)
-        ),
-      failure_cond, name
-    )
-    end.
-
-  Definition add_read1
-    (al: action_logs) (cond: uact) (reg: reg_t) (fresh_name: string)
-  (* Returns modified action_logs, failure conditions, used name *)
-  : action_logs * option uact * string :=
-    let previous_wr1 := extract_write1_cond al reg in
-    let failure_cond :=
-      merge_failures_list cond (list_options_to_list [previous_wr1])
-    in
-    match list_assoc (read1s al) reg with
-    | None => (
-      upd_read1 al (list_assoc_set (read1s al) reg (cond, fresh_name)),
-      failure_cond, fresh_name
-    )
-    | Some (cond', name) => (
-      upd_read1 al
-        (list_assoc_set (read1s al) reg
-          (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) cond cond', name)
-        ),
-      failure_cond, name
-    )
-    end.
-
-  Definition add_write0 (al: action_logs) (cond: uact) (val: uact) (reg: reg_t)
-  (* Returns modified action_logs, failure conditions *)
-  : action_logs * option uact :=
-    let previous_wr0 := extract_write0_cond al reg in
-    let previous_wr1 := extract_write1_cond al reg in
-    let previous_rd1 := extract_read1_cond al reg in
-    let failure_cond :=
-      merge_failures_list
-        cond (list_options_to_list [previous_wr0; previous_wr1; previous_rd1])
-    in
-    (* Somewhat redundant with extract_write0_cond *)
-    match list_assoc (write0s al) reg with
-    | None => (
-      upd_write0 al (list_assoc_set (write0s al) reg [(cond, val)]),
-      failure_cond
-    )
-    | Some l => (
-      upd_write0 al (list_assoc_set (write0s al) reg (l++(cond, val))),
-      failure_cond
-    )
-    end.
-
-  Definition add_write1 (al: action_logs) (cond: uact) (val: uact) (reg: reg_t)
-  (* Returns modified action_logs, failure conditions *)
-  : action_logs * option uact :=
-    let previous_wr1 := extract_write1_cond al reg in
-    let failure_cond :=
-      merge_failures_list cond (list_options_to_list [previous_wr1])
-    in
-    (* Somewhat redundant with extract_write0_cond *)
-    match list_assoc (write1s al) reg with
-    | None => (
-      upd_write1 al (list_assoc_set (write1s al) reg [(cond, val)]),
-      failure_cond
-    )
-    | Some l => (
-      upd_write1 al
-        (list_assoc_set (write1s al) reg
-          (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) cond cond',
-           UIf cond val val'
-          )
-        ),
-      failure_cond
-    )
-    end.
-
-  Definition add_extcall
-    (al: action_logs) (ufn: ext_fn_t) (cond: uact) (arg: uact)
-    (fresh_name: string)
-  : action_logs :=
-    upd_extcalls al ((ufn, (cond, fresh_name, arg))::(extcalls al)).
-
-  (* C.2. Extraction of actions from rule *)
-  Definition build_uif (cond ua1 ua2: option uact) : option uact :=
-    (* We know that the original if being valid implies that cond != None and
-       ua1 = Some x iff. ua2 = Some y *)
-    match ua1, ua2 with
-    | Some c, Some x, Some y => Some (UIf c x y)
-    | _, _ => None
-    end.
 
   Definition merge_failures (f1 f2: option uact) : option uact :=
     match f1, f2 with
@@ -345,73 +196,204 @@ Section Normalize.
     | Some x, Some y => Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x y)
     end.
 
+  Definition build_uif (cond ua1 ua2: option uact) : option uact :=
+    (* We know that the original if being valid implies that cond != None and
+       ua1 = Some x iff. ua2 = Some y *)
+    match cond, ua1, ua2 with
+    | Some c, Some x, Some y => Some (UIf c x y)
+    | _, _, _ => None
+    end.
+
+  (* C.1.b. Merger of actions *)
+  Definition merge_conds (wl: option (list write_info)) : option uact :=
+    match wl with
+    | None => None
+    | Some l =>
+      fold_left
+        (fun acc entry =>
+          match acc with
+          | None => Some (UVar (wcond entry))
+          | Some x => Some (
+            UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x (UVar (wcond entry)))
+          end)
+        l
+        None
+    end.
+  Definition extract_wr0_cond (al: action_logs) (reg: reg_t) :=
+    merge_conds (list_assoc (write0s al) reg).
+  Definition extract_wr1_cond (al: action_logs) (reg: reg_t) :=
+    merge_conds (list_assoc (write1s al) reg).
+
+  Definition merge_failures_list (action_cond: uact) (conds: list uact) :=
+    match or_conds conds with
+    | None => None
+    | Some x =>
+      Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) action_cond x)
+    end.
+
+  Definition add_read0 (al: action_logs) (guard: string) (reg: reg_t)
+  (* Returns modified action_logs, failure conditions *)
+  : action_logs * option uact :=
+    let prev_wr0 := extract_wr0_cond al reg in
+    let prev_wr1 := extract_wr1_cond al reg in
+    let grd := UVar (guard) in
+    let failure_cond :=
+      merge_failures_list grd (list_options_to_list [prev_wr0; prev_wr1])
+    in
+    match list_assoc (read0s al) reg with
+    | None =>
+      (al <| read0s := list_assoc_set (read0s al) reg grd |>, failure_cond)
+    | Some cond' => (
+      al <|
+        read0s :=
+          list_assoc_set (read0s al) reg
+            (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) grd cond')
+      |>, failure_cond)
+    end.
+
+  Definition add_read1 (al: action_logs) (guard: string) (reg: reg_t)
+  (* Returns modified action_logs, failure conditions *)
+  : action_logs * option uact :=
+    let prev_wr1 := extract_wr1_cond al reg in
+    let grd := UVar (guard) in
+    let failure_cond :=
+      merge_failures_list grd (list_options_to_list [prev_wr1])
+    in
+    match list_assoc (read1s al) reg with
+    | None => (
+      al <| read1s := list_assoc_set (read1s al) reg grd |>, failure_cond)
+    | Some cond' => (
+      al <|
+        read1s :=
+          list_assoc_set (read1s al) reg
+            (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) grd cond')
+      |>, failure_cond)
+    end.
+
+  Definition add_write0
+    (al: action_logs) (guard: string) (reg: reg_t) (val: uact)
+  (* Returns modified action_logs, failure conditions *)
+  : action_logs * option uact :=
+    let prev_wr0 := extract_wr0_cond al reg in
+    let prev_wr1 := extract_wr1_cond al reg in
+    let prev_rd1 := list_assoc (read1s al) reg in
+    let grd := UVar (guard) in
+    let failure_cond :=
+      merge_failures_list
+        grd (list_options_to_list [prev_wr0; prev_wr1; prev_rd1])
+    in
+    (* Somewhat redundant with extract_write0_cond *)
+    match list_assoc (write0s al) reg with
+    | None => (
+      al <|
+        write0s :=
+          list_assoc_set (write0s al) reg [{| wcond := guard; wval := val |}]
+      |>, failure_cond)
+    | Some l => (
+      al <|
+        write0s :=
+          list_assoc_set (write0s al) reg
+          (l++[{| wcond := guard; wval := val |}])
+      |>, failure_cond)
+    end.
+
+  Definition add_write1
+    (al: action_logs) (guard: string) (reg: reg_t) (val: uact)
+  (* Returns modified action_logs, failure conditions *)
+  : action_logs * option uact :=
+    let prev_wr1 := extract_wr1_cond al reg in
+    let grd := UVar (guard) in
+    let failure_cond :=
+      merge_failures_list grd (list_options_to_list [prev_wr1])
+    in
+    (* Somewhat redundant with extract_write0_cond *)
+    match list_assoc (write1s al) reg with
+    | None => (
+      al <|
+        write1s :=
+          list_assoc_set (write1s al) reg [{| wcond := guard; wval := val |}]
+      |>, failure_cond)
+    | Some l => (
+      al <|
+        write1s :=
+          list_assoc_set (write1s al) reg
+          (l++[{| wcond := guard; wval := val |}])
+      |>, failure_cond)
+    end.
+
+  Definition add_extcall
+    (al: action_logs) (guard: string) (ufn: ext_fn_t) (arg: uact) (name: string)
+  : action_logs :=
+    al <|
+      extcalls :=
+        (ufn, {| econd := guard; earg := arg; ebind := name |})::(extcalls al)
+    |>.
+
+  (* C.2. Extraction of actions from rule *)
   Definition reduce (ua: option uact) : uact :=
     match ua with
     | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
     | Some x => x
     end.
 
+  (* This function extracts the actions for a given rule. It also returns the
+     highest value used for a custom binding (if rule A and rule B are in a
+     schedule, the initial value of last_controlled for rule B should be the
+     last value of last_controlled for rule A). *)
   Fixpoint get_rule_information_aux
     (* No need to pass failures as these impact the whole rule - taking note of
        all of them and factoring the conditions in is enough. Conflicts between
        different actions are also dealt with here - see C.1. *)
+    (* TODO improve guards management *)
     (ua: uact) (var_map: list (string * string)) (guard: uact) (al: action_logs)
-    (last_action_id last_expr_id: nat)
+    (nid: next_ids)
     (* Returns value, var_map, var_values, failure condition, action_logs,
-       last_action_id, last_expr_id *)
+       next_ids *)
   : option uact * list (string * string) * (list (string * uact))
-    * (option uact) * action_logs * nat * nat
+    * (option uact) * action_logs * next_ids
   :=
-    let la := last_action_id in
-    let le := last_expr_id in
     match ua with
     | UBind var val body =>
-      let '(ret_val, vm_val, vv_val, failures_val, al_val, la_val, le_val) :=
-        get_rule_information_aux val var_map guard al la le
+      let '(ret_val, vm_val, vv_val, failures_val, al_val, nid_val) :=
+        get_rule_information_aux val var_map guard al nid
       in
-      let name := generate_binding_name expr (S le_val) in
-      let '(
-        ret_body, vm_body, vv_body, failures_body, al_body, la_body, le_body
-      ) :=
+      let name := generate_binding_name letb (S (let_id nid_val)) in
+      let '(ret_body, vm_body, vv_body, failures_body, al_body, nid_body) :=
         get_rule_information_aux
-          body (list_assoc_set vm_val var name) guard al_val la_val (S le_val)
-      in
-      (
-        None, List.skipn 1 vm_body, (* Remove the binding to var *)
+          body ((name, var)::var_map) guard al_val
+          (nid_val <| let_id := S (let_id nid_val) |>)
+      in (
+        None, skipn 1 vm_body, (* var's binding goes out of scope *)
         vv_val++[(name, reduce ret_val)]++vv_body,
-        merge_failures failures_val failures_body, al_body, la_body, le_body
-      )
+        merge_failures failures_val failures_body, al_body, nid_body)
     | UAssign var val =>
-      let '(ret_val, vm_val, vv_val, failures_val, al_val, la_val, le_val) :=
-        get_rule_information_aux val var_map guard al la le
+      let '(ret_val, vm_val, vv_val, failures_val, al_val, nid_val) :=
+        get_rule_information_aux val var_map guard al nid
       in
-      let name := generate_binding_name expr (S le_val) in
+      let name := generate_binding_name letb (S (let_id nid_val)) in
       (None, list_assoc_set vm_val var name, vv_val++[(name, reduce ret_val)],
-       failures_val, al_val, la_val, S le_val)
+       failures_val, al_val, nid_val <| let_id := S (let_id nid_val) |>
+      )
     | UVar var =>
       match list_assoc var_map var with
-      (* If there is no binding and the rule is well formed, then the variable
-         already corresponds to an action and can therefore be left
-         unchanged. *)
-      | None => (Some (UVar var), var_map, [], None, al, la, le)
-      | Some x => (Some (UVar x), var_map, [], None, al, la, le)
+      | Some x => (Some (UVar x), var_map, [], None, al, nid)
+      | None => (* Unreachable assuming rule valid *)
+        (Some (UVar "ERROR"), var_map, [], None, al, nid)
       end
     | USeq a1 a2 =>
-      let '(_, vm_a1, vv_a1, failures_a1, al_a1, la_a1, le_a1) :=
-        get_rule_information_aux a1 var_map guard al la le
+      let '(_, vm_a1, vv_a1, failures_a1, al_a1, nid_a1) :=
+        get_rule_information_aux a1 var_map guard al nid
       in
-      let '(ret_a2, vm_a2, vv_a2, failures_a2, al_a2, la_a2, le_a2) :=
-        get_rule_information_aux a2 vm_a1 guard al_a1 la_a1 le_a1
+      let '(ret_a2, vm_a2, vv_a2, failures_a2, al_a2, nid_a2) :=
+        get_rule_information_aux a2 vm_a1 guard al_a1 nid_a1
       in
       (ret_a2, vm_a2, vv_a1++vv_a2, merge_failures failures_a1 failures_a2,
-       al_a2, la_a2, le_a2)
+       al_a2, nid_a2)
     | UIf cond tb fb =>
-      let '(
-        ret_cond, vm_cond, vv_cond, failures_cond, al_cond, la_cond, le_cond
-      ) :=
-        get_rule_information_aux cond var_map guard al la le
+      let '(ret_cond, vm_cond, vv_cond, failures_cond, al_cond, nid_cond) :=
+        get_rule_information_aux cond var_map guard al nid
       in
-      let cond_name := generate_binding_name expr (S le_cond) in
+      let cond_name := generate_binding_name ctxb (S (ctx_id nid_cond)) in
       let guard_tb :=
         UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) guard (UVar cond_name)
       in
@@ -419,173 +401,153 @@ Section Normalize.
         UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd)
           guard (UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (UVar cond_name))
       in
-      let '(ret_tb, vm_tb, vv_tb, failures_tb, al_tb, la_tb, le_tb) :=
-        get_rule_information_aux tb vm_cond guard_tb al_cond la_cond (S le_cond)
+      let '(ret_tb, vm_tb, vv_tb, failures_tb, al_tb, nid_tb) :=
+        get_rule_information_aux tb vm_cond guard_tb al_cond
+        (nid_cond <| ctx_id := (S (ctx_id nid_cond)) |>)
       in
-      let '(ret_fb, vm_fb, vv_fb, failures_fb, al_fb, la_fb, le_fb) :=
+      let '(ret_fb, vm_fb, vv_fb, failures_fb, al_fb, nid_fb) :=
         (* We use al_tb here even though we know that none of the actions added
-           by the other branch can impact those from this branch as they are
-           mutually exclusive. Plus, this way, we don't have to deal with
-           action_logs merging. *)
-        get_rule_information_aux fb vm_cond guard_fb al_tb la_tb le_tb
+           by the other branch can impact those from this branch (they are
+           mutually exclusive). This way, we don't have to deal with action_logs
+           merging. However, this also means that the failure condition will
+           contain some redundancy. *)
+        get_rule_information_aux fb vm_cond guard_fb al_tb nid_tb
       in
-      let '(vm_merge, vv_merge, le_merge) :=
-        List.fold_left
-          (fun '(acc, vv', le') '((str, n1), (_, n2)) =>
-            if String.eqb n1 n2 then ((str, n1)::acc, vv', le')
+      (* Merge var maps: if vm_tb and vm_fb disagree for some value, generate a
+         new variable reflecting the condition and update the variable map. *)
+      let '(vm_merge, vv_merge, let_id_merge) :=
+        fold_left
+          (fun '(acc, vv', let_id) '((str, n1), (_, n2)) =>
+            if String.eqb n1 n2 then ((str, n1)::acc, vv', let_id)
             else
-              let name := generate_binding_name expr (S le') in
-              (
+              let name := generate_binding_name letb (S let_id) in (
                 (str, name)::acc,
                 vv'++[(name, UIf (UVar cond_name) (UVar n1) (UVar n2))],
-                S le'
-              )
-          )
-          (List.combine vm_tb vm_fb)
-          ([], [], le_fb)
+                S let_id))
+          (combine vm_tb vm_fb) ([], [], let_id nid_fb)
       in
-      (build_uif ret_cond ret_tb ret_fb,
-       vm_merge,
+      (build_uif ret_cond ret_tb ret_fb, vm_merge,
        vv_cond++[(cond_name, reduce ret_cond)]++vv_tb++vv_fb++vv_merge,
+       (* Merging the failure conditions: looks complex because of the option
+          types but really not that tricky. *)
        match ret_cond with
-       | None => (* Should never happen in a well-formed rule *)
-         None
+       | None => None (* Unreachable assuming a well-formed rule *)
        | Some x =>
          merge_failures
-          failures_cond
-          (merge_failures
-            (option_map
-              (fun y => UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) x y)
-              failures_tb
-            )
-            (option_map
-              (fun y =>
-                (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd)
-                  (UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x) y
-                )
-              )
-              failures_fb
-            )
-          )
+           failures_cond
+           (merge_failures
+             (option_map
+               (fun y => UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) x y)
+               failures_tb)
+             (option_map
+               (fun y =>
+                 (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd)
+                   (UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x) y))
+               failures_fb))
         end,
-        al_fb, la_fb, le_merge)
+        al_fb, nid_fb <| let_id := let_id_merge |>)
     | UUnop ufn a =>
-      let '(ret_a, vm_a, vv_a, failures_a, al_a, la_a, le_a) :=
-        get_rule_information_aux a var_map guard al la le
+      let '(ret_a, vm_a, vv_a, failures_a, al_a, nid_a) :=
+        get_rule_information_aux a var_map guard al nid
       in
-      (Some (UUnop ufn (reduce ret_a)), vm_a, vv_a, failures_a, al_a, la_a,
-       le_a)
+      (Some (UUnop ufn (reduce ret_a)), vm_a, vv_a, failures_a, al_a, nid_a)
     | UBinop ufn a1 a2 =>
-      let '(ret_a1, vm_a1, vv_a1, failures_a1, al_a1, la_a1, le_a1) :=
-        get_rule_information_aux a1 var_map guard al la le
+      let '(ret_a1, vm_a1, vv_a1, failures_a1, al_a1, nid_a1) :=
+        get_rule_information_aux a1 var_map guard al nid
       in
-      let '(ret_a2, vm_a2, vv_a2, failures_a2, al_a2, la_a2, le_a2) :=
-        get_rule_information_aux a2 vm_a1 guard al_a1 la_a1 le_a1
+      let '(ret_a2, vm_a2, vv_a2, failures_a2, al_a2, nid_a2) :=
+        get_rule_information_aux a2 vm_a1 guard al_a1 nid_a1
       in
       (Some (UBinop ufn (reduce ret_a1) (reduce ret_a2)), vm_a2, vv_a1++vv_a2,
-       merge_failures failures_a1 failures_a2, al_a2, la_a2, le_a2)
+       merge_failures failures_a1 failures_a2, al_a2, nid_a2)
     | UInternalCall ufn args =>
-      let '(
-        arg_names, vm_args, vv_args, failure_args, al_args, la_args, le_args
-      ) :=
-        (
-          List.fold_left
-            (fun '(names, vm_p, vv_p, failures_p, al_p, la_p, le_p) a =>
-              let '(val_c, vm_c, vv_c, failure_c, al_c, la_c, le_c) :=
-                get_rule_information_aux a vm_p guard al_p la_p le_p
+      let '(arg_names, vm_args, vv_args, failure_args, al_args, nid_args) := (
+          fold_left
+            (fun '(names, vm_p, vv_p, failures_p, al_p, nid_p) a =>
+              let '(val_c, vm_c, vv_c, failure_c, al_c, nid_c) :=
+                get_rule_information_aux a vm_p guard al_p nid_p
               in
-              let arg_bind_name := generate_binding_name expr (S le_c) in
-              (
+              let arg_bind_name :=
+                generate_binding_name letb (S (let_id nid_c))
+              in (
                 arg_bind_name::names, vm_c,
                 vv_p++vv_c++[(arg_bind_name, reduce val_c)],
-                merge_failures failure_c failures_p, al_c, la_c, S le_c
-              )
-            )
+                merge_failures failure_c failures_p, al_c,
+                nid_c <| let_id := S (let_id nid_c) |>))
             args
-            ([], var_map, [], None, al, la, le)
+            ([], var_map, [], None, al, nid)
         ) in
       let vm_tmp :=
         combine
           (fst (split (int_argspec ufn))) (* Names from argspec *)
           (* We know that a value is assigned to each argument in well formed
-             models *)
+             rules *)
           arg_names
       in
-      let '(ret_ic, _, vv_ic, failure_ic, al_ic, la_ic, le_ic) :=
+      let '(ret_ic, _, vv_ic, failure_ic, al_ic, nid_ic) :=
         get_rule_information_aux
-          (int_body ufn) vm_tmp guard al_args la_args le_args
+          (int_body ufn) vm_tmp guard al_args nid_args
       in
-      (* We drop vm_tmp which contained the temporary map for use in the called
-         function. *)
+      (* We can forget vm_tmp which contained the temporary map for use in the
+         called function. *)
       (ret_ic, vm_args, vv_args++vv_ic, merge_failures failure_ic failure_args,
-       al_ic, la_ic, le_ic)
-    | UAPos _ e => get_rule_information_aux e var_map guard al la le
+       al_ic, nid_ic)
+    | UAPos _ e => get_rule_information_aux e var_map guard al nid
     | URead port reg =>
-      let fresh_name := generate_binding_name action (S la) in
-      let '(modified_al, failure_read, used_name) :=
+      let action_guard := generate_binding_name ctxb (S (ctx_id nid)) in
+      let '(modified_al, failure_read) :=
         match port with
-        | P0 => add_read0 al guard reg fresh_name
-        | P1 => add_read1 al guard reg fresh_name
+        | P0 => add_read0 al action_guard reg
+        | P1 => add_read1 al action_guard reg
         end
-      in
-      let new_la := if String.eqb fresh_name used_name then S la else la in
-      (
-        Some (UVar (used_name)), var_map, [], failure_read, modified_al, new_la,
-        le
-      )
+      in (
+        Some ua, var_map, [(action_guard, guard)], failure_read, modified_al,
+        nid <| ctx_id := S (ctx_id nid) |>)
     | UWrite port reg val =>
-      let '(
-        ret_val, vm_val, vv_val, failures_val, actions_val, la_val, le_val
-      ) :=
-        get_rule_information_aux val var_map guard al la le
+      let '(ret_val, vm_val, vv_val, failures_val, actions_val, nid_val) :=
+        get_rule_information_aux val var_map guard al nid
       in
+      let action_guard := generate_binding_name ctxb (S (ctx_id nid_val)) in
       let '(al_wr, failure_wr) :=
         match port with
-        | P0 => add_write0 actions_val guard (reduce ret_val) reg
-        | P1 => add_write1 actions_val guard (reduce ret_val) reg
+        | P0 => add_write0 actions_val action_guard reg (reduce ret_val)
+        | P1 => add_write1 actions_val action_guard reg (reduce ret_val)
         end
       in
-      (None, vm_val, vv_val, merge_failures failures_val failure_wr, al_wr,
-       la_val, le_val)
+      (None, vm_val, vv_val++[(action_guard, guard)],
+       merge_failures failures_val failure_wr, al_wr,
+       nid_val <| ctx_id := S (ctx_id nid_val) |>)
     | UExternalCall ufn arg =>
-      let '(
-        ret_arg, vm_arg, vv_arg, failures_arg, actions_arg, la_arg, le_arg
-      ) :=
-        get_rule_information_aux arg var_map guard al la le
+      let '(ret_arg, vm_arg, vv_arg, failures_arg, actions_arg, nid_arg) :=
+        get_rule_information_aux arg var_map guard al nid
       in
-      let fresh_name := generate_binding_name action (S la_arg) in
-      let new_al := add_extcall al ufn guard arg fresh_name in
-      (Some (UVar fresh_name), vm_arg, vv_arg, failures_arg, new_al, S la_arg,
-       le_arg)
+      let fresh_name := generate_binding_name extcb (S (extc_id nid_arg)) in
+      let action_guard := generate_binding_name ctxb (S (ctx_id nid)) in
+      let new_al := add_extcall al action_guard ufn arg fresh_name in
+      (Some (UVar fresh_name), vm_arg, vv_arg, failures_arg, new_al,
+       nid_arg <| ctx_id := S (ctx_id nid_arg) |>
+         <| extc_id := S (extc_id nid_arg) |>)
     | UError _ =>
       (None, var_map, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)), al,
-       la, le)
+       nid)
     | UFail _ =>
       (None, var_map, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)), al,
-       la, le)
-    | _ => (* UConst *)
-      (Some ua, var_map, [], None, al, la, le)
+       nid)
+    | _ => (Some ua, var_map, [], None, al, nid) (* UConst *)
     end.
 
-  (* This function extracts the actions for a given rule. It also returns the
-     highest value used for a custom binding (if rule A and rule B are in a
-     schedule, the initial value of last_controlled for rule B should be the
-     last value of last_controlled for rule A). *)
-  Definition get_rule_information
-    (ua: uact) (last_action_id last_expr_id: nat)
-  : rule_information * nat * nat :=
-    let '(_, _, vvm, failure, action_logs, last_action_id', last_expr_id') :=
+  Definition get_rule_information (ua: uact) (nid: next_ids) :
+    rule_information * next_ids
+  :=
+    let '(_, _, vvm, failure, action_logs, nid') :=
       get_rule_information_aux
         ua [] (UConst (tau := bits_t 1) (Bits.of_nat 1 1))
-        {|
-          read0s := []; read1s := []; write0s := []; write1s := [];
-          extcalls := [];
-        |}
-        last_action_id last_expr_id
-    in (
-      {| actions := action_logs; var_val_map := vvm; failure_cond := failure |},
-      last_action_id', last_expr_id'
-    ).
+        {| read0s := []; read1s := []; write0s := []; write1s := [];
+           extcalls := []; |}
+        nid
+    in ({|
+      rl_actions := action_logs; rl_vars := vvm; rl_failure_cond := failure
+    |}, nid').
 
   (* D. Scheduling conflicts detection *)
   (* It is here that we take into account how a rule might cancel any later
@@ -609,61 +571,56 @@ Section Normalize.
   Definition detect_conflicts_read0s_reg
     (al: action_logs) (cond: uact) (reg: reg_t)
   : option uact :=
-    let previous_wr0 := extract_write0_cond al reg in
-    let previous_wr1 := extract_write1_cond al reg in
-    merge_failures_list
-      cond (list_options_to_list [previous_wr0; previous_wr1]).
+    let prev_wr0 := extract_wr0_cond al reg in
+    let prev_wr1 := extract_wr1_cond al reg in
+    merge_failures_list cond (list_options_to_list [prev_wr0; prev_wr1]).
   Definition detect_conflicts_write0s_reg
     (al: action_logs) (cond: uact) (reg: reg_t)
   : option uact :=
-    let previous_wr0 := extract_write0_cond al reg in
-    let previous_wr1 := extract_write1_cond al reg in
-    let previous_rd1 := extract_read1_cond al reg in
+    let prev_wr0 := extract_wr0_cond al reg in
+    let prev_wr1 := extract_wr1_cond al reg in
+    let prev_rd1 := list_assoc (read1s al) reg in
     merge_failures_list
-      cond (list_options_to_list [previous_wr0; previous_wr1; previous_rd1]).
+      cond (list_options_to_list [prev_wr0; prev_wr1; prev_rd1]).
   Definition detect_conflicts_read1s_reg
     (al: action_logs) (cond: uact) (reg: reg_t)
   : option uact :=
-    let previous_wr1 := extract_write1_cond al reg in
-    merge_failures_list cond (list_options_to_list [previous_wr1]).
+    let prev_wr1 := extract_wr1_cond al reg in
+    merge_failures_list cond (list_options_to_list [prev_wr1]).
   Definition detect_conflicts_write1s_reg
     (* TODO make cond option instead? *)
     (al: action_logs) (cond: uact) (reg: reg_t)
   : option uact :=
-    let previous_wr1 := extract_write1_cond al reg in
-    merge_failures_list cond (list_options_to_list [previous_wr1]).
+    let prev_wr1 := extract_wr1_cond al reg in
+    merge_failures_list cond (list_options_to_list [prev_wr1]).
 
   (* These functions take the action_logs of a rule as well as some logs of a
-     subsequent rule, and returns a condition that is true in all the situations
-     in which the second rule has to fail for e.g. read0s conflicts reasons (and
-     no other cases). *)
-  Definition detect_conflicts_read0s (al: action_logs) (rl: read_log)
+     subsequent rule, and return a condition that is true in all the situations
+     in which the second rule has to fail for e.g. read0s conflicts reasons. *)
+  Definition detect_conflicts_read0s (al: action_logs) (rl: reg_cond)
   : option uact :=
-    List.fold_left
-      (fun acc '(reg, (cond, _)) =>
-        detect_conflicts_step acc al cond reg detect_conflicts_read0s_reg
-      )
+    fold_left
+      (fun acc '(reg, cond) =>
+        detect_conflicts_step acc al cond reg detect_conflicts_read0s_reg)
       rl None.
+  (* TODO *)
   Definition detect_conflicts_write0s (al: action_logs) (wl: write_log)
   : option uact :=
-    List.fold_left
-      (fun acc '(reg, (cond, _)) =>
-        detect_conflicts_step acc al cond reg detect_conflicts_write0s_reg
-      )
+    fold_left
+      (fun acc '(reg, l) =>
+        detect_conflicts_step acc al (extract_wr1_cond cond) reg detect_conflicts_write0s_reg)
       wl None.
   Definition detect_conflicts_read1s (al: action_logs) (rl: read_log)
   : option uact :=
-    List.fold_left
+    fold_left
       (fun acc '(reg, (cond, _)) =>
-        detect_conflicts_step acc al cond reg detect_conflicts_read1s_reg
-      )
+        detect_conflicts_step acc al cond reg detect_conflicts_read1s_reg)
       rl None.
   Definition detect_conflicts_write1s (al: action_logs) (wl: write_log)
   : option uact :=
-    List.fold_left
+    fold_left
       (fun acc '(reg, (cond, _)) =>
-        detect_conflicts_step acc al cond reg detect_conflicts_write1s_reg
-      )
+        detect_conflicts_step acc al cond reg detect_conflicts_write1s_reg)
       wl None.
 
   (* The order of the arguments matters! If there is a conflict between a1 and
@@ -674,10 +631,8 @@ Section Normalize.
       (merge_failures
         (merge_failures
           (detect_conflicts_read0s a1 (read0s a2))
-          (detect_conflicts_write0s a1 (write0s a2))
-        )
-        (detect_conflicts_read1s a1 (read1s a2))
-      )
+          (detect_conflicts_write0s a1 (write0s a2)))
+        (detect_conflicts_read1s a1 (read1s a2)))
       (detect_conflicts_write1s a1 (write1s a2)).
 
   (* Returns a failure condition for ri2's conflicts with ri1. Includes ri1's
@@ -702,27 +657,24 @@ Section Normalize.
   Definition detect_conflicts_any_prior
     (r: rule_information) (prior_rules: list rule_information)
   : rule_information :=
-    List.fold_left
+    fold_left
       (fun r' p =>
         {| actions := actions r'; var_val_map := var_val_map r';
-           failure_cond := detect_conflicts p r'
-        |}
-      )
+           failure_cond := detect_conflicts p r' |})
       prior_rules r.
 
   (* D.3. All scheduling conflicts *)
   (* This function detects all the scheduling conflicts. It returns a list of
      rule_information where the failure conditions have been edited
      appropriately. *)
-  Definition detect_all_conflicts (rl: list rule_information)
+  Definition detect_all_conflicts (rl: list rule_information) (nid: next_ids)
   : list rule_information :=
-    List.fold_left
+    fold_left
       (fun acc c =>
         match acc with
         | [] => [c]
-        | h::t => List.app acc [detect_conflicts_any_prior c acc]
-        end
-      )
+        | h::t => app acc [detect_conflicts_any_prior c acc]
+        end)
       rl [].
 
   (* E. Schedule merger *)
@@ -736,26 +688,22 @@ Section Normalize.
      without losing information as long as we integrate it into the conditions
      of all the actions of the rule it guarded. *)
   Definition prepend_condition_reads (cond: uact) (rl: read_log) : read_log :=
-    List.map
+    map
       (fun '(reg, (cond', name)) =>
-        (reg, (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', name))
-      )
+        (reg, (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', name)))
       rl.
   Definition prepend_condition_writes (cond: uact) (wl: write_log)
   : write_log :=
-    List.map
+    map
       (fun '(reg, (cond', val)) =>
-        (reg, (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', val))
-      )
+        (reg, (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', val)))
       wl.
   Definition prepend_condition_extcalls (cond: uact) (el: extcall_log)
   : extcall_log :=
-    List.map
+    map
       (fun '(ufn, (cond', name, arg)) =>
         (ufn,
-          (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', name, arg)
-        )
-      )
+          (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond cond', name, arg)))
       el.
 
   Definition prepend_failure_actions (al: action_logs) (fail_var_name: string)
@@ -776,21 +724,16 @@ Section Normalize.
 
   Definition integrate_failures (ri: list rule_information) (last_expr_id: nat)
   : list rule_information * nat :=
-    List.fold_left
+    fold_left
       (fun '(acc, le') r =>
         let fail_var_name := generate_binding_name expr (S le') in
         let not_failure_cond := to_negated_cond (failure_cond r) in
-        (
-          {|
-             actions := prepend_failure_actions (actions r) fail_var_name;
-             failure_cond := None;
-             (* TODO perhaps return not_failure_cond separately and regroup all
-                such variables at the end of the list so as to preserve order *)
-             var_val_map := (var_val_map r)++[(fail_var_name, not_failure_cond)]
-          |}::acc,
-          S le'
-        )
-      )
+        ({| actions := prepend_failure_actions (actions r) fail_var_name;
+            failure_cond := None;
+            (* TODO perhaps return not_failure_cond separately and regroup all
+               such variables at the end of the list so as to preserve order *)
+            var_val_map := (var_val_map r)++[(fail_var_name, not_failure_cond)]
+         |}::acc, S le'))
       ri
       ([], last_expr_id).
 
@@ -809,8 +752,7 @@ Section Normalize.
   (* E.2.a. Names update *)
   Fixpoint rename_in_uact (from to: string) (ua: uact) :=
     match ua with
-    | UVar v =>
-      if String.eqb from v then UVar to else UVar v
+    | UVar v => if String.eqb from v then UVar to else UVar v
     | UIf cond tb fb =>
       UIf
         (rename_in_uact from to cond) (rename_in_uact from to tb)
@@ -823,41 +765,33 @@ Section Normalize.
 
   Definition map_names_w (name_map: list (string * string)) (wl: write_log)
   : write_log :=
-    List.fold_left
+    fold_left
       (fun wl' '(from, to) =>
-        List.map
+        map
           (fun '(reg, (cond, val)) =>
-            (reg, (rename_in_uact from to cond, rename_in_uact from to val))
-          )
-          wl'
-      )
+            (reg, (rename_in_uact from to cond, rename_in_uact from to val)))
+          wl')
       name_map
       wl.
 
   Definition map_names_extc (name_map: list (string * string)) (el: extcall_log)
   : extcall_log :=
-    List.fold_left
+    fold_left
       (fun el' '(from, to) =>
-        List.map
+        map
           (fun '(reg, (cond, name, val)) =>
             (reg,
-             (rename_in_uact from to cond, name, rename_in_uact from to val)
-            )
-          )
-          el'
-      )
-      name_map
-      el.
+             (rename_in_uact from to cond, name, rename_in_uact from to val)))
+          el')
+      name_map el.
 
   Definition map_names_expr
     (name_map: list (string * string)) (expr: var_value_map)
   : var_value_map :=
-    List.fold_left
+    fold_left
       (fun vvm' '(from, to) =>
-        List.map (fun '(name, val) => (name, rename_in_uact from to val)) vvm'
-      )
-      name_map
-      expr.
+        map (fun '(name, val) => (name, rename_in_uact from to val)) vvm')
+      name_map expr.
 
   (* E.2.b. Merge one rule *)
   (* TODO maybe make conds optional in xxx_info *)
@@ -889,25 +823,22 @@ Section Normalize.
         wl reg
         (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) prev_cond cond,
         (* We know that the conditions are mutually exclusive *)
-         UIf cond val prev_val
-        )
+         UIf cond val prev_val)
     end.
 
   Definition merge_reads_single_rule (rl_acc rl_curr: read_log)
   : read_log * list (string * string) :=
-    List.fold_left
+    fold_left
       (fun '(rl_acc', name_map) n =>
         let (rl_acc'', new_name) := merge_next_read rl_acc' n in
         match new_name with
         | None => (rl_acc'', name_map)
         | Some x => (rl_acc'', (snd (snd n), x)::name_map)
-        end
-      )
-      rl_curr
-      (rl_acc, []).
+        end)
+      rl_curr (rl_acc, []).
 
   Definition merge_writes_single_rule (wl_acc wl_curr: write_log) : write_log :=
-    List.fold_left merge_next_write wl_curr wl_acc.
+    fold_left merge_next_write wl_curr wl_acc.
 
   Definition merge_single_rule (s: schedule_information) (r: rule_information)
   : schedule_information :=
@@ -936,14 +867,13 @@ Section Normalize.
       app
         (extcalls acc_log)
         (map_names_extc name_map_1 (map_names_extc name_map_0 (
-          extcalls rule_logs
-        )))
+          extcalls rule_logs)))
     in {|
       sc_actions := {|
         read0s := read0s'; write0s := write0s'; read1s := read1s';
         write1s := write1s'; extcalls := extcalls'
       |};
-      sc_vars := List.concat [rule_exprs; map_names_expr name_map_1 (acc_exprs)]
+      sc_vars := concat [rule_exprs; map_names_expr name_map_1 (acc_exprs)]
     |}.
 
   (* E.2.b. Merge full schedule *)
@@ -962,9 +892,8 @@ Section Normalize.
         sc_vars := []
       |}
     | Some x =>
-      List.fold_left
-        merge_single_rule
-        (tl rules_info')
+      fold_left
+        merge_single_rule (tl rules_info')
         {| sc_actions := actions x; sc_vars := var_val_map x; |}
     end.
 
@@ -993,42 +922,33 @@ Section Normalize.
 
   Definition replace_var_by_uact_w (w: write_log) (from: string) (to: uact)
   : write_log :=
-    List.map
+    map
       (fun '(reg, (cond, val)) =>
         (reg,
           (replace_var_by_uact_in_uact from to cond,
-           replace_var_by_uact_in_uact from to val
-          )
-        )
-      )
+           replace_var_by_uact_in_uact from to val)))
       w.
 
   Definition replace_var_by_uact_extc (e: extcall_log) (from: string) (to: uact)
   : extcall_log :=
-    List.map
+    map
       (fun '(reg, (cond, name, val)) =>
         (reg,
           (replace_var_by_uact_in_uact from to cond, name,
-           replace_var_by_uact_in_uact from to val
-          )
-        )
-      )
+           replace_var_by_uact_in_uact from to val)))
       e.
 
   Definition replace_var_by_uact_expr
     (v: var_value_map) (from: string) (to: uact)
   : var_value_map :=
-    List.map
-      (fun '(reg, val) => (reg, replace_var_by_uact_in_uact from to val))
-      v.
+    map (fun '(reg, val) => (reg, replace_var_by_uact_in_uact from to val)) v.
 
   (* Variables bound to the return values of read1s need to be replaced with the
      appropriate value. TODO store res as expr instead and change name only *)
   Definition replace_var_by_uact
     (s: schedule_information) (from: string) (to: uact)
   : schedule_information :=
-    let a := sc_actions s in
-    {|
+    let a := sc_actions s in {|
       sc_actions := {|
         read0s := read0s a;
         write0s := replace_var_by_uact_w (write0s a) from to;
@@ -1057,10 +977,8 @@ Section Normalize.
         (list_assoc_set
            (read0s a) r
            (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) rd1_cond rd0_cond,
-            rd0_name
-           ),
-         rd0_name, last_action_id
-        )
+            rd0_name),
+         rd0_name, last_action_id)
       end
     in (
       match list_assoc (write0s a) r with
@@ -1084,15 +1002,12 @@ Section Normalize.
   Definition remove_read1s (s: schedule_information) (last_action_id: nat)
   : schedule_information :=
     let (s'', la'') :=
-      List.fold_left
+      fold_left
         (fun '(s', la') rd =>
-          remove_single_read1 s' la' rd
-        )
-        (read1s (sc_actions s))
-        (s, last_action_id)
-    in {|
-      sc_actions := upd_read1 (sc_actions s'') []; sc_vars := sc_vars s''
-    |}.
+          remove_single_read1 s' la' rd)
+        (read1s (sc_actions s)) (s, last_action_id)
+    in
+    {| sc_actions := upd_read1 (sc_actions s'') []; sc_vars := sc_vars s'' |}.
 
   (* F.2. Remove write0s *)
   (* If there is both a write0 and a write1, the write1 takes priority.
@@ -1115,15 +1030,13 @@ Section Normalize.
             (list_assoc_set
               (write1s a) reg
               (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) wr1_cond cond,
-               UIf wr1_cond wr1_val val
-              )
-            );
+               UIf wr1_cond wr1_val val));
         sc_vars := sc_vars s
       |}
     end.
 
   Definition remove_write0s (s: schedule_information) : schedule_information :=
-    let s' := List.fold_left remove_single_write0 (write0s (sc_actions s)) s in
+    let s' := fold_left remove_single_write0 (write0s (sc_actions s)) s in
     {| sc_actions := upd_write0 (sc_actions s') []; sc_vars := sc_vars s' |}.
 
   (* G. Normalization *)
@@ -1143,14 +1056,14 @@ Section Normalize.
     let rules_l := schedule_to_list_of_rules s in
     (* Prepare binding names generation *)
     let last_action_init :=
-      list_max (List.map (get_highest_binding_id action) rules_l)
+      list_max (map (get_highest_binding_id action) rules_l)
     in
     let last_expr_init :=
-      list_max (List.map (get_highest_binding_id expr) rules_l)
+      list_max (map (get_highest_binding_id expr) rules_l)
     in
     (* Get rule_information from each rule *)
     let '(rule_info_l, la', le') :=
-      List.fold_left
+      fold_left
         (fun '(ri_acc, la', le') r =>
           let '(ri, la'', le'') := get_rule_information r la' le' in
           (* Not a fold right since we want the first rule to have the lowest
@@ -1170,7 +1083,7 @@ Section Normalize.
     in
     (* To normal form *)
     {| reads :=
-        List.map
+        map
           (fun '(reg, (_, name)) => (reg, name))
           (read0s (sc_actions schedule_info_simpl));
        writes := write1s (sc_actions schedule_info_simpl);

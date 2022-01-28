@@ -3,7 +3,7 @@ Require Import Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
   Koika.ProgramTactics Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs
   UntypedIndSemantics Koika.UntypedSemantics.
-Require Export rv.Instructions rv.Stack rv.RVCore rv.rv32 rv.rv32i.
+Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 
 Ltac destr_in H :=
   match type of H with
