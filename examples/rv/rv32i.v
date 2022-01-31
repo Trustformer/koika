@@ -75,9 +75,7 @@ Definition is_module_call
     UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem
     |> Dmem |> Tick |> EndExecution |> done.
   Definition rules_desug := (fun x => (desugar_action tt (rv_urules x))).
-
-  Definition sch2 : scheduler :=
-    UpdateOnOff |> EndExecution |> Done.
+  Time Compute (schedule_to_normal_form rules_desug sch).
 
 (*   Definition rules_l := schedule_to_list_of_rules rules_desug sch2. *)
 (*   Definition last_action_init := *)
@@ -105,7 +103,6 @@ Definition is_module_call
 (*   Compute schedule_info. *)
 (*   Compute schedule_info_simpl. *)
 
-  (* Time Compute (schedule_to_normal_form rules_desug sch). *)
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with

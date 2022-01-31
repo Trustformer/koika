@@ -31,28 +31,6 @@ Section NormalForm.
     | _ => [] (* Should never happen *)
     end.
 
-  (* *)
-  (* R can depend on A *)
-  (* A can depend on R *)
-  (* can r1 depend on a1 while a1 depnds on r1? *)
-  (* focus on wr0s *)
-  (* *)
-
-  (* CWX0: conditions contextuelles simples: *)
-
-  (* Simplification - read1s *)
-
-  (* Precondition: no cycles *)
-  Fixpoint get_exp_depth (e: uact) : option nat :=
-    let vars := get_vars_in_simpl_uact e in
-    let subdepths :=
-      List.map
-        (fun u => )
-        vars
-    in
-    let max :=
-      List.fold_left
-
   Definition get_var_depth (v: string) (vvm: var_value_map) : option nat :=
     match list_assoc vvm v with
     | None => None
@@ -62,7 +40,7 @@ Section NormalForm.
   Definition interp_cycle
     (r: UREnv) (sigma: ext_funs_defs) (n: @normal_form pos_t reg_t ext_fn_t)
   : UREnv :=
-    let interp_reads :=
+    let interp_read1s :=
       List.map (fun '(reg, name) => (name, getenv REnv r reg)) (reads n)
     in
     (* We use the fact that the variables are recursively defined *)
