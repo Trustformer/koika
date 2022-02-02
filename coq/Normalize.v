@@ -7,11 +7,11 @@ Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
-(* When reasoning about a Koîka schedule, a lot of implicit mechanisms have to
-   be considered explicitly (rules merging, cancellation, ...). Furthermore,
-   performance issues related to abstract interpretation make reasoning about
-   the behavior of some even moderately complex models (e.g., the RISC-V
-   processor example) an impossibility.
+(* When reasoning about a Koîka schedule, a lot of tedious implicit mechanisms
+   have to be considered explicitly (rules merging, cancellation, ...).
+   Furthermore, performance issues related to abstract interpretation make
+   reasoning about the behavior of some even moderately complex models (e.g.,
+   the RISC-V processor example) an impossibility.
 
    This is what this simpler form aims to fix. In particular, it makes finding
    under which conditions the value of a register is updated or proving that the
@@ -269,9 +269,7 @@ Section Normalize.
     end.
 
   (* This function extracts the actions for a given rule. It also returns the
-     highest value used for a custom binding (if rule A and rule B are in a
-     schedule, the initial value of last_controlled for rule B should be the
-     last value of last_controlled for rule A). *)
+     updated next_ids structure. *)
   Fixpoint get_rule_information_aux
     (* No need to pass failures as these impact the whole rule - taking note of
        all of them and factoring the conditions in is enough. Conflicts between
@@ -346,7 +344,7 @@ Section Normalize.
         get_rule_information_aux fb vm_cond guard_fb al_tb nid_tb
       in
       (* Merge var maps: if vm_tb and vm_fb disagree for some value, generate a
-         new variable reflecting the condition and update the variable map. *)
+         new variable reflecting the condition and update the variables map. *)
       let '(vm_merge, vv_merge, let_id_merge) :=
         fold_left
           (fun '(acc, vv', let_id) '((str, n1), (_, n2)) =>
@@ -527,7 +525,7 @@ Section Normalize.
     merge_failures_list cond (list_options_to_list [prev_wr1]).
 
   (* These functions take the action_logs of a rule as well as a subset of the
-     logs of a subsequent rule, and return a condition that is true in all the
+     logs of a subsequent rule and return a condition that is true in all the
      situations in which the second rule has to fail for e.g. read0s conflicts
      reasons. *)
   Definition detect_conflicts_read0s (al: action_logs) (rl: read_log)
@@ -564,8 +562,9 @@ Section Normalize.
       wl None.
 
   (* The order of the arguments matters! If there is a conflict between a1 and
-     a2, a1 takes precedence. Does not take the fact that rule 1 might fail and
-     therefore not impact rule 2 into account, see detect_conflicts for this. *)
+     a2, a1 takes precedence. This function does not take the fact that rule 1
+     might fail and therefore not impact rule 2 into account, as this is done
+     from detect_conflicts. *)
   Definition detect_conflicts_actions (a1 a2: action_logs) : option uact :=
     merge_failures
       (merge_failures
@@ -739,8 +738,6 @@ Section Normalize.
     end.
 
   (* F. Final simplifications *)
-  (* At this stage, we know that there is at most one rd0/rd1/wr0/wr1 in the
-     schedule_information. *)
   (* F.1. Remove read1s *)
   (* F.1.a. Replacement of variables by expression *)
   Fixpoint replace_var_by_uact_in_uact (from: string) (to ua: uact) :=
