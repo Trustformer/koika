@@ -1,9 +1,9 @@
 Require Import Coq.Strings.Ascii.
-Require Import Koika.Environments Koika.Normalize Koika.TypeInference
+Require Import Koika.Environments Koika.SimpleForm Koika.TypeInference
   Koika.UntypedSemantics.
 Require Import Koika.BitsToLists.
 
-Section NormalForm.
+Section SimpleForm.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
@@ -70,8 +70,7 @@ Section NormalForm.
           | Some (_, v, _) =>
             (replace_all_occurrences_in_map vvm reg v, (reg, v)::l)
           end
-        else (vvm, l)
-      )
+        else (vvm, l))
       vars
       (vars, []).
 
@@ -135,10 +134,10 @@ Section NormalForm.
       (s: schedule) (p: pos_t)
       (TA:
         forall rule, exists tcr,
-        TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr
-      ),
+        TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr),
     UntypedSemantics.interp_cycle rules r sigma s =
-    NormalForm.interp_cycle r sigma (Normalize.schedule_to_normal_form rules s).
+    SimpleForm.interp_cycle r sigma
+      (SimpleForm.schedule_to_normal_form rules s).
   Proof.
   Admitted.
-End NormalForm.
+End SimpleForm.

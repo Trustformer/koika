@@ -1,6 +1,4 @@
 (*! Proving | Transformation of a schedule into a proof-friendly form !*)
-(* TODO Not a normal form anymore but a new model entirely, change name to
-        reflect *)
 Require Import Coq.Numbers.DecimalString Coq.Program.Equality Coq.Strings.Ascii.
 Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils
   Koika.Zipper.
@@ -25,60 +23,71 @@ Import RecordSetNotations.
    Koîka's pure semantics). *)
 
 Open Scope nat.
-Section Normalize.
+Section SimpleForm.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
   Definition uact := uaction pos_t string string reg_t ext_fn_t.
   Definition schedule := scheduler pos_t rule_name_t.
 
-  (* A. Normal form and related structures *)
-  Definition read_info := uact.
-  Definition read_log := list (reg_t * read_info).
-  (* TODO switch back to strings for conds and edit their bindings to include
-       failures conditions instead *)
+  (* A. Simple form and related structures *)
+  Definition cond_log := list (reg_t * uact).
   Record write_info := mkWriteInfo { wcond: uact; wval: uact }.
   Definition write_log := list (reg_t * list (write_info)).
   Record extcall_info := mkExtcallInfo
     { econd: uact; earg: uact; ebind: string }.
   Definition extcall_log := list (ext_fn_t * extcall_info).
   Definition var_value_map := list (string * uact).
-  Record action_logs := mkActionLogs {
-    read0s: read_log; write0s: write_log; read1s: read_log; write1s: write_log;
-    extcalls: extcall_log }.
-  Instance etaActionLogs : Settable _ :=
-    settable! mkActionLogs < read0s; write0s; read1s; write1s; extcalls >.
 
-  Record rule_information := mkRuleInformation {
-    rl_actions: action_logs;
-    rl_vars: var_value_map;
-    (* We do not worry about potential conflicts in action logs. What if there
-       are two write1s targetting register x? We simply register the write1s as
-       they stand, but update the following condition for the whole rule: *)
-    rl_failure_cond: option uact }.
-  (* Note that we did not reuse uact for that purpose as that could have made
-     things confusing (we consider a set of actions and not a sequence). *)
+  Record rule_information_raw := mkRuleInformationRaw {
+    rir_read0s_cond: cond_log;
+    rir_read1s_cond: cond_log;
+    rir_write0s_cond: cond_log;
+    rir_write1s_cond: cond_log;
+    rir_write0s: write_log;
+    rir_write1s: write_log;
+    rir_extcalls: extcall_log;
+    rir_vars: var_value_map;
+    rir_failure_cond: option uact }.
+  Instance etaRuleInformationRaw : Settable _ :=
+    settable! mkRuleInformationRaw <
+      rir_read0s_cond; rir_read1s_cond; rir_write0s_cond; rir_write1s_cond;
+      rir_write0s; rir_write1s; rir_extcalls; rir_vars; rir_failure_cond >.
+  Record rule_information_clean := mkRuleInformationClean {
+    ric_write0s: write_log;
+    ric_write1s: write_log;
+    ric_extcalls: extcall_log;
+    ric_vars: var_value_map;
+    ric_failure_cond: option uact }.
+  Instance etaRuleInformationClean : Settable _ :=
+    settable! mkRuleInformationClean
+      < ric_write0s; ric_write1s; ric_extcalls; ric_vars; ric_failure_cond >.
   Record schedule_information := mkScheduleInformation {
-    sc_actions: action_logs;
-    sc_vars: var_value_map; }.
-  Record normal_form := mkNormalForm {
-    (* Equivalent to disjunction, why not stick to an uact? *)
-    intermediate_values: write_log;
-    final_values: write_log;
+    sc_write0s: cond_log;
+    sc_write1s: cond_log;
+    sc_extcalls: extcall_log;
+    sc_vars: var_value_map }.
+  Instance etaScheduleInformation : Settable _ :=
+    settable! mkScheduleInformation
+      < sc_write0s; sc_write1s; sc_extcalls; sc_vars >.
+  Record simple_form := mkSimpleForm {
+    final_values: list (reg_t * string);
     vars: var_value_map;
-    external_calls: extcall_log; }.
+    external_calls: extcall_log }.
+  Instance etaSimpleForm : Settable _ :=
+    settable! mkSimpleForm < final_values; vars; external_calls >.
 
   (* B. Bindings names *)
   (* TODO name collisions with previously standing variables can't possibly
        happen anymore (we treat everything in order). This makes it easier to
        give informative names to our variables. *)
   Inductive binding_type :=
-  | ctxb | letb | extcb | rcondb | wcondb | fcond_cb | fcond_ncb | ivalb.
+  | ctxb | letb | extcb | rcondb | wcondb | fcond_ncb | fcond_cb | ivalb.
   Record next_ids := mkNextIds {
     ctx_id: nat; let_id: nat; extc_id: nat; rcond_id: nat; wcond_id: nat;
-    fcond_c_id: nat; fcond_nc_id: nat; ival_id: nat }.
+    fcond_nc_id: nat; fcond_c_id: nat; ival_id: nat }.
   Instance etaNextIds : Settable _ := settable! mkNextIds <
-    ctx_id; let_id; extc_id; rcond_id; wcond_id; fcond_c_id; fcond_nc_id;
+    ctx_id; let_id; extc_id; rcond_id; wcond_id; fcond_nc_id; fcond_c_id;
     ival_id >.
   Definition initial_ids : next_ids := {|
     ctx_id := 0; let_id := 0; extc_id := 0; rcond_id := 0; wcond_id := 0;
@@ -87,7 +96,7 @@ Section Normalize.
   Definition get_prefix (b: binding_type) : string :=
     match b with
     | ctxb => "ctx_" | letb => "let_" | extcb => "extc_" | rcondb => "rcond_"
-    | wcondb => "wcond_" | fcond_cb => "fcond_c_" | fcond_ncb => "fcond_nc_"
+    | wcondb => "wcond_" | fcond_ncb => "fcond_nc_" | fcond_cb => "fcond_c_"
     | ivalb => "ival_"
     end.
 
@@ -589,8 +598,7 @@ Section Normalize.
            (* If rule 1 fails, then it can't cause rule 2 to fail. *)
            Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) not_failure_1 x)
          end
-       end
-      ).
+       end).
 
   (* D.2. Conflicts with any prior rule *)
   Definition detect_conflicts_any_prior
@@ -653,8 +661,7 @@ Section Normalize.
       write0s := prepend_condition_writes cond (write0s al);
       read1s := prepend_condition_reads cond (read1s al);
       write1s := prepend_condition_writes cond (write1s al);
-      extcalls := prepend_condition_extcalls cond (extcalls al);
-    |}.
+      extcalls := prepend_condition_extcalls cond (extcalls al); |}.
 
   Definition to_negated_cond (cond: option uact) : uact :=
     match cond with
@@ -711,10 +718,8 @@ Section Normalize.
     {|
       sc_actions := {|
         read0s := []; write0s := write0s'; read1s := [];
-        write1s := write1s'; extcalls := extcalls'
-      |};
-      sc_vars := List.concat [rule_exprs; acc_exprs]
-    |}.
+        write1s := write1s'; extcalls := extcalls' |};
+      sc_vars := List.concat [rule_exprs; acc_exprs] |}.
 
   (* E.2.b. Merge full schedule *)
   Definition merge_schedule
@@ -727,10 +732,8 @@ Section Normalize.
     | None => {|
         sc_actions := {|
           read0s := []; write0s := []; read1s := []; write1s := [];
-          extcalls := []
-        |};
-        sc_vars := []
-      |}
+          extcalls := [] |};
+        sc_vars := [] |}
     | Some x =>
       fold_left
         merge_single_rule (tl rules_info')
@@ -795,48 +798,37 @@ Section Normalize.
         write0s := replace_var_by_uact_w (write0s a) from to;
         read1s := [];
         write1s := replace_var_by_uact_w (write1s a) from to;
-        extcalls := replace_var_by_uact_extc (extcalls a) from to
-      |};
-      sc_vars := replace_var_by_uact_expr (sc_vars s) from to
-    |}.
+        extcalls := replace_var_by_uact_extc (extcalls a) from to |};
+      sc_vars := replace_var_by_uact_expr (sc_vars s) from to |}.
 
   (* F.1.b. Removal *)
-  Definition get_value_at_read1
-    (s: schedule_information) (rd1_cond: uact) (r: reg_t)
-  : uact :=
-    let a := sc_actions s in
-    let '(read0s', rd0_name) :=
-        (list_assoc_set
-           (read0s a) r
-           (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) rd1_cond rd0_cond,
-            rd0_name),
-         rd0_name, last_action_id)
-    in (
+  Definition get_value_at_read1 (s: schedule_information) (r: reg_t) : uact :=
+    let a := sc_actions s in (
       match list_assoc (write0s a) r with
-      | None => UVar rd0_name
-      | Some (wr0_cond, wr0_val) => UIf wr0_cond wr0_val (UVar rd0_name)
+      | None => URead P0 r
+      | Some l =>
+        List.fold_left ()
+        UIf wr0_cond wr0_val (URead P0 r)
       end,
-      {| sc_actions := upd_read0 a read0s'; sc_vars := sc_vars s |}
-    ).
+      {| sc_actions := read0s'; sc_vars := sc_vars s |}).
 
   Definition remove_single_read1
-    (s: schedule_information) (last_action_id: nat) (rd: read_info)
-  : schedule_information * nat :=
+    (s: schedule_information) (rd: read_info) (nid: next_ids)
+  : schedule_information * next_ids :=
     let '(reg, rst) := rd in
     let '(cond, name) := rst in
     (* Wr0, wr1 and extcalls impacted *)
-    let '(val, s', lc') := get_value_at_read1 s cond reg last_action_id in
-    (replace_var_by_uact s name val, lc').
+    let '(val, s', nid') := get_value_at_read1 s cond reg nid in
+    (replace_var_by_uact s name val, nid').
 
   (* We don't care about last controlled after this pass, hence no nat in return
      type. *)
-  Definition remove_read1s (s: schedule_information) (last_action_id: nat)
+  Definition remove_read1s (s: schedule_information) (nid: next_ids)
   : schedule_information :=
-    let (s'', la'') :=
+    let (s'', nid'') :=
       fold_left
-        (fun '(s', la') rd =>
-          remove_single_read1 s' la' rd)
-        (read1s (sc_actions s)) (s, last_action_id)
+        (fun '(s', la') rd => remove_single_read1 s' rd nid)
+        (read1s (sc_actions s)) (s, nid)
     in
     {| sc_actions := upd_read1 (sc_actions s'') []; sc_vars := sc_vars s'' |}.
 
@@ -851,26 +843,24 @@ Section Normalize.
     let '(cond, val) := rst in
     match list_assoc (write1s a) reg with
     | None => {|
-        sc_actions := upd_write1 a (list_assoc_set (write1s a) reg (cond, val));
-        sc_vars := sc_vars s
-      |}
+      sc_actions := upd_write1 a (list_assoc_set (write1s a) reg (cond, val));
+      sc_vars := sc_vars s |}
     | Some (wr1_cond, wr1_val) => {|
-        sc_actions :=
-          upd_write1
-            a
-            (list_assoc_set
-              (write1s a) reg
-              (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) wr1_cond cond,
-               UIf wr1_cond wr1_val val));
-        sc_vars := sc_vars s
-      |}
+      sc_actions :=
+        upd_write1
+          a
+          (list_assoc_set
+            (write1s a) reg
+            (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) wr1_cond cond,
+             UIf wr1_cond wr1_val val));
+      sc_vars := sc_vars s |}
     end.
 
   Definition remove_write0s (s: schedule_information) : schedule_information :=
     let s' := fold_left remove_single_write0 (write0s (sc_actions s)) s in
     {| sc_actions := upd_write0 (sc_actions s') []; sc_vars := sc_vars s' |}.
 
-  (* G. Normalization *)
+  (* G. Conversion *)
   (* Schedule can contain try or spos, but they are not used in the case we care
      about. *)
   Fixpoint schedule_to_list_of_rules (s: schedule) : list uact :=
@@ -881,8 +871,8 @@ Section Normalize.
     end.
 
   (* Precondition: only Cons and Done in schedule. *)
-  (* Precondition: rules desugared. TODO desugar from here. *)
-  Definition schedule_to_normal_form (s: schedule) : normal_form :=
+  (* Precondition: rules desugared. TODO desugar from here? *)
+  Definition schedule_to_simple_form (s: schedule) : simple_form :=
     (* Get list of uact from scheduler *)
     let rules_l := schedule_to_list_of_rules s in
     (* Get rule_information from each rule *)
@@ -892,10 +882,8 @@ Section Normalize.
           let '(ri, nid'') := get_rule_information r nid' in
           (* Not a fold right since we want the first rule to have the lowest
              indices. *)
-          (ri_acc++[ri], nid'')
-        )
-        rules_l
-        ([], initial_ids)
+          (ri_acc++[ri], nid''))
+        rules_l ([], initial_ids)
     in
     (* Detect inter-rules conflicts *)
     let rule_info_with_conflicts_l := detect_all_conflicts rule_info_l in
@@ -905,16 +893,13 @@ Section Normalize.
     let schedule_info_simpl :=
       remove_write0s (remove_read1s schedule_info nid')
     in
-    (* To normal form *)
+    (* To simple form *)
     {| reads :=
         map
           (fun '(reg, (_, name)) => (reg, name))
           (read0s (sc_actions schedule_info_simpl));
        writes := write1s (sc_actions schedule_info_simpl);
        variables := sc_vars schedule_info_simpl;
-       external_calls := extcalls (sc_actions schedule_info_simpl)
-    |}.
-End Normalize.
-
-(* TODO try to pick more helpful names for expressions and actions *)
+       external_calls := extcalls (sc_actions schedule_info_simpl) |}.
+End SimpleForm.
 Close Scope nat.

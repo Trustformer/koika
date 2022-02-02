@@ -110,63 +110,6 @@ Section Syntax.
       end.
   End uaction_ind'.
 
-  Section uaction_eq_dec.
-    (* TODO move to Normalize.v *)
-    Context {reg_t ext_fn_t: Type}.
-    Context {reg_t_eq_dec: EqDec reg_t}.
-    Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
-
-    Program Definition beq_type_test
-      {tau tau': type} (a: type_denote tau') (Htau: tau = tau')
-    : type_denote tau.
-    Proof.
-      rewrite <- Htau in a.
-      apply a.
-    Defined.
-
-    Definition beq_type_vals
-      {tau tau': type} (a: type_denote tau) (b: type_denote tau')
-    : bool :=
-      match eq_dec tau tau' with
-      | left HEQ => beq_dec a (beq_type_test b HEQ)
-      | right HNEQ => false
-      end.
-
-    Fixpoint uaction_func_equiv (x y: @uaction reg_t ext_fn_t) : bool :=
-      match x, y with
-      | UError _, UError _ => true
-      | UFail _, UFail _ => true
-      | UVar var, UVar var' => beq_dec var var'
-      | @UConst _ _ tau cst, @UConst _ _ tau' cst' => beq_type_vals cst cst'
-      | UAssign v ex, UAssign v' ex' =>
-        beq_dec v v' && uaction_func_equiv ex ex'
-      | USeq a1 a2, USeq a1' a2' =>
-        uaction_func_equiv a1 a1' && uaction_func_equiv a2 a2'
-      | UBind v ex body, UBind v' ex' body' =>
-        beq_dec v v' && uaction_func_equiv ex ex'
-        && uaction_func_equiv body body'
-      | UIf cond tbranch fbranch, UIf cond' tbranch' fbranch' =>
-        uaction_func_equiv cond cond' && uaction_func_equiv tbranch tbranch'
-        && uaction_func_equiv fbranch fbranch'
-      | URead port idx, URead port' idx' =>
-        beq_dec port port' && beq_dec idx idx'
-      | UWrite port idx value, UWrite port' idx' value' =>
-        beq_dec port port' && beq_dec idx idx'
-        && uaction_func_equiv value value'
-      | UUnop ufn1 arg1, UUnop ufn1' arg1' =>
-        beq_dec ufn1 ufn1' && uaction_func_equiv arg1 arg1'
-      | UBinop ufn2 arg1 arg2, UBinop ufn2' arg1' arg2' =>
-        beq_dec ufn2 ufn2' && uaction_func_equiv arg1 arg1'
-        && uaction_func_equiv arg2 arg2'
-      | UExternalCall ufn arg, UExternalCall ufn' arg' =>
-        beq_dec ufn ufn' && uaction_func_equiv arg arg'
-      | UAPos _ e, UAPos _ e' => uaction_func_equiv e e'
-      (* No UInternalCall nor USugar: we don't intend to apply this function on
-         trees featuring these items *)
-      | _, _ => false
-      end.
-    End uaction_eq_dec.
-
   Inductive scheduler :=
   | Done
   | Cons (r: rule_name_t) (s: scheduler)
