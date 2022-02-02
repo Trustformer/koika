@@ -1,23 +1,28 @@
 (*! Proving | Transformation of a schedule into a proof-friendly form !*)
+(* TODO Not a normal form anymore but a new model entirely, change name to
+        reflect *)
 Require Import Coq.Numbers.DecimalString Coq.Program.Equality Coq.Strings.Ascii.
 Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils
   Koika.Zipper.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
-(* The reason why we go through the trouble of defining this normal form is
-   because the effects of a lot of implicit mechanisms (rules merging and
-   cancellation, etc) have to be explicitly taken into account when reasoning
-   about a schedule, and that abstract interpretation would be too slow for
-   complex models.
+(* When reasoning about a Koîka schedule, a lot of implicit mechanisms have to
+   be considered explicitly (rules merging, cancellation, ...). Furthermore,
+   performance issues related to abstract interpretation make reasoning about
+   the behavior of some even moderately complex models (e.g., the RISC-V
+   processor example) an impossibility.
 
-   In the normal form, everything is explicit. In particular, problems such as
-   finding under which conditions the value of a register is updated or proving
-   that the value of register x never reaches 5 become easier.
+   This is what this simpler form aims to fix. In particular, it makes finding
+   under which conditions the value of a register is updated or proving that the
+   value of register x never reaches 5 much easier (even trivial in certain
+   cases).
 
-   It goes without saying that a normalized schedule should be equivalent to
-   its initial form (in terms of the effects of a cycle on the final state of
-   the registers and the emitted extcalls). *)
+   It goes without saying that the result of the interpretation of a model
+   before or after its conversion to the form defined hereafter should be equal
+   (in terms of the effects of a cycle on the final state of the registers and
+   of the emitted extcalls, although the latter are not really considered in
+   Koîka's pure semantics). *)
 
 Open Scope nat.
 Section Normalize.
@@ -27,15 +32,7 @@ Section Normalize.
   Definition uact := uaction pos_t string string reg_t ext_fn_t.
   Definition schedule := scheduler pos_t rule_name_t.
 
-  (* A. Basics *)
-  (* A.1. Data structures *)
-  Record next_ids := mkNextIds {
-    ctx_id: nat; let_id: nat; extc_id: nat; rcond_id: nat; wcond_id: nat;
-    fcond_c_id: nat; fcond_nc_id: nat; ival_id: nat }.
-  Instance etaNextIds : Settable _ := settable! mkNextIds <
-    ctx_id; let_id; extc_id; rcond_id; wcond_id; fcond_c_id; fcond_nc_id;
-    ival_id >.
-
+  (* A. Normal form and related structures *)
   Definition read_info := uact.
   Definition read_log := list (reg_t * read_info).
   (* TODO switch back to strings for conds and edit their bindings to include
@@ -65,53 +62,27 @@ Section Normalize.
     sc_actions: action_logs;
     sc_vars: var_value_map; }.
   Record normal_form := mkNormalForm {
+    (* Equivalent to disjunction, why not stick to an uact? *)
     intermediate_values: write_log;
     final_values: write_log;
     vars: var_value_map;
     external_calls: extcall_log; }.
 
-  (* A.2. Helper functions *)
-  (* Remove Nones from list, turn rest from (Some x) to x. *)
-  Definition list_options_to_list (l: list (option uact)) : list uact :=
-    map
-      (fun i =>
-        match i with
-        | Some x => x
-        | None => (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) (* Unreachable *)
-        end)
-      (filter
-        (fun i => match i with None => false | Some _ => true end) l).
-
-  (* B. Variable names collisions management *)
-  (* We will need to generate some new variables when transforming individual
-     rules. For instance, an extcall can return a value which can be needed
-     elsewhere. Take the following example (pseudocode and approximation of the
-     real normal form, don't take it too literally):
-     let a := extcall("e1", 5) + 3 in
-     write0(r, a)
-     This will be transformed as:
-     [extcall ("e1", (true, "bind0", (5))), write0 (r, (true, "bind0" + 3))]
-     Therefore, we need a way to generate new variable names. Of course, we have
-     to be careful about name collisions. Our new variables will follow the form
-     of "bind0". To avoid collisions, we look for all the variables matching
-     this form that were initially present in the function. Then, adding 1 to
-     the maximum value that was found following a "bind" is enough. *)
-  (* B.1. Variables detection *)
-  Definition is_digit (c: ascii) : bool :=
-    let n := nat_of_ascii c in
-    ((Nat.leb 48 n) && (Nat.leb n 57)).
-
-  Fixpoint digits_to_nat_aux (d: list ascii) (acc: nat) : nat :=
-    match d with
-    | h::t => digits_to_nat_aux t (10 * acc + (nat_of_ascii h - 48))
-    | nil => acc
-    end.
-  (* Assumption: d contains digits only *)
-  Definition digits_to_nat (d: list ascii) : nat := digits_to_nat_aux d 0.
-
-  Scheme Equality for option.
+  (* B. Bindings names *)
+  (* TODO name collisions with previously standing variables can't possibly
+       happen anymore (we treat everything in order). This makes it easier to
+       give informative names to our variables. *)
   Inductive binding_type :=
   | ctxb | letb | extcb | rcondb | wcondb | fcond_cb | fcond_ncb | ivalb.
+  Record next_ids := mkNextIds {
+    ctx_id: nat; let_id: nat; extc_id: nat; rcond_id: nat; wcond_id: nat;
+    fcond_c_id: nat; fcond_nc_id: nat; ival_id: nat }.
+  Instance etaNextIds : Settable _ := settable! mkNextIds <
+    ctx_id; let_id; extc_id; rcond_id; wcond_id; fcond_c_id; fcond_nc_id;
+    ival_id >.
+  Definition initial_ids : next_ids := {|
+    ctx_id := 0; let_id := 0; extc_id := 0; rcond_id := 0; wcond_id := 0;
+    fcond_c_id := 0; fcond_nc_id := 0; ival_id := 0 |}.
 
   Definition get_prefix (b: binding_type) : string :=
     match b with
@@ -120,67 +91,10 @@ Section Normalize.
     | ivalb => "ival_"
     end.
 
-  Definition extract_custom_binding_digits (b: binding_type) (s: string)
-  : list ascii :=
-    let pl := String.length (get_prefix b) in
-    String.list_ascii_of_string (String.substring pl (String.length s - pl) s).
-
-  Definition matches_binding_form (b: binding_type) (s: string) : bool :=
-    let prefix := get_prefix b in
-    let maybe_digits := extract_custom_binding_digits b s in
-    (String.prefix prefix s)
-    && (negb (Nat.eqb (List.length maybe_digits) 0))
-    && (forallb is_digit maybe_digits)
-    (* First digit not zero - <binding_prefix>0 does not exist, start at 1*)
-    && (negb
-      (option_beq
-        ascii (Ascii.eqb) (hd_error maybe_digits) (Some "0"%char))).
-
-  (* B.2. Variables generation *)
-  Definition get_highest_binding_id_in_uact
-    (b: binding_type) (ua: uact) : nat
-  :=
-    let bindings := find_all_in_uaction ua (fun a =>
-      match a with
-      | UBind _ _ _ => true
-      | _ => false
-      end
-    ) in
-    let binding_names :=
-      map
-        (fun z =>
-          match access_zipper ua z with
-          | Some (UBind v _ _) => v
-          | _ => "" (* Unreachable - see above *)
-          end
-        ) bindings in
-    let matching_bindings := filter (matches_binding_form b) binding_names in
-    let binding_numbers :=
-      map
-        (fun s => digits_to_nat (extract_custom_binding_digits b s))
-        matching_bindings
-    in
-    list_max binding_numbers.
-  Definition get_highest_binding_id_in_rules
-    (b: binding_type) (rules: list uact) : nat
-  :=
-    list_max (map (get_highest_binding_id_in_uact b) rules).
-  Definition get_highest_bindings_ids (rules: list uact) : next_ids := {|
-    ctx_id := get_highest_binding_id_in_rules ctxb rules;
-    let_id := get_highest_binding_id_in_rules letb rules;
-    extc_id := get_highest_binding_id_in_rules extcb rules;
-    rcond_id := get_highest_binding_id_in_rules rcondb rules;
-    wcond_id := get_highest_binding_id_in_rules wcondb rules;
-    fcond_c_id := get_highest_binding_id_in_rules fcond_cb rules;
-    fcond_nc_id := get_highest_binding_id_in_rules fcond_ncb rules;
-    ival_id := get_highest_binding_id_in_rules ivalb rules
-  |}.
-
   Definition generate_binding_name (b: binding_type) (n: nat) : string :=
     String.append (get_prefix b) (NilEmpty.string_of_uint (Init.Nat.to_uint n)).
 
   (* C. rule_information extraction *)
-  (* The rule_information structure is defined in A.1. *)
   (* C.1. Addition of a new action into an existing rule_information *)
   (* C.1.a. Merger of failure conditions *)
   Definition or_conds (conds: list uact) :=
@@ -209,6 +123,17 @@ Section Normalize.
     end.
 
   (* C.1.b. Merger of actions *)
+  (* Remove Nones from list, turn rest from (Some x) to x. *)
+  Definition list_options_to_list (l: list (option uact)) : list uact :=
+    map
+      (fun i =>
+        match i with
+        | Some x => x
+        | None => (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) (* Unreachable *)
+        end)
+      (filter
+        (fun i => match i with None => false | Some _ => true end) l).
+
   Definition merge_conds (wl: option (list write_info)) : option uact :=
     match wl with
     | None => None
@@ -223,6 +148,7 @@ Section Normalize.
         l
         None
     end.
+
   Definition extract_wr_cond (wl: write_log) (reg: reg_t) :=
     merge_conds (list_assoc wl reg).
 
@@ -542,9 +468,8 @@ Section Normalize.
     | _ => (Some ua, var_map, [], None, al, nid) (* UConst *)
     end.
 
-  Definition get_rule_information (ua: uact) (nid: next_ids) :
-    rule_information * next_ids
-  :=
+  Definition get_rule_information (ua: uact) (nid: next_ids)
+  : rule_information * next_ids :=
     let '(_, _, vvm, failure, action_logs, nid') :=
       get_rule_information_aux
         ua [] (UConst (tau := bits_t 1) (Bits.of_nat 1 1))
@@ -756,32 +681,7 @@ Section Normalize.
       ([], nid).
 
   (* E.2. Merge duplicated actions across rules *)
-  (* At this point, we know that there is at most only one rd0/rd1/wr0/wr1
-     targeting a register in each action - see C.1.b. for details. This is not
-     true for external calls however (and that's fine: calls to the same
-     external function are allowed to occur multiple times in a single cycle).
-
-     Note that names need to be updated. For instance in the situation where
-     rule 1 reads register r on port 0 and names the result "bind0" whereas rule
-     2 performs the same action but uses the name "bind3" instead, it might well
-     be that one of rule 2's external calls refers "bind3". If the actions are
-     merged and the name "bind0" is kept, all the references to "bind3" have to
-     be updated accordingly. *)
-  (* E.2.a. Names update *)
-  Fixpoint rename_in_uact (from to: string) (ua: uact) :=
-    match ua with
-    | UVar v => if String.eqb from v then UVar to else UVar v
-    | UIf cond tb fb =>
-      UIf
-        (rename_in_uact from to cond) (rename_in_uact from to tb)
-        (rename_in_uact from to fb)
-    | UBinop ufn a1 a2 =>
-      UBinop ufn (rename_in_uact from to a1) (rename_in_uact from to a2)
-    | UUnop ufn a => UUnop ufn (rename_in_uact from to a)
-    | _ => ua
-    end.
-
-  (* E.2.b. Merge one rule *)
+  (* E.2.a. Merge one rule *)
   (* Used for both write0 and write1. *)
   Definition merge_next_write (reg: reg_t) (wl: write_log) (w: list write_info)
   : write_log :=
@@ -988,32 +888,25 @@ Section Normalize.
   Definition schedule_to_normal_form (s: schedule) : normal_form :=
     (* Get list of uact from scheduler *)
     let rules_l := schedule_to_list_of_rules s in
-    (* Prepare binding names generation *)
-    let last_action_init :=
-      list_max (map (get_highest_binding_id action) rules_l)
-    in
-    let last_expr_init :=
-      list_max (map (get_highest_binding_id expr) rules_l)
-    in
     (* Get rule_information from each rule *)
-    let '(rule_info_l, la', le') :=
+    let '(rule_info_l, nid') :=
       fold_left
-        (fun '(ri_acc, la', le') r =>
-          let '(ri, la'', le'') := get_rule_information r la' le' in
+        (fun '(ri_acc, nid') r =>
+          let '(ri, nid'') := get_rule_information r nid' in
           (* Not a fold right since we want the first rule to have the lowest
              indices. *)
-          (ri_acc++[ri], la'', le'')
+          (ri_acc++[ri], nid'')
         )
         rules_l
-        ([], last_action_init, last_expr_init)
+        ([], initial_ids)
     in
     (* Detect inter-rules conflicts *)
     let rule_info_with_conflicts_l := detect_all_conflicts rule_info_l in
     (* To schedule info, merge cancel conditions with actions conditions *)
-    let schedule_info := merge_schedule rule_info_with_conflicts_l le' in
+    let schedule_info := merge_schedule rule_info_with_conflicts_l nid' in
     (* Remove read1s and write0s *)
     let schedule_info_simpl :=
-      remove_write0s (remove_read1s schedule_info la')
+      remove_write0s (remove_read1s schedule_info nid')
     in
     (* To normal form *)
     {| reads :=

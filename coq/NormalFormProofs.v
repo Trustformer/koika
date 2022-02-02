@@ -1,6 +1,7 @@
 Require Import Coq.Strings.Ascii.
-Require Import Koika.BitsToLists Koika.Environments Koika.Normalize
-  Koika.TypeInference Koika.UntypedSemantics.
+Require Import Koika.Environments Koika.Normalize Koika.TypeInference
+  Koika.UntypedSemantics.
+Require Import Koika.BitsToLists.
 
 Section NormalForm.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -18,23 +19,100 @@ Section NormalForm.
     forall f: ext_fn_t, BitsToLists.val -> BitsToLists.val.
   Definition UREnv := REnv.(env_t) (fun _ => BitsToLists.val).
 
-  Fixpoint get_vars_in_simpl_uact (e: uact) : list string :=
+  Context (r: UREnv).
+  Context (sigma: ext_funs_defs).
+
+  Fixpoint contains_vars (e: uact) : bool :=
     match e with
-    | UBinop ufn a1 a2 =>
-      (get_vars_in_simpl_uact a1)++(get_vars_in_simpl_uact a2)
-    | UUnop ufn a1 => get_vars_in_simpl_uact a1
-    | UVar v => [v]
+    | UBinop ufn a1 a2 => orb (contains_vars a1) (contains_vars a2)
+    | UUnop ufn a1 => contains_vars a1
+    | UVar v => true
     | UIf cond tb fb =>
-      (get_vars_in_simpl_uact cond)
-      ++(get_vars_in_simpl_uact tb)
-      ++(get_vars_in_simpl_uact fb)
-    | _ => [] (* Should never happen *)
+      orb (contains_vars cond) (orb (contains_vars tb) (contains_vars fb))
+    | _ => false (* URead *)
     end.
 
-  Definition get_var_depth (v: string) (vvm: var_value_map) : option nat :=
-    match list_assoc vvm v with
+  Fixpoint replace_all_occurrences_in_uact (ua: uact) (from: string) (to: val)
+  : uact :=
+    match ua with
+    | UBinop ufn a1 a2 =>
+      UBinop
+        ufn (replace_all_occurrences_in_uact a1 from to)
+        (replace_all_occurrences_in_uact a2 from to)
+    | UUnop ufn a1 => UUnop ufn (replace_all_occurrences_in_uact a1 from to)
+    | UVar v =>
+      if (String.eqb v from) then
+        let bl := ubits_of_value to in
+        UConst (tau := bits_t (List.length bl)) (vect_of_list bl)
+      else UVar v
+    | UIf cond tb fb =>
+      UIf
+        (replace_all_occurrences_in_uact cond from to)
+        (replace_all_occurrences_in_uact tb from to)
+        (replace_all_occurrences_in_uact fb from to)
+    | _ => ua
+    end.
+
+  Definition replace_all_occurrences_in_map
+    (map: var_value_map) (from: string) (to: val)
+  : var_value_map :=
+    List.map
+      (fun '(reg, ua) => (reg, replace_all_occurrences_in_uact ua from to))
+      map.
+
+  Definition simplification_pass (vars: var_value_map)
+  : var_value_map * list (string * val) :=
+    List.fold_left
+      (fun '(vvm, l) '(reg, ua) =>
+        if negb (contains_vars ua) then
+          match interp_action r sigma [] log_empty log_empty ua with
+          | None => ([], []) (* Should never happen *)
+          | Some (_, v, _) =>
+            (replace_all_occurrences_in_map vvm reg v, (reg, v)::l)
+          end
+        else (vvm, l)
+      )
+      vars
+      (vars, []).
+
+  (* TODO Evaluate writes at the same time *)
+  Fixpoint simplify
+    (vars: @var_value_map pos_t reg_t ext_fn_t) (vals: list (string * val))
+    (fuel: nat)
+  : list (string * val) :=
+    match fuel with
+    | O => [] (* Should never happen *)
+    | S f' =>
+      let (vars', vals') := simplification_pass vars in
+      simplify vars' (vals'++vals) f'
+    end.
+
+  (* Simply replace variables by their definition and delegate to inter_action *)
+
+  Fixpoint interp_var_aux (variables: var_value_map) (v: uact) (fuel: nat)
+  : option val :=
+  match fuel with
+  | 0 => None
+  | S f' =>
+    match v with
+    | UBinop ufn a1 a2 => sigma2 ufn
+    | UUnop ufn a1 => 
+    | UVar v => 
+    | UIf cond tb fb =>
+    | URead p r =>
+      match p with
+      | P1 => None (* Illegal *)
+      | P0 => Some 
+      end
+    | _ => None (* Illegal *)
+    end.
+
+  (* Assuming called in the right order, should not result in a None *)
+  Definition interp_var (variables: var_value_map) (s: string) (fuel: nat)
+  : option val :=
+    match list_assoc variables s with
     | None => None
-    | Some e => Some (get_exp_depth e)
+    | Some v => interp_var_aux variables v
     end.
 
   Definition interp_cycle
