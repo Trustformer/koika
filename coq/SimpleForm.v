@@ -146,15 +146,7 @@ Section SimpleForm.
   Definition merge_conds (wl: option (list write_info)) : option uact :=
     match wl with
     | None => None
-    | Some l =>
-      fold_left
-        (fun acc entry =>
-          match acc with
-          | None => Some (wcond entry)
-          | Some x => Some (
-            UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x (wcond entry))
-          end)
-        l None
+    | Some l => or_conds (map wcond l)
     end.
 
   Definition merge_failures_list (action_cond: uact) (conds: list uact) :=
@@ -294,10 +286,10 @@ Section SimpleForm.
       let name := generate_binding_name letb (S (let_id nid_val)) in
       let '(ret_body, vm_body, vv_body, failures_body, al_body, nid_body) :=
         get_rule_information_aux
-          body ((name, var)::var_map) guard al_val
+          body ((var, name)::var_map) guard al_val
           (nid_val <| let_id := S (let_id nid_val) |>)
       in (
-        None, skipn 1 vm_body, (* var's binding goes out of scope *)
+        ret_body, skipn 1 vm_body (* var's binding goes out of scope *),
         vv_val++[(name, reduce ret_val)]++vv_body,
         merge_failures failures_val failures_body, al_body, nid_body)
     | UAssign var val =>
@@ -347,8 +339,9 @@ Section SimpleForm.
            contain some redundancy. *)
         get_rule_information_aux fb vm_cond guard_fb al_tb nid_tb
       in
-      (* Merge var maps: if vm_tb and vm_fb disagree for some value, generate a
-         new variable reflecting the condition and update the variables map. *)
+      (* Merge var maps: if vm_tb and vm_fb disagree for some variable, generate
+         a new variable reflecting the condition and update the variables map.
+       *)
       let '(vm_merge, vv_merge, let_id_merge) :=
         fold_left
           (fun '(acc, vv', let_id) '((str, n1), (_, n2)) =>
@@ -396,21 +389,21 @@ Section SimpleForm.
        merge_failures failures_a1 failures_a2, al_a2, nid_a2)
     | UInternalCall ufn args =>
       let '(arg_names, vm_args, vv_args, failure_args, al_args, nid_args) := (
-          fold_left
-            (fun '(names, vm_p, vv_p, failures_p, al_p, nid_p) a =>
-              let '(val_c, vm_c, vv_c, failure_c, al_c, nid_c) :=
-                get_rule_information_aux a vm_p guard al_p nid_p
-              in
-              let arg_bind_name :=
-                generate_binding_name letb (S (let_id nid_c))
-              in (
-                arg_bind_name::names, vm_c,
-                vv_p++vv_c++[(arg_bind_name, reduce val_c)],
-                merge_failures failure_c failures_p, al_c,
-                nid_c <| let_id := S (let_id nid_c) |>))
-            args
-            ([], var_map, [], None, al, nid)
-        ) in
+        fold_left
+          (fun '(names, vm_p, vv_p, failures_p, al_p, nid_p) a =>
+            let '(val_c, vm_c, vv_c, failure_c, al_c, nid_c) :=
+              get_rule_information_aux a vm_p guard al_p nid_p
+            in
+            let arg_bind_name :=
+              generate_binding_name letb (S (let_id nid_c))
+            in (
+              arg_bind_name::names, vm_c,
+              vv_p++vv_c++[(arg_bind_name, reduce val_c)],
+              merge_failures failure_c failures_p, al_c,
+              nid_c <| let_id := S (let_id nid_c) |>))
+          args
+          ([], var_map, [], None, al, nid)
+      ) in
       let vm_tmp :=
         combine
           (fst (split (int_argspec ufn))) (* Names from argspec *)
