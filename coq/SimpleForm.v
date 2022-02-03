@@ -1,7 +1,6 @@
 (*! Proving | Transformation of a schedule into a proof-friendly form !*)
 Require Import Coq.Numbers.DecimalString Coq.Program.Equality Coq.Strings.Ascii.
-Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils
-  Koika.Zipper.
+Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 

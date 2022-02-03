@@ -87,7 +87,6 @@ Section SimpleForm.
     end.
 
   (* Simply replace variables by their definition and delegate to inter_action *)
-
   Fixpoint interp_var_aux (variables: var_value_map) (v: uact) (fuel: nat)
   : option val :=
   match fuel with
