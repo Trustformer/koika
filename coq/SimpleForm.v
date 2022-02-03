@@ -42,17 +42,18 @@ Section SimpleForm.
   Record rule_information_raw := mkRuleInformationRaw {
     rir_read0s_cond: cond_log;
     rir_read1s_cond: cond_log;
-    rir_write0s_cond: cond_log;
-    rir_write1s_cond: cond_log;
-    rir_write0s: write_log;
-    rir_write1s: write_log;
+    (* rir_write*s are a blend between a cond_log and a write_log.
+       Note that the cond_log part could be deduced from the write_log part (so
+       to speak). *)
+    rir_write0s: list (reg_t * (uact * list (write_info)));
+    rir_write1s: list (reg_t * (uact * list (write_info)));
     rir_extcalls: extcall_log;
     rir_vars: var_value_map;
     rir_failure_cond: option uact }.
   Instance etaRuleInformationRaw : Settable _ :=
     settable! mkRuleInformationRaw <
-      rir_read0s_cond; rir_read1s_cond; rir_write0s_cond; rir_write1s_cond;
-      rir_write0s; rir_write1s; rir_extcalls; rir_vars; rir_failure_cond >.
+      rir_read0s_cond; rir_read1s_cond; rir_write0s; rir_write1s; rir_extcalls;
+      rir_vars; rir_failure_cond >.
   Record rule_information_clean := mkRuleInformationClean {
     ric_write0s: write_log;
     ric_write1s: write_log;
@@ -89,6 +90,7 @@ Section SimpleForm.
   Instance etaNextIds : Settable _ := settable! mkNextIds <
     ctx_id; let_id; extc_id; rcond_id; wcond_id; fcond_nc_id; fcond_c_id;
     ival_id >.
+
   Definition initial_ids : next_ids := {|
     ctx_id := 0; let_id := 0; extc_id := 0; rcond_id := 0; wcond_id := 0;
     fcond_c_id := 0; fcond_nc_id := 0; ival_id := 0 |}.
@@ -140,8 +142,7 @@ Section SimpleForm.
         | Some x => x
         | None => (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) (* Unreachable *)
         end)
-      (filter
-        (fun i => match i with None => false | Some _ => true end) l).
+      (filter (fun i => match i with None => false | Some _ => true end) l).
 
   Definition merge_conds (wl: option (list write_info)) : option uact :=
     match wl with
@@ -154,12 +155,8 @@ Section SimpleForm.
           | Some x => Some (
             UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x (wcond entry))
           end)
-        l
-        None
+        l None
     end.
-
-  Definition extract_wr_cond (wl: write_log) (reg: reg_t) :=
-    merge_conds (list_assoc wl reg).
 
   Definition merge_failures_list (action_cond: uact) (conds: list uact) :=
     match or_conds conds with
@@ -168,72 +165,72 @@ Section SimpleForm.
       Some (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) action_cond x)
     end.
 
-  Definition add_read0 (al: action_logs) (guard: string) (reg: reg_t)
-  (* Returns modified action_logs, failure conditions *)
-  : action_logs * option uact :=
-    let prev_wr0 := extract_wr_cond (write0s al) reg in
-    let prev_wr1 := extract_wr_cond (write1s al) reg in
-    let grd := UVar (guard) in
-    let failure_cond :=
-      merge_failures_list grd (list_options_to_list [prev_wr0; prev_wr1])
-    in
-    match list_assoc (read0s al) reg with
-    | None =>
-      (al <| read0s := list_assoc_set (read0s al) reg grd |>, failure_cond)
-    | Some cond' => (
-      al <|
-        read0s :=
-          list_assoc_set (read0s al) reg
-            (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) grd cond')
-      |>, failure_cond)
-    end.
+  Definition add_read0 (rir: rule_information_raw) (grd: string) (reg: reg_t)
+  (* Returns modified rir, failure conditions *)
+  : rule_information_raw * option uact := (
+      match list_assoc (rir_read0s_cond rir) reg with
+      | None =>
+        rir <| rir_read0s_cond :=
+          list_assoc_set (rir_read0s_cond rir) reg (UVar grd) |>
+      | Some cond' =>
+        rir <| rir_read0s_cond :=
+          list_assoc_set (rir_read0s_cond rir) reg
+            (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) cond' (UVar grd)) |>
+      end,
+      merge_failures_list (UVar grd) (
+        list_options_to_list
+          [option_map fst (list_assoc (rir_write0s rir) reg);
+           option_map fst (list_assoc (rir_write1s rir) reg)])).
 
-  Definition add_read1 (al: action_logs) (guard: string) (reg: reg_t)
+  Definition add_read1 (rir: rule_information_raw) (grd: string) (reg: reg_t)
   (* Returns modified action_logs, failure conditions *)
-  : action_logs * option uact :=
-    let prev_wr1 := extract_wr_cond (write1s al) reg in
-    let grd := UVar (guard) in
-    let failure_cond :=
-      merge_failures_list grd (list_options_to_list [prev_wr1])
-    in
-    match list_assoc (read1s al) reg with
-    | None => (
-      al <| read1s := list_assoc_set (read1s al) reg grd |>, failure_cond)
-    | Some cond' => (
-      al <|
-        read1s :=
-          list_assoc_set (read1s al) reg
-            (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) grd cond')
-      |>, failure_cond)
-    end.
+  : rule_information_raw * option uact := (
+    match list_assoc (rir_read1s_cond rir) reg with
+    | None =>
+      rir <| rir_read1s_cond :=
+        list_assoc_set (rir_read1s_cond rir) reg (UVar grd) |>
+    | Some cond' =>
+      rir <| rir_read1s_cond :=
+        list_assoc_set (rir_read1s_cond rir) reg
+          (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) cond' (UVar grd)) |>
+    end,
+    merge_failures_list (UVar grd)
+      (list_options_to_list [option_map fst (list_assoc (rir_write1s rir) reg)])
+  ).
 
   Definition add_write0
-    (al: action_logs) (guard: string) (reg: reg_t) (val: uact)
+    (rir: rule_information_raw) (grd: string) (reg: reg_t) (val: uact)
   (* Returns modified action_logs, failure conditions *)
-  : action_logs * option uact :=
-    let prev_wr0 := extract_wr_cond (write0s al) reg in
-    let prev_rd1 := list_assoc (read1s al) reg in
-    let prev_wr1 := extract_wr_cond (write1s al) reg in
-    let grd := UVar (guard) in
-    let failure_cond :=
-      merge_failures_list
-        grd (list_options_to_list [prev_wr0; prev_wr1; prev_rd1])
-    in
-    (* Somewhat redundant with extract_write0_cond *)
-    match list_assoc (write0s al) reg with
-    | None => (
-      al <|
-        write0s :=
-          list_assoc_set
-            (write0s al) reg [{| wcond := UVar guard; wval := val |}]
-      |>, failure_cond)
-    | Some l => (
-      al <|
-        write0s :=
-          list_assoc_set (write0s al) reg
-          (l++[{| wcond := UVar guard; wval := val |}])
-      |>, failure_cond)
-    end.
+  : rule_information_raw * option uact := (
+    match list_assoc (rir_write0s_cond rir) reg with
+    | None =>
+      rir <| rir_write0s_cond :=
+        list_assoc_set (rir_write0s_cond rir) reg (UVar grd)
+      |> <| rir_write0s :=
+        list_assoc_set (rir_write0s rir) reg
+          [{| wcond := UVar grd; wval := val |}]
+      |>
+    | Some c =>
+      match (rir_write0s_cond rir) with
+
+    match list_assoc (rir_write0s_cond rir) reg with
+      rir <| rir_write0s_cond :=
+        list_assoc_set (rir_write0s_cond rir) reg (UVar grd)
+      |> <| rir_write0s :=
+        list_assoc_set (rir_write0s rir) reg
+          [{| wcond := UVar grd; wval := val |}]
+      |>
+      rir <|
+        rir_write0s_cond :=
+          list_assoc_set (rir_write0s_cond rir) reg
+            (l++[{| wcond := UVar grd; wval := val |}]) |>
+        rir_write0s :=
+    end,
+    merge_failures_list
+      grd (list_options_to_list
+        [list_assoc (rir_write0s_cond rir) reg;
+         list_assoc (rir_read1s_cond rir) reg;
+         list_assoc (rir_write1s_cond rir) reg])).
 
   Definition add_write1
     (al: action_logs) (guard: string) (reg: reg_t) (val: uact)
@@ -244,7 +241,6 @@ Section SimpleForm.
     let failure_cond :=
       merge_failures_list grd (list_options_to_list [prev_wr1])
     in
-    (* Somewhat redundant with extract_write0_cond *)
     match list_assoc (write1s al) reg with
     | None => (
       al <|
@@ -548,7 +544,7 @@ Section SimpleForm.
     fold_left
       (fun acc '(reg, l) =>
         match extract_wr_cond wl reg with
-        | None => None (* Illegal *)
+        | None => None (* Unreachable *)
         | Some c =>
           detect_conflicts_step acc al c reg detect_conflicts_write0s_reg
         end)
@@ -564,7 +560,7 @@ Section SimpleForm.
     fold_left
       (fun acc '(reg, l) =>
         match extract_wr_cond wl reg with
-        | None => None (* Illegal *)
+        | None => None (* Unreachable *)
         | Some c =>
           detect_conflicts_step acc al c reg detect_conflicts_write1s_reg
         end)
