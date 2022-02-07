@@ -4,7 +4,7 @@ Require Import rv.RVCore rv.rv32.
 Require Import rv.ShadowStack.
 
 (* TODO remove, imported for temporary tests *)
-Require Import rv.InstructionsProperties Koika.Normalize Koika.Utils.
+Require Import rv.InstructionsProperties Koika.SimpleForm Koika.Utils.
 
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
@@ -74,7 +74,7 @@ Definition is_module_call
     UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem
     |> Dmem |> Tick |> EndExecution |> done.
   Definition rules_desug := (fun x => (desugar_action tt (rv_urules x))).
-  Time Compute (schedule_to_normal_form rules_desug sch).
+  Time Compute (schedule_to_simple_form sch rules_desug).
 
 (*   Definition rules_l := schedule_to_list_of_rules rules_desug sch2. *)
 (*   Definition last_action_init := *)

@@ -86,7 +86,8 @@ Section SimpleForm.
       simplify vars' (vals'++vals) f'
     end.
 
-  (* Simply replace variables by their definition and delegate to inter_action *)
+  (* Simply replace variables by their definition and delegate to
+     interp_action *)
   Fixpoint interp_var_aux (variables: var_value_map) (v: uact) (fuel: nat)
   : option val :=
   match fuel with
@@ -100,7 +101,7 @@ Section SimpleForm.
     | URead p r =>
       match p with
       | P1 => None (* Illegal *)
-      | P0 => Some 
+      | P0 => Some (* TODO *)
       end
     | _ => None (* Illegal *)
     end.
