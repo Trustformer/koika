@@ -8,9 +8,9 @@ Import RecordSetNotations.
    have to be considered explicitly (rules merging, cancellation, ...).
    Furthermore, performance issues related to abstract interpretation make
    reasoning about the behavior of some even moderately complex models (e.g.,
-   the RISC-V processor example) an impossibility.
+   the RISC-V processor example) impossible.
 
-   This is what this simpler form aims to fix. In particular, it makes finding
+   This is what this simpler form aims to fix. For instance, it makes finding
    under which conditions the value of a register is updated or proving that the
    value of register x never reaches 5 much easier (even trivial in certain
    cases).
@@ -36,6 +36,8 @@ Section SimpleForm.
   Definition write_log_raw := list (reg_t * (uact * list (write_info))).
   Record extcall_info := mkExtcallInfo
     { econd: uact; earg: uact; ebind: string }.
+  Instance etaExtcallInfo : Settable _ :=
+    settable! mkExtcallInfo < econd; earg; ebind >.
   Definition extcall_log := list (ext_fn_t * extcall_info).
   Definition var_value_map := list (string * uact).
 
@@ -79,19 +81,17 @@ Section SimpleForm.
   (* TODO name collisions with previously standing variables can't possibly
        happen anymore (we treat everything in order). This makes it easier to
        give informative names to our variables. *)
+  (* TODO r/wcondb unused *)
   Inductive binding_type :=
   | ctxb | letb | extcb | rcondb | wcondb | fcond_ncb | fcond_cb | ivalb
   | fvalb.
   Record next_ids := mkNextIds {
-    ctx_id: nat; let_id: nat; extc_id: nat; rcond_id: nat; wcond_id: nat;
-    fcond_nc_id: nat; fcond_c_id: nat; ival_id: nat; fval_id: nat }.
-  Instance etaNextIds : Settable _ := settable! mkNextIds <
-    ctx_id; let_id; extc_id; rcond_id; wcond_id; fcond_nc_id; fcond_c_id;
-    ival_id; fval_id >.
+    ctx_id: nat; let_id: nat; extc_id: nat }.
+  Instance etaNextIds : Settable _ := settable! mkNextIds
+    < ctx_id; let_id; extc_id >.
 
   Definition initial_ids : next_ids := {|
-    ctx_id := 0; let_id := 0; extc_id := 0; rcond_id := 0; wcond_id := 0;
-    fcond_c_id := 0; fcond_nc_id := 0; ival_id := 0; fval_id := 0 |}.
+    ctx_id := 0; let_id := 0; extc_id := 0 |}.
 
   Definition get_prefix (b: binding_type) : string :=
     match b with
@@ -625,9 +625,9 @@ Section SimpleForm.
   : rule_information_clean :=
     let cond := (UVar fail_var_name) in
     ric
-      <| ric_write0s := prepend_condition_writes cond (ric_write0s ric) |>
-      <| ric_write1s := prepend_condition_writes cond (ric_write1s ric) |>
-      <| ric_extcalls := prepend_condition_extcalls cond (ric_extcalls ric) |>.
+      <|ric_write0s := prepend_condition_writes cond (ric_write0s ric)|>
+      <|ric_write1s := prepend_condition_writes cond (ric_write1s ric)|>
+      <|ric_extcalls := prepend_condition_extcalls cond (ric_extcalls ric)|>.
 
   Definition to_negated_cond (cond: option uact) : uact :=
     match cond with
@@ -635,24 +635,23 @@ Section SimpleForm.
     | None => UConst (tau := bits_t 1) (Bits.of_nat 1 1)
     end.
 
-  Definition integrate_failures
-    (ri: list rule_information_clean) (nid: next_ids)
-  : list rule_information_clean * next_ids :=
-    fold_left
-      (fun '(acc, nid') r =>
-        let fail_var_name :=
-          generate_binding_name fcond_ncb (S (fcond_nc_id nid))
-        in
-        let not_failure_cond := to_negated_cond (ric_failure_cond r) in (
-          ((prepend_failure_actions r fail_var_name)
-            (* TODO perhaps return not_failure_cond separately and regroup all
-               such variables at the end of the list so as to preserve order *)
-            <| ric_vars := (ric_vars r)++[(fail_var_name, not_failure_cond)] |>
-            <| ric_failure_cond := None |>
-          )::acc,
-          nid <| fcond_nc_id := S (fcond_nc_id nid') |>))
-      ri
-      ([], nid).
+  Definition integrate_failures (ri: list rule_information_clean)
+  : list rule_information_clean :=
+    let (res, _) :=
+      fold_left
+        (fun '(acc, id') r =>
+          let fail_var_name := generate_binding_name fcond_ncb id' in
+          let not_failure_cond := to_negated_cond (ric_failure_cond r) in (
+            ((prepend_failure_actions r fail_var_name)
+              (* TODO perhaps return not_failure_cond separately and regroup all
+                 such variables at the end of the list so as to preserve order
+                *)
+              <|ric_vars := (ric_vars r)++[(fail_var_name, not_failure_cond)]|>
+              <|ric_failure_cond := None|>
+            )::acc, S id'))
+        ri
+        ([], 0)
+    in res.
 
   (* E.2. Merge duplicated actions across rules *)
   (* E.2.a. Merge one rule *)
@@ -692,11 +691,10 @@ Section SimpleForm.
     | h::t => UIf (wcond h) (wval h) (write_log_to_uact r t p)
     end.
 
-  Definition merge_schedule
-    (rules_info: list rule_information_clean) (nid: next_ids)
+  Definition merge_schedule (rules_info: list rule_information_clean)
   (* next_ids isn't used past this point and therefore isn't returned *)
   : schedule_information :=
-    let '(rules_info', le') := integrate_failures rules_info nid in
+    let rules_info' := integrate_failures rules_info in
     let res := fold_left
       merge_single_rule (tl rules_info')
       {| ric_write0s := []; ric_write1s := []; ric_extcalls := [];
@@ -821,18 +819,11 @@ Section SimpleForm.
     let (r, _) :=
       fold_left
         (fun '(table, vars, id) r =>
-          if (list_assoc table r) (* TODO useless, unicity guaranteed *)
-          then (table, vars, id)
-          else
-            let binding_name := generate_binding_name ivalb (S id) in
-            ((r, binding_name)::table,
-             (binding_name, get_intermediate_value s r)::vars,
-             S id))
+          let name := generate_binding_name ivalb (S id) in
+          ((r, name)::table, (name, get_intermediate_value s r)::vars, S id))
         regs ([], [], 0)
     in r.
 
-  (* We don't care about next_ids after this pass, hence no need to return *)
-  (* TODO no need for ival in next_ids *)
   Definition remove_read1s
     (s: schedule_information) (active_regs: list reg_t)
     (ivt: list (reg_t * string))
@@ -908,7 +899,7 @@ Section SimpleForm.
     (* Detect inter-rules conflicts *)
     let rule_info_with_conflicts_l := detect_all_conflicts rule_info_l in
     (* To schedule info, merge cancel conditions with actions conditions *)
-    let schedule_info := merge_schedule rule_info_with_conflicts_l nid' in
+    let schedule_info := merge_schedule rule_info_with_conflicts_l in
     (* To simple form *)
     remove_interm schedule_info.
 End SimpleForm.

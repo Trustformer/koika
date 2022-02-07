@@ -2,6 +2,8 @@ Require Import Coq.Strings.Ascii.
 Require Import Koika.Environments Koika.SimpleForm Koika.TypeInference
   Koika.UntypedSemantics.
 Require Import Koika.BitsToLists.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section SimpleForm.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -53,32 +55,69 @@ Section SimpleForm.
     | _ => ua
     end.
 
-  Definition replace_all_occurrences_in_map
-    (map: var_value_map) (from: string) (to: val)
+  Definition replace_all_occurrences_in_vars
+    (vars: var_value_map) (from: string) (to: val)
   : var_value_map :=
-    List.map
+    map
       (fun '(reg, ua) => (reg, replace_all_occurrences_in_uact ua from to))
-      map.
+      vars.
 
-  Definition simplification_pass (vars: var_value_map)
-  : var_value_map * list (string * val) :=
-    List.fold_left
-      (fun '(vvm, l) '(reg, ua) =>
-        if negb (contains_vars ua) then
-          match interp_action r sigma [] log_empty log_empty ua with
+  Definition replace_all_occurrences_in_extcalls
+    (extc: extcall_log) (from: string) (to: val)
+  : extcall_log :=
+    map
+      (fun '(en, ei) => (en, {|
+        econd := replace_all_occurrences_in_uact (econd ei) from to;
+        earg := replace_all_occurrences_in_uact (earg ei) from to;
+        ebind := ebind ei |}))
+      extc.
+
+  (* TODO simplify as well: initial simpl pass then whenever change *)
+  Definition replace_all_occurrences (sf: simple_form) (from: string) (to: val)
+  : simple_form := {|
+    final_values := final_values sf;
+    vars := replace_all_occurrences_in_vars (vars sf) from to;
+    external_calls :=
+      replace_all_occurrences_in_extcalls (external_calls sf) from to
+  |}.
+
+  Definition simplification_pass (sf: simple_form)
+  : simple_form * list (string * val) :=
+    let (sf', l) :=
+      fold_left
+        (fun '(sf', l) '(var, ua) =>
+          if negb (contains_vars ua) then
+            match interp_action r sigma [] log_empty log_empty ua with
+            | None => (sf', []) (* Should never happen *)
+            (* TODO remove var from sf' as well *)
+            | Some (_, v, _) => (replace_all_occurrences sf' var v, (var, v)::l)
+            end
+          else (sf', l))
+        (vars sf) (sf, [])
+    in
+    fold_left
+      (fun acc '(efn, ei) =>
+        if (negb (contains_var (econd ei))) then
+          match interp_action r sigma [] log_empty log_empty (econd ei) with
           | None => ([], []) (* Should never happen *)
-          | Some (_, v, _) =>
-            (replace_all_occurrences_in_map vvm reg v, (reg, v)::l)
+          | Some (_, cv, _) =>
+            if (eqb cv 1) then
+              if (negb (contains_var (earg ei)))
+                match
+                  interp_action r sigma [] log_empty log_empty
+                    (UExternalCall efn (earg ei))
+                with
+                | None => (* Should never happen *)
+                | Some (_, r, _) => (* *)
+                end
+              else (* Simplify cond *)
+            else (* Remove: dead branch *)
           end
-        else (vvm, l))
-      vars
-      (vars, []).
+        else)
+      extcalls ().
 
-  (* TODO Evaluate writes at the same time *)
-  Fixpoint simplify
-    (vars: @var_value_map pos_t reg_t ext_fn_t) (vals: list (string * val))
-    (fuel: nat)
-  : list (string * val) :=
+  Fixpoint simplify (sf: simple_form) (fuel: nat) : list (string * val) :=
+    let sf_simpl := initial_simplification sf in
     match fuel with
     | O => [] (* Should never happen *)
     | S f' =>
