@@ -1,6 +1,6 @@
 (*! Proving | Transformation of a schedule into a proof-friendly form !*)
 Require Import Coq.Numbers.DecimalString Coq.Program.Equality Coq.Strings.Ascii.
-Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax Koika.Utils.
+Require Import Koika.BitsToLists Koika.Primitives Koika.Syntax.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
@@ -28,6 +28,11 @@ Section SimpleForm.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
   Definition uact := uaction pos_t string string reg_t ext_fn_t.
   Definition schedule := scheduler pos_t rule_name_t.
+
+  Definition const_nil :=
+    @UConst pos_t string string reg_t ext_fn_t (bits_t 0) (Bits.of_nat 0 0).
+  Definition const_true :=
+    @UConst pos_t string string reg_t ext_fn_t (bits_t 1) (Bits.of_nat 1 1).
 
   (* A. Simple form and related structures *)
   Definition cond_log := list (reg_t * uact).
@@ -135,7 +140,7 @@ Section SimpleForm.
       (fun i =>
         match i with
         | Some x => x
-        | None => (UConst (tau := bits_t 0) (Bits.of_nat 0 0)) (* Unreachable *)
+        | None => const_nil (* Unreachable *)
         end)
       (filter (fun i => match i with None => false | Some _ => true end) l).
 
@@ -234,7 +239,7 @@ Section SimpleForm.
   (* C.2. Extraction of actions from rule *)
   Definition reduce (ua: option uact) : uact :=
     match ua with
-    | None => UConst (tau := bits_t 0) (Bits.of_nat 0 0)
+    | None => const_nil
     | Some x => x
     end.
 
@@ -428,12 +433,8 @@ Section SimpleForm.
       let new_rir := add_extcall rir guard ufn arg name in
       (Some (UVar name), vm_arg, vv_arg, failures_arg, new_rir,
        nid_arg <| extc_id := S (extc_id nid_arg) |>)
-    | UError _ =>
-      (None, env, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)), rir,
-       nid)
-    | UFail _ =>
-      (None, env, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)), rir,
-       nid)
+    | UError _ => (None, env, [], Some (const_true), rir, nid)
+    | UFail _ => (None, env, [], Some (const_true), rir, nid)
     | _ => (Some ua, env, [], None, rir, nid) (* UConst *)
     end.
 
@@ -441,7 +442,7 @@ Section SimpleForm.
   : rule_information_raw * next_ids :=
     let '(_, _, vvm, failure, rule_information_raw, nid') :=
       get_rule_information_aux
-        ua [] (UConst (tau := bits_t 1) (Bits.of_nat 1 1))
+        ua [] const_true
         {| rir_read0s := []; rir_read1s := []; rir_write0s := [];
            rir_write1s := []; rir_extcalls := []; rir_vars := [];
            rir_failure_cond := None |}
@@ -627,7 +628,7 @@ Section SimpleForm.
   Definition to_negated_cond (cond: option uact) : uact :=
     match cond with
     | Some x => UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x
-    | None => UConst (tau := bits_t 1) (Bits.of_nat 1 1)
+    | None => const_true
     end.
 
   Definition integrate_failures (ri: list rule_information_clean)

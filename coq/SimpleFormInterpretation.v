@@ -24,6 +24,13 @@ Section SimpleForm.
   Context (r: UREnv).
   Context (sigma: ext_funs_defs).
 
+  Definition const_nil :=
+    @UConst pos_t string string reg_t ext_fn_t (bits_t 0) (Bits.of_nat 0 0).
+  Definition const_false :=
+    @UConst pos_t string string reg_t ext_fn_t (bits_t 1) (Bits.of_nat 1 0).
+  Definition const_true :=
+    @UConst pos_t string string reg_t ext_fn_t (bits_t 1) (Bits.of_nat 1 1).
+
   Fixpoint contains_vars (e: uact) : bool :=
     match e with
     | UBinop ufn a1 a2 => orb (contains_vars a1) (contains_vars a2)
@@ -116,6 +123,7 @@ Section SimpleForm.
 
   Definition simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
   : simple_form * list (string * val) :=
+    (* Try to determine the value of variables *)
     let (sf', lv) :=
       fold_left
         (fun '(sf', l) '(var, ua) =>
@@ -129,6 +137,7 @@ Section SimpleForm.
           else (sf', l))
         (vars sf) (sf, [])
     in
+    (* Try to determine the result of extcalls *)
     fold_left
       (fun '(sf'', l) '(efn, ei) =>
         if (negb (contains_vars (econd ei))) then
@@ -153,22 +162,68 @@ Section SimpleForm.
         else (sf'', l))
       (external_calls sf') (sf', lv).
 
-  (* TODO *)
+  (* Cycles between variables are possible (a variable v can depend on another
+     variable which itself depends on v). However, these can only occur in
+     situations in which the cycle can be removed by applying some
+     simplifications to the expression. We know this because of the way simple
+     forms passed to this function are expected to have been built.
+
+     Note that we don't need our simplifications to be exhaustive: for instance
+     we choose to ignore that an and can be short-circuited based on its right
+     operand. *)
   Fixpoint simplify_uact (ua: uact) : uact :=
     match ua with
-    | UIf =>
-    | UBinop =>
-    end
+    | UIf cond tb fb =>
+      let cond' := simplify_uact cond in
+      let tb' := simplify_uact tb in
+      let fb' := simplify_uact fb in
+      if (negb (contains_vars cond')) then
+        match interp_action r sigma [] log_empty log_empty cond' with
+        | Some (_, Bits 1 [true], _) => tb'
+        | Some (_, Bits 1 [false], _) => fb'
+        | _ => UVar "ERROR cond" (* Should never happen *)
+        end
+      else UIf cond' tb' fb'
+    | UBinop ufn a1 a2 =>
+      let a1' := simplify_uact a1 in
+      let a2' := simplify_uact a2 in
+      if andb (negb (contains_vars a1')) (contains_vars a2') then
+        match ufn with
+        | PrimUntyped.UBits2 PrimUntyped.UAnd =>
+          match interp_action r sigma [] log_empty log_empty a1' with
+          | Some (_, Bits 1 [false], _) => const_false
+          | Some (_, Bits 1 [true], _) => a2'
+          | _ => UVar "ERROR binop or" (* Should never happen *)
+          end
+        | PrimUntyped.UBits2 PrimUntyped.UOr =>
+          match interp_action r sigma [] log_empty log_empty a2' with
+          | Some (_, Bits 1 [true], _) => const_true
+          | Some (_, Bits 1 [false], _) => a2'
+          | _ => UVar "ERROR binop and" (* Should never happen *)
+          end
+        | _ => UBinop ufn a1' a2'
+        end
+      else UBinop ufn a1' a2'
+    | UUnop ufn a => (* Perhaps not strictly required *)
+        UUnop ufn (simplify_uact a)
+    | _ => ua
+    end.
 
   Definition initial_simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
-  : simple_form :=
-    let 
-  .
+  : simple_form := {|
+    final_values := final_values sf;
+    vars := map (fun '(vn, vu) => (vn, simplify_uact vu)) (vars sf);
+    external_calls :=
+      map
+        (fun '(efn, ei) => (efn, {|
+          econd := simplify_uact (econd ei); earg := simplify_uact (earg ei);
+          ebind := ebind ei; |}))
+        (external_calls sf) |}.
 
   Fixpoint simplify
     (sf: @simple_form pos_t reg_t ext_fn_t) (fuel: nat)
   : list (string * val) :=
-    let sf_simpl := initial_simplification sf in
+    let sf_simpl := initial_simplification_pass sf in
     match fuel with
     | O => [] (* Should never happen *)
     | S f' =>
