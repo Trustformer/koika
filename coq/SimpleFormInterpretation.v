@@ -78,45 +78,96 @@ Section SimpleForm.
     final_values := final_values sf;
     vars := replace_all_occurrences_in_vars (vars sf) from to;
     external_calls :=
-      replace_all_occurrences_in_extcalls (external_calls sf) from to
-  |}.
+      replace_all_occurrences_in_extcalls (external_calls sf) from to |}.
 
-  Definition simplification_pass (sf: simple_form)
+  (* TODO use coq record update here as well *)
+  (* TODO variable in environment instead of inlining *)
+
+  Definition remove_by_name_extc
+    (sf: @simple_form pos_t reg_t ext_fn_t) (name: string)
+  : simple_form := {|
+    final_values := final_values sf;
+    vars := vars sf;
+    external_calls :=
+      filter (fun '(_, ei) => eqb (ebind ei) name) (external_calls sf) |}.
+
+  Definition remove_by_name_var
+    (sf: @simple_form pos_t reg_t ext_fn_t) (name: string)
+  : simple_form := {|
+    final_values := final_values sf;
+    vars := filter (fun '(n, _) => eqb n name) (vars sf);
+    external_calls := external_calls sf |}.
+
+  Definition set_cond_true_by_name
+    (sf: @simple_form pos_t reg_t ext_fn_t) (name: string)
+  : simple_form := {|
+    final_values := final_values sf;
+    vars := vars sf;
+    external_calls :=
+      map
+        (fun '(efn, ei) =>
+          if eqb name (ebind ei)
+          then (
+            efn,
+            {| econd := UConst (tau := bits_t 1) (Bits.of_nat 1 1);
+               earg := earg ei; ebind := ebind ei |})
+          else (efn, ei))
+        (external_calls sf) |}.
+
+  Definition simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
   : simple_form * list (string * val) :=
-    let (sf', l) :=
+    let (sf', lv) :=
       fold_left
         (fun '(sf', l) '(var, ua) =>
           if negb (contains_vars ua) then
             match interp_action r sigma [] log_empty log_empty ua with
             | None => (sf', []) (* Should never happen *)
-            (* TODO remove var from sf' as well *)
-            | Some (_, v, _) => (replace_all_occurrences sf' var v, (var, v)::l)
+            | Some (_, v, _) => (
+               replace_all_occurrences (remove_by_name_var sf' var) var v,
+               (var, v)::l)
             end
           else (sf', l))
         (vars sf) (sf, [])
     in
     fold_left
-      (fun acc '(efn, ei) =>
-        if (negb (contains_var (econd ei))) then
+      (fun '(sf'', l) '(efn, ei) =>
+        if (negb (contains_vars (econd ei))) then
           match interp_action r sigma [] log_empty log_empty (econd ei) with
-          | None => ([], []) (* Should never happen *)
+          | None => (sf'', []) (* Should never happen *)
           | Some (_, cv, _) =>
-            if (eqb cv 1) then
-              if (negb (contains_var (earg ei)))
+            match cv with
+            | Bits 1 [true] => 
+              if (negb (contains_vars (earg ei))) then
                 match
                   interp_action r sigma [] log_empty log_empty
                     (UExternalCall efn (earg ei))
                 with
-                | None => (* Should never happen *)
-                | Some (_, r, _) => (* *)
+                | None => (sf'', l) (* Should nevet_r happen *)
+                | Some (_, r, _) =>
+                  (remove_by_name_extc sf'' (ebind ei), (ebind ei, r)::l)
                 end
-              else (* Simplify cond *)
-            else (* Remove: dead branch *)
+              else (set_cond_true_by_name sf'' (ebind ei), l)
+            | _ => (remove_by_name_extc sf'' (ebind ei), l)
+            end
           end
-        else)
-      extcalls ().
+        else (sf'', l))
+      (external_calls sf') (sf', lv).
 
-  Fixpoint simplify (sf: simple_form) (fuel: nat) : list (string * val) :=
+  (* TODO *)
+  Fixpoint simplify_uact (ua: uact) : uact :=
+    match ua with
+    | UIf =>
+    | UBinop =>
+    end
+
+  Definition initial_simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
+  : simple_form :=
+    let 
+  .
+
+  Fixpoint simplify
+    (sf: @simple_form pos_t reg_t ext_fn_t) (fuel: nat)
+  : list (string * val) :=
     let sf_simpl := initial_simplification sf in
     match fuel with
     | O => [] (* Should never happen *)
@@ -127,7 +178,7 @@ Section SimpleForm.
 
   (* Simply replace variables by their definition and delegate to
      interp_action *)
-  Fixpoint interp_var_aux (variables: var_value_map) (v: uact) (fuel: nat)
+  Fixpoint interp_var_aux (registers: list (reg_t * uact)) (v: uact) (fuel: nat)
   : option val :=
   match fuel with
   | 0 => None
@@ -146,7 +197,7 @@ Section SimpleForm.
     end.
 
   (* Assuming called in the right order, should not result in a None *)
-  Definition interp_var (variables: var_value_map) (s: string) (fuel: nat)
+  Definition interp_var (registers: list (reg_t * uact)) (s: string) (fuel: nat)
   : option val :=
     match list_assoc variables s with
     | None => None

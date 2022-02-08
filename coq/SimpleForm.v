@@ -81,23 +81,20 @@ Section SimpleForm.
   (* TODO name collisions with previously standing variables can't possibly
        happen anymore (we treat everything in order). This makes it easier to
        give informative names to our variables. *)
-  (* TODO r/wcondb unused *)
   Inductive binding_type :=
-  | ctxb | letb | extcb | rcondb | wcondb | fcond_ncb | fcond_cb | ivalb
-  | fvalb.
-  Record next_ids := mkNextIds {
-    ctx_id: nat; let_id: nat; extc_id: nat }.
-  Instance etaNextIds : Settable _ := settable! mkNextIds
-    < ctx_id; let_id; extc_id >.
+  | ctxb | letb | extcb | wcondb | fcond_ncb | fcond_cb | ivalb | fvalb.
+  Record next_ids := mkNextIds { ctx_id: nat; let_id: nat; extc_id: nat }.
+  Instance etaNextIds : Settable _ :=
+    settable! mkNextIds < ctx_id; let_id; extc_id >.
 
-  Definition initial_ids : next_ids := {|
-    ctx_id := 0; let_id := 0; extc_id := 0 |}.
+  Definition initial_ids : next_ids :=
+    {| ctx_id := 0; let_id := 0; extc_id := 0 |}.
 
   Definition get_prefix (b: binding_type) : string :=
     match b with
-    | ctxb => "ctx_" | letb => "let_" | extcb => "extc_" | rcondb => "rcond_"
-    | wcondb => "wcond_" | fcond_ncb => "fcond_nc_" | fcond_cb => "fcond_c_"
-    | ivalb => "ival_" | fvalb => "fval_"
+    | ctxb => "ctx_" | letb => "let_" | extcb => "extc_" | wcondb => "wcond_"
+    | fcond_ncb => "fcond_nc_" | fcond_cb => "fcond_c_" | ivalb => "ival_"
+    | fvalb => "fval_"
     end.
 
   Definition generate_binding_name (b: binding_type) (n: nat) : string :=
@@ -249,10 +246,10 @@ Section SimpleForm.
        different actions are also dealt with here - see C.1. *)
     (* TODO improve guards management *)
     (* TODO guard could be option string instead *)
-    (ua: uact) (var_map: list (string * string)) (guard: uact)
+    (ua: uact) (env: list (string * string)) (guard: uact)
     (rir: rule_information_raw) (nid: next_ids)
-    (* Returns value, var_map, var_values, failure condition,
-       rule_information_raw, next_ids *)
+    (* Returns value, env, var_values, failure condition, rule_information_raw,
+       next_ids *)
   : option uact * list (string * string) * (list (string * uact))
     * (option uact) * rule_information_raw * next_ids
     (* TODO remove redundancies with rule_information_raw (failure_cond,
@@ -261,12 +258,12 @@ Section SimpleForm.
     match ua with
     | UBind var val body =>
       let '(ret_val, vm_val, vv_val, failures_val, rir_val, nid_val) :=
-        get_rule_information_aux val var_map guard rir nid
+        get_rule_information_aux val env guard rir nid
       in
       let name := generate_binding_name letb (S (let_id nid_val)) in
       let '(ret_body, vm_body, vv_body, failures_body, rir_body, nid_body) :=
         get_rule_information_aux
-          body ((var, name)::var_map) guard rir_val
+          body ((var, name)::env) guard rir_val
           (nid_val <| let_id := S (let_id nid_val) |>)
       in (
         ret_body, skipn 1 vm_body (* var's binding goes out of scope *),
@@ -274,21 +271,21 @@ Section SimpleForm.
         merge_failures failures_val failures_body, rir_body, nid_body)
     | UAssign var val =>
       let '(ret_val, vm_val, vv_val, failures_val, rir_val, nid_val) :=
-        get_rule_information_aux val var_map guard rir nid
+        get_rule_information_aux val env guard rir nid
       in
       let name := generate_binding_name letb (S (let_id nid_val)) in
       (None, list_assoc_set vm_val var name, vv_val++[(name, reduce ret_val)],
        failures_val, rir_val, nid_val <| let_id := S (let_id nid_val) |>
       )
     | UVar var =>
-      match list_assoc var_map var with
-      | Some x => (Some (UVar x), var_map, [], None, rir, nid)
+      match list_assoc env var with
+      | Some x => (Some (UVar x), env, [], None, rir, nid)
       | None => (* Unreachable assuming rule valid *)
-        (Some (UVar "ERROR"), var_map, [], None, rir, nid)
+        (Some (UVar "ERROR"), env, [], None, rir, nid)
       end
     | USeq a1 a2 =>
       let '(_, vm_a1, vv_a1, failures_a1, rir_a1, nid_a1) :=
-        get_rule_information_aux a1 var_map guard rir nid
+        get_rule_information_aux a1 env guard rir nid
       in
       let '(ret_a2, vm_a2, vv_a2, failures_a2, rir_a2, nid_a2) :=
         get_rule_information_aux a2 vm_a1 guard rir_a1 nid_a1
@@ -297,14 +294,13 @@ Section SimpleForm.
        rir_a2, nid_a2)
     | UIf cond tb fb =>
       let '(ret_cond, vm_cond, vv_cond, failures_cond, rir_cond, nid_cond) :=
-        get_rule_information_aux cond var_map guard rir nid
+        get_rule_information_aux cond env guard rir nid
       in
       let cond_name := generate_binding_name ctxb (ctx_id nid_cond + 1) in
       let guard_tb_name := generate_binding_name ctxb (ctx_id nid_cond + 2) in
       let guard_fb_name := generate_binding_name ctxb (ctx_id nid_cond + 3) in
       let guard_tb :=
-        UBinop
-          (PrimUntyped.UBits2 PrimUntyped.UAnd) guard (UVar cond_name)
+        UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) guard (UVar cond_name)
       in
       let guard_fb :=
         UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd)
@@ -361,12 +357,12 @@ Section SimpleForm.
         rir_fb, nid_fb <| let_id := let_id_merge |>)
     | UUnop ufn a =>
       let '(ret_a, vm_a, vv_a, failures_a, rir_a, nid_a) :=
-        get_rule_information_aux a var_map guard rir nid
+        get_rule_information_aux a env guard rir nid
       in
       (Some (UUnop ufn (reduce ret_a)), vm_a, vv_a, failures_a, rir_a, nid_a)
     | UBinop ufn a1 a2 =>
       let '(ret_a1, vm_a1, vv_a1, failures_a1, rir_a1, nid_a1) :=
-        get_rule_information_aux a1 var_map guard rir nid
+        get_rule_information_aux a1 env guard rir nid
       in
       let '(ret_a2, vm_a2, vv_a2, failures_a2, rir_a2, nid_a2) :=
         get_rule_information_aux a2 vm_a1 guard rir_a1 nid_a1
@@ -388,7 +384,7 @@ Section SimpleForm.
               merge_failures failure_c failures_p, rir_c,
               nid_c <| let_id := S (let_id nid_c) |>))
           args
-          ([], var_map, [], None, rir, nid)
+          ([], env, [], None, rir, nid)
       ) in
       let vm_tmp :=
         combine
@@ -398,24 +394,23 @@ Section SimpleForm.
           arg_names
       in
       let '(ret_ic, _, vv_ic, failure_ic, rir_ic, nid_ic) :=
-        get_rule_information_aux
-          (int_body ufn) vm_tmp guard rir_args nid_args
+        get_rule_information_aux (int_body ufn) vm_tmp guard rir_args nid_args
       in
       (* We can forget vm_tmp which contained the temporary map for use in the
          called function. *)
       (ret_ic, vm_args, vv_args++vv_ic, merge_failures failure_ic failure_args,
        rir_ic, nid_ic)
-    | UAPos _ e => get_rule_information_aux e var_map guard rir nid
+    | UAPos _ e => get_rule_information_aux e env guard rir nid
     | URead port reg =>
       let '(modified_rir, failure_read) :=
         match port with
         | P0 => add_read0 rir guard reg
         | P1 => add_read1 rir guard reg
         end
-      in (Some ua, var_map, [], failure_read, modified_rir, nid)
+      in (Some ua, env, [], failure_read, modified_rir, nid)
     | UWrite port reg val =>
       let '(ret_val, vm_val, vv_val, failures_val, actions_val, nid_val) :=
-        get_rule_information_aux val var_map guard rir nid
+        get_rule_information_aux val env guard rir nid
       in
       let '(rir_wr, failure_wr) :=
         match port with
@@ -427,19 +422,19 @@ Section SimpleForm.
        nid_val)
     | UExternalCall ufn arg =>
       let '(ret_arg, vm_arg, vv_arg, failures_arg, actions_arg, nid_arg) :=
-        get_rule_information_aux arg var_map guard rir nid
+        get_rule_information_aux arg env guard rir nid
       in
       let name := generate_binding_name extcb (S (extc_id nid_arg)) in
       let new_rir := add_extcall rir guard ufn arg name in
       (Some (UVar name), vm_arg, vv_arg, failures_arg, new_rir,
        nid_arg <| extc_id := S (extc_id nid_arg) |>)
     | UError _ =>
-      (None, var_map, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)),
-       rir, nid)
+      (None, env, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)), rir,
+       nid)
     | UFail _ =>
-      (None, var_map, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)),
-       rir, nid)
-    | _ => (Some ua, var_map, [], None, rir, nid) (* UConst *)
+      (None, env, [], Some (UConst (tau := bits_t 1) (Bits.of_nat 1 1)), rir,
+       nid)
+    | _ => (Some ua, env, [], None, rir, nid) (* UConst *)
     end.
 
   Definition get_rule_information (ua: uact) (nid: next_ids)
@@ -881,7 +876,7 @@ Section SimpleForm.
     end.
 
   (* Precondition: only Cons and Done in schedule. *)
-  (* Precondition: rules desugared. TODO desugar from here? *)
+  (* Precondition: rules desugared. TODO desugar from here instead? *)
   Definition schedule_to_simple_form (s: schedule) (rules: rule_name_t -> uact)
   : simple_form :=
     (* Get list of uact from scheduler *)
