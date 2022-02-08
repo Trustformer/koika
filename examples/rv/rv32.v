@@ -12,8 +12,7 @@ Module Package (C: Core).
   Existing Instance Show_ext_fn_t.
   Existing Instance FiniteType_reg_t.
 
-  Definition circuits :=
-    compile_scheduler rv_rules rv_external rv_schedule.
+  Definition circuits := compile_scheduler rv_rules rv_external rv_schedule.
 
   Definition koika_package := {|
     koika_reg_types     := R;

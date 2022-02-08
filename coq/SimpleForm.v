@@ -34,7 +34,7 @@ Section SimpleForm.
   Definition const_true :=
     @UConst pos_t string string reg_t ext_fn_t (bits_t 1) (Bits.of_nat 1 1).
 
-  (* A. Simple form and related structures *)
+  (* * Simple form and related structures *)
   Definition cond_log := list (reg_t * uact).
   Record write_info := mkWriteInfo { wcond: uact; wval: uact }.
   Definition write_log := list (reg_t * list (write_info)).
@@ -82,7 +82,7 @@ Section SimpleForm.
   Instance etaSimpleForm : Settable _ :=
     settable! mkSimpleForm < final_values; vars; external_calls >.
 
-  (* B. Bindings names *)
+  (* * Bindings names *)
   (* TODO name collisions with previously standing variables can't possibly
        happen anymore (we treat everything in order). This makes it easier to
        give informative names to our variables. *)
@@ -105,9 +105,9 @@ Section SimpleForm.
   Definition generate_binding_name (b: binding_type) (n: nat) : string :=
     String.append (get_prefix b) (NilEmpty.string_of_uint (Init.Nat.to_uint n)).
 
-  (* C. rule_information extraction *)
-  (* C.1. Addition of a new action into an existing rule_information *)
-  (* C.1.a. Merger of failure conditions *)
+  (* * rule_information extraction *)
+  (* ** Addition of a new action into an existing rule_information *)
+  (* *** Merger of failure conditions *)
   Definition or_conds (conds: list uact) :=
     fold_left
       (fun acc c =>
@@ -133,7 +133,7 @@ Section SimpleForm.
     | _, _, _ => None
     end.
 
-  (* C.1.b. Merger of actions *)
+  (* *** Merger of actions *)
   (* Remove Nones from list, turn rest from (Some x) to x. *)
   Definition list_options_to_list (l: list (option uact)) : list uact :=
     map
@@ -236,7 +236,7 @@ Section SimpleForm.
       (ufn, {| econd := grd; earg := arg; ebind := name |})::(rir_extcalls rir)
     |>.
 
-  (* C.2. Extraction of actions from rule *)
+  (* ** Extraction of actions from rule *)
   Definition reduce (ua: option uact) : uact :=
     match ua with
     | None => const_nil
@@ -248,7 +248,7 @@ Section SimpleForm.
   Fixpoint get_rule_information_aux
     (* No need to pass failures as these impact the whole rule - taking note of
        all of them and factoring the conditions in is enough. Conflicts between
-       different actions are also dealt with here - see C.1. *)
+       different actions are also dealt with here. *)
     (* TODO improve guards management *)
     (* TODO guard could be option string instead *)
     (ua: uact) (env: list (string * string)) (guard: uact)
@@ -452,10 +452,10 @@ Section SimpleForm.
         <| rir_vars := vvm|>,
       nid').
 
-  (* D. Scheduling conflicts detection *)
+  (* * Scheduling conflicts detection *)
   (* It is here that we take into account how a rule might cancel any later
      rule. *)
-  (* D.1. Conflicts between two rules *)
+  (* ** Conflicts between two rules *)
   (* rl_failure_cond rir is used in detect_conflicts only so as to keep things
      nicely factored. *)
   Definition detect_conflicts_step
@@ -561,7 +561,7 @@ Section SimpleForm.
          end
        end).
 
-  (* D.2. Conflicts with any prior rule *)
+  (* ** Conflicts with any prior rule *)
   Definition detect_conflicts_any_prior
     (r: rule_information_raw) (prior_rules: list rule_information_raw)
   : rule_information_raw :=
@@ -569,7 +569,7 @@ Section SimpleForm.
       (fun r' p => r' <| rir_failure_cond := detect_conflicts p r' |>)
       prior_rules r.
 
-  (* D.3. All scheduling conflicts *)
+  (* ** All scheduling conflicts *)
   (* This function detects all the scheduling conflicts. It returns a list of
      rule_information where the failure conditions have been edited
      appropriately. *)
@@ -591,12 +591,12 @@ Section SimpleForm.
       ric_failure_cond := rir_failure_cond r
    |}) raw.
 
-  (* E. Schedule merger *)
+  (* * Schedule merger *)
   (* Starting from a schedule with all the right failures conditions under the
-     form of a list of rule_information structures (see D.), we want to get to a
+     form of a list of rule_information structures, we want to get to a
      schedule_information structure (which is a collection of actions with no
      failure condition, as a schedule can't fail). *)
-  (* E.1. Integrate failure conditions into actions *)
+  (* ** Integrate failure conditions into actions *)
   (* We start by extracting the action logs of all the rules in the schedule. In
      fact, the failure condition was just a building block: we can remove it
      without losing information as long as we integrate it into the conditions
@@ -649,8 +649,8 @@ Section SimpleForm.
         ([], 0)
     in res.
 
-  (* E.2. Merge duplicated actions across rules *)
-  (* E.2.a. Merge one rule *)
+  (* ** Merge duplicated actions across rules *)
+  (* *** Merge one rule *)
   (* Used for both write0 and write1 *)
   Definition merge_next_write (reg: reg_t) (wl: write_log) (w: list write_info)
   : write_log :=
@@ -680,7 +680,7 @@ Section SimpleForm.
        ric_vars := List.concat [ric_vars r; ric_vars racc];
        ric_failure_cond := None |}.
 
-  (* E.2.b. Merge full schedule *)
+  (* *** Merge full schedule *)
   Fixpoint write_log_to_uact (r: reg_t) (wl: list write_info) (p: Port): uact :=
     match wl with
     | [] => URead p r
@@ -702,7 +702,7 @@ Section SimpleForm.
         map (fun '(r, l) => (r, write_log_to_uact r l P1)) (ric_write1s res);
       sc_extcalls := ric_extcalls res; sc_vars := ric_vars res |}.
 
-  (* F. Final simplifications *)
+  (* * Final simplifications *)
   Definition is_member {A: Type} {eq_dec_A: EqDec A} (l: list A) (i: A) :=
     existsb (beq_dec i) l.
 
@@ -749,8 +749,8 @@ Section SimpleForm.
         (find_all_extc_regs (sc_extcalls s))
         (find_all_bind_regs (sc_vars s))).
 
-  (* F.1. Remove read1s *)
-  (* F.1.a. Replacement of variables by expression *)
+  (* ** Remove read1s *)
+  (* *** Replacement of variables by expression *)
   Fixpoint replace_rd1_with_var_in_uact (from: reg_t) (to ua: uact) :=
     match ua with
     | URead p r =>
@@ -801,7 +801,7 @@ Section SimpleForm.
       sc_extcalls := replace_rd1_with_var_extc (sc_extcalls s) from to;
       sc_vars := replace_rd1_with_var_expr (sc_vars s) from to |}.
 
-  (* F.1.b. Removal *)
+  (* *** Removal *)
   Definition get_intermediate_value (s: schedule_information) (r: reg_t)
   : uact :=
     match list_assoc (sc_write0s s) r with
@@ -832,7 +832,7 @@ Section SimpleForm.
         end)
       active_regs s.
 
-  (* F.2. Remove write0s *)
+  (* ** Remove write0s *)
   Definition get_final_value
     (s: schedule_information) (ivt: list (reg_t * string)) (r: reg_t)
   : uact :=
@@ -865,7 +865,7 @@ Section SimpleForm.
       final_values := fvt; vars := fvvm++ivvm++(sc_vars s');
       external_calls := sc_extcalls s' |}.
 
-  (* G. Conversion *)
+  (* * Conversion *)
   (* Schedule can contain try or spos, but they are not used in the case we care
      about. *)
   Fixpoint schedule_to_list_of_rules (s: schedule) (rules: rule_name_t -> uact)

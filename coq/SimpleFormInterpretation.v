@@ -5,7 +5,7 @@ Require Import Koika.BitsToLists.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
-Section SimpleForm.
+Section SimpleFormInterpretation.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
@@ -249,16 +249,16 @@ Section SimpleForm.
       )
       (final_values sf) r.
 
-  Lemma normal_form_ok:
-    forall
-      (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> uact)
-      (s: schedule) (p: pos_t)
-      (TA:
-        forall rule, exists tcr,
-        TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr),
-    UntypedSemantics.interp_cycle rules r sigma s =
-    SimpleForm.interp_cycle r sigma
-      (SimpleForm.schedule_to_normal_form rules s).
-  Proof.
-  Admitted.
-End SimpleForm.
+(*   Lemma normal_form_ok: *)
+(*     forall *)
+(*       (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> uact) *)
+(*       (s: schedule) (p: pos_t) *)
+(*       (TA: *)
+(*         forall rule, exists tcr, *)
+(*         TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr), *)
+(*     UntypedSemantics.interp_cycle rules r sigma s = *)
+(*     SimpleForm.interp_cycle r sigma *)
+(*       (SimpleForm.schedule_to_normal_form rules s). *)
+(*   Proof. *)
+(*   Admitted. *)
+End SimpleFormInterpretation.
