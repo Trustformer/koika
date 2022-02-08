@@ -121,7 +121,7 @@ Section SimpleForm.
           else (efn, ei))
         (external_calls sf) |}.
 
-  Definition simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
+  Definition inlining_pass (sf: @simple_form pos_t reg_t ext_fn_t)
   : simple_form * list (string * val) :=
     (* Try to determine the value of variables *)
     let (sf', lv) :=
@@ -145,7 +145,7 @@ Section SimpleForm.
           | None => (sf'', []) (* Should never happen *)
           | Some (_, cv, _) =>
             match cv with
-            | Bits 1 [true] => 
+            | Bits 1 [true] =>
               if (negb (contains_vars (earg ei))) then
                 match
                   interp_action r sigma [] log_empty log_empty
@@ -209,7 +209,7 @@ Section SimpleForm.
     | _ => ua
     end.
 
-  Definition initial_simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
+  Definition expr_simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
   : simple_form := {|
     final_values := final_values sf;
     vars := map (fun '(vn, vu) => (vn, simplify_uact vu)) (vars sf);
@@ -220,58 +220,34 @@ Section SimpleForm.
           ebind := ebind ei; |}))
         (external_calls sf) |}.
 
-  Fixpoint simplify
-    (sf: @simple_form pos_t reg_t ext_fn_t) (fuel: nat)
+  Definition simplification_pass (sf: @simple_form pos_t reg_t ext_fn_t)
+  : simple_form * list (string * val)  :=
+    inlining_pass (expr_simplification_pass sf).
+
+  Fixpoint simplify (sf: @simple_form pos_t reg_t ext_fn_t) (fuel: nat)
   : list (string * val) :=
-    let sf_simpl := initial_simplification_pass sf in
     match fuel with
     | O => [] (* Should never happen *)
     | S f' =>
-      let (vars', vals') := simplification_pass vars in
-      simplify vars' (vals'++vals) f'
+      let (sf', vals) := simplification_pass sf in
+      vals++(simplify sf' f')
     end.
 
-  (* Simply replace variables by their definition and delegate to
-     interp_action *)
-  Fixpoint interp_var_aux (registers: list (reg_t * uact)) (v: uact) (fuel: nat)
-  : option val :=
-  match fuel with
-  | 0 => None
-  | S f' =>
-    match v with
-    | UBinop ufn a1 a2 => sigma2 ufn
-    | UUnop ufn a1 => 
-    | UVar v => 
-    | UIf cond tb fb =>
-    | URead p r =>
-      match p with
-      | P1 => None (* Illegal *)
-      | P0 => Some (* TODO *)
-      end
-    | _ => None (* Illegal *)
-    end.
-
-  (* Assuming called in the right order, should not result in a None *)
-  Definition interp_var (registers: list (reg_t * uact)) (s: string) (fuel: nat)
-  : option val :=
-    match list_assoc variables s with
-    | None => None
-    | Some v => interp_var_aux variables v
-    end.
-
-  Definition interp_cycle
-    (r: UREnv) (sigma: ext_funs_defs) (n: @normal_form pos_t reg_t ext_fn_t)
-  : UREnv :=
-    let interp_read1s :=
-      List.map (fun '(reg, name) => (name, getenv REnv r reg)) (reads n)
+  Definition interp_cycle (sf: @simple_form pos_t reg_t ext_fn_t) : UREnv :=
+    let fenv :=
+      simplify sf (List.length (vars sf) + List.length (external_calls sf))
     in
-    (* We use the fact that the variables are recursively defined *)
-    let interp_vars :=
-      List.map (fun '(name, e) => (name, )) (reads n)
-    in
-    (* let interp_extcalls := *)
-    (* in *)
-    r.
+    (* No need to explicitly inline read0s: delegated to interp_action *)
+    fold_left
+      (fun acc '(reg, n) =>
+        REnv.(putenv)
+          acc reg
+          (match list_assoc fenv n with
+           | None => REnv.(getenv) r reg (* Should be unreachable *)
+           | Some v => v
+           end)
+      )
+      (final_values sf) r.
 
   Lemma normal_form_ok:
     forall
