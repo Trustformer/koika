@@ -187,19 +187,19 @@ Section SimpleFormInterpretation.
     | UBinop ufn a1 a2 =>
       let a1' := simplify_uact a1 in
       let a2' := simplify_uact a2 in
-      if andb (negb (contains_vars a1')) (contains_vars a2') then
+      if negb (contains_vars a1') then
         match ufn with
         | PrimUntyped.UBits2 PrimUntyped.UAnd =>
           match interp_action r sigma [] log_empty log_empty a1' with
           | Some (_, Bits 1 [false], _) => const_false
           | Some (_, Bits 1 [true], _) => a2'
-          | _ => UVar "ERROR binop or" (* Should never happen *)
+          | _ => UVar "ERROR binop and" (* Should never happen *)
           end
         | PrimUntyped.UBits2 PrimUntyped.UOr =>
-          match interp_action r sigma [] log_empty log_empty a2' with
+          match interp_action r sigma [] log_empty log_empty a1' with
           | Some (_, Bits 1 [true], _) => const_true
           | Some (_, Bits 1 [false], _) => a2'
-          | _ => UVar "ERROR binop and" (* Should never happen *)
+          | _ => UVar "ERROR binop or" (* Should never happen *)
           end
         | _ => UBinop ufn a1' a2'
         end
@@ -249,16 +249,18 @@ Section SimpleFormInterpretation.
       )
       (final_values sf) r.
 
-(*   Lemma normal_form_ok: *)
-(*     forall *)
-(*       (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> uact) *)
-(*       (s: schedule) (p: pos_t) *)
-(*       (TA: *)
-(*         forall rule, exists tcr, *)
-(*         TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr), *)
-(*     UntypedSemantics.interp_cycle rules r sigma s = *)
-(*     SimpleForm.interp_cycle r sigma *)
-(*       (SimpleForm.schedule_to_normal_form rules s). *)
-(*   Proof. *)
-(*   Admitted. *)
+  Lemma simple_form_ok:
+    forall
+      (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> uact)
+      (s: schedule) (p: pos_t)
+      (TA:
+        forall rule, exists tcr,
+        TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr),
+    UntypedSemantics.env_t_R
+      (fun _ _ => )
+      (UntypedSemantics.interp_cycle rules r sigma s)
+      (SimpleFormInterpretation.interp_cycle r sigma
+        (SimpleForm.schedule_to_simple_form rules s)).
+  Proof.
+  Admitted.
 End SimpleFormInterpretation.
