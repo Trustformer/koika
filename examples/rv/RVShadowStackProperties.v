@@ -2,6 +2,7 @@
 Require Import Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Frontend Koika.UntypedSemantics
   Koika.UntypedIndSemantics Koika.UntypedIndTactics.
+Require Import Koika.SimpleFormInterpretation.
 Require Import rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 (* Require Import rv.RVCoreNoShadowStack rv.rv32NoShadowStack *)
 (*   rv.rv32iNoShadowStack. *)
@@ -60,17 +61,12 @@ Section ShadowStackProperties.
         (eql opcode_rest [true; true; true; true])
         && (
           (eql rd [false; false; false; false; true])
-          || (eql rd [false; false; true; false; true])
-        )
-      )
+          || (eql rd [false; false; true; false; true])))
       || (
         (eql opcode_rest [false; true; true; true])
         && (
           (eql rd [false; false; false; false; true])
-          || (eql rd [false; false; true; false; true])
-        )
-      )
-    ).
+          || (eql rd [false; false; true; false; true])))).
 
   (* This function is defined in a way that mirrors RVCore.v *)
   Definition is_ret_instruction (instr: bits_t 32) : bool :=
@@ -85,23 +81,17 @@ Section ShadowStackProperties.
       (
         (
           (eql rd [false; false; false; false; true])
-          || (eql rd [false; false; true; false; true])
-        )
+          || (eql rd [false; false; true; false; true]))
         && (negb (eql rd rs1))
         && (
           (eql rs1 [false; false; false; false; true])
-          || (eql rs1 [false; false; true; false; true])
-        )
-      )
+          || (eql rs1 [false; false; true; false; true])))
       || (
         (negb (eql rd [false; false; false; false; true]))
         && (eql rd [false; false; true; false; true])
         && (
           (eql rs1 [false; false; false; false; true])
-          || (eql rs1 [false; false; true; false; true])
-        )
-      )
-    ).
+          || (eql rs1 [false; false; true; false; true])))).
 
   Definition stack_push
     (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val))
@@ -245,17 +235,11 @@ Section ShadowStackProperties.
     | _ => false
     end.
 
-  Compute (
-    existsb_uaction RV32I.update_on_off is_write_halt (fun x => x) (fun x => x)
-  ).
-  Compute (
-    existsb_uaction RV32I.execute_1 is_write_halt (fun x => x) (fun x => x)
-  ).
-
   Ltac inv H := inversion H; try subst; clear H.
 
   Lemma stack_violation_results_in_halt:
-    forall (ctx: env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)),
+    forall (env_bf env_af: @UREnv RV32I.reg_t REnv),
+    (env_af = SimpleFormInterpretation.interp_cycle env_bf ) -> True.
     stack_violation ctx -> halt_set ctx.
   Proof.
     intros. unfold halt_set. intros. simpl.

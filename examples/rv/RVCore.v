@@ -102,8 +102,7 @@ Section RVHelpers.
   |}.
 
   (* TODO add fixed fields verification *)
-  Definition isLegalInstruction
-    `{finite_reg: FiniteType reg_t}
+  Definition isLegalInstruction `{finite_reg: FiniteType reg_t}
   : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
     int_argspec := [("inst", bits_t 32)];

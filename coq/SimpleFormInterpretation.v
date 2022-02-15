@@ -249,18 +249,18 @@ Section SimpleFormInterpretation.
       )
       (final_values sf) r.
 
-  Lemma simple_form_ok:
-    forall
-      (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> uact)
-      (s: schedule) (p: pos_t)
-      (TA:
-        forall rule, exists tcr,
-        TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr),
-    UntypedSemantics.env_t_R
-      (fun _ _ => )
-      (UntypedSemantics.interp_cycle rules r sigma s)
-      (SimpleFormInterpretation.interp_cycle r sigma
-        (SimpleForm.schedule_to_simple_form rules s)).
-  Proof.
-  Admitted.
+  (* Lemma simple_form_ok: *)
+  (*   forall *)
+  (*     (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> uact) *)
+  (*     (s: schedule) (p: pos_t) *)
+  (*     (TA: *)
+  (*       forall rule, exists tcr, *)
+  (*       TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr), *)
+  (*   UntypedSemantics.env_t_R *)
+  (*     (fun _ _ => ) *)
+  (*     (UntypedSemantics.interp_cycle rules r sigma s) *)
+  (*     (SimpleFormInterpretation.interp_cycle r sigma *)
+  (*       (SimpleForm.schedule_to_simple_form rules s)). *)
+  (* Proof. *)
+  (* Admitted. *)
 End SimpleFormInterpretation.
