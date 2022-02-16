@@ -1010,6 +1010,241 @@ Section Interp.
         Some (fLog' fR REnv REnv' action_log1 action_log, v, Gamma0)
     end.
 
+  Fixpoint interp_daction
+           {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+           (sigma: forall f: ext_fn_t, val -> val) (Gamma: list (var_t * val))
+           (sched_log: Log REnv) (action_log: Log REnv)
+           (a: @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t) {struct a}
+  : option (Log REnv * val * list (var_t * val)) :=
+    match a with
+    | DError e => None
+    | DFail _ => None
+    | DVar var =>
+      let/opt v := list_assoc Gamma var in Some (action_log, v, Gamma)
+    | @DConst _ _ _ _ _ tau cst => Some (action_log, val_of_value cst, Gamma)
+    | DAssign k a =>
+      let/opt3 action_log, v, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log a in
+      Some (action_log, Bits 0 [], list_assoc_set Gamma k v)
+    | DSeq a1 a2 =>
+      let/opt3 action_log, v, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log a1 in
+      interp_daction r sigma Gamma sched_log action_log a2
+    | DBind k a1 a2 =>
+      let/opt3 action_log, v, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log a1 in
+      let/opt3 action_log, v, Gamma :=
+        interp_daction r sigma ((k, v):: Gamma) sched_log action_log a2
+      in Some (action_log, v, tl Gamma)
+    | DIf cond athen aelse =>
+      let/opt3 action_log, v, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log cond in
+      match v with
+      | Bits 1 [b] =>
+        if b then interp_daction r sigma Gamma sched_log action_log athen
+        else interp_daction r sigma Gamma sched_log action_log aelse
+      | _ => None
+      end
+    | DRead prt idx =>
+      if may_read sched_log prt idx then
+        Some (
+          log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log,
+          match prt with
+          | P0 => REnv.(getenv) r idx
+          | P1 =>
+            match latest_write0 (V:=val) (log_app action_log sched_log) idx with
+            | Some v => v
+            | None => REnv.(getenv) r idx
+            end
+          end, Gamma
+        )
+      else None
+    | DWrite prt idx v =>
+      let/opt3 action_log, val, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log v in
+      if may_write sched_log action_log prt idx then
+        Some (
+          log_cons idx (LE Logs.LogWrite prt val) action_log, Bits 0 [], Gamma
+        )
+      else None
+    | DUnop fn arg =>
+      let/opt3 action_log, arg1, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log arg in
+      let/opt v := sigma1 fn arg1 in Some (action_log, v, Gamma)
+    | DBinop fn arg1 arg2 =>
+      let/opt3 action_log, arg1, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log arg1 in
+      let/opt3 action_log, arg2, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log arg2 in
+      let/opt v := sigma2 fn arg1 arg2 in Some (action_log, v, Gamma)
+    | DExternalCall fn arg1 =>
+      let/opt3 action_log, arg1, Gamma :=
+        interp_daction r sigma Gamma sched_log action_log arg1 in
+      Some (action_log, sigma fn arg1, Gamma)
+    | DInternalCall f args =>
+      let body := int_body f in
+      let/opt3 action_log, results, Gamma :=
+        fold_left (fun acc a =>
+          let/opt3 action_log, l, Gamma := acc in
+          let/opt3 action_log, v, Gamma :=
+            interp_daction r sigma Gamma sched_log action_log a
+          in Some (action_log, v::l, Gamma)
+        ) args (Some (action_log, [], Gamma)) in
+      let/opt3 action_log, v, _ :=
+        interp_daction r sigma (map
+          (fun '(name, _, v) => (name, v))
+          (combine (rev (int_argspec f)) results)
+        ) sched_log action_log body in
+      Some (action_log, v, Gamma)
+    | DAPos p a => interp_daction r sigma Gamma sched_log action_log a
+    end.
+
+  Lemma uaction_to_daction_list:
+    forall reg_t ext_fn_t F
+           args
+           (l : list daction)
+           (Heqo : Forall2 (fun a d => F a = Some d) args l)
+           (H0 : Forall
+                   (fun u : Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t =>
+                      forall (REnv : Env reg_t) (r : env_t REnv (fun _ : reg_t => val))
+                             (sigma : ext_fn_t -> val -> val) (Gamma : list (var_t * val))
+                             (sched_log action_log : Log REnv) (d : daction),
+                        F u = Some d ->
+                        interp_action r sigma Gamma sched_log action_log u =
+                          interp_daction r sigma Gamma sched_log action_log d) args)
+           (REnv : Env reg_t)
+           (r : env_t REnv (fun _ : reg_t => val))
+           (sigma : ext_fn_t -> val -> val)
+           sched_log
+           acc,
+fold_left
+      (fun (acc : option (Log REnv * list val * list (var_t * val)))
+         (a0 : Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) =>
+       match acc with
+       | Some (action_log0, l0, Gamma0) =>
+           match interp_action r sigma Gamma0 sched_log action_log0 a0 with
+           | Some (action_log1, v, Gamma1) =>
+               Some (action_log1, v :: l0, Gamma1)
+           | None => None
+           end
+       | None => None
+       end) args acc =
+fold_left
+      (fun (acc : option (Log REnv * list val * list (var_t * val)))
+         (a0 : @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t) =>
+       match acc with
+       | Some (action_log0, l0, Gamma0) =>
+           match interp_daction r sigma Gamma0 sched_log action_log0 a0 with
+           | Some (action_log1, v, Gamma1) =>
+               Some (action_log1, v :: l0, Gamma1)
+           | None => None
+           end
+       | None => None
+       end) l acc.
+  Proof.
+    induction 1; simpl; intros; eauto.
+    destr. destr. destr.
+    inv H0. erewrite H3; eauto.
+    clear.
+    assert(forall {A B: Type} (f: option A -> B -> option A)
+                  (Fnone: forall x, f None x = None) l,
+              fold_left f l None = None
+          ).
+    {
+      clear. induction l; simpl; intros; eauto. rewrite Fnone; auto.
+    }
+    rewrite H; auto.
+    rewrite H; auto.
+  Qed.
+
+  Lemma map_error_forall2:
+    forall {A B: Type} (f: A -> option B) (l1: list A) (l2: list B),
+      map_error f l1 = Some l2 ->
+      Forall2 (fun a b => f a = Some b) l1 l2.
+  Proof.
+    induction l1; simpl; intros; eauto. inv H; auto.
+    unfold opt_bind in H; repeat destr_in H; inv H.
+    constructor; auto.
+  Qed.
+
+  Lemma fold_left_none:
+    forall
+      {A B} (f: option B -> A -> option B) (Fnone: forall a, f None a = None)
+      (l: list A),
+    fold_left f l None = None.
+  Proof. induction l; simpl; intros; eauto. rewrite Fnone. auto. Qed.
+
+  (* Lemma map_error_fold: *)
+  (*   forall {A B} (f: A -> option B) l1 acc, *)
+  (*     fold_left (fun acc elt => *)
+  (*                  let/opt acc := acc in *)
+  (*                  let/opt fa := f elt in *)
+  (*                  Some (fa::acc) *)
+  (*               ) l1 (Some acc) = option_map (fun l => rev l ++ acc) (map_error f l1). *)
+  (* Proof. *)
+  (*   induction l1; simpl; intros; eauto. *)
+  (*   destruct (f a) eqn:?; simpl; eauto. *)
+  (*   - rewrite IHl1. *)
+  (*     destruct (map_error f l1) eqn:?; simpl; intros; eauto. *)
+  (*     rewrite <- app_assoc. reflexivity. *)
+  (*   - rewrite fold_left_none. *)
+  (*     destruct (map_error f l1) eqn:?; simpl; intros; eauto. *)
+  (*     unfold opt_bind; simpl; intros. auto. *)
+  (* Qed. *)
+
+  Lemma uaction_to_daction_interp:
+    forall
+      {reg_t ext_fn_t: Type}
+      (a: @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val)
+      (Gamma: list (var_t * val))
+      (sched_log: Log REnv) (action_log: Log REnv)
+      d
+      (U2D: uaction_to_daction a = Some d),
+      interp_action r sigma Gamma sched_log action_log a =
+        interp_daction r sigma Gamma sched_log action_log d.
+  Proof.
+    intros reg_t ext_fn_t a.
+    pattern a.
+    eapply uaction_ind'; simpl; intros; inv U2D; eauto.
+    - unfold opt_bind in *; destr_in H1; inv H1.
+      simpl. erewrite H; eauto. unfold opt_bind; auto.
+    - unfold opt_bind in *; repeat destr_in H2; inv H2.
+      simpl; unfold opt_bind. erewrite H; eauto. repeat destr.
+      eapply H0; eauto.
+    - unfold opt_bind in *; repeat destr_in H2; inv H2.
+      simpl; unfold opt_bind.
+      erewrite H; eauto. destr. destr. destr.
+      erewrite H0; eauto.
+    - unfold opt_bind in *; repeat destr_in H3; inv H3.
+      simpl; unfold opt_bind.
+      erewrite H; eauto. repeat destr; eauto.
+    - unfold opt_bind in *; repeat destr_in H1; inv H1.
+      simpl; unfold opt_bind.
+      erewrite H; eauto.
+    - unfold opt_bind in *; repeat destr_in H1; inv H1.
+      simpl; unfold opt_bind.
+      erewrite H; eauto.
+    - unfold opt_bind in *; repeat destr_in H2; inv H2.
+      simpl; unfold opt_bind.
+      erewrite H; eauto. destr. destr. destr.
+      erewrite H0; eauto.
+    - unfold opt_bind in *; repeat destr_in H1; inv H1.
+      simpl; unfold opt_bind.
+      erewrite H; eauto.
+    - unfold opt_bind in *; repeat destr_in H2; inv H2.
+      simpl; unfold opt_bind.
+      erewrite uaction_to_daction_list with(l:=l); eauto.
+      destr. destr. destr.
+      erewrite H; eauto.
+      eapply map_error_forall2. auto.
+    - unfold opt_bind in *; repeat destr_in H1; inv H1.
+      simpl; unfold opt_bind.
+      erewrite H; eauto.
+  Qed.
+
+
   Fixpoint uprogn2 {reg_t ext_fn_t} (aa: list (uaction reg_t ext_fn_t)) dft :=
     match aa with
     | [] => dft
@@ -1572,12 +1807,6 @@ Section Desugar.
     rewrite getenv_create. rewrite Heqo. auto.
   Qed.
 
-  Lemma fold_left_none:
-    forall
-      {A B} (f: option B -> A -> option B) (Fnone: forall a, f None a = None)
-      (l: list A),
-    fold_left f l None = None.
-  Proof. induction l; simpl; intros; eauto. rewrite Fnone. auto. Qed.
 
   Context {reg_t' ext_fn_t': Type}.
 
