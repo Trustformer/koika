@@ -56,7 +56,7 @@ Section SimpleForm.
     rir_write1s: write_log_raw;
     rir_extcalls: extcall_log;
     rir_vars: var_value_map;
-    rir_failure_cond: option uact }.
+    rir_failure_cond: uact }.
   Instance etaRuleInformationRaw : Settable _ :=
     settable! mkRuleInformationRaw <
       rir_read0s; rir_read1s; rir_write0s; rir_write1s; rir_extcalls; rir_vars;
@@ -66,7 +66,7 @@ Section SimpleForm.
     ric_write1s: write_log;
     ric_extcalls: extcall_log;
     ric_vars: var_value_map;
-    ric_failure_cond: option uact }.
+    ric_failure_cond: uact }.
   Instance etaRuleInformationClean : Settable _ :=
     settable! mkRuleInformationClean
       < ric_write0s; ric_write1s; ric_extcalls; ric_vars; ric_failure_cond >.
@@ -1875,41 +1875,42 @@ Section SimpleForm.
       + rewrite fst_split_map. setoid_rewrite H5. congruence.
   Qed.
 
-  (* Fixpoint read_from_rirs *)
-  (*          (REnv: Env reg_t) *)
-  (*          (r: env_t REnv (fun _ => val)) *)
-  (*          (rir: rule_information_raw) *)
-  (*          (prt: Port) (idx: reg_t) : val := *)
-  (*   match prt with *)
-  (*   | P0 => getenv REnv r idx *)
-  (*   | P1 => *)
-  (*       match list_assoc (rir_writes0s rir) idx with *)
-  (*         None => getenv REnv r idx *)
-  (*       | Some (_, wil) => *)
+  Inductive interp_fact
+            (REnv: Env reg_t) (r: env_t REnv (fun _ => val))
+            (vvs: list (string * uact))
+            (rir: rule_information_raw) : uact -> val -> Prop :=
+  | interp_fact_var_in_vvs var a v:
+    In (var, a) vvs ->
+    interp_fact REnv r vvs rir a v ->
+    interp_fact REnv r vvs rir (DVar var) v
+  | interp_fact_read prt idx v:
+    read_from_rirs REnv r vvs rir prt idx v ->
+    interp_fact REnv r vvs rir (DRead prt idx) v
+  | interp_fact_const tau (const: type_denote tau):
+    interp_fact REnv r vvs rir (DConst const) (BitsToLists.val_of_value const)
+  | interp_fact_if c t f b v:
+    interp_fact REnv r vvs rir c (Bits 1 [b]) ->
+    interp_fact REnv r vvs rir (if b then t else f) v ->
+    interp_fact REnv r vvs rir (DIf c t f) v
+  
 
-  (*       end *)
-  (*   end *)
-  (* . *)
 
-  (* Fixpoint interp_uact_with_fake_vars *)
-  (*          (u: uact) *)
-  (*          (vvs: list (string * uact)) *)
-  (*          (REnv: Env reg_t) *)
-  (*          (r: env_t REnv (fun _ => val)) *)
-  (*          (rirs: list rule_information_raw) *)
-  (*   : option val := *)
-  (*   match u with *)
-  (*   | DVar var => None          (* TODO *) *)
-  (*   | DRead port idx => *)
-  (*       None *)
-  (*   | DConst cst => Some (BitsToLists.val_of_value cst) *)
-  (*   | DIf cond tbranch fbranch => *)
-  (*       let/opt c := interp_uact_with_fake_vars cond vvs in *)
-  (*       match c with *)
-  (*       | Bits _ [true] => interp_uact_with_fake_vars tbranch vvs *)
-  (*       | Bits _ [false] => interp_uact_with_fake_vars tbranch vvs *)
-  (*       | _ => None *)
-  (*       end *)
+  with read_from_rirs
+         (REnv: Env reg_t) (r: env_t REnv (fun _ => val))
+         (vvs: list (string * uact))
+         (rir: rule_information_raw) : Port -> reg_t -> val -> Prop :=
+  | rfr0 idx:
+    read_from_rirs REnv r vvs rir P0 idx (getenv REnv r idx)
+  | rfr1_nowrite0 idx:
+    list_assoc (rir_write0s rir) idx = None ->
+    read_from_rirs REnv r vvs rir P1 idx (getenv REnv r idx)
+  | rfr1_write0 idx gcond wil wi v:
+    list_assoc (rir_write0s rir) idx = Some (gcond, wil) ->
+    In wi wil ->
+    interp_fact REnv r vvs rir (wcond wi) (Bits 1 [true]) ->
+    interp_fact REnv r vvs rir (wval wi) v ->
+    read_from_rirs REnv r vvs rir P1 idx v.
+
   (*   | DUnop ufn1 arg1 => *)
   (*       let/opt v := interp_uact_with_fake_vars arg1 vvs in *)
   (*       UntypedSemantics.sigma1 ufn1 v *)
@@ -1917,16 +1918,6 @@ Section SimpleForm.
   (*       let/opt v1 := interp_uact_with_fake_vars arg1 vvs in *)
   (*       let/opt v2 := interp_uact_with_fake_vars arg2 vvs in *)
   (*       UntypedSemantics.sigma2 ufn2 v1 v2 *)
-  (*   | DError _ *)
-  (*   | DFail _ *)
-  (*   | DAssign _ _ *)
-  (*   | DSeq _ _ *)
-  (*   | DBind _ _ _ *)
-  (*   | DWrite _ _ _ *)
-  (*   | DExternalCall _ _ *)
-  (*   | DInternalCall _ _ *)
-  (*   | DAPos _ _ => None *)
-  (*   end. *)
 
 
   (* Lemma get_rule_information_aux_act: *)
@@ -1979,10 +1970,10 @@ Section SimpleForm.
         ua [] [] const_true
         {| rir_read0s := []; rir_read1s := []; rir_write0s := [];
            rir_write1s := []; rir_extcalls := []; rir_vars := [];
-           rir_failure_cond := None |}
+           rir_failure_cond := const_false |}
         nid
     in (
-      rule_information_raw <| rir_failure_cond := Some failure |>
+      rule_information_raw <| rir_failure_cond := failure |>
         <| rir_vars := vvm|>,
       nid').
 
@@ -2000,19 +1991,11 @@ Section SimpleForm.
   (* rir_failure_cond rir is used in detect_conflicts only so as to keep things
      nicely factored. *)
   Definition detect_conflicts_step
-    (acc: option uact) (rir: rule_information_raw) (cond: uact) (reg: reg_t)
+    (acc: uact) (rir: rule_information_raw) (cond: uact) (reg: reg_t)
     (reg_failure_detection:
-      rule_information_raw -> uact -> reg_t -> option uact)
-    : option uact :=
-    (* reg_failure_detection rir cond reg && acc *)
-    match reg_failure_detection rir cond reg with
-    | None => acc
-    | Some x =>
-      match acc with
-      | None => Some x
-      | Some y => Some (uand x y)
-      end
-    end.
+      rule_information_raw -> uact -> reg_t -> uact)
+    : uact :=
+    uor acc (reg_failure_detection rir cond reg).
 
   (* The following functions are meant to be passed as arguments to
      detect_conflicts_step. *)
@@ -2046,38 +2029,38 @@ Section SimpleForm.
      the situations in which the second rule has to fail for e.g. read0s
      conflicts reasons. *)
   Definition detect_conflicts_read0s (rir: rule_information_raw) (rl: cond_log)
-  : option uact :=
+  : uact :=
     fold_left
       (fun acc '(reg, cond) =>
         detect_conflicts_step acc rir cond reg detect_conflicts_read0s_reg)
-      rl None.
+      rl const_false.
   Definition detect_conflicts_write0s
     (rir: rule_information_raw) (wl: write_log_raw)
-  : option uact :=
+  : uact :=
     fold_left
       (fun acc '(reg, (ua,lwi)) =>
         detect_conflicts_step acc rir ua reg detect_conflicts_write0s_reg)
-      wl None.
+      wl const_false.
   Definition detect_conflicts_read1s (rir: rule_information_raw) (rl: cond_log)
-  : option uact :=
+  : uact :=
     fold_left
       (fun acc '(reg, cond) =>
         detect_conflicts_step acc rir cond reg detect_conflicts_read1s_reg)
-      rl None.
+      rl const_false.
   Definition detect_conflicts_write1s
     (rir: rule_information_raw) (wl: write_log_raw)
-  : option uact :=
+  : uact :=
     fold_left
       (fun acc '(reg, (ua, lwi)) =>
         detect_conflicts_step acc rir ua reg detect_conflicts_write1s_reg)
-      wl None.
+      wl const_false.
 
   (* The order of the arguments matters! If there is a conflict between a1 and
      a2, a1 takes precedence. This function does not take the fact that rule 1
      might fail and therefore not impact rule 2 into account, as this is done
      from detect_conflicts. *)
   Definition detect_conflicts_actions (a1 a2: rule_information_raw)
-  : option uact :=
+  : uact :=
     merge_failures
       (merge_failures
         (merge_failures
@@ -2088,20 +2071,12 @@ Section SimpleForm.
 
   (* Returns a failure condition for ri2's conflicts with ri1. Includes ri1's
      initial failure condition. *)
-  Definition detect_conflicts (ri1 ri2: rule_information_raw) : option uact :=
+  Definition detect_conflicts (ri1 ri2: rule_information_raw) : uact :=
     merge_failures
       (rir_failure_cond ri2)
-      (match detect_conflicts_actions ri1 ri2 with
-       | None => None
-       | Some x =>
-         match rir_failure_cond ri1 with
-         | None => Some x
-         | Some y =>
-           let not_failure_1 := UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) y in
-           (* If rule 1 fails, then it can't cause rule 2 to fail. *)
-           Some (DBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) not_failure_1 x)
-         end
-       end).
+      (* If rule 1 fails, then it can't cause rule 2 to fail. *)
+      (uand (unot (rir_failure_cond ri1))
+                  (detect_conflicts_actions ri1 ri2)).
 
   (* ** Conflicts with any prior rule *)
   Definition detect_conflicts_any_prior
@@ -2110,7 +2085,6 @@ Section SimpleForm.
     fold_left
       (fun r' p => r' <| rir_failure_cond := detect_conflicts p r' |>)
       prior_rules r.
-
 
   Definition clean_rule_information (r: rule_information_raw) :
       rule_information_clean :=
@@ -2177,7 +2151,7 @@ Section SimpleForm.
   Definition prepend_failure_actions
     (ric: rule_information_clean) (fail_var_name: string)
   : rule_information_clean :=
-    let cond := (UVar fail_var_name) in
+    let cond := (DVar fail_var_name) in
     ric
       <|ric_write0s := prepend_condition_writes cond (ric_write0s ric)|>
       <|ric_write1s := prepend_condition_writes cond (ric_write1s ric)|>
@@ -2185,27 +2159,25 @@ Section SimpleForm.
 
   Definition to_negated_cond (cond: option uact) : uact :=
     match cond with
-    | Some x => UUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x
+    | Some x => unot x
     | None => const_true
     end.
 
-  Definition integrate_failures (ri: list rule_information_clean)
-  : list rule_information_clean :=
-    let (res, _) :=
-      fold_left
+  Definition integrate_failures (ri: list rule_information_clean) nid
+  : list rule_information_clean * nat :=
+    fold_left
         (fun '(acc, id') r =>
-          let fail_var_name := generate_binding_name fcond_ncb id' in
-          let not_failure_cond := to_negated_cond (ric_failure_cond r) in (
+          let fail_var_name := generate_binding_name id' in
+          let not_failure_cond := unot (ric_failure_cond r) in (
             ((prepend_failure_actions r fail_var_name)
               (* TODO perhaps return not_failure_cond separately and regroup all
                  such variables at the end of the list so as to preserve order
                 *)
               <|ric_vars := (ric_vars r)++[(fail_var_name, not_failure_cond)]|>
-              <|ric_failure_cond := None|>
+              <|ric_failure_cond := const_false|>
             )::acc, S id'))
         ri
-        ([], 0)
-    in res.
+        ([], nid).
 
   (* ** Merge duplicated actions across rules *)
   (* *** Merge one rule *)
@@ -2236,29 +2208,29 @@ Section SimpleForm.
     {| ric_write0s := write0s'; ric_write1s := write1s';
        ric_extcalls := extcalls';
        ric_vars := List.concat [ric_vars r; ric_vars racc];
-       ric_failure_cond := None |}.
+       ric_failure_cond := const_false |}.
 
   (* *** Merge full schedule *)
   Fixpoint write_log_to_uact (r: reg_t) (wl: list write_info) (p: Port): uact :=
     match wl with
-    | [] => URead p r
-    | h::t => UIf (wcond h) (wval h) (write_log_to_uact r t p)
+    | [] => DRead p r
+    | h::t => DIf (wcond h) (wval h) (write_log_to_uact r t p)
     end.
 
-  Definition merge_schedule (rules_info: list rule_information_clean)
+  Definition merge_schedule (rules_info: list rule_information_clean) nid
   (* next_ids isn't used past this point and therefore isn't returned *)
-  : schedule_information :=
-    let rules_info' := integrate_failures rules_info in
+  : schedule_information * nat :=
+    let (rules_info', nid) := integrate_failures rules_info nid in
     let res := fold_left
       merge_single_rule (tl rules_info')
       {| ric_write0s := []; ric_write1s := []; ric_extcalls := [];
-         ric_vars := []; ric_failure_cond := None |}
-    in {|
+         ric_vars := []; ric_failure_cond := const_false |}
+    in ({|
       sc_write0s :=
         map (fun '(r, l) => (r, write_log_to_uact r l P0)) (ric_write0s res);
       sc_write1s :=
         map (fun '(r, l) => (r, write_log_to_uact r l P1)) (ric_write1s res);
-      sc_extcalls := ric_extcalls res; sc_vars := ric_vars res |}.
+      sc_extcalls := ric_extcalls res; sc_vars := ric_vars res |}, nid).
 
   (* * Final simplifications *)
   Definition is_member {A: Type} {eq_dec_A: EqDec A} (l: list A) (i: A) :=
@@ -2272,13 +2244,13 @@ Section SimpleForm.
 
   Fixpoint find_all_ua_regs (ua: uact) : list reg_t :=
     match ua with
-    | URead _ r => [r]
-    | UIf cond tb fb =>
+    | DRead _ r => [r]
+    | DIf cond tb fb =>
       app_uniq
         (find_all_ua_regs cond)
         (app_uniq (find_all_ua_regs tb) (find_all_ua_regs fb))
     | DBinop ufn a1 a2 => app_uniq (find_all_ua_regs a1) (find_all_ua_regs a2)
-    | UUnop ufn a => find_all_ua_regs a
+    | DUnop ufn a => find_all_ua_regs a
     | _ => []
     end.
 
@@ -2311,13 +2283,13 @@ Section SimpleForm.
   (* *** Replacement of variables by expression *)
   Fixpoint replace_rd1_with_var_in_uact (from: reg_t) (to ua: uact) :=
     match ua with
-    | URead p r =>
+    | DRead p r =>
       match p with
       | P1 => if beq_dec from r then to else ua
       | _ => ua
       end
-    | UIf cond tb fb =>
-      UIf
+    | DIf cond tb fb =>
+      DIf
         (replace_rd1_with_var_in_uact from to cond)
         (replace_rd1_with_var_in_uact from to tb)
         (replace_rd1_with_var_in_uact from to fb)
@@ -2326,7 +2298,7 @@ Section SimpleForm.
         ufn
         (replace_rd1_with_var_in_uact from to a1)
         (replace_rd1_with_var_in_uact from to a2)
-    | UUnop ufn a => UUnop ufn (replace_rd1_with_var_in_uact from to a)
+    | DUnop ufn a => DUnop ufn (replace_rd1_with_var_in_uact from to a)
     | _ => ua
     end.
 
@@ -2363,20 +2335,20 @@ Section SimpleForm.
   Definition get_intermediate_value (s: schedule_information) (r: reg_t)
   : uact :=
     match list_assoc (sc_write0s s) r with
-    | None => URead P0 r
+    | None => DRead P0 r
     | Some v => v (* See write_log_to_uact *)
     end.
 
   Definition generate_intermediate_values_table
-    (s: schedule_information) (regs: list reg_t)
-  : ((list (reg_t * string)) * (list (string * uact))) :=
-    let (r, _) :=
+    (s: schedule_information) (regs: list reg_t) nid
+  : ((list (reg_t * string)) * (list (string * uact))) * nat :=
+    let (r, nid) :=
       fold_left
         (fun '(table, vars, id) r =>
-          let name := generate_binding_name ivalb (S id) in
+          let name := generate_binding_name (S id) in
           ((r, name)::table, (name, get_intermediate_value s r)::vars, S id))
-        regs ([], [], 0)
-    in r.
+        regs ([], [], nid)
+    in (r, nid).
 
   Definition remove_read1s
     (s: schedule_information) (active_regs: list reg_t)
@@ -2386,7 +2358,7 @@ Section SimpleForm.
       (fun s' r =>
         match list_assoc ivt r with
         | None => s' (* Unreachable *)
-        | Some v => replace_rd1_with_var s' r (UVar v)
+        | Some v => replace_rd1_with_var s' r (DVar v)
         end)
       active_regs s.
 
@@ -2397,31 +2369,30 @@ Section SimpleForm.
     match list_assoc (sc_write1s s) r with
     | None => (* Not every active reg is in write1s *)
       match list_assoc ivt r with
-      | None => URead P0 r (* Unreachable *)
-      | Some v => UVar v
+      | None => DRead P0 r (* Unreachable *)
+      | Some v => DVar v
       end
     | Some v => v
     end.
 
   Definition generate_final_values_table
-    (s: schedule_information) (regs: list reg_t) (ivt: list (reg_t * string))
-  : ((list (reg_t * string)) * (list (string * uact))) :=
-    let (r, _) :=
+    (s: schedule_information) (regs: list reg_t) (ivt: list (reg_t * string)) nid
+  : ((list (reg_t * string)) * (list (string * uact))) * nat :=
       fold_left
         (fun '(fvt, fvvm, id) r =>
-          let name := generate_binding_name fvalb (S id) in
+          let name := generate_binding_name (S id) in
           ((r, name)::fvt, (name, get_final_value s ivt r)::fvvm, S id)
         )
-        regs ([], [], 0)
-    in r.
+        regs ([], [], nid).
 
-  Definition remove_interm (s: schedule_information) : simple_form :=
+  Definition remove_interm (s: schedule_information) nid : simple_form * nat :=
     let active_regs := find_all_used_regs s in
-    let (ivt, ivvm) := generate_intermediate_values_table s active_regs in
+    let '(ivt, ivvm, nid) := generate_intermediate_values_table s active_regs nid in
     let s' := remove_read1s s active_regs ivt in
-    let (fvt, fvvm) := generate_final_values_table s' active_regs ivt in {|
+    let '(fvt, fvvm, nid) := generate_final_values_table s' active_regs ivt nid in
+    ({|
       final_values := fvt; vars := fvvm++ivvm++(sc_vars s');
-      external_calls := sc_extcalls s' |}.
+      external_calls := sc_extcalls s' |}, nid).
 
   (* * Conversion *)
   (* Schedule can contain try or spos, but they are not used in the case we care
@@ -2437,22 +2408,22 @@ Section SimpleForm.
   (* Precondition: only Cons and Done in schedule. *)
   (* Precondition: rules desugared. TODO desugar from here instead? *)
   Definition schedule_to_simple_form (s: schedule) (rules: rule_name_t -> uact)
-  : simple_form :=
+  : simple_form * nat :=
     (* Get list of uact from scheduler *)
     let rules_l := schedule_to_list_of_rules s rules in
     (* Get rule_information from each rule *)
-    let '(rule_info_l, nid') :=
+    let '(rule_info_l, nid) :=
       fold_left
-        (fun '(rir_acc, nid') r =>
-          let '(ri, nid'') := get_rule_information r nid' in
-          (rir_acc++[ri], nid''))
-        rules_l ([], initial_ids)
+        (fun '(rir_acc, nid) r =>
+          let '(ri, nid) := get_rule_information r nid in
+          (rir_acc++[ri], nid))
+        rules_l ([], 0)
     in
     (* Detect inter-rules conflicts *)
     let rule_info_with_conflicts_l := detect_all_conflicts rule_info_l in
     (* To schedule info, merge cancel conditions with actions conditions *)
-    let schedule_info := merge_schedule rule_info_with_conflicts_l in
+    let (schedule_info, nid) := merge_schedule rule_info_with_conflicts_l nid in
     (* To simple form *)
-    remove_interm schedule_info.
+    remove_interm schedule_info nid.
 End SimpleForm.
 Close Scope nat.
