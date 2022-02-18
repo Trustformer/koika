@@ -1484,4 +1484,209 @@ Section WT.
       (int_retSig fn) ->
     wt_action sig (USugar (UCallModule fR fSigma fn args)) (fn.(int_retSig)).
 
+  Inductive wt_daction
+    {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
+    {Sigma: ext_fn_t -> ExternalSignature}
+  : tsig var_t -> @daction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop
+  :=
+  | wt_daction_fail: forall sig t, wt_daction sig (DFail t) t
+  | wt_daction_var: forall sig var t,
+    wt_var sig var t -> wt_daction sig (DVar var) t
+  | wt_daction_const: forall sig tau cst,
+    wt_daction sig (@DConst _ _ _ _ _ tau cst) tau
+  | wt_daction_assign: forall sig k a t,
+    wt_daction sig a t -> wt_var sig k t ->
+    wt_daction sig (DAssign k a) (bits_t 0)
+  | wt_daction_seq: forall sig a1 a2 t2,
+    wt_daction sig a1 unit_t -> wt_daction sig a2 t2 -> wt_daction sig (DSeq a1 a2) t2
+  | wt_daction_bind: forall sig k a1 a2 t1 t2,
+    wt_daction sig a1 t1 -> wt_daction ((k,t1)::sig) a2 t2 ->
+    wt_daction sig (DBind k a1 a2) t2
+  | wt_daction_if: forall sig cond athen aelse t,
+    wt_daction sig cond (bits_t 1) -> wt_daction sig athen t ->
+    wt_daction sig aelse t -> wt_daction sig (DIf cond athen aelse) t
+  | wt_daction_read: forall sig prt idx, wt_daction sig (DRead prt idx) (R idx)
+  | wt_daction_write: forall sig prt idx v,
+    wt_daction sig v (R idx) -> wt_daction sig (DWrite prt idx v) unit_t
+  | wt_daction_udisplayutf8: forall sig arg tau,
+    array_type tau = bits_t 8 ->
+    wt_daction sig arg (array_t tau) ->
+    wt_daction sig (DUnop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) arg)
+      unit_t
+  | wt_daction_udisplayvalue: forall sig arg tau opts,
+    wt_daction sig arg tau ->
+    wt_daction sig
+      (DUnop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) arg) unit_t
+  | wt_daction_upack: forall sig arg tau,
+    wt_daction sig arg tau ->
+    wt_daction sig (DUnop (PrimUntyped.UConv (PrimUntyped.UPack)) arg)
+      (bits_t (type_sz tau))
+  | wt_daction_uunpack: forall sig arg tau,
+    wt_daction sig arg (bits_t (type_sz tau)) ->
+    wt_daction sig (DUnop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) arg) tau
+  | wt_daction_uignore: forall sig arg tau,
+    wt_daction sig arg tau ->
+    wt_daction sig (DUnop (PrimUntyped.UConv (PrimUntyped.UIgnore)) arg) unit_t
+  | wt_daction_unot: forall sig arg sz,
+    wt_daction sig arg (bits_t sz) ->
+    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.UNot)) arg)
+      (bits_t sz)
+  | wt_daction_usext: forall sig arg sz width,
+    wt_daction sig arg (bits_t sz) ->
+    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) arg)
+      (bits_t (Nat.max sz width))
+  | wt_daction_uzextl: forall sig arg sz width,
+    wt_daction sig arg (bits_t sz) ->
+    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) arg)
+      (bits_t (Nat.max sz width))
+  | wt_daction_uzextr: forall sig arg sz width,
+    wt_daction sig arg (bits_t sz) ->
+    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) arg)
+      (bits_t (Nat.max sz width))
+  | wt_daction_urepeat: forall sig arg sz times,
+    wt_daction sig arg (bits_t sz) ->
+    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) arg)
+    (bits_t (times * sz))
+  | wt_daction_uslice: forall sig arg sz offset width,
+    wt_daction sig arg (bits_t sz) ->
+    wt_daction sig
+      (DUnop (PrimUntyped.UBits1 (PrimUntyped.USlice offset width)) arg)
+      (bits_t width)
+  | wt_daction_ugetfield: forall sig arg name sg idx,
+    wt_daction sig arg (struct_t sg) ->
+    PrimTypeInference.find_field sg name = Success idx ->
+    wt_daction sig
+      (DUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) arg)
+      (field_type sg idx)
+  | wt_daction_ugetfieldbits: forall sig arg name sg idx,
+    wt_daction sig arg (struct_bits_t sg) ->
+    PrimTypeInference.find_field sg name = Success idx ->
+    wt_daction sig
+      (DUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) arg)
+      (bits_t (field_sz sg idx))
+  | wt_daction_ugetelement: forall sig arg sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
+    wt_daction sig arg (array_t sg) ->
+    wt_daction sig
+      (DUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) arg)
+      (sg.(array_type))
+  | wt_daction_ugetelementbits: forall sig arg sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
+    wt_daction sig arg (bits_t (array_sz sg)) ->
+    wt_daction sig
+      (DUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) arg)
+      (bits_t (element_sz sg))
+  | wt_daction_ueq: forall sig arg1 arg2 tau neg,
+    wt_daction sig arg1 tau -> wt_daction sig arg2 tau ->
+    wt_daction sig (DBinop (PrimUntyped.UEq neg) arg1 arg2) (bits_t 1)
+  | wt_daction_uand: forall sig arg1 arg2 sz,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) arg1 arg2)
+      (bits_t sz)
+  | wt_daction_uor: forall sig arg1 arg2 sz,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UOr) arg1 arg2)
+      (bits_t sz)
+  | wt_daction_uxor: forall sig arg1 arg2 sz,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UXor) arg1 arg2)
+      (bits_t sz)
+  | wt_daction_ulsl: forall sig arg1 arg2 bits_sz shift_sz,
+    wt_daction sig arg1 (bits_t bits_sz) ->
+    wt_daction sig arg2 (bits_t shift_sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.ULsl) arg1 arg2)
+      (bits_t bits_sz)
+  | wt_daction_ulsr: forall sig arg1 arg2 bits_sz shift_sz,
+    wt_daction sig arg1 (bits_t bits_sz) ->
+    wt_daction sig arg2 (bits_t shift_sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.ULsr) arg1 arg2)
+      (bits_t bits_sz)
+  | wt_daction_uasr: forall sig arg1 arg2 bits_sz shift_sz,
+    wt_daction sig arg1 (bits_t bits_sz) ->
+    wt_daction sig arg2 (bits_t shift_sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UAsr) arg1 arg2)
+      (bits_t bits_sz)
+  | wt_daction_uconcat: forall sig arg1 arg2 sz1 sz2,
+    wt_daction sig arg1 (bits_t sz1) -> wt_daction sig arg2 (bits_t sz2) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UConcat) arg1 arg2)
+      (bits_t (sz1 + sz2))
+  | wt_daction_usel: forall sig arg1 arg2 sz,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t (log2 sz)) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.USel) arg1 arg2)
+      (bits_t 1)
+  | wt_daction_uslicesubst: forall sig arg1 arg2 sz offset width,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t width) ->
+    wt_daction sig
+      (DBinop (PrimUntyped.UBits2 (
+        PrimUntyped.USliceSubst offset width
+      )) arg1 arg2)
+      (bits_t sz)
+  | wt_daction_uindexedslice: forall sig arg1 arg2 sz width,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t (log2 sz)) ->
+    wt_daction sig
+      (DBinop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice width)) arg1 arg2)
+      (bits_t width)
+  | wt_daction_uplus: forall sig arg1 arg2 sz,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UPlus) arg1 arg2)
+      (bits_t sz)
+  | wt_daction_uminus: forall sig arg1 arg2 sz,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UMinus) arg1 arg2)
+      (bits_t sz)
+  | wt_daction_umul: forall sig arg1 arg2 sz1 sz2,
+    wt_daction sig arg1 (bits_t sz1) -> wt_daction sig arg2 (bits_t sz2) ->
+    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UMul) arg1 arg2)
+      (bits_t (sz1 + sz2))
+  | wt_daction_ucompare: forall sig arg1 arg2 sz signed bits_comparison,
+    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
+    wt_daction sig
+      (DBinop (PrimUntyped.UBits2 (
+        PrimUntyped.UCompare signed bits_comparison
+      )) arg1 arg2)
+      (bits_t 1)
+  | wt_daction_usubstfield: forall sig arg1 arg2 sg field_name idx,
+    wt_daction sig arg1 (struct_t sg) ->
+    PrimTypeInference.find_field sg field_name = Success idx ->
+    wt_daction sig arg2 (field_type sg idx) ->
+    wt_daction sig
+      (DBinop (PrimUntyped.UStruct2 (
+        PrimUntyped.USubstField field_name
+      )) arg1 arg2)
+      (struct_t sg)
+  | wt_daction_usubstfieldbits: forall sig arg1 arg2 sg field_name idx,
+      wt_daction sig arg1 (bits_t (struct_sz sg)) ->
+      PrimTypeInference.find_field sg field_name = Success idx ->
+      wt_daction sig arg2 (bits_t (field_sz sg idx)) ->
+      wt_daction sig
+        (DBinop (PrimUntyped.UStruct2 (
+          PrimUntyped.USubstFieldBits sg field_name
+        )) arg1 arg2)
+        (bits_t (struct_sz sg))
+  | wt_daction_usubstelement: forall sig arg1 arg2 sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
+    wt_daction sig arg1 (array_t sg) ->
+    wt_daction sig arg2 (sg.(array_type)) ->
+    wt_daction sig
+      (DBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) arg1 arg2)
+      (array_t sg)
+  | wt_daction_usubsttelementbits: forall sig arg1 arg2 sg idx idx0,
+    PrimTypeInference.check_index sg idx = Success idx0 ->
+    wt_daction sig arg1 (bits_t (array_sz sg)) ->
+    wt_daction sig arg2 (bits_t (element_sz sg)) ->
+    wt_daction sig
+      (DBinop (PrimUntyped.UArray2 (
+        PrimUntyped.USubstElementBits sg idx
+      )) arg1 arg2)
+      (bits_t (array_sz sg))
+  | wt_daction_uexternalcall: forall sig fn a,
+    wt_daction sig a (arg1Sig (Sigma fn)) ->
+    wt_daction sig (DExternalCall fn a) (retSig (Sigma fn))
+  | wt_daction_internal_call: forall sig fn args,
+    Forall2 (wt_daction sig) args (map snd (int_argspec fn)) ->
+    wt_daction (List.rev fn.(int_argspec)) (int_body fn) (int_retSig fn)->
+    wt_daction sig (DInternalCall fn args) (fn.(int_retSig))
+  | wt_daction_uapos: forall sig tau pos e,
+    wt_daction sig e tau -> wt_daction sig (DAPos pos e) tau.
+
 End WT.

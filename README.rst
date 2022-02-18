@@ -787,6 +787,9 @@ The following list shows the current state of the repo:
       - |coq/OneRuleAtATime.v|_: Proof of the One-rule-at-a-time theorem
       - |coq/SemanticProperties.v|_: Properties of the semantics used in the one-rule-at-a-time theorem
 
+   (Proving)
+      - |coq/SimpleForm.v|_: Transformation of a schedule into a proof-friendly form
+
    (Stdlib)
       - |coq/Std.v|_: Standard library
 
@@ -1047,6 +1050,10 @@ The following list shows the current state of the repo:
 .. _coq/SemanticProperties.v: coq/SemanticProperties.v
 .. |coq/Show.v| replace:: ``Show.v``
 .. _coq/Show.v: coq/Show.v
+.. |coq/SimpleForm.v| replace:: ``SimpleForm.v``
+.. _coq/SimpleForm.v: coq/SimpleForm.v
+.. |coq/SimpleFormInterpretation.v| replace:: ``SimpleFormInterpretation.v``
+.. _coq/SimpleFormInterpretation.v: coq/SimpleFormInterpretation.v
 .. |coq/SimpleLogs.v| replace:: ``SimpleLogs.v``
 .. _coq/SimpleLogs.v: coq/SimpleLogs.v
 .. |coq/SimpleTypedSemantics.v| replace:: ``SimpleTypedSemantics.v``

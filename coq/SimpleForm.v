@@ -42,11 +42,11 @@ Section SimpleForm.
   Record write_info := mkWriteInfo { wcond: uact; wval: uact }.
   Definition write_log := list (reg_t * list (write_info)).
   Definition write_log_raw := list (reg_t * (uact * list (write_info))).
-  Record extcall_info := mkExtcallInfo
-    { econd: uact; earg: uact; ebind: string }.
-  Instance etaExtcallInfo : Settable _ :=
-    settable! mkExtcallInfo < econd; earg; ebind >.
-  Definition extcall_log := list (ext_fn_t * extcall_info).
+  (* Record extcall_info := mkExtcallInfo *)
+  (*   { econd: uact; earg: uact; ebind: string }. *)
+  (* Instance etaExtcallInfo : Settable _ := *)
+  (*   settable! mkExtcallInfo < econd; earg; ebind >. *)
+  (* Definition extcall_log := list (ext_fn_t * extcall_info). *)
   Definition var_value_map := list (string * uact).
 
   Record rule_information_raw := mkRuleInformationRaw {
@@ -54,36 +54,33 @@ Section SimpleForm.
     rir_read1s: cond_log;
     rir_write0s: write_log_raw;
     rir_write1s: write_log_raw;
-    rir_extcalls: extcall_log;
+    (* rir_extcalls: extcall_log; *)
     rir_vars: var_value_map;
     rir_failure_cond: uact }.
   Instance etaRuleInformationRaw : Settable _ :=
     settable! mkRuleInformationRaw <
-      rir_read0s; rir_read1s; rir_write0s; rir_write1s; rir_extcalls; rir_vars;
+      rir_read0s; rir_read1s; rir_write0s; rir_write1s; rir_vars;
       rir_failure_cond >.
   Record rule_information_clean := mkRuleInformationClean {
     ric_write0s: write_log;
     ric_write1s: write_log;
-    ric_extcalls: extcall_log;
     ric_vars: var_value_map;
     ric_failure_cond: uact }.
   Instance etaRuleInformationClean : Settable _ :=
     settable! mkRuleInformationClean
-      < ric_write0s; ric_write1s; ric_extcalls; ric_vars; ric_failure_cond >.
+      < ric_write0s; ric_write1s; ric_vars; ric_failure_cond >.
   Record schedule_information := mkScheduleInformation {
     sc_write0s: cond_log;
     sc_write1s: cond_log;
-    sc_extcalls: extcall_log;
     sc_vars: var_value_map }.
   Instance etaScheduleInformation : Settable _ :=
     settable! mkScheduleInformation
-      < sc_write0s; sc_write1s; sc_extcalls; sc_vars >.
+      < sc_write0s; sc_write1s; sc_vars >.
   Record simple_form := mkSimpleForm {
     final_values: list (reg_t * string);
-    vars: var_value_map;
-    external_calls: extcall_log }.
+    vars: var_value_map }.
   Instance etaSimpleForm : Settable _ :=
-    settable! mkSimpleForm < final_values; vars; external_calls >.
+    settable! mkSimpleForm < final_values; vars >.
 
   (* * Bindings names *)
   (* TODO name collisions with previously standing variables can't possibly
@@ -194,13 +191,13 @@ Section SimpleForm.
     merge_failures_list grd (list_options_to_list [
       option_map fst (list_assoc (rir_write1s rir) reg)])).
 
-  Definition add_extcall
-    (rir: rule_information_raw) (grd: uact) (ufn: ext_fn_t) (arg: uact)
-    (name: string)
-  : rule_information_raw :=
-    rir <| rir_extcalls :=
-      (ufn, {| econd := grd; earg := arg; ebind := name |})::(rir_extcalls rir)
-    |>.
+  (* Definition add_extcall *)
+  (*   (rir: rule_information_raw) (grd: uact) (ufn: ext_fn_t) (arg: uact) *)
+  (*   (name: string) *)
+  (* : rule_information_raw := *)
+  (*   rir <| rir_extcalls := *)
+  (*     (ufn, {| econd := grd; earg := arg; ebind := name |})::(rir_extcalls rir) *)
+  (*   |>. *)
 
   (* ** Extraction of actions from rule *)
     Definition reduce (ua: option (uact)) : uact :=
@@ -494,8 +491,10 @@ Section SimpleForm.
           get_rule_information_aux arg env vvs guard rir nid
         in
         let name := generate_binding_name nid in
-        let new_rir := add_extcall rir guard ufn (reduce ret_arg) name in
-        (Some (DVar name), vm_arg, vv_arg, failures_arg, new_rir,
+        (* let new_rir := add_extcall rir guard ufn (reduce ret_arg) name in *)
+        (Some (DVar name), vm_arg,
+          list_assoc_set vv_arg name (DExternalCall ufn (reduce ret_arg)),
+          failures_arg, rir,
           S nid)
     | DError _ => (None, env, vvs, const_true, rir, nid)
     | DFail _ => (None, env, vvs, const_true, rir, nid)
@@ -511,6 +510,7 @@ Section SimpleForm.
   | simple_shape_unop ufn a: simple_shape a -> simple_shape (DUnop ufn a)
   | simple_shape_binop ufn a1 a2: simple_shape a1 -> simple_shape a2 -> simple_shape (DBinop ufn a1 a2)
   | simple_shape_read prt idx: simple_shape (DRead prt idx)
+  | simple_shape_ext ufn a: simple_shape a -> simple_shape (DExternalCall ufn a)
   .
 
   Lemma get_rule_information_aux_act_shape:
@@ -559,8 +559,8 @@ Section SimpleForm.
   | var_in_uact_binop_1 ufn a1 a2 v:
     var_in_uact a1 v -> var_in_uact (DBinop ufn a1 a2) v
   | var_in_uact_binop_2 ufn a1 a2 v:
-    var_in_uact a2 v -> var_in_uact (DBinop ufn a1 a2) v.
-
+    var_in_uact a2 v -> var_in_uact (DBinop ufn a1 a2) v
+  | var_in_uact_external ufn a v: var_in_uact a v -> var_in_uact (DExternalCall ufn a) v.
 
   Lemma list_assoc_set_key_in:
     forall {K V: Type} {eq_dec_k: EqDec K} (l: list (K*V)) k v,
@@ -812,7 +812,7 @@ Section SimpleForm.
     exists n, name = generate_binding_name n /\ n < nid.
   Definition vvs_range (vvs: list (string * uact)) (nid: nat) :=
     forall x y,
-      In (x,y) vvs -> valid_name x nid.
+      list_assoc vvs x = Some y -> valid_name x nid.
 
   Lemma string_append_inj:
     forall (s1 s2 s3: string),
@@ -847,15 +847,13 @@ Section SimpleForm.
   Lemma vvs_range_in_fst:
     forall vvs n,
     vvs_range vvs n ->
-    forall k,
-      In (generate_binding_name k) (map fst vvs) ->
+    forall k v,
+      list_assoc vvs (generate_binding_name k) = Some v ->
       k < n.
   Proof.
     unfold vvs_range. intros.
-    rewrite in_map_iff in H0. destruct H0 as (x & EQ & IN).
-    destruct x. simpl in *. subst.
-    apply H in IN.
-    destruct IN as (n0 & EQ & LT).
+    apply H in H0.
+    destruct H0 as (n0 & EQ & LT).
     apply generate_binding_name_inj in EQ. subst. auto.
   Qed.
 
@@ -866,7 +864,9 @@ Section SimpleForm.
       vvs_range (list_assoc_set vvs name v) n.
   Proof.
     unfold vvs_range; simpl; intros.
-    apply in_list_assoc_set_inv in H1; destruct H1. inv H1. auto. eauto.
+    destruct (eq_dec name x). subst.
+    rewrite list_assoc_gss in H1. inv H1; eauto.
+    rewrite list_assoc_gso in H1; eauto.
   Qed.
 
   Lemma valid_name_incr:
@@ -917,23 +917,66 @@ Section SimpleForm.
     apply generate_binding_name_inj in EQ2.
     do 2 eexists; repeat split; eauto. lia.
   Qed.
+  Lemma list_assoc_app : forall {K V: Type} {eqdec: EqDec K} (l1 l2: list (K * V)) k v,
+      list_assoc l1 k = Some v ->
+      list_assoc (l1 ++ l2) k = Some v.
+  Proof.
+    induction l1; simpl; intros; eauto. easy. repeat destr_in H; eauto.
+  Qed.
+  Lemma list_assoc_app_none : forall {K V: Type} {eqdec: EqDec K} (l1 l2: list (K * V)) k,
+      list_assoc l1 k = None ->
+      list_assoc (l1 ++ l2) k = list_assoc l2 k.
+  Proof.
+    induction l1; simpl; intros; eauto. repeat destr_in H; eauto. easy.
+  Qed.
+
+
+  Lemma list_assoc_spec: forall {K V} {eqdec: EqDec K} (l: list (K * V)) k k' v,
+      list_assoc (list_assoc_set l k v) k' = if eq_dec k k' then Some v else list_assoc l k'.
+  Proof.
+    intros; destr; subst.
+    rewrite list_assoc_gss; auto.
+    rewrite list_assoc_gso; auto.
+  Qed.
+
+  Lemma list_assoc_app_spec: forall {K V} {eqdec: EqDec K} (l1 l2: list (K * V)) k,
+      list_assoc (l1 ++ l2) k =
+        match list_assoc l1 k with
+        | Some v => Some v
+        | None => list_assoc l2 k
+        end.
+  Proof.
+    intros; destr; subst.
+    eapply list_assoc_app; eauto.
+    eapply list_assoc_app_none; eauto.
+  Qed.
+
+  Lemma vvs_range_none:
+    forall l n name,
+      vvs_range l n ->
+      ~ valid_name name n ->
+      list_assoc l name = None.
+  Proof.
+    unfold vvs_range; intros.
+    destruct (list_assoc l name) eqn:?; eauto. eapply H in Heqo; eauto. congruence.
+  Qed.
 
   Lemma merge_banches_grows:
     forall vm_tb vm_fb vvs nid cond_name vm' vvs' nid'
            (MB: merge_branches' vm_tb vm_fb vvs nid cond_name = (vm', vvs', nid'))
-           (ENVVVS1: forall x y, In (x,y) vm_tb -> In y (map fst vvs))
-           (ENVVVS2: forall x y, In (x,y) vm_fb -> In y (map fst vvs))
+           (ENVVVS1: forall x y, In (x,y) vm_tb -> exists z, list_assoc vvs y = Some z)
+           (ENVVVS2: forall x y, In (x,y) vm_fb -> exists z, list_assoc vvs y = Some z)
            (RNGVVS: vvs_range vvs nid)
            (VVSVALID: forall (v : string) (a : uact),
-               In (v, a) vvs -> forall v' : string, var_in_uact a v' -> var_lt v' v
+               list_assoc vvs v = Some a -> forall v' : string, var_in_uact a v' -> var_lt v' v
            )
            (VALIDCOND: valid_name cond_name nid)
     ,
-      (forall x y, In (x,y) vvs -> In (x,y) vvs') /\
+      (forall x y, list_assoc vvs x = Some y -> list_assoc vvs' x = Some y) /\
         vvs_range vvs' nid' /\
-        (forall x y, In (x,y) vm' -> In y (map fst vvs')) /\ nid <= nid' /\
+        (forall x y, In (x,y) vm' -> exists z, list_assoc vvs' y = Some z) /\ nid <= nid' /\
         (forall (v : string) (a : uact),
-            In (v, a) vvs' -> forall v' : string, var_in_uact a v' -> var_lt v' v).
+            list_assoc vvs' v = Some a -> forall v' : string, var_in_uact a v' -> var_lt v' v).
   Proof.
     induction vm_tb; simpl; intros; eauto.
     - inv MB. split; auto.
@@ -943,37 +986,38 @@ Section SimpleForm.
         intros; eapply ENVVVS2; simpl; eauto. auto. auto. auto.
         repeat split; auto.
         simpl; intros. destruct H; eauto. inv H.
-        specialize (ENVVVS2 _ _ (or_introl eq_refl)). apply in_map_iff in ENVVVS2.
-        destruct ENVVVS2 as ((s3&aa)&EQ&IN). simpl in *; subst.
-        apply VVSGROWS3 in IN.
-        apply (in_map fst) in IN. simpl in IN.
-        apply eqb_eq in Heqb. subst; auto.
+        apply eqb_eq in Heqb; subst.
+        destruct (ENVVVS2 _ _ (or_introl eq_refl)) as (z & EQ). eauto.
       + edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3). eauto.
         intros; eapply ENVVVS1; eauto.
         intros; eapply ENVVVS2; simpl; eauto. auto. auto. auto.
         repeat split; auto.
-        * simpl; intros. rewrite in_app_iff. eauto.
-        * red. intros x y. rewrite in_app_iff.  intros [A|A].
-          eapply VVSRANGE3 in A. eapply valid_name_incr. 2: eauto. lia.
-          simpl in A. destruct A as [A|[]]. inv A. red; eexists; split; eauto.
+        * intros; eapply list_assoc_app; eauto.
+        * red. intros x y. rewrite list_assoc_app_spec. destr.
+          inversion 1; subst. eapply valid_name_incr. 2: eauto. lia. simpl.
+          intro A; repeat destr_in A; inv A. red; eexists; split; eauto.
         * simpl. intros x y [A|A].
-          inv A. rewrite map_app.  apply in_or_app. right. simpl.  auto.
-          rewrite map_app.  apply in_or_app. left. eauto.
+          inv A. rewrite list_assoc_app_none. simpl. rewrite eq_dec_refl. eauto.
+          eapply vvs_range_none; eauto.
+          intros (ee & EQ & IN). apply generate_binding_name_inj in EQ; lia.
+          eapply ENVVVS3 in A. destruct A as (z & EQ). eexists; eapply list_assoc_app; eauto.
         * intros.
-          rewrite in_app_iff in H. destruct H; eauto.
-          simpl in H. destruct H as [H|[]]. inv H.
+          rewrite list_assoc_app_spec in H.
+          simpl in H. repeat destr_in H; inv H.
+          eauto.
+
           inv H0. inv H4.
           destruct VALIDCOND as (condno & EQ & LT). subst.
           do 2 eexists; repeat split; eauto. lia.
           inv H4; eauto.
-          specialize (ENVVVS2 _ _ (or_introl eq_refl)). apply in_map_iff in ENVVVS2.
-          destruct ENVVVS2 as ((ss&a) & EQ & IN). simpl in *. subst.
+          specialize (ENVVVS2 _ _ (or_introl eq_refl)). 
+          destruct ENVVVS2 as (z & IN). simpl in *.
           apply RNGVVS in IN.
           destruct IN as (condno & EQ & LT). subst.
           do 2 eexists; repeat split; eauto. lia.
           inv H4; eauto.
-          specialize (ENVVVS1 _ _ (or_introl eq_refl)). apply in_map_iff in ENVVVS1.
-          destruct ENVVVS1 as ((ss&a) & EQ & IN). simpl in *. subst.
+          specialize (ENVVVS1 _ _ (or_introl eq_refl)).
+          destruct ENVVVS1 as (z & IN). simpl in *. subst.
           apply RNGVVS in IN.
           destruct IN as (condno & EQ & LT). subst.
           do 2 eexists; repeat split; eauto. lia.
@@ -1068,8 +1112,13 @@ Section SimpleForm.
         forall env1 vvs1 nid1 rir1 grd1 env2 vvs2 nid2 rir2,
           P env1 vvs1 nid1 rir1 env2 vvs2 nid2 rir2 ->
           I env1 vvs1 nid1 rir1 grd1 ->
-          forall x,
-            In x (map fst vvs1) -> In x (map fst vvs2)
+          forall x y,
+            list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y
+      )
+      (Irange:
+        forall env vvs nid rir grd,
+          I env vvs nid rir grd ->
+          vvs_range vvs nid
       )
       rec args
       (F: Forall (fun u =>
@@ -1090,16 +1139,16 @@ Section SimpleForm.
       (VF: valid_vars_uact fail0 nid)
       (INV: I env vvs0 nid rir guard)
       (GRIA: gria_list' guard rec args env vvs0 rir nid names0 fail0 = (names, env', vvs, fail1, rir', nid'))
-      (NAMES: Forall (fun name => In name (map fst vvs0)) names0)
+      (NAMES: Forall (fun name => exists z, list_assoc vvs0 name = Some z) names0)
     ,
       P env vvs0 nid rir env' vvs nid' rir'
       /\ I env' vvs nid' rir' guard
-      /\ Forall (fun name => In name (map fst vvs)) names
+      /\ Forall (fun name => exists z, list_assoc vvs name = Some z) names
       /\ List.length names = List.length names0 + List.length args
       /\ valid_vars_uact fail1 nid'
       /\ nid <= nid'.
   Proof.
-    induction 6; simpl; intros; eauto.
+    induction 7; simpl; intros; eauto.
     - inv GRIA. repeat split; eauto.
     - inv WUKV.
       repeat destr_in GRIA. subst.
@@ -1122,11 +1171,13 @@ Section SimpleForm.
       + eapply Psetvvs; eauto.
         intros. destruct o. simpl. eauto. red; simpl; intros. inv H.
       + constructor.
-        apply list_assoc_set_key_in.
+        rewrite list_assoc_gss. eauto.
         eapply Forall_impl. 2: apply NAMES. simpl.
-        intros a IN.
-        eapply Pvvsgrows in IN. 2: eauto.
-        eapply list_assoc_set_key_stays_in; eauto. eauto.
+        intros a (z & IN).
+        eapply Pvvsgrows in IN. 2: eauto. 2: eauto.
+        rewrite list_assoc_gso; eauto.
+        eapply Irange in I2. eapply I2 in IN. intro; subst.
+        destruct IN as (zz & EQ & LT). apply generate_binding_name_inj in EQ; lia.
   Qed.
 
   Lemma list_assoc_in:
@@ -1157,32 +1208,13 @@ Section SimpleForm.
                                    Forall (fun wi => valid_vars_uact (wval wi) n) (snd a);
     }.
 
-  Record wf_extcall_info (ext: extcall_info) (n: nat) :=
-    {
-      wf_ei_cond: valid_vars_uact (econd ext) n;
-      wf_ei_arg: valid_vars_uact (earg ext) n;
-      wf_ei_bind: var_lt (ebind ext) (generate_binding_name n);
-    }.
-
   Record wf_rir (r: rule_information_raw) (n: nat) :=
     {
       wf_rir_read0s: forall i a, In (i, a) (rir_read0s r) -> valid_vars_uact a n;
       wf_rir_read1s: forall i a, In (i, a) (rir_read1s r) -> valid_vars_uact a n;
       wf_rir_write0s: wf_write_log_raw (rir_write0s r) n;
       wf_rir_write1s: wf_write_log_raw (rir_write1s r) n;
-      wf_rir_extcalls: forall i ext, In (i, ext) (rir_extcalls r) -> wf_extcall_info ext n
     }.
-
-
-  Lemma wf_extcall_info_incr:
-    forall r n1 n2,
-      wf_extcall_info r n1 ->
-      n1 <= n2 ->
-      wf_extcall_info r n2.
-  Proof.
-    intros. inv H. split; eauto using valid_var_uact_incr.
-    eauto using var_lt_gen_r.
-  Qed.
 
   Lemma wf_write_log_raw_incr:
     forall r n1 n2,
@@ -1201,28 +1233,20 @@ Section SimpleForm.
       n1 <= n2 ->
       wf_rir r n2.
   Proof.
-    intros. inv H. split; eauto using valid_var_uact_incr, wf_extcall_info_incr, wf_write_log_raw_incr.
+    intros. inv H. split; eauto using valid_var_uact_incr, wf_write_log_raw_incr.
   Qed.
 
   Lemma vss_or_extcall_var_lt:
     forall l n rir
            (VVSRANGE : vvs_range l n)
            (RIRRNG : wf_rir rir n)
-           v'
-           (H0 : In v' (map fst l) \/
-                   (exists ext : ext_fn_t * extcall_info,
-                       In ext (rir_extcalls rir) /\ ebind (snd ext) = v')),
+           v' z
+           (H0 : list_assoc l v' = Some z),
       var_lt v' (generate_binding_name n).
   Proof.
-    intros.
-    destruct H0.
-    rewrite in_map_iff in H. destruct H as ((s&a) & EQ & IN). apply VVSRANGE in IN.
-    red in IN. destruct IN as (n0 & EQ2 & LT). do 2 eexists; repeat split; eauto. subst.  reflexivity.
-    destruct H as (ext & IN & EQ).
-    subst. inv RIRRNG. destruct ext. apply wf_rir_extcalls0 in IN.
-    destruct IN. eauto.
+    intros. eapply VVSRANGE in H0.
+    destruct H0 as (n0 & EQ2 & LT). do 2 eexists; repeat split; eauto.
   Qed.
-
 
   Lemma filter_map_In:
     forall {A B: Type} (f: A -> option B) l x,
@@ -1365,6 +1389,494 @@ Section SimpleForm.
     - eauto.
   Qed.
 
+(* Goal forall P r, let res := get_rule_information_aux *)
+(*                               (DSeq (DWrite P1 r const_false) (DWrite P0 r const_false)) *)
+(*                               [] [] const_true *)
+(*                    {| rir_read0s := []; rir_read1s := []; rir_write0s := []; *)
+(*            rir_write1s := []; rir_extcalls := []; rir_vars := []; *)
+(*                                                   rir_failure_cond := const_false |} 0 in *)
+(*                P res. *)
+(*   simpl. intros. *)
+(*   unfold set. simpl. *)
+(*   unfold list_options_to_list. simpl. unfold merge_failures_list. unfold or_conds, id. simpl. *)
+(*   rewrite eq_dec_refl. simpl. *)
+
+  Definition write_log_raw_grows (wl1 wl2: write_log_raw) :=
+    forall idx gcond wil,
+      list_assoc wl1 idx = Some (gcond, wil) ->
+      exists gcond' wil' ,
+        list_assoc wl2 idx = Some (gcond', wil') /\ incl wil wil'.
+
+  Variable REnv : Env reg_t.
+  Variable r : env_t REnv (fun _ => val).
+  Variable sigma : ext_fn_t -> val -> val.
+
+  Inductive interp_fact
+            (vvs: list (string * uact))
+            (rir: rule_information_raw) : uact -> val -> Prop :=
+
+  | interp_fact_var_in_vvs var a v:
+    list_assoc vvs var = Some a ->
+    interp_fact vvs rir a v ->
+    interp_fact vvs rir (DVar var) v
+  (* | interp_fact_var_in_extcall var ext v: *)
+  (*   list_assoc vvs var = None -> *)
+  (*   In ext (rir_extcalls rir) -> *)
+  (*   ebind (snd ext) = var -> *)
+  (*   interp_fact vvs rir (earg (snd ext)) v -> *)
+  (*   interp_fact vvs rir (DVar var) (sigma (fst ext) v) *)
+
+  | interp_fact_read prt idx v:
+    read_from_rirs vvs rir prt idx v ->
+    interp_fact vvs rir (DRead prt idx) v
+
+  | interp_fact_const tau (const: type_denote tau):
+    interp_fact vvs rir (DConst const) (BitsToLists.val_of_value const)
+  | interp_fact_if c t f b v:
+    interp_fact vvs rir c (Bits 1 [b]) ->
+    interp_fact vvs rir (if b then t else f) v ->
+    interp_fact vvs rir (DIf c t f) v
+  | interp_fact_unop ufn a v v':
+    interp_fact vvs rir a v ->
+    UntypedSemantics.sigma1 ufn v = Some v' ->
+    interp_fact vvs rir (DUnop ufn a) v'
+  | interp_fact_binop ufn a1 a2 v1 v2 v' :
+    interp_fact vvs rir a1 v1 ->
+    interp_fact vvs rir a2 v2 ->
+    UntypedSemantics.sigma2 ufn v1 v2 = Some v' ->
+    interp_fact vvs rir (DBinop ufn a1 a2) v'
+
+  with read_from_rirs
+         (vvs: list (string * uact))
+         (rir: rule_information_raw) : Port -> reg_t -> val -> Prop :=
+  | rfr0 idx:
+    read_from_rirs vvs rir P0 idx (getenv REnv r idx)
+  | rfr1_nowrite0 idx:
+    list_assoc (rir_write0s rir) idx = None ->
+    read_from_rirs vvs rir P1 idx (getenv REnv r idx)
+  | rfr1_write0 idx gcond wil wi v:
+    list_assoc (rir_write0s rir) idx = Some (gcond, wil) ->
+    find_ok_condition vvs rir wil wi ->
+    interp_fact vvs rir (wval wi) v ->
+    read_from_rirs vvs rir P1 idx v
+  with find_ok_condition
+         (vvs: list (string * uact))
+         (rir: rule_information_raw) : list (write_info) -> write_info -> Prop :=
+  | foc_true wi wil:
+    interp_fact vvs rir (wcond wi) (Bits 1 [true]) ->
+    find_ok_condition vvs rir (wi::wil) wi
+  | foc_false wi wi' wil:
+    interp_fact vvs rir (wcond wi) (Bits 1 [false]) ->
+    find_ok_condition vvs rir wil wi' ->
+    find_ok_condition vvs rir (wi::wil) wi'.
+
+
+  Lemma interp_fact_change_vvs:
+    forall a
+           (vvs1: list (string * uact))
+           (rir: rule_information_raw) v
+           (vvs2: list (string * uact))
+           n
+           (VVSRANGE: vvs_range vvs1 n)
+           (VVSGROWS: forall x,
+               valid_name x n ->
+               forall y, list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y)
+           (INF: interp_fact vvs1 rir a v),
+      interp_fact vvs2 rir a v
+  with read_from_rirs_change_vvs:
+    forall (vvs1: list (string * uact))
+           (rir: rule_information_raw) prt idx v
+           (vvs2: list (string * uact))
+           n
+           (VVSRANGE: vvs_range vvs1 n)
+           (VVSGROWS: forall x,
+               valid_name x n ->
+               forall y, list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y)
+           (RFR: read_from_rirs vvs1 rir prt idx v),
+      read_from_rirs vvs2 rir prt idx v
+  with find_ok_condition_change_vvs:
+    forall (vvs1: list (string * uact))
+           (rir: rule_information_raw) wil wi
+           (vvs2: list (string * uact))
+           n
+           (VVSRANGE: vvs_range vvs1 n)
+           (VVSGROWS: forall x,
+               valid_name x n ->
+               forall y, list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y)
+           (RFR: find_ok_condition vvs1 rir wil wi),
+      find_ok_condition vvs2 rir wil wi
+  .
+  Proof.
+    - induction 3; simpl; intros; eauto.
+      + econstructor; eauto.
+      + econstructor. eapply read_from_rirs_change_vvs in H; eauto.
+      + constructor.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+    - induction 3; simpl; intros; eauto.
+      + eapply rfr0; eauto.
+      + eapply rfr1_nowrite0; eauto.
+      + eapply rfr1_write0; eauto.
+    - induction 3; simpl; intros; eauto.
+      + eapply foc_true; eauto.
+      + eapply foc_false; eauto.
+  Qed.
+
+  Lemma NoDup_map_In_eq:
+    forall {A B: Type} (f: A -> B)
+           l
+           (ND: NoDup (map f l)) x1 x2
+           (IN1: In x1 l)
+           (IN2: In x2 l)
+           (EQ: f x1 = f x2),
+      x1 = x2.
+  Proof.
+    induction l; simpl; intros; eauto. easy. inv ND.
+    destruct IN1 as [EQ1|IN1]. subst. destruct IN2 as [EQ2|IN2]; eauto.
+    apply (in_map f) in IN2. congruence.
+    destruct IN2 as [EQ2|IN2]; eauto.
+    subst.
+    apply (in_map f) in IN1. congruence.
+  Qed.
+
+  (* Definition write_log_one_condition_holds (wl: list write_info):= *)
+  (*   forall (REnv: Env reg_t) (r: env_t REnv (fun _ => val)) *)
+  (*          (sigma: ext_fn_t -> val -> val) *)
+  (*          (vvs1: list (string * uact)) *)
+  (*          (rir: rule_information_raw) n win, *)
+  (*         nth_error wl n = Some win -> *)
+  (*         interp_fact vvs1 rir (wcond win) (Bits 1 [true]) -> *)
+  (*         forall n' wi, *)
+  (*           n' <> n -> *)
+  (*           nth_error wl n' = Some wi -> *)
+  (*           interp_fact vvs1 rir (wcond wi) (Bits 1 [false]). *)
+
+  (* Lemma interp_fact_determ: *)
+  (*   forall (REnv: Env reg_t) (r: env_t REnv (fun _ => val)) *)
+  (*          (sigma: ext_fn_t -> val -> val) *)
+  (*          a *)
+  (*          (vvs1: list (string * uact)) *)
+  (*          (rir: rule_information_raw) v1 *)
+  (*          (VVSEXT: forall v, *)
+  (*              (In v (map fst vvs1)) -> *)
+  (*              (exists ext, In ext (rir_extcalls rir) /\ ebind (snd ext) = v) -> *)
+  (*              False *)
+  (*          ) *)
+  (*          (EXTdeter: NoDup (map (fun x => ebind (snd x)) (rir_extcalls rir))) *)
+  (*          (INF1: interp_fact vvs1 rir a v1) v2 *)
+  (*          (INF2: interp_fact vvs1 rir a v2), *)
+  (*     v1 = v2 *)
+  (* with read_from_rirs_determ: *)
+  (*   forall (REnv: Env reg_t) (r: env_t REnv (fun _ => val)) *)
+  (*          (sigma: ext_fn_t -> val -> val) *)
+  (*          (vvs1: list (string * uact)) *)
+  (*          (rir: rule_information_raw) prt idx v1 *)
+  (*          (VVSEXT: forall v, *)
+  (*              (In v (map fst vvs1)) -> *)
+  (*              (exists ext, In ext (rir_extcalls rir) /\ ebind (snd ext) = v) -> *)
+  (*              False *)
+  (*          ) *)
+  (*          (EXTdeter: NoDup (map (fun x => ebind (snd x)) (rir_extcalls rir))) *)
+  (*          (RFR1: read_from_rirs vvs1 rir prt idx v1) *)
+  (*          v2 *)
+  (*          (RFR2: read_from_rirs vvs1 rir prt idx v2), *)
+  (*     v1 = v2 *)
+  (* with find_ok_condition_determ: *)
+  (*   forall (REnv: Env reg_t) (r: env_t REnv (fun _ => val)) *)
+  (*          (sigma: ext_fn_t -> val -> val) *)
+  (*          (vvs1: list (string * uact)) *)
+  (*          (rir: rule_information_raw) wil wi1 *)
+  (*          (VVSEXT: forall v, *)
+  (*              (In v (map fst vvs1)) -> *)
+  (*              (exists ext, In ext (rir_extcalls rir) /\ ebind (snd ext) = v) -> *)
+  (*              False *)
+  (*          ) *)
+  (*          (EXTdeter: NoDup (map (fun x => ebind (snd x)) (rir_extcalls rir))) *)
+  (*          (RFR1: find_ok_condition vvs1 rir wil wi1) *)
+  (*          wi2 *)
+  (*          (RFR2: find_ok_condition vvs1 rir wil wi2), *)
+  (*     wi1 = wi2 *)
+  (* . *)
+  (* Proof. *)
+  (*   - induction 3; simpl; intros; eauto. *)
+  (*     + inv INF2. assert (a = a0) by congruence. subst. eauto. *)
+  (*       apply list_assoc_in in H; apply (in_map fst) in H. eapply VVSEXT in H; eauto. easy. *)
+  (*     + inv INF2. *)
+  (*       apply list_assoc_in in H3; apply (in_map fst) in H3. eapply VVSEXT in H3; eauto. easy. *)
+
+  (*       eapply NoDup_map_In_eq in EXTdeter. 2: apply H0. 2: apply H4. 2: eauto. *)
+
+  (*       assert (v = v0). subst; eapply IHINF1; eauto. subst. reflexivity. *)
+  (*     + inv INF2. eauto. *)
+  (*     + dependent destruction INF2. reflexivity. *)
+  (*     + inv INF2. *)
+  (*       specialize (IHINF1_1 _ H3). inv IHINF1_1. *)
+  (*       specialize (IHINF1_2 _ H4). subst. auto. *)
+  (*     + inv INF2. specialize (IHINF1 _ H2). subst. congruence. *)
+  (*     + inv INF2. specialize (IHINF1_1 _ H3). specialize (IHINF1_2 _ H5). subst. congruence. *)
+
+  (*   - induction 3; simpl; intros; eauto. *)
+  (*     + inv RFR2. auto. *)
+  (*     + inv RFR2. auto. congruence. *)
+  (*     + inv RFR2. congruence. *)
+  (*       rewrite H in H2; inv H2. *)
+  (*       eapply find_ok_condition_determ in H0. 4: eapply H3. all: eauto. subst. *)
+  (*       eapply interp_fact_determ in H1. 4: apply H4. all: eauto. *)
+
+  (*   - induction 3; simpl; intros; eauto. *)
+  (*     + inv RFR2. auto. *)
+  (*       eapply interp_fact_determ in H. 4: eapply H2. all: eauto. inv H. *)
+  (*     + inv RFR2. *)
+  (*       eapply interp_fact_determ in H. 4: eapply H3. all: eauto. inv H. *)
+  (* Qed. *)
+
+  Definition bool_uact_grows vvs1 rir1 c1 vvs2 rir2 c2 : Prop :=
+      interp_fact vvs1 rir1 c1 (Bits 1 [true]) ->
+      interp_fact vvs2 rir2 c2 (Bits 1 [true]).
+
+  Definition cond_log_grows vvs1 rir1 (cl1: cond_log) vvs2 rir2 cl2 :=
+    forall idx c,
+      list_assoc cl1 idx = Some c ->
+      exists c' ,
+        list_assoc cl2 idx = Some c' /\ bool_uact_grows vvs1 rir1 c vvs2 rir2 c'.
+
+  Record rir_grows vvs1 r1 vvs2 r2 : Prop :=
+    {
+      rir_grows_read0s: cond_log_grows vvs1 r1 (rir_read0s r1) vvs2 r2 (rir_read0s r2);
+      rir_grows_read1s: cond_log_grows vvs1 r1 (rir_read1s r1) vvs2 r2 (rir_read1s r2);
+      rir_grows_write0s: write_log_raw_grows (rir_write0s r1) (rir_write0s r2);
+      rir_grows_write1s: write_log_raw_grows (rir_write1s r1) (rir_write1s r2);
+      vvs_grows: forall x y, list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y;
+    }.
+
+  Lemma write_log_raw_grows_refl: forall wl, write_log_raw_grows wl wl.
+  Proof.
+    red; intros; eauto using incl_refl.
+  Qed.
+
+  Lemma bool_uact_grows_refl: forall vvs rir c, bool_uact_grows vvs rir c vvs rir c.
+  Proof.
+    red; intros; eauto.
+  Qed.
+
+  Lemma cond_log_grows_refl: forall vvs rir cl, cond_log_grows vvs rir cl vvs rir cl.
+  Proof.
+    red; intros; eauto using bool_uact_grows_refl.
+  Qed.
+
+  Lemma rir_grows_refl: forall vvs r, rir_grows vvs r vvs r.
+  Proof.
+    split; eauto using incl_refl, write_log_raw_grows_refl, cond_log_grows_refl.
+  Qed.
+
+  Lemma write_log_raw_grows_trans:
+    forall wl1 wl2,
+      write_log_raw_grows wl1 wl2 ->
+      forall wl3,
+        write_log_raw_grows wl2 wl3 ->
+        write_log_raw_grows wl1 wl3.
+  Proof.
+    red; intros.
+    edestruct (H idx) as (g1 & wil1 & LA1 & INCL1); eauto.
+    edestruct (H0 idx) as (g2 & wil2 & LA2 & INCL2); eauto.
+    eauto using incl_tran.
+  Qed.
+
+  Lemma bool_uact_grows_trans:
+    forall vvs1 r1 c1 vvs2 r2 c2,
+      bool_uact_grows vvs1 r1 c1 vvs2 r2 c2 ->
+      forall vvs3 r3 c3,
+        bool_uact_grows vvs2 r2 c2 vvs3 r3 c3 ->
+        bool_uact_grows vvs1 r1 c1 vvs3 r3 c3.
+  Proof.
+    red; intros.
+    eapply H in H1. eapply H0 in H1. eauto.
+  Qed.
+
+  Lemma cond_log_grows_trans:
+    forall vvs1 r1 cl1 vvs2 r2 cl2,
+      cond_log_grows vvs1 r1 cl1 vvs2 r2 cl2 ->
+      forall vvs3 r3 cl3,
+        cond_log_grows vvs2 r2 cl2 vvs3 r3 cl3 ->
+        cond_log_grows vvs1 r1 cl1 vvs3 r3 cl3.
+  Proof.
+    red; intros.
+    edestruct (H idx) as (c1 & LA1 & INCL1); eauto.
+    edestruct (H0 idx) as (c2 & LA2 & INCL2); eauto.
+    eauto using bool_uact_grows_trans.
+  Qed.
+
+  Lemma rir_grows_trans:
+    forall vvs1 r1 vvs2 r2,
+      rir_grows vvs1 r1 vvs2 r2 ->
+      forall vvs3 r3,
+        rir_grows vvs2 r2 vvs3 r3 ->
+        rir_grows vvs1 r1 vvs3 r3.
+  Proof.
+    intros. inv H; inv H0.
+    split; eauto using incl_tran, write_log_raw_grows_trans, cond_log_grows_trans.
+  Qed.
+
+
+      Lemma rir_grows_interp_fact:
+        forall r1 v1 r2 v2 a v,
+          rir_grows v1 r1 v2 r2 ->
+          interp_fact v1 r1 a v ->
+          interp_fact v2 r2 a v
+      with rir_grows_read_from_rirs:
+        forall r1 v1 r2 v2 prt idx v,
+          rir_grows v1 r1 v2 r2 ->
+          read_from_rirs v1 r1 prt idx v ->
+          read_from_rirs v2 r2 prt idx v
+      with rir_grows_find_ok_condition:
+        forall r1 v1 r2 v2 wil wi,
+          rir_grows v1 r1 v2 r2 ->
+          find_ok_condition v1 r1 wil wi ->
+          find_ok_condition v2 r2 wil wi.
+      Proof.
+        - induction 2; simpl; intros; eauto.
+          + econstructor; eauto.
+            eapply vvs_grows; eauto.
+          + econstructor; eauto.
+          + econstructor; eauto.
+          + econstructor; eauto.
+          + econstructor; eauto.
+          + econstructor; eauto.
+        - induction 2; simpl; intros; eauto.
+          + econstructor; eauto.
+          + econstructor; eauto.
+          + econstructor; eauto.
+
+      Qed.
+  
+  Lemma interp_fact_change_rir_read0:
+    forall a
+           (vvs1: list (string * uact))
+           (rir: rule_information_raw) v1 x
+           (INF1: interp_fact vvs1 rir a v1),
+      interp_fact vvs1 (rir <| rir_read0s := x |>) a v1
+  with read_from_rirs_change_rir_read0:
+    forall (vvs1: list (string * uact))
+           (rir: rule_information_raw) prt idx v1 x
+           (RFR1: read_from_rirs vvs1 rir prt idx v1),
+      read_from_rirs vvs1 (rir <| rir_read0s := x |>) prt idx v1
+
+  with find_ok_condition_change_rir_read0:
+    forall (vvs1: list (string * uact))
+           (rir: rule_information_raw) wil wi1 x
+           (RFR1: find_ok_condition vvs1 rir wil wi1),
+      find_ok_condition vvs1 (rir <| rir_read0s := x |>) wil wi1.
+  Proof.
+    - induction 1; simpl; intros; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+    - induction 1; simpl; intros; eauto.
+      constructor.
+      constructor. simpl; auto.
+      eapply rfr1_write0; eauto.
+
+    - induction 1; simpl; intros; eauto.
+      + eapply foc_true; eauto.
+      + eapply foc_false; eauto.
+  Qed.
+
+  Lemma interp_fact_change_rir_read1:
+    forall a
+           (vvs1: list (string * uact))
+           (rir: rule_information_raw) v1 x
+           (INF1: interp_fact vvs1 rir a v1),
+      interp_fact vvs1 (rir <| rir_read1s := x |>) a v1
+  with read_from_rirs_change_rir_read1:
+    forall (vvs1: list (string * uact))
+           (rir: rule_information_raw) prt idx v1 x
+           (RFR1: read_from_rirs vvs1 rir prt idx v1),
+      read_from_rirs vvs1 (rir <| rir_read1s := x |>) prt idx v1
+
+  with find_ok_condition_change_rir_read1:
+    forall (vvs1: list (string * uact))
+           (rir: rule_information_raw) wil wi1 x
+           (RFR1: find_ok_condition vvs1 rir wil wi1),
+      find_ok_condition vvs1 (rir <| rir_read1s := x |>) wil wi1.
+  Proof.
+    - induction 1; simpl; intros; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+      + econstructor; eauto.
+    - induction 1; simpl; intros; eauto.
+      constructor.
+      constructor. simpl; auto.
+      eapply rfr1_write0; eauto.
+
+    - induction 1; simpl; intros; eauto.
+      + eapply foc_true; eauto.
+      + eapply foc_false; eauto.
+  Qed.
+
+  Lemma rir_grows_add_read0:
+    forall vvs rir grd idx b,
+      interp_fact vvs rir grd (Bits 1 [b]) ->
+      rir_grows vvs rir vvs (add_read0 rir grd idx).
+  Proof.
+    unfold add_read0. intros.
+    split; simpl; eauto using incl_refl, write_log_raw_grows_refl, cond_log_grows_refl.
+    - red; intros.
+      destruct (eq_dec idx idx0); subst.
+      + rewrite H0.
+        rewrite list_assoc_gss. eexists; split; eauto.
+        red; intros.
+        eapply interp_fact_change_rir_read0.
+        econstructor; eauto.
+      + rewrite list_assoc_gso; eauto. eexists; split; eauto.
+        red; intros.
+        destr.
+        eapply interp_fact_change_rir_read0. eauto.
+        eapply interp_fact_change_rir_read0. eauto.
+    - red; intros. rewrite H0.  eexists; split; eauto.
+      red; intros.
+      eapply interp_fact_change_rir_read0. eauto.
+  Qed.
+
+  Lemma rir_grows_add_read1:
+    forall vvs rir grd idx b,
+      interp_fact vvs rir grd (Bits 1 [b]) ->
+      rir_grows vvs rir vvs (add_read1 rir grd idx).
+  Proof.
+    unfold add_read1. intros.
+    split; simpl; eauto using incl_refl, write_log_raw_grows_refl, cond_log_grows_refl.
+    - red; intros.
+      eexists; split; eauto.
+      red; intros.
+      eapply interp_fact_change_rir_read1. eauto.
+    - red; intros.
+      destruct (eq_dec idx idx0); subst.
+      + rewrite H0.
+        rewrite list_assoc_gss. eexists; split; eauto.
+        red; intros.
+        eapply interp_fact_change_rir_read1.
+        econstructor; eauto.
+      + rewrite list_assoc_gso; eauto. eexists; split; eauto.
+        red; intros.
+        destr.
+        eapply interp_fact_change_rir_read1. eauto.
+        eapply interp_fact_change_rir_read1. eauto.
+  Qed.
+
+  Lemma valid_name_gen:
+    forall n nid,
+      valid_name (generate_binding_name n) nid <-> n < nid.
+  Proof.
+    intros n nid. split. intros (nn & EQ & LT). apply generate_binding_name_inj in EQ; lia.
+    intros LT. exists n; split; eauto.
+  Qed.
+
   Lemma get_rule_information_aux_env_grows:
     forall (ua: uact)
            (env: list (string * string)) (guard: uact)
@@ -1372,56 +1884,87 @@ Section SimpleForm.
            v env' vvs fail_cond rir' nid' vvs0
            (GRIA: get_rule_information_aux ua env vvs0 guard rir nid = (v, env', vvs, fail_cond, rir', nid'))
            (WUKV: wf_uact_known_vars (map fst env) ua)
-           (ENVVVS: forall x y, In (x,y) env -> In y (map fst vvs0))
+           (ENVVVS: forall x y, In (x, y) env -> exists z, list_assoc vvs0 y = Some z)
            (RNGVVS: vvs_range vvs0 nid)
-           (VVSVALID: forall v a, In (v, a) vvs0 -> forall v' , var_in_uact a v' -> var_lt v' v)
+           (VVSVALID: forall v a, list_assoc vvs0 v = Some a -> forall v' , var_in_uact a v' -> var_lt v' v)
            (RIRRNG: wf_rir rir nid)
-           (GUARDVALID: valid_vars_uact guard nid),
-      (forall x y, In (x,y) vvs0 -> In (x,y) vvs)
+           (GUARDVALID: valid_vars_uact guard nid) bgrd
+           (IG: interp_fact vvs0 rir guard (Bits 1 [bgrd]) ),
+      (forall x y, list_assoc vvs0 x = Some y -> list_assoc vvs x = Some y)
       /\ vvs_range vvs nid'
-      /\ (forall x y, In (x,y) env' -> In y (map fst vvs))
-      /\ (forall ext, In ext (rir_extcalls rir) -> In ext (rir_extcalls rir'))
-      /\ (forall ov x, v = Some ov -> var_in_uact ov x ->
-                       In x (map fst vvs) \/
-                         exists ext, In ext (rir_extcalls rir') /\ ebind (snd ext) = x)
+      /\ (forall x y, In (x, y) env' -> exists z, list_assoc vvs y = Some z)
+      /\ rir_grows vvs0 rir vvs rir'
+      /\ (forall ov x, v = Some ov -> var_in_uact ov x -> exists z, list_assoc vvs x = Some z)
       /\ wf_rir rir' nid'
-      /\ (forall v a, In (v, a) vvs -> forall v' , var_in_uact a v' -> var_lt v' v)
+      /\ (forall v a, list_assoc vvs v = Some a -> forall v' , var_in_uact a v' -> var_lt v' v)
       /\ valid_vars_uact fail_cond nid'
       /\ nid <= nid'
   .
   Proof.
     intros ua; pattern ua; eapply daction_ind'; simpl; intros; eauto.
     all: repeat destr_in GRIA; inv GRIA; inv WUKV; eauto; try now (intuition congruence).
-    - intuition try congruence. red; intros. inv H. lia.
-    - intuition try congruence. red; intros. inv H. lia.
+    - intuition try congruence. eapply rir_grows_refl. red; intros. inv H. lia.
+    - intuition try congruence. eapply rir_grows_refl. red; intros. inv H. lia.
     - intuition try congruence.
-      inv H. inv H0. apply list_assoc_in in Heqo. eauto.
-      red; intros. inv H.
-      lia.
-    - intuition try congruence. red; intros. inv H. lia.
-    - intuition try congruence. inv H. inv H0. red; intros. inv H. lia.
-    - specialize (H _ _ _ _ _ _ _ _ _ _ _ Heqp H3 ENVVVS RNGVVS VVSVALID RIRRNG GUARDVALID).
+      + eapply rir_grows_refl. 
+      + inv H. inv H0. eapply ENVVVS. eapply list_assoc_in; eauto.
+      + red; inversion 1.
+      + lia.
+    - intuition try congruence. eapply rir_grows_refl. red; intros. inv H. lia.
+    - intuition try congruence. eapply rir_grows_refl. inv H. inv H0. red; intros. inv H. lia.
+    - specialize (H _ _ _ _ _ _ _ _ _ _ _ Heqp H3 ENVVVS RNGVVS VVSVALID RIRRNG GUARDVALID _ IG).
       destruct H as (VVSGROWS & VVSRANGE & ENVVVS2 & EXTCALL2 & VAR2 & RIRLT2 & LT2 & VF2 & GUARDVALID2).
       repeat (refine (conj _ _)); eauto.
       + intros.
-        rewrite list_assoc_set_not_before. eauto. intro IN.
-        eapply vvs_range_in_fst in IN. 2: eauto. lia.
+        rewrite list_assoc_gso; eauto.
+        intro; subst.
+        eapply RNGVVS in H.
+        apply valid_name_gen in H. lia.
       + eapply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia.
         red. eexists; split; eauto.
       + intros.
         apply in_list_assoc_set_inv in H.
-        destruct H. inv H.
-        eapply list_assoc_set_key_in; eauto.
-        apply ENVVVS2 in H.
-        eapply list_assoc_set_key_stays_in; eauto.
+        rewrite list_assoc_spec.
+        destruct H as [EQ|IN]. inv EQ.
+        * rewrite eq_dec_refl. eauto.
+        * destr; eauto.
+      +
+
+        Lemma rir_grows_change_vvs:
+          forall vvs1 vvs2 rir n,
+            vvs_range vvs1 n ->
+            (forall x : string,
+                valid_name x n ->
+                forall y : uact,
+                  list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y) ->
+            rir_grows vvs1 rir vvs2 rir.
+        Proof.
+          intros. split; eauto using write_log_raw_grows_refl, incl_refl.
+          - red; intros. eexists; split; eauto.
+            red; intros. eapply interp_fact_change_vvs; eauto.
+          - red; intros. eexists; split; eauto.
+            red; intros. eapply interp_fact_change_vvs; eauto.
+        Qed.
+
+        Lemma rir_grows_set:
+          forall vvs rir name n v,
+            vvs_range vvs n ->
+            ~ valid_name name n ->
+            rir_grows vvs rir (list_assoc_set vvs name v) rir.
+        Proof.
+          intros; eapply rir_grows_change_vvs; eauto.
+          intros; rewrite list_assoc_gso; eauto. congruence.
+        Qed.
+        eapply rir_grows_trans. eauto. eapply rir_grows_set; eauto.
+        intros (ee & EQ & LT). apply generate_binding_name_inj in EQ. lia.
       + easy.
       + eapply wf_rir_incr; eauto.
       + intros.
-        apply in_list_assoc_set_inv in H. destruct H; eauto.
-        inv H.
+        rewrite list_assoc_spec in H. destr_in H; eauto. inv H.
         destruct o; simpl in H0; [| inv H0].
         eapply VAR2 in H0; eauto.
-        eapply vss_or_extcall_var_lt in H0. eauto. auto. eauto.
+        destruct H0.
+        eapply vss_or_extcall_var_lt in H; eauto.
       + eapply valid_var_uact_incr; eauto.
     - specialize (H0 _ _ _ _ _ _ _ _ _ _ _ Heqp4).
       specialize (H _ _ _ _ _ _ _ _ _ _ _ Heqp H4).
@@ -1431,13 +1974,16 @@ Section SimpleForm.
       erewrite same_env_same_fst in H5. 2: eauto.
       specialize (SVM2 H5).
       specialize (H0 H5).
-      specialize (H ENVVVS RNGVVS VVSVALID RIRRNG GUARDVALID).
+      specialize (H ENVVVS RNGVVS VVSVALID RIRRNG GUARDVALID _ IG).
       destruct H as (VVSGROWS1 & VVSRANGE1 & ENVVVS1 & EXTCALL1 & VAR1 & RIRRNG1 & VVSVALID1 & VF1 & GV1).
       specialize (H0 ENVVVS1 VVSRANGE1).
-      destruct H0 as (VVSGROWS2 & VVSRANGE2 & ENVVVS2 & EXTCALL2 &  VAR2 & RIRRNG2 & VVSVALID2 & VF2 & GV2); eauto.
-      2: repeat refine (conj _ _); eauto.
+      edestruct H0 as (VVSGROWS2 & VVSRANGE2 & ENVVVS2 & EXTCALL2 &  VAR2 & RIRRNG2 & VVSVALID2 & VF2 & GV2); eauto.
       eapply valid_var_uact_incr; eauto.
 
+
+      2: repeat refine (conj _ _); eauto.
+
+      eapply rir_grows_trans; eauto.
       red; intros. inv H. eapply VF1 in H6. eapply var_lt_gen_r; eauto.
       eauto.
       lia.
@@ -1455,13 +2001,13 @@ Section SimpleForm.
       specialize (H0 H6). destruct y; simpl in *.
       trim H0.
       {
-        intros x y [A|A].
-        - inv A.
-          apply list_assoc_set_key_in.
-        - eapply list_assoc_set_key_stays_in.
-          apply ENVVVS in A. rewrite in_map_iff in A. destruct A as ((x0&x1) & EQ & A). simpl in EQ; subst.
-          apply VVSGROWS1 in A.
-          apply (in_map fst) in A. simpl in A; auto.
+        setoid_rewrite list_assoc_spec.
+        intros x y.
+        destr; eauto.
+        intros [EQ|IN]; eauto.
+        - inv EQ. congruence.
+        - apply ENVVVS in IN. destruct IN as (z & A).
+          apply VVSGROWS1 in A. eauto.
       }
       trim H0.
       apply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia.
@@ -1469,22 +2015,28 @@ Section SimpleForm.
       destruct H0 as (VVSGROWS2 & VVSRANGE2 & ENVVVS2 & EXTCALL2 & VAR2 & RIRRNG2 & VVSVALID2 & VF2 & GV2).
       {
         intros v a IN.
-        apply in_list_assoc_set_inv in IN. destruct IN as [IN|IN]; eauto.
-        inv IN.
+        rewrite list_assoc_spec in IN.
+        destr_in IN; eauto. inv IN.
         intros v' VIU.
         destruct o; simpl in VIU; [| inv VIU].
         eapply VAR1 in VIU; eauto.
-        eapply vss_or_extcall_var_lt in VIU. eauto. auto. eauto.
+        destruct VIU as (z & VIU).
+        eapply vss_or_extcall_var_lt in VIU; eauto.
       }
-      eapply wf_rir_incr; eauto.
-      eapply valid_var_uact_incr; eauto.
-      repeat (refine (conj _ _)); eauto.
-      intros; eapply VVSGROWS2.
-      apply VVSGROWS1 in H.
-      rewrite list_assoc_set_not_before. auto.
-      intro IN.
-      eapply vvs_range_in_fst in IN. 2: eauto. lia.
-      eapply valid_vars_merge_failures; eauto. eapply valid_var_uact_incr; eauto. lia. lia.
+      + eapply wf_rir_incr; eauto.
+      + eapply valid_var_uact_incr; eauto.
+      + repeat (refine (conj _ _)); eauto.
+        * intros; eapply VVSGROWS2.
+          apply VVSGROWS1 in H.
+          rewrite list_assoc_gso; eauto. eapply VVSRANGE1 in H. intro; subst.
+          apply valid_name_gen in H. lia.
+        * intros; eauto.
+          eapply rir_grows_trans; eauto.
+          eapply rir_grows_trans; eauto.
+          eapply rir_grows_set; eauto.
+          intros (ee & EQ & LT). apply generate_binding_name_inj in EQ. lia.
+        * eapply valid_vars_merge_failures; eauto. eapply valid_var_uact_incr; eauto. lia.
+        * lia.
     -
       specialize (H _ _ _ _ _ _ _ _ _ _ _ Heqp H6 ENVVVS RNGVVS VVSVALID RIRRNG).
       destruct H as (VVSGROWS1 & VVSRANGE1 & ENVVVS1 & EXTCALL1 & VAR1 & RIRRNG1 & VVSVALID1 & VF1 & NIDGROWS1). eauto.
@@ -1497,32 +2049,30 @@ Section SimpleForm.
       destruct H0 as (VVSGROWS2 & VVSRANGE2 & ENVVVS2 & EXTCALL2 & VAR2 & RIRRNG2 & VVSVALID2 & VF2 & NIDGROWS2); eauto.
       {
         intros.
-        apply list_assoc_set_key_stays_in.
-        apply list_assoc_set_key_stays_in.
-        apply list_assoc_set_key_stays_in. eauto.
+        rewrite ! list_assoc_spec.
+        repeat destr; eauto.
       }
       {
         eapply vvs_range_list_assoc_set.
         eapply vvs_range_list_assoc_set.
         eapply vvs_range_list_assoc_set.
         eapply vvs_range_incr. 2: eauto. lia.
-        red; eexists; split; eauto. lia.
-        red; eexists; split; eauto. lia.
-        red; eexists; split; eauto. lia.
+        rewrite valid_name_gen; lia.
+        rewrite valid_name_gen; lia.
+        rewrite valid_name_gen; lia.
       }
       {
         intros.
-        apply in_list_assoc_set_inv in H. destruct H; eauto. inv H.
-        inv H0. eapply GUARDVALID in H5. eapply var_lt_gen_r. 2: eauto. lia.
-        inv H5. inv H3.
-        do 2 eexists; repeat split; eauto. lia.
-        apply in_list_assoc_set_inv in H. destruct H; eauto. inv H.
-        inv H0. eapply GUARDVALID in H5. eapply var_lt_gen_r. 2: eauto. lia.
-        inv H5.
-        do 2 eexists; repeat split; eauto. lia.
-        apply in_list_assoc_set_inv in H. destruct H; eauto. inv H.
-        eapply VAR1 in H0; eauto.
-        eapply vss_or_extcall_var_lt in H0. eauto. auto. eauto.
+        rewrite ! list_assoc_spec in H.
+        repeat destr_in H; eauto; inv H.
+        - inv H0. eapply var_lt_gen_r. 2: eauto. lia.
+          inv H5. inv H3.
+          do 2 eexists; repeat split; eauto. lia.
+        - inv H0. eapply var_lt_gen_r. 2: eauto. lia.
+          inv H5.
+          do 2 eexists; repeat split; eauto. lia.
+        - edestruct VAR1 as (z & IN); eauto.
+          eapply vss_or_extcall_var_lt in IN; eauto.
       }
       eapply wf_rir_incr; eauto. lia.
       {
@@ -1533,22 +2083,12 @@ Section SimpleForm.
       destruct H1 as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & EXTCALL3 & VAR3 & RIRRNG3 & VVSVALID3 & VF3 & NIDGROWS3). auto.
       {
         intros.
-        apply ENVVVS1 in H.
-        rewrite in_map_iff in H. destruct H as ((s&a)&EQ & IN). simpl in EQ. subst.
-        replace y with (fst (y, a)). eapply in_map. apply VVSGROWS2.
-        rewrite list_assoc_set_not_before.
-        rewrite list_assoc_set_not_before.
-        rewrite list_assoc_set_not_before. auto.
-        intro IN2; eapply vvs_range_in_fst in IN2; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H. lia.
-        eapply vvs_range_in_fst in H; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H. lia.
-        apply in_map_list_assoc_set_inv in H.
-        destruct H. apply generate_binding_name_inj in H. lia.
-        eapply vvs_range_in_fst in H; eauto. lia.
-        reflexivity.
+        apply ENVVVS1 in H. destruct H as (z & IN). eexists.
+        eapply VVSGROWS2.
+        rewrite ! list_assoc_gso. eauto.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
       }
       auto. auto. auto.
       {
@@ -1558,47 +2098,57 @@ Section SimpleForm.
       edestruct merge_banches_grows as (VVSGROWS4 & VVSRANGE4 & ENVVVS4 & NIDGROWS4 & VVSVALID4). eauto.
       {
         intros x y INl2.
-        apply ENVVVS2 in INl2.
-        rewrite in_map_iff in INl2. destruct INl2 as (xx & EQ & IN). subst. destruct xx.
-        apply VVSGROWS3 in IN. apply in_map. auto.
+        apply ENVVVS2 in INl2. destruct INl2 as (xx & IN).
+        apply VVSGROWS3 in IN. eauto.
       }
       auto. auto. auto.
       eexists; split; eauto. lia.
       repeat (refine (conj _ _)); auto.
       {
-        intros. eapply VVSGROWS1 in H.
+        intros x y IN. eapply VVSGROWS1 in IN.
         eapply VVSGROWS4.
         eapply VVSGROWS3.
         eapply VVSGROWS2.
-        rewrite ! list_assoc_set_not_before. auto.
-        intro IN2; eapply vvs_range_in_fst in IN2; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H0. lia.
-        eapply vvs_range_in_fst in H0; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H0. lia.
-        apply in_map_list_assoc_set_inv in H0.
-        destruct H0. apply generate_binding_name_inj in H0. lia.
-        eapply vvs_range_in_fst in H0; eauto. lia.
+        rewrite ! list_assoc_gso; eauto.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
       }
+      eapply rir_grows_trans; eauto.
+      eapply rir_grows_trans; eauto.
+      eapply rir_grows_trans. 2: apply EXTCALL2.
+      eapply rir_grows_trans. 2: eapply rir_grows_set; eauto.
+      eapply rir_grows_trans. 2: eapply rir_grows_set; eauto.
+      eapply rir_grows_set; eauto.
+      intros (ee & EQ & LT). apply generate_binding_name_inj in EQ. lia.
+      apply vvs_range_list_assoc_set with (n:=n+1).
+      eapply vvs_range_incr. 2: eauto. lia.
+      eexists; split; eauto. lia.
+      intros (ee & EQ & LT). apply generate_binding_name_inj in EQ. lia.
+      apply vvs_range_list_assoc_set with (n:=n+2).
+      eapply vvs_range_list_assoc_set; eauto.
+      eapply vvs_range_incr. 2: eauto. lia.
+      eexists; split; eauto. lia.
+      eexists; split; eauto. lia.
+      intros (ee & EQ & LT). apply generate_binding_name_inj in EQ. lia.
+      eauto.
+      eapply rir_grows_trans; eauto.
+      eapply rir_grows_change_vvs. eauto.
+      eauto.
       {
         intros ov x EX.
         repeat destr_in EX; inv EX. intro VIU; inv VIU.
-        + eapply VAR1 in H3; eauto. destruct H3; eauto. left.
-          eapply incl_incl_map; eauto.
-          eapply incl_incl_map; eauto.
-          eapply incl_incl_map; eauto.
-          repeat apply list_assoc_set_key_stays_in; auto.
-          right; eauto.
-          destruct H as (ext & IN & EQ).
-          eexists; split; eauto.
-        + eapply VAR3 in H3; eauto. destruct H3; eauto. left.
-          eapply incl_incl_map; eauto.
-        + eapply VAR2 in H3; eauto. destruct H3; eauto. left.
-          eapply incl_incl_map; eauto.
-          eapply incl_incl_map; eauto.
-          destruct H as (ext & IN & EQ).
-          right; eexists; split; eauto.
+        + eapply VAR1 in H3; eauto. destruct H3 as (z & IN); eauto.
+          exists z.
+          eapply VVSGROWS4.
+          eapply VVSGROWS3.
+          eapply VVSGROWS2.
+          rewrite ! list_assoc_gso; auto.
+          apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+          apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+          apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        + eapply VAR3 in H3; eauto. destruct H3 as (z & IN); eauto.
+        + eapply VAR2 in H3; eauto. destruct H3; eauto.
       }
       + eapply wf_rir_incr; eauto.
       + apply valid_vars_merge_failures.
@@ -1606,16 +2156,16 @@ Section SimpleForm.
         apply valid_vars_merge_failures.
         apply valid_vars_and.
         red; intros.
-        eapply VAR1 in H. eapply vss_or_extcall_var_lt in H; eauto.
+        eapply VAR1 in H. destruct H as (z & H). eapply vss_or_extcall_var_lt in H; eauto.
         eapply vvs_range_incr. 2: eauto. lia.
-        eapply wf_rir_incr; eauto. lia. auto.
+        eapply wf_rir_incr; eauto. auto.
         eapply valid_var_uact_incr. eauto. lia.
         apply valid_vars_and.
         apply valid_vars_not. 
         red; intros.
-        eapply VAR1 in H. eapply vss_or_extcall_var_lt in H; eauto.
+        eapply VAR1 in H. destruct H. eapply vss_or_extcall_var_lt in H; eauto.
         eapply vvs_range_incr. 2: eauto. lia.
-        eapply wf_rir_incr; eauto. lia. auto.
+        eapply wf_rir_incr; eauto. auto.
         eapply valid_var_uact_incr. eauto. lia.
       + lia.
     - specialize (H _ _ _ _ _ _ _ _ _ _ _ Heqp H6 ENVVVS RNGVVS).
@@ -1629,9 +2179,8 @@ Section SimpleForm.
       destruct H0 as (VVSGROWS2 & VVSRANGE2 & ENVVVS2 & EXTCALL2 & VAR2 & RIRRNG2 & VVSVALID2 & VF2 & NIDGROWS2); auto.
       {
         intros.
-        apply list_assoc_set_key_stays_in.
-        apply list_assoc_set_key_stays_in.
-        apply list_assoc_set_key_stays_in. eauto.
+        rewrite ! list_assoc_spec.
+        repeat destr; eauto.
       }
       {
         eapply vvs_range_list_assoc_set.
@@ -1644,16 +2193,15 @@ Section SimpleForm.
       }
       {
         intros.
-        apply in_list_assoc_set_inv in H. destruct H; eauto. inv H.
-        inv H0. eapply GUARDVALID in H5. eapply var_lt_gen_r. 2: eauto. lia.
-        inv H5. inv H3.
-        do 2 eexists; repeat split; eauto. lia.
-        apply in_list_assoc_set_inv in H. destruct H; eauto. inv H.
-        inv H0. eapply GUARDVALID in H5. eapply var_lt_gen_r. 2: eauto. lia.
-        inv H5.
-        do 2 eexists; repeat split; eauto. lia.
-        apply in_list_assoc_set_inv in H. destruct H; eauto. inv H.
-        inv H0.
+        rewrite ! list_assoc_spec in H.
+        repeat destr_in H; eauto; inv H.
+        - inv H0. eapply var_lt_gen_r. 2: eauto. lia.
+          inv H5. inv H3.
+          do 2 eexists; repeat split; eauto. lia.
+        - inv H0. eapply var_lt_gen_r. 2: eauto. lia.
+          inv H5.
+          do 2 eexists; repeat split; eauto. lia.
+        - inv H0.
       }
       eapply wf_rir_incr; eauto. lia.
       {
@@ -1662,24 +2210,14 @@ Section SimpleForm.
       }
       specialize (H1 _ _ _ _ _ _ _ _ _ _ _ Heqp9).
       destruct H1 as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & EXTCALL3 & VAR3 & RIRRNG3 & VVSVALID3 & VF3 & NIDGROWS3); auto.
-      {
+{
         intros.
-        apply ENVVVS1 in H.
-        rewrite in_map_iff in H. destruct H as ((s&a)&EQ & IN). simpl in EQ. subst.
-        replace y with (fst (y, a)). eapply in_map. apply VVSGROWS2.
-        rewrite list_assoc_set_not_before.
-        rewrite list_assoc_set_not_before.
-        rewrite list_assoc_set_not_before. auto.
-        intro IN2; eapply vvs_range_in_fst in IN2; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H. lia.
-        eapply vvs_range_in_fst in H; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H. lia.
-        apply in_map_list_assoc_set_inv in H.
-        destruct H. apply generate_binding_name_inj in H. lia.
-        eapply vvs_range_in_fst in H; eauto. lia.
-        reflexivity.
+        apply ENVVVS1 in H. destruct H as (z & IN). eexists.
+        eapply VVSGROWS2.
+        rewrite ! list_assoc_gso. eauto.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
       }
       {
         red; intros.
@@ -1690,8 +2228,7 @@ Section SimpleForm.
       {
         intros x y INl2.
         apply ENVVVS2 in INl2.
-        rewrite in_map_iff in INl2. destruct INl2 as (xx & EQ & IN). subst. destruct xx.
-        apply VVSGROWS3 in IN. apply in_map. auto.
+        destruct INl2; eauto.
       }
       {
         eexists; split; eauto. lia.
@@ -1702,22 +2239,32 @@ Section SimpleForm.
         eapply VVSGROWS4.
         eapply VVSGROWS3.
         eapply VVSGROWS2.
-        rewrite ! list_assoc_set_not_before. auto.
-        intro IN2; eapply vvs_range_in_fst in IN2; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H0. lia.
-        eapply vvs_range_in_fst in H0; eauto. lia.
-        intro IN2. apply in_map_list_assoc_set_inv in IN2.
-        destruct IN2. apply generate_binding_name_inj in H0. lia.
-        apply in_map_list_assoc_set_inv in H0.
-        destruct H0. apply generate_binding_name_inj in H0. lia.
-        eapply vvs_range_in_fst in H0; eauto. lia.
+        rewrite ! list_assoc_gso; auto.
+        apply VVSRANGE1 in H. intro; subst; apply valid_name_gen in H; lia.
+        apply VVSRANGE1 in H. intro; subst; apply valid_name_gen in H; lia.
+        apply VVSRANGE1 in H. intro; subst; apply valid_name_gen in H; lia.
+      }
+      {
+        eapply rir_grows_trans. eauto.
+        eapply rir_grows_trans with (r2:=r1) (vvs2:=l1).
+        eapply rir_grows_trans. 2: apply EXTCALL2.
+        2: eapply rir_grows_trans; eauto.
+        - eapply rir_grows_change_vvs. eauto.
+          intros x VN y IN.
+          rewrite ! list_assoc_gso; auto.
+          apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+          apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+          apply VVSRANGE1 in IN. intro; subst; apply valid_name_gen in IN; lia.
+        - eapply rir_grows_change_vvs. eauto.
+          intros x VN y IN. eauto.
       }
       easy.
       eapply wf_rir_incr; eauto.
       red; intros. inv H.
       lia.
-    - repeat (refine (conj _ _)); eauto. intros. inv H. inv H0.
+    - repeat (refine (conj _ _)); eauto.
+      + eapply rir_grows_add_read0.
+      + intros. inv H. inv H0.
       eapply wf_rir_add_read0; eauto.
       red; intros; inv H.
     - repeat (refine (conj _ _)); eauto. intros. inv H. inv H0.
@@ -1771,20 +2318,6 @@ Section SimpleForm.
       unfold add_extcall; eexists; split; eauto.
       simpl. left; reflexivity. reflexivity.
 
-      Lemma wf_rir_add_extcall:
-        forall rir guard ufn arg n,
-          wf_rir rir n ->
-          valid_vars_uact guard n ->
-          valid_vars_uact arg n ->
-          wf_rir (add_extcall rir guard ufn arg (generate_binding_name n)) (S n).
-      Proof.
-        intros rir guard ufn arg n WR VG VA.
-        unfold add_extcall; simpl.
-        inv WR; split; simpl; eauto using valid_var_uact_incr, wf_write_log_raw_incr.
-        intros i ext [EQ|IN]; eauto using wf_extcall_info_incr.
-        inv EQ. constructor; simpl; eauto using valid_var_uact_incr.
-        do 2 eexists; repeat split; eauto.
-      Qed.
       eapply wf_rir_add_extcall; eauto using wf_rir_incr.
       eapply valid_var_uact_incr; eauto.
       destruct o; simpl.
@@ -1875,70 +2408,237 @@ Section SimpleForm.
       + rewrite fst_split_map. setoid_rewrite H5. congruence.
   Qed.
 
-  Inductive interp_fact
-            (REnv: Env reg_t) (r: env_t REnv (fun _ => val))
-            (vvs: list (string * uact))
-            (rir: rule_information_raw) : uact -> val -> Prop :=
-  | interp_fact_var_in_vvs var a v:
-    In (var, a) vvs ->
-    interp_fact REnv r vvs rir a v ->
-    interp_fact REnv r vvs rir (DVar var) v
-  | interp_fact_read prt idx v:
-    read_from_rirs REnv r vvs rir prt idx v ->
-    interp_fact REnv r vvs rir (DRead prt idx) v
-  | interp_fact_const tau (const: type_denote tau):
-    interp_fact REnv r vvs rir (DConst const) (BitsToLists.val_of_value const)
-  | interp_fact_if c t f b v:
-    interp_fact REnv r vvs rir c (Bits 1 [b]) ->
-    interp_fact REnv r vvs rir (if b then t else f) v ->
-    interp_fact REnv r vvs rir (DIf c t f) v
-  
+
+  Lemma list_assoc_unknown_key:
+    forall {A B: Type} {eqdec: EqDec A} (l: list (A * B)) k,
+      ~ In k (map fst l) ->
+      list_assoc l k = None.
+  Proof.
+    induction l; simpl; intros; eauto. repeat destr; intuition.
+  Qed.
+
+  Lemma list_assoc_none_unknown_key:
+    forall {A B: Type} {eqdec: EqDec A} (l: list (A * B)) k,
+      list_assoc l k = None ->
+      ~ In k (map fst l).
+  Proof.
+    induction l; simpl; intros; eauto. repeat destr_in H. easy.
+    apply IHl in H. simpl. intuition.
+  Qed.
+
+  (*
+    r : reg_t
+
+    rir_write0s r : (gcond, [(wcond, wval)])
+
+    var_in_uact wval v ->
+    reg_in_uact wval r' ->
+    
+
+   *)
+
+  Definition write_log_interpretable
+      (REnv: Env reg_t)
+      (r: env_t REnv (fun _ => val))
+      (sigma: ext_fn_t -> val -> val)
+      vvs rir (wl: write_log_raw) :=
+    forall idx gcond wil,
+      list_assoc wl idx = Some (gcond, wil) ->
+      (exists v, interp_fact vvs rir gcond v) /\
+        Forall
+          (fun wi =>
+             exists v, interp_fact vvs rir (wcond wi) v /\
+                         (v = Bits 1 [true] ->
+                          exists va, interp_fact vvs rir (wval wi) va)
+          )
+          wil.
 
 
-  with read_from_rirs
-         (REnv: Env reg_t) (r: env_t REnv (fun _ => val))
-         (vvs: list (string * uact))
-         (rir: rule_information_raw) : Port -> reg_t -> val -> Prop :=
-  | rfr0 idx:
-    read_from_rirs REnv r vvs rir P0 idx (getenv REnv r idx)
-  | rfr1_nowrite0 idx:
-    list_assoc (rir_write0s rir) idx = None ->
-    read_from_rirs REnv r vvs rir P1 idx (getenv REnv r idx)
-  | rfr1_write0 idx gcond wil wi v:
-    list_assoc (rir_write0s rir) idx = Some (gcond, wil) ->
-    In wi wil ->
-    interp_fact REnv r vvs rir (wcond wi) (Bits 1 [true]) ->
-    interp_fact REnv r vvs rir (wval wi) v ->
-    read_from_rirs REnv r vvs rir P1 idx v.
 
-  (*   | DUnop ufn1 arg1 => *)
-  (*       let/opt v := interp_uact_with_fake_vars arg1 vvs in *)
-  (*       UntypedSemantics.sigma1 ufn1 v *)
-  (*   | DBinop ufn2 arg1 arg2 => *)
-  (*       let/opt v1 := interp_uact_with_fake_vars arg1 vvs in *)
-  (*       let/opt v2 := interp_uact_with_fake_vars arg2 vvs in *)
-  (*       UntypedSemantics.sigma2 ufn2 v1 v2 *)
+      Lemma write_log_interpretable_change_vvs:
+        forall (REnv: Env reg_t) (r: env_t REnv (fun _ => val))
+               (sigma: ext_fn_t -> val -> val)
+               (vvs1: list (string * uact))
+               (rir: rule_information_raw)
+               (vvs2: list (string * uact))
+               n
+               (VVSRANGE: vvs_range vvs1 n)
+               (VVSGROWS: forall x,
+                   valid_name x n ->
+                   forall y, In (x, y) vvs1 -> In (x, y) vvs2)
+               wl
+               (WLI: write_log_interpretable vvs1 rir wl),
+          write_log_interpretable vvs2 rir wl.
+      Proof.
+        intros.
+        red; intros. red in WLI.
+        destruct (WLI _ _ _ H) as ((vcond & GCOND) & F).
+        split.
+        eexists; eauto using interp_fact_change_vvs.
+        eapply Forall_impl; eauto. simpl.
+        intros a (v & INF & ACT).
+        eexists; split; eauto using interp_fact_change_vvs.
+        intro X; destruct (ACT X) as (va & INFA).
+        eexists; eauto using interp_fact_change_vvs.
+      Qed.
+
+  Lemma get_rule_information_aux_act:
+    forall
+      (* (R: reg_t -> type) *)
+      (* (Sigma: ext_fn_t -> ExternalSignature) *)
+      (ua: uact) (env: list (string * string)) (guard: uact)
+      (rir: rule_information_raw) (nid: nat)
+      v env' vvs fail_cond rir' nid' vvs0
+      (GRIA: get_rule_information_aux ua env vvs0 guard rir nid = (v, env', vvs, fail_cond, rir', nid'))
+      (* sig t *)
+      (* (TA: forall p, exists tcr, *)
+      (*     TypeInference.tc_action R Sigma p sig t ua = Success tcr) *)
+
+        (WUKV: wf_uact_known_vars (map fst env) ua)
+      (ENVVVS: forall x y, In (x,y) env -> In y (map fst vvs0))
+      (RNGVVS: vvs_range vvs0 nid)
+      (VVSVALID: forall v a, In (v, a) vvs0 -> forall v' , var_in_uact a v' -> var_lt v' v)
+      (RIRRNG: wf_rir rir nid)
+      (GUARDVALID: valid_vars_uact guard nid)
+
+      (REnv: Env reg_t)
+      (r: env_t REnv (fun _ => val))
+      (sigma: ext_fn_t -> val -> val)
+      Gamma sched_log action_log action_log' v' Gamma'
+      (IA: UntypedSemantics.interp_daction
+             r sigma Gamma
+             sched_log action_log ua = Some (action_log', v', Gamma'))
+      (W1I: write_log_interpretable vvs0 rir (rir_write0s rir))
+      (W2I: write_log_interpretable vvs0 rir (rir_write1s rir)),
+      interp_fact vvs rir' fail_cond (Bits 1 [false])
+      /\ write_log_interpretable vvs rir' (rir_write0s rir')
+      /\ write_log_interpretable vvs rir' (rir_write1s rir').
+  Proof.
+    intros ua. pattern ua.
+    eapply daction_ind'; simpl; intros; eauto.
+    - inv IA.
+    - inv IA.
+    - unfold opt_bind in IA; repeat destr_in IA; inv IA.
+      inv WUKV.
+      destr_in GRIA; inv GRIA. split; eauto.
+      constructor.
+      apply list_assoc_none_unknown_key in Heqo0. congruence.
+    - inv IA. inv GRIA. split; eauto. constructor.
+    - unfold opt_bind in IA; repeat destr_in IA; inv IA.
+      repeat destr_in GRIA; inv GRIA. inv WUKV.
+      edestruct H as (IDA1 & W1I1 & W2I1); eauto.
+      edestruct get_rule_information_aux_env_grows
+        as (VVSGROWS2 & VVSRANGE2 & ENVVVS2 & EXTGROWS2 & VAR2 & RIR2 & VVSVALID2 & FV2 & NID2); eauto.
+      repeat (refine (conj _ _)).
+      + eapply interp_fact_change_vvs. 3: eauto. all: eauto.
+        intros. rewrite list_assoc_set_not_before. auto. intro IN.
+        eapply vvs_range_in_fst in IN; eauto. lia.
+      + eapply write_log_interpretable_change_vvs. 3: eauto. all: eauto.
+        intros. rewrite list_assoc_set_not_before. auto. intro IN.
+        eapply vvs_range_in_fst in IN; eauto. lia.
+      + eapply write_log_interpretable_change_vvs. 3: eauto. all: eauto.
+        intros. rewrite list_assoc_set_not_before. auto. intro IN.
+        eapply vvs_range_in_fst in IN; eauto. lia.
+    - unfold opt_bind in IA; repeat destr_in IA; inv IA.
+      repeat destr_in GRIA; inv GRIA. inv WUKV.
+      edestruct H as (IDA1 & W1I1 & W2I1); eauto.
+      generalize (get_rule_information_aux_same_vm _ _ _ _ _ _ _ _ _ _ _ _ H5 Heqp). intro SVM1.
+      edestruct get_rule_information_aux_env_grows with (ua:=a1)
+        as (VVSGROWS2 & VVSRANGE2 & ENVVVS2 & EXTGROWS2 & VAR2 & RIR2 & VVSVALID2 & FV2 & NID2); eauto.
+
+      erewrite same_env_same_fst in H6; eauto.
+
+      edestruct H0 as (IDA2 & W1I2 & W2I2); eauto using valid_var_uact_incr.
+      generalize (get_rule_information_aux_same_vm _ _ _ _ _ _ _ _ _ _ _ _ H6 Heqp4). intro SVM2.
+      edestruct get_rule_information_aux_env_grows with (ua:=a2)
+        as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & EXTGROWS3 & VAR3 & RIR3 & VVSVALID3 & FV3 & NID3); eauto using valid_var_uact_incr.
+      split; eauto.
+      erewrite <- same_env_same_fst ; eauto.
+      
+      repeat (refine (conj _ _)).
+      + eapply interp_fact_change_vvs. 3: eauto. all: eauto.
+        intros. rewrite list_assoc_set_not_before. auto. intro IN.
+        eapply vvs_range_in_fst in IN; eauto. lia.
+      + eapply write_log_interpretable_change_vvs. 3: eauto. all: eauto.
+        intros. rewrite list_assoc_set_not_before. auto. intro IN.
+        eapply vvs_range_in_fst in IN; eauto. lia.
+      + eapply write_log_interpretable_change_vvs. 3: eauto. all: eauto.
+        intros. rewrite list_assoc_set_not_before. auto. intro IN.
+        eapply vvs_range_in_fst in IN; eauto. lia.
+    - 
+
+        
+
+        eapply interp_fact_change_vvs. 3: eauto. all: eauto.
+        intros. rewrite list_assoc_set_not_before. auto. intro IN.
+        eapply vvs_range_in_fst in IN; eauto. lia.
 
 
-  (* Lemma get_rule_information_aux_act: *)
-  (*   forall *)
-  (*     (R: reg_t -> type) *)
-  (*     (Sigma: ext_fn_t -> ExternalSignature) *)
-  (*     (ua: uact) (env: list (string * string)) (guard: uact) *)
-  (*     (rir: rule_information_raw) (nid: next_ids) *)
-  (*     v env' vvs fail_cond rir' nid' *)
-  (*     sig t *)
-  (*     (GRIA: get_rule_information_aux ua env guard rir nid = (v, env', vvs, fail_cond, rir', nid')) *)
-  (*     (TA: forall p, exists tcr, *)
-  (*         TypeInference.tc_action R Sigma p sig t ua = Success tcr) *)
-  (*     Gamma sched_log action_log action_log' v' Gamma' *)
-  (*     (REnv: Env reg_t) *)
-  (*     (r: env_t REnv (fun _ => val)) *)
-  (*     (sigma: ext_fn_t -> val -> val) *)
-  (*     (IA: UntypedSemantics.interp_action *)
-  (*            r sigma Gamma *)
-  (*            sched_log action_log ua = Some (action_log', v', Gamma')), *)
-  (*     interp_uact_with_fake_vars v vvs = Some v'. *)
+      
+      split; eauto.
+      constructor.
+      apply list_assoc_none_unknown_key in Heqo0. congruence.
+    - inv IA. inv GRIA. split; eauto. constructor.
+    - repeat destr_in GRIA. inv GRIA. inv WUKV.
+      eapply H in Heqp; eauto. rewrite Heqp. reflexivity.
+      eapply get_rule_information_aux_env_grows in Heqp; eauto.
+      destruct Heqp as (VVSGROWS1 & VVSRANGE1 & ENVVVS1 & EXTGROWS1 & VAR1 & RIR1 & VVSVALID1 & FAILVALID1 & NID1).
+
+  Qed.
+
+  Lemma get_rule_information_aux_failure_condition_correct:
+    forall
+      (ua: uact) (env: list (string * string)) (guard: uact)
+      (rir: rule_information_raw) (nid: nat)
+      v env' vvs fail_cond rir' nid'
+      vvs0
+
+      (WUKV: wf_uact_known_vars (map fst env) ua)
+      (ENVVVS: forall x y, In (x,y) env -> In y (map fst vvs0))
+      (RNGVVS: vvs_range vvs0 nid)
+      (VVSVALID: forall v a, In (v, a) vvs0 -> forall v' , var_in_uact a v' -> var_lt v' v)
+      (RIRRNG: wf_rir rir nid)
+      (GUARDVALID: valid_vars_uact guard nid)
+
+      (GRIA: get_rule_information_aux ua env vvs0 guard rir nid = (v, env', vvs, fail_cond, rir', nid'))
+      (REnv: Env reg_t)
+      (r: env_t REnv (fun _ => val))
+      (sigma: ext_fn_t -> val -> val)
+      Gamma sched_log action_log
+      (FAILCOND_TRUE: interp_fact vvs rir' fail_cond (Bits 1 [true])),
+      UntypedSemantics.interp_daction
+        r sigma Gamma
+        sched_log action_log ua = None.
+  Proof.
+    intros ua. pattern ua.
+    eapply daction_ind'; simpl; intros; eauto.
+    - destr_in GRIA; inv GRIA. dependent destruction FAILCOND_TRUE.
+      inv WUKV.
+      apply list_assoc_none_unknown_key in Heqo. congruence.
+    - inv GRIA. dependent destruction FAILCOND_TRUE.
+    - repeat destr_in GRIA. inv GRIA. inv WUKV.
+      eapply H in Heqp; eauto. rewrite Heqp. reflexivity.
+      eapply get_rule_information_aux_env_grows in Heqp; eauto.
+      destruct Heqp as (VVSGROWS1 & VVSRANGE1 & ENVVVS1 & EXTGROWS1 & VAR1 & RIR1 & VVSVALID1 & FAILVALID1 & NID1).
+
+
+      Lemma interp_fact_change_vvs:
+        forall (REnv: Env reg_t) (r: env_t REnv (fun _ => val))
+         (sigma: ext_fn_t -> val -> val)
+         (vvs1 vvs2: list (string * uact))
+         (rir: rule_information_raw) a v
+         (VVSGROWS: forall x,
+             var_in_uact a x ->
+             forall y, In (x, y) vvs1 -> In (x, y) vvs2)
+        ,
+          interp_fact vvs1 rir a v ->
+          interp_fact vvs2 rir a v.
+      Proof.
+
+      Qed.
+
+      apply list_assoc_in in Heqo.
+  Qed.
 
 
 
@@ -2137,6 +2837,7 @@ Section SimpleForm.
   : write_log :=
     map
       (fun '(reg, wl') =>
+         (* FIXME: uand cond ? *)
         (reg, map (fun wi => {| wcond := wcond wi; wval := wval wi |}) wl'))
       wl.
   Definition prepend_condition_extcalls (cond: uact) (el: extcall_log)
@@ -2144,7 +2845,7 @@ Section SimpleForm.
     map
       (fun '(ufn, ei) =>
         (ufn, {|
-          econd := DBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) cond (econd ei);
+          econd := uand cond (econd ei);
           ebind := ebind ei; earg := earg ei |}))
       el.
 

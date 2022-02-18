@@ -1032,7 +1032,6 @@ Section WT.
                       Desugaring.desugar_action' p2 fR fSigma body)
                   ) branches)
           ).
-      
       edestruct (IHua _ _ var) with (p:=p) (p2:=p2) as (a0 & TA0 & Teq0). simpl; lia. eauto.
       edestruct (IHua _ _ default) with (p:=p) (p2:=p2) as (a1 & TA1 & Teq1). simpl; lia. eauto.
       subst.

@@ -54,25 +54,25 @@ with size_sugar
    end.
 
 Definition usigma1' (fn: PrimUntyped.ubits1) (bs: list bool)
-: option (list bool) :=
+: (list bool) :=
   match fn with
-  | UNot => Some (List.map negb bs)
+  | UNot => (List.map negb bs)
   | USExt w =>
     let msb := List.last bs false in
-    Some (bs ++ List.repeat msb (w - List.length bs))
-  | UZExtL w => Some (bs ++ List.repeat false (w - List.length bs))
-  | UZExtR w => Some (List.repeat false (w - List.length bs) ++ bs)
-  | URepeat times => Some (List.concat (List.repeat bs times))
+    (bs ++ List.repeat msb (w - List.length bs))
+  | UZExtL w => (bs ++ List.repeat false (w - List.length bs))
+  | UZExtR w => (List.repeat false (w - List.length bs) ++ bs)
+  | URepeat times => (List.concat (List.repeat bs times))
   | USlice ofs w =>
     let '(_, bs) := take_drop' ofs bs in
     let '(bs, _) := take_drop' w bs in
-    Some (bs ++ List.repeat false (w - List.length bs))
+    (bs ++ List.repeat false (w - List.length bs))
   end.
 
 Definition usigma1 fn v : option val :=
   match v with
   | Bits _ bs =>
-    let/opt res := usigma1' fn bs in Some (Bits (List.length res) res)
+      let res := usigma1' fn bs in Some (Bits (List.length res) res)
   | _ => None
   end.
 
@@ -547,7 +547,7 @@ Lemma sigma2_correct:
   forall
     (arg1: arg1Sig (PrimSignatures.Sigma2 fn))
     (arg2: arg2Sig (PrimSignatures.Sigma2 fn)),
-  sigma2 ufn (val_of_value arg1) (val_of_value arg2)
+    sigma2 ufn (val_of_value arg1) (val_of_value arg2)
   = Some (val_of_value (PrimSpecs.sigma2 fn arg1 arg2)).
 Proof.
   destruct ufn; simpl; intros.
