@@ -1671,14 +1671,13 @@ Section WT.
       revert H1 SIG Heqo. unfold field_sz, field_type.
       intros. unfold opt_bind in SIG.
       repeat destr_in SIG; inv SIG.
-      repeat destr_in Heqo1; inv Heqo1.
       apply wt_val_bits; auto.
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp0).
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
+      generalize (take_drop'_spec2 _ _ _ _ Heqp1).
+      generalize (take_drop'_spec2 _ _ _ _ Heqp2).
+      generalize (take_drop'_spec _ _ _ _ Heqp1).
+      generalize (take_drop'_spec _ _ _ _ Heqp2). intuition.
       rewrite app_length, repeat_length, H7, H10, H8, H1.
-      clear H H4 H0 H7 H2 H8 H3 H9 H5 H10 Heqp Heqp0.
+      clear H H4 H0 H7 H2 H8 H3 H9 H5 H10 Heqp1 Heqp2.
       unfold struct_sz. simpl. transitivity n0. 2: lia.
       revert idx Heqo Heqo0. generalize (struct_fields sg). clear.
       induction l; simpl; intros; eauto. easy.
@@ -1692,7 +1691,6 @@ Section WT.
     - inv WTv. simpl in *.
       unfold opt_bind in SIG.
       repeat destr_in SIG; inv SIG.
-      repeat destr_in Heqo; inv Heqo.
       eapply wt_val_bits; eauto.
       generalize (take_drop'_spec2 _ _ _ _ Heqp).
       generalize (take_drop'_spec2 _ _ _ _ Heqp0).
@@ -2656,4 +2654,93 @@ Section WT.
         eapply UntypedSemantics.fRinv_correct_inv in Heqo. subst; eauto.
   Qed.
 
+  Definition ret_type_unop (ufn: PrimUntyped.ufn1) (tau: type) :=
+    match ufn with
+    | PrimUntyped.UConv PrimUntyped.UPack => bits_t (type_sz tau)
+    | PrimUntyped.UConv (PrimUntyped.UUnpack tau0) => tau0
+    | PrimUntyped.UBits1 PrimUntyped.UNot => tau
+    | PrimUntyped.UBits1 (PrimUntyped.USExt width) |
+      PrimUntyped.UBits1 (PrimUntyped.UZExtL width) |
+      PrimUntyped.UBits1 (PrimUntyped.UZExtR width) =>
+        match tau with
+        | bits_t sz => bits_t (Nat.max sz width)
+        | _ => unit_t
+        end
+    | PrimUntyped.UBits1 (PrimUntyped.URepeat times) =>
+        match tau with
+        | bits_t sz => bits_t (times * sz)
+        | _ => unit_t
+        end
+    | PrimUntyped.UBits1 (PrimUntyped.USlice _ width) => bits_t width
+    | PrimUntyped.UStruct1 (PrimUntyped.UGetField name) =>
+        match tau with
+        | struct_t sg =>
+            match PrimTypeInference.find_field sg name with
+            | Success idx => field_type sg idx
+            | Failure _ => unit_t
+            end
+        | _ => unit_t
+        end
+    | PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name) =>
+        match PrimTypeInference.find_field sg name with
+        | Success idx => field_bits_t sg idx
+        | Failure _ => unit_t
+        end
+    | PrimUntyped.UArray1 (PrimUntyped.UGetElement _) =>
+        match tau with
+        | array_t sg => array_type sg
+        | _ => unit_t
+        end
+    | PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg _) =>
+        bits_t (element_sz sg)
+    | _ => unit_t
+    end.
+
+  Definition ret_type_binop (ufn: PrimUntyped.ufn2) (tau1 tau2: type) : type :=
+    match ufn with
+      (PrimUntyped.UEq _)
+    | (PrimUntyped.UBits2 PrimUntyped.USel)
+    | (PrimUntyped.UBits2 (PrimUntyped.UCompare _ _))
+      => bits_t 1
+    | (PrimUntyped.UBits2 PrimUntyped.UAnd)
+    | (PrimUntyped.UBits2 PrimUntyped.UOr)
+    | (PrimUntyped.UBits2 PrimUntyped.UXor)
+    | (PrimUntyped.UBits2 PrimUntyped.ULsl)
+    | (PrimUntyped.UBits2 PrimUntyped.ULsr)
+    | (PrimUntyped.UBits2 PrimUntyped.UAsr)
+    | (PrimUntyped.UBits2 (PrimUntyped.USliceSubst _ _))
+    | (PrimUntyped.UBits2 PrimUntyped.UPlus)
+    | (PrimUntyped.UBits2 PrimUntyped.UMinus)
+      => tau1
+    | (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) => bits_t w
+    | (PrimUntyped.UBits2 PrimUntyped.UConcat)
+    | (PrimUntyped.UBits2 PrimUntyped.UMul)=>
+        match tau1, tau2 with
+          bits_t s1, bits_t s2 => bits_t (s1 + s2)
+        | _, _ => bits_t 0
+        end
+    | (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) => tau1
+    | (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) => tau1
+    | (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) => tau1
+    | (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx)) => tau1
+    end.
+
+  Lemma wt_unop_type_unop_ret:
+    forall u t1 t2,
+      wt_unop u t1 t2 ->
+      t2 = ret_type_unop u t1.
+  Proof.
+    induction 1; simpl; intros; eauto.
+    rewrite H; auto.
+    rewrite H; auto.
+  Qed.
+
+
+  Lemma wt_binop_type_binop_ret:
+    forall u t1 t2 t3,
+      wt_binop u t1 t2 t3 ->
+      t3 = ret_type_binop u t1 t2.
+  Proof.
+    induction 1; simpl; intros; eauto.
+  Qed.
 End WT.
