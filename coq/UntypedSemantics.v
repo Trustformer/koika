@@ -1568,6 +1568,16 @@ fold_left
     | None => None
     end.
 
+  Definition interp_drule
+    {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+    (sigma: forall f: ext_fn_t, val -> val)
+    (sched_log: Log REnv) (rl: daction)
+  : option (Log REnv) :=
+    match interp_daction r sigma nil sched_log log_empty rl with
+    | Some (l, _, _) => Some l
+    | None => None
+    end.
+
   Context {rule_name_t: Type}.
 
   Section Scheduler.
@@ -1602,6 +1612,108 @@ fold_left
       (sigma: forall f: ext_fn_t, val -> val) (s: scheduler pos_t rule_name_t)
     := commit_update r (interp_scheduler r sigma s).
   End Scheduler.
+  Section DScheduler.
+    Context {reg_t ext_fn_t: Type}.
+    Context (rules: rule_name_t -> @daction pos_t var_t fn_name_t reg_t ext_fn_t).
+
+    Fixpoint interp_dscheduler'
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val) (sched_log: Log REnv)
+      (s: scheduler pos_t rule_name_t) {struct s}
+    :=
+      let interp_try rl s1 s2 :=
+        match interp_drule r sigma sched_log (rules rl) with
+        | Some l => interp_dscheduler' r sigma (log_app l sched_log) s1
+        | None => interp_dscheduler' r sigma sched_log s2
+        end
+      in
+      match s with
+      | Done => sched_log
+      | Cons r s => interp_try r s s
+      | Try r s1 s2 => interp_try r s1 s2
+      | SPos _ s => interp_dscheduler' r sigma sched_log s
+      end.
+
+    Definition interp_dscheduler
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val) (s: scheduler pos_t rule_name_t)
+    := interp_dscheduler' r sigma log_empty s.
+
+    Definition interp_dcycle
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val) (s: scheduler pos_t rule_name_t)
+    := commit_update r (interp_dscheduler r sigma s).
+  End DScheduler.
+
+  Lemma urule_to_drule_interp:
+    forall
+      {reg_t ext_fn_t: Type}
+      (a: @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val)
+      (sched_log: Log REnv)
+      d
+      (U2D: uaction_to_daction a = Some d),
+      interp_rule r sigma sched_log a =
+        interp_drule r sigma sched_log d.
+  Proof.
+    unfold interp_rule, interp_drule.
+    intros.
+    erewrite uaction_to_daction_interp; eauto.
+  Qed.
+
+  Lemma uscheduler'_to_dscheduler'_interp:
+    forall
+      {reg_t ext_fn_t: Type}
+      (rules: rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (drules: rule_name_t -> @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (U2A: forall rl, uaction_to_daction (rules rl) = Some (drules rl))
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val)
+      s (sched_log: Log REnv),
+      interp_scheduler' rules r sigma sched_log s =
+        interp_dscheduler' drules r sigma sched_log s.
+  Proof.
+    induction s; simpl; intros; eauto.
+    erewrite urule_to_drule_interp; eauto.
+    destr; eauto.
+    erewrite urule_to_drule_interp; eauto.
+    destr; eauto.
+  Qed.
+
+
+  Lemma uscheduler_to_dscheduler_interp:
+    forall
+      {reg_t ext_fn_t: Type}
+      (rules: rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (drules: rule_name_t -> @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (U2A: forall rl, uaction_to_daction (rules rl) = Some (drules rl))
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val)
+      s,
+      interp_scheduler rules r sigma s =
+        interp_dscheduler drules r sigma s.
+  Proof.
+    unfold interp_scheduler, interp_dscheduler. intros.
+    eapply uscheduler'_to_dscheduler'_interp; eauto.
+  Qed.
+
+  Lemma ucycle_to_dcycle_interp:
+    forall
+      {reg_t ext_fn_t: Type}
+      (rules: rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (drules: rule_name_t -> @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (U2A: forall rl, uaction_to_daction (rules rl) = Some (drules rl))
+      {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+      (sigma: forall f: ext_fn_t, val -> val)
+      s,
+      interp_cycle rules r sigma s =
+        interp_dcycle drules r sigma s.
+  Proof.
+    unfold interp_cycle, interp_dcycle. intros.
+    erewrite uscheduler_to_dscheduler_interp; eauto.
+  Qed.
+
 End Interp.
 
 Section Desugar.
