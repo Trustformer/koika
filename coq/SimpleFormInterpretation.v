@@ -243,10 +243,9 @@ Section SimpleFormInterpretation.
         REnv.(putenv)
           acc reg
           (match list_assoc fenv n with
-           | None => REnv.(getenv) r reg (* Should be unreachable *)
            | Some v => v
-           end)
-      )
+           | None => getenv REnv r reg (* Should be unreachable *)
+           end))
       (final_values sf) r.
 
   (* Lemma simple_form_ok: *)

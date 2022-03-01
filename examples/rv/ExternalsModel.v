@@ -44,7 +44,7 @@ Definition ext_sigma (e: ext_fn_t) (bits: BitsToLists.val) : BitsToLists.val :=
   | ext_host_id =>
     match bits with
     | Bits 1 _ =>
-      match vect_index "Cuttlesim" (host_id).(enum_members) with
+      match vect_index "NoHost" (host_id).(enum_members) with
       | None => Bits 1 [false] (* Should never happen *)
       | Some idx =>
         @val_of_value
@@ -58,3 +58,8 @@ Definition ext_sigma (e: ext_fn_t) (bits: BitsToLists.val) : BitsToLists.val :=
     | _ => Bits 1 [false] (* illegal *)
     end
   end.
+
+Definition external_env := {|
+  mem := list ();
+  uart_in := list val; (* Queue *)
+|}.
