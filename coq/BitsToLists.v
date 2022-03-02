@@ -1194,6 +1194,181 @@ Fixpoint uvalue_of_list_bits {tau} (bs: list (list bool)) : option (list val) :=
     Some (hd0 :: tl0)
   end.
 
+  Inductive wt_unop : PrimUntyped.ufn1 -> type -> type -> Prop :=
+  | wt_unop_display_utf8 sg:
+      array_type sg = bits_t 8 ->
+      wt_unop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) (array_t sg) unit_t
+  | wt_unop_display_value opts tau:
+      wt_unop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) tau unit_t
+  | wt_unop_upack tau:
+      wt_unop (PrimUntyped.UConv PrimUntyped.UPack) tau (bits_t (type_sz tau))
+  | wt_unop_uunpack tau:
+      wt_unop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) (bits_t (type_sz tau)) tau
+  | wt_unop_uignore tau:
+      wt_unop (PrimUntyped.UConv PrimUntyped.UIgnore) tau unit_t
+  | wt_unop_unot sz:
+      wt_unop (PrimUntyped.UBits1 PrimUntyped.UNot) (bits_t sz) (bits_t sz)
+  | wt_unop_usext sz width:
+      wt_unop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) (bits_t sz) (bits_t (Nat.max sz width))
+  | wt_unop_uzextl sz width:
+      wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) (bits_t sz) (bits_t (Nat.max sz width))
+  | wt_unop_uzextr sz width:
+      wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) (bits_t sz) (bits_t (Nat.max sz width))
+  | wt_unop_urepeat sz times:
+      wt_unop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) (bits_t sz) (bits_t (times * sz))
+  | wt_unop_uslice sz ofs width:
+      wt_unop (PrimUntyped.UBits1 (PrimUntyped.USlice ofs width)) (bits_t sz) (bits_t width)
+  | wt_unop_ugetfield sg name idx:
+      PrimTypeInference.find_field sg name = Success idx ->
+      wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) (struct_t sg) (field_type sg idx)
+  | wt_unop_ugetfieldbits sg name idx:
+      PrimTypeInference.find_field sg name = Success idx ->
+      wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx)
+  | wt_unop_ugetelement sg idx idx0:
+      PrimTypeInference.check_index sg idx = Success idx0 ->
+      wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) (array_t sg) (array_type sg)
+  | wt_unop_ugetelementbits sg idx idx0:
+      PrimTypeInference.check_index sg idx = Success idx0 ->
+      wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg))
+  .
+
+  Inductive wt_binop : PrimUntyped.ufn2 -> type -> type -> type -> Prop :=
+  | wt_binop_eq neg tau:
+      wt_binop (PrimUntyped.UEq neg) tau tau (bits_t 1)
+  | wt_binop_and sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAnd) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_or sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UOr) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_xor sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UXor) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_lsl sz sh_sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsl) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+  | wt_binop_lsr sz sh_sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+  | wt_binop_asr sz sh_sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+  | wt_binop_concat sz1 sz2:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UConcat) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
+  | wt_binop_sel sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.USel) (bits_t sz) (bits_t (log2 sz)) (bits_t 1)
+  | wt_binop_slice_subst sz ofs w:
+      wt_binop (PrimUntyped.UBits2 (PrimUntyped.USliceSubst ofs w)) (bits_t sz) (bits_t w) (bits_t sz)
+  | wt_binop_indexedslice sz w:
+      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) (bits_t sz) (bits_t (log2 sz)) (bits_t w)
+  | wt_binop_plus sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UPlus) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_minus sz:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMinus) (bits_t sz) (bits_t sz) (bits_t sz)
+  | wt_binop_mul sz1 sz2:
+      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMul) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
+  | wt_binop_compare signed bc sz:
+      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UCompare signed bc)) (bits_t sz) (bits_t sz) (bits_t 1)
+  | wt_binop_substfield name sg idx:
+      PrimTypeInference.find_field sg name = Success idx ->
+      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) (struct_t sg) (field_type sg idx) (struct_t sg)
+  | wt_binop_substfieldbits name sg idx:
+      PrimTypeInference.find_field sg name = Success idx ->
+      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx) (struct_bits_t sg)
+  | wt_binop_substelement sg idx idx0:
+      PrimTypeInference.check_index sg idx = Success idx0 ->
+      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) (array_t sg) (array_type sg) (array_t sg)
+  | wt_binop_substelementbits sg idx idx0:
+      PrimTypeInference.check_index sg idx = Success idx0 ->
+      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg)) (bits_t (array_sz sg))
+  .
+
+
+  Definition ret_type_unop (ufn: PrimUntyped.ufn1) (tau: type) :=
+    match ufn with
+    | PrimUntyped.UConv PrimUntyped.UPack => bits_t (type_sz tau)
+    | PrimUntyped.UConv (PrimUntyped.UUnpack tau0) => tau0
+    | PrimUntyped.UBits1 PrimUntyped.UNot => tau
+    | PrimUntyped.UBits1 (PrimUntyped.USExt width) |
+      PrimUntyped.UBits1 (PrimUntyped.UZExtL width) |
+      PrimUntyped.UBits1 (PrimUntyped.UZExtR width) =>
+        match tau with
+        | bits_t sz => bits_t (Nat.max sz width)
+        | _ => unit_t
+        end
+    | PrimUntyped.UBits1 (PrimUntyped.URepeat times) =>
+        match tau with
+        | bits_t sz => bits_t (times * sz)
+        | _ => unit_t
+        end
+    | PrimUntyped.UBits1 (PrimUntyped.USlice _ width) => bits_t width
+    | PrimUntyped.UStruct1 (PrimUntyped.UGetField name) =>
+        match tau with
+        | struct_t sg =>
+            match PrimTypeInference.find_field sg name with
+            | Success idx => field_type sg idx
+            | Failure _ => unit_t
+            end
+        | _ => unit_t
+        end
+    | PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name) =>
+        match PrimTypeInference.find_field sg name with
+        | Success idx => field_bits_t sg idx
+        | Failure _ => unit_t
+        end
+    | PrimUntyped.UArray1 (PrimUntyped.UGetElement _) =>
+        match tau with
+        | array_t sg => array_type sg
+        | _ => unit_t
+        end
+    | PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg _) =>
+        bits_t (element_sz sg)
+    | _ => unit_t
+    end.
+
+  Definition ret_type_binop (ufn: PrimUntyped.ufn2) (tau1 tau2: type) : type :=
+    match ufn with
+      (PrimUntyped.UEq _)
+    | (PrimUntyped.UBits2 PrimUntyped.USel)
+    | (PrimUntyped.UBits2 (PrimUntyped.UCompare _ _))
+      => bits_t 1
+    | (PrimUntyped.UBits2 PrimUntyped.UAnd)
+    | (PrimUntyped.UBits2 PrimUntyped.UOr)
+    | (PrimUntyped.UBits2 PrimUntyped.UXor)
+    | (PrimUntyped.UBits2 PrimUntyped.ULsl)
+    | (PrimUntyped.UBits2 PrimUntyped.ULsr)
+    | (PrimUntyped.UBits2 PrimUntyped.UAsr)
+    | (PrimUntyped.UBits2 (PrimUntyped.USliceSubst _ _))
+    | (PrimUntyped.UBits2 PrimUntyped.UPlus)
+    | (PrimUntyped.UBits2 PrimUntyped.UMinus)
+      => tau1
+    | (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) => bits_t w
+    | (PrimUntyped.UBits2 PrimUntyped.UConcat)
+    | (PrimUntyped.UBits2 PrimUntyped.UMul)=>
+        match tau1, tau2 with
+          bits_t s1, bits_t s2 => bits_t (s1 + s2)
+        | _, _ => bits_t 0
+        end
+    | (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) => tau1
+    | (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) => tau1
+    | (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) => tau1
+    | (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx)) => tau1
+    end.
+
+  Lemma wt_unop_type_unop_ret:
+    forall u t1 t2,
+      wt_unop u t1 t2 ->
+      t2 = ret_type_unop u t1.
+  Proof.
+    induction 1; simpl; intros; eauto.
+    rewrite H; auto.
+    rewrite H; auto.
+  Qed.
+
+
+  Lemma wt_binop_type_binop_ret:
+    forall u t1 t2 t3,
+      wt_binop u t1 t2 t3 ->
+      t3 = ret_type_binop u t1 t2.
+  Proof.
+    induction 1; simpl; intros; eauto.
+  Qed.
+
+
 Section WT.
   Variables pos_t fn_name_t: Type.
   Variable var_t: Type.
@@ -1246,177 +1421,15 @@ Section WT.
   | wt_action_read: forall sig prt idx, wt_action sig (URead prt idx) (R idx)
   | wt_action_write: forall sig prt idx v,
     wt_action sig v (R idx) -> wt_action sig (UWrite prt idx v) unit_t
-  | wt_action_udisplayutf8: forall sig arg tau,
-    array_type tau = bits_t 8 ->
-    wt_action sig arg (array_t tau) ->
-    wt_action sig (UUnop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) arg)
-      unit_t
-  | wt_action_udisplayvalue: forall sig arg tau opts,
-    wt_action sig arg tau ->
-    wt_action sig
-      (UUnop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) arg) unit_t
-  | wt_action_upack: forall sig arg tau,
-    wt_action sig arg tau ->
-    wt_action sig (UUnop (PrimUntyped.UConv (PrimUntyped.UPack)) arg)
-      (bits_t (type_sz tau))
-  | wt_action_uunpack: forall sig arg tau,
-    wt_action sig arg (bits_t (type_sz tau)) ->
-    wt_action sig (UUnop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) arg) tau
-  | wt_action_uignore: forall sig arg tau,
-    wt_action sig arg tau ->
-    wt_action sig (UUnop (PrimUntyped.UConv (PrimUntyped.UIgnore)) arg) unit_t
-  | wt_action_unot: forall sig arg sz,
-    wt_action sig arg (bits_t sz) ->
-    wt_action sig (UUnop (PrimUntyped.UBits1 (PrimUntyped.UNot)) arg)
-      (bits_t sz)
-  | wt_action_usext: forall sig arg sz width,
-    wt_action sig arg (bits_t sz) ->
-    wt_action sig (UUnop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) arg)
-      (bits_t (Nat.max sz width))
-  | wt_action_uzextl: forall sig arg sz width,
-    wt_action sig arg (bits_t sz) ->
-    wt_action sig (UUnop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) arg)
-      (bits_t (Nat.max sz width))
-  | wt_action_uzextr: forall sig arg sz width,
-    wt_action sig arg (bits_t sz) ->
-    wt_action sig (UUnop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) arg)
-      (bits_t (Nat.max sz width))
-  | wt_action_urepeat: forall sig arg sz times,
-    wt_action sig arg (bits_t sz) ->
-    wt_action sig (UUnop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) arg)
-    (bits_t (times * sz))
-  | wt_action_uslice: forall sig arg sz offset width,
-    wt_action sig arg (bits_t sz) ->
-    wt_action sig
-      (UUnop (PrimUntyped.UBits1 (PrimUntyped.USlice offset width)) arg)
-      (bits_t width)
-  | wt_action_ugetfield: forall sig arg name sg idx,
-    wt_action sig arg (struct_t sg) ->
-    PrimTypeInference.find_field sg name = Success idx ->
-    wt_action sig
-      (UUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) arg)
-      (field_type sg idx)
-  | wt_action_ugetfieldbits: forall sig arg name sg idx,
-    wt_action sig arg (struct_bits_t sg) ->
-    PrimTypeInference.find_field sg name = Success idx ->
-    wt_action sig
-      (UUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) arg)
-      (bits_t (field_sz sg idx))
-  | wt_action_ugetelement: forall sig arg sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_action sig arg (array_t sg) ->
-    wt_action sig
-      (UUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) arg)
-      (sg.(array_type))
-  | wt_action_ugetelementbits: forall sig arg sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_action sig arg (bits_t (array_sz sg)) ->
-    wt_action sig
-      (UUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) arg)
-      (bits_t (element_sz sg))
-  | wt_action_ueq: forall sig arg1 arg2 tau neg,
-    wt_action sig arg1 tau -> wt_action sig arg2 tau ->
-    wt_action sig (UBinop (PrimUntyped.UEq neg) arg1 arg2) (bits_t 1)
-  | wt_action_uand: forall sig arg1 arg2 sz,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) arg1 arg2)
-      (bits_t sz)
-  | wt_action_uor: forall sig arg1 arg2 sz,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UOr) arg1 arg2)
-      (bits_t sz)
-  | wt_action_uxor: forall sig arg1 arg2 sz,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UXor) arg1 arg2)
-      (bits_t sz)
-  | wt_action_ulsl: forall sig arg1 arg2 bits_sz shift_sz,
-    wt_action sig arg1 (bits_t bits_sz) ->
-    wt_action sig arg2 (bits_t shift_sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.ULsl) arg1 arg2)
-      (bits_t bits_sz)
-  | wt_action_ulsr: forall sig arg1 arg2 bits_sz shift_sz,
-    wt_action sig arg1 (bits_t bits_sz) ->
-    wt_action sig arg2 (bits_t shift_sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.ULsr) arg1 arg2)
-      (bits_t bits_sz)
-  | wt_action_uasr: forall sig arg1 arg2 bits_sz shift_sz,
-    wt_action sig arg1 (bits_t bits_sz) ->
-    wt_action sig arg2 (bits_t shift_sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UAsr) arg1 arg2)
-      (bits_t bits_sz)
-  | wt_action_uconcat: forall sig arg1 arg2 sz1 sz2,
-    wt_action sig arg1 (bits_t sz1) -> wt_action sig arg2 (bits_t sz2) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UConcat) arg1 arg2)
-      (bits_t (sz1 + sz2))
-  | wt_action_usel: forall sig arg1 arg2 sz,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t (log2 sz)) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.USel) arg1 arg2)
-      (bits_t 1)
-  | wt_action_uslicesubst: forall sig arg1 arg2 sz offset width,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t width) ->
-    wt_action sig
-      (UBinop (PrimUntyped.UBits2 (
-        PrimUntyped.USliceSubst offset width
-      )) arg1 arg2)
-      (bits_t sz)
-  | wt_action_uindexedslice: forall sig arg1 arg2 sz width,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t (log2 sz)) ->
-    wt_action sig
-      (UBinop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice width)) arg1 arg2)
-      (bits_t width)
-  | wt_action_uplus: forall sig arg1 arg2 sz,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UPlus) arg1 arg2)
-      (bits_t sz)
-  | wt_action_uminus: forall sig arg1 arg2 sz,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UMinus) arg1 arg2)
-      (bits_t sz)
-  | wt_action_umul: forall sig arg1 arg2 sz1 sz2,
-    wt_action sig arg1 (bits_t sz1) -> wt_action sig arg2 (bits_t sz2) ->
-    wt_action sig (UBinop (PrimUntyped.UBits2 PrimUntyped.UMul) arg1 arg2)
-      (bits_t (sz1 + sz2))
-  | wt_action_ucompare: forall sig arg1 arg2 sz signed bits_comparison,
-    wt_action sig arg1 (bits_t sz) -> wt_action sig arg2 (bits_t sz) ->
-    wt_action sig
-      (UBinop (PrimUntyped.UBits2 (
-        PrimUntyped.UCompare signed bits_comparison
-      )) arg1 arg2)
-      (bits_t 1)
-  | wt_action_usubstfield: forall sig arg1 arg2 sg field_name idx,
-    wt_action sig arg1 (struct_t sg) ->
-    PrimTypeInference.find_field sg field_name = Success idx ->
-    wt_action sig arg2 (field_type sg idx) ->
-    wt_action sig
-      (UBinop (PrimUntyped.UStruct2 (
-        PrimUntyped.USubstField field_name
-      )) arg1 arg2)
-      (struct_t sg)
-  | wt_action_usubstfieldbits: forall sig arg1 arg2 sg field_name idx,
-      wt_action sig arg1 (bits_t (struct_sz sg)) ->
-      PrimTypeInference.find_field sg field_name = Success idx ->
-      wt_action sig arg2 (bits_t (field_sz sg idx)) ->
-      wt_action sig
-        (UBinop (PrimUntyped.UStruct2 (
-          PrimUntyped.USubstFieldBits sg field_name
-        )) arg1 arg2)
-        (bits_t (struct_sz sg))
-  | wt_action_usubstelement: forall sig arg1 arg2 sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_action sig arg1 (array_t sg) ->
-    wt_action sig arg2 (sg.(array_type)) ->
-    wt_action sig
-      (UBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) arg1 arg2)
-      (array_t sg)
-  | wt_action_usubsttelementbits: forall sig arg1 arg2 sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_action sig arg1 (bits_t (array_sz sg)) ->
-    wt_action sig arg2 (bits_t (element_sz sg)) ->
-    wt_action sig
-      (UBinop (PrimUntyped.UArray2 (
-        PrimUntyped.USubstElementBits sg idx
-      )) arg1 arg2)
-      (bits_t (array_sz sg))
+  | wt_action_unop: forall sig ufn arg targ tret,
+    wt_unop ufn targ tret ->
+    wt_action sig arg targ ->
+    wt_action sig (UUnop ufn arg) tret
+  | wt_action_binop: forall sig ufn arg1 arg2 targ1 targ2 tret,
+    wt_binop ufn targ1 targ2 tret ->
+    wt_action sig arg1 targ1 ->
+    wt_action sig arg2 targ2 ->
+    wt_action sig (UBinop ufn arg1 arg2) tret
   | wt_action_uexternalcall: forall sig fn a,
     wt_action sig a (arg1Sig (Sigma fn)) ->
     wt_action sig (UExternalCall fn a) (retSig (Sigma fn))
@@ -1508,177 +1521,15 @@ Section WT.
   | wt_daction_read: forall sig prt idx, wt_daction sig (DRead prt idx) (R idx)
   | wt_daction_write: forall sig prt idx v,
     wt_daction sig v (R idx) -> wt_daction sig (DWrite prt idx v) unit_t
-  | wt_daction_udisplayutf8: forall sig arg tau,
-    array_type tau = bits_t 8 ->
-    wt_daction sig arg (array_t tau) ->
-    wt_daction sig (DUnop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) arg)
-      unit_t
-  | wt_daction_udisplayvalue: forall sig arg tau opts,
-    wt_daction sig arg tau ->
-    wt_daction sig
-      (DUnop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) arg) unit_t
-  | wt_daction_upack: forall sig arg tau,
-    wt_daction sig arg tau ->
-    wt_daction sig (DUnop (PrimUntyped.UConv (PrimUntyped.UPack)) arg)
-      (bits_t (type_sz tau))
-  | wt_daction_uunpack: forall sig arg tau,
-    wt_daction sig arg (bits_t (type_sz tau)) ->
-    wt_daction sig (DUnop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) arg) tau
-  | wt_daction_uignore: forall sig arg tau,
-    wt_daction sig arg tau ->
-    wt_daction sig (DUnop (PrimUntyped.UConv (PrimUntyped.UIgnore)) arg) unit_t
-  | wt_daction_unot: forall sig arg sz,
-    wt_daction sig arg (bits_t sz) ->
-    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.UNot)) arg)
-      (bits_t sz)
-  | wt_daction_usext: forall sig arg sz width,
-    wt_daction sig arg (bits_t sz) ->
-    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) arg)
-      (bits_t (Nat.max sz width))
-  | wt_daction_uzextl: forall sig arg sz width,
-    wt_daction sig arg (bits_t sz) ->
-    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) arg)
-      (bits_t (Nat.max sz width))
-  | wt_daction_uzextr: forall sig arg sz width,
-    wt_daction sig arg (bits_t sz) ->
-    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) arg)
-      (bits_t (Nat.max sz width))
-  | wt_daction_urepeat: forall sig arg sz times,
-    wt_daction sig arg (bits_t sz) ->
-    wt_daction sig (DUnop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) arg)
-    (bits_t (times * sz))
-  | wt_daction_uslice: forall sig arg sz offset width,
-    wt_daction sig arg (bits_t sz) ->
-    wt_daction sig
-      (DUnop (PrimUntyped.UBits1 (PrimUntyped.USlice offset width)) arg)
-      (bits_t width)
-  | wt_daction_ugetfield: forall sig arg name sg idx,
-    wt_daction sig arg (struct_t sg) ->
-    PrimTypeInference.find_field sg name = Success idx ->
-    wt_daction sig
-      (DUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) arg)
-      (field_type sg idx)
-  | wt_daction_ugetfieldbits: forall sig arg name sg idx,
-    wt_daction sig arg (struct_bits_t sg) ->
-    PrimTypeInference.find_field sg name = Success idx ->
-    wt_daction sig
-      (DUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) arg)
-      (bits_t (field_sz sg idx))
-  | wt_daction_ugetelement: forall sig arg sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_daction sig arg (array_t sg) ->
-    wt_daction sig
-      (DUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) arg)
-      (sg.(array_type))
-  | wt_daction_ugetelementbits: forall sig arg sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_daction sig arg (bits_t (array_sz sg)) ->
-    wt_daction sig
-      (DUnop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) arg)
-      (bits_t (element_sz sg))
-  | wt_daction_ueq: forall sig arg1 arg2 tau neg,
-    wt_daction sig arg1 tau -> wt_daction sig arg2 tau ->
-    wt_daction sig (DBinop (PrimUntyped.UEq neg) arg1 arg2) (bits_t 1)
-  | wt_daction_uand: forall sig arg1 arg2 sz,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) arg1 arg2)
-      (bits_t sz)
-  | wt_daction_uor: forall sig arg1 arg2 sz,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UOr) arg1 arg2)
-      (bits_t sz)
-  | wt_daction_uxor: forall sig arg1 arg2 sz,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UXor) arg1 arg2)
-      (bits_t sz)
-  | wt_daction_ulsl: forall sig arg1 arg2 bits_sz shift_sz,
-    wt_daction sig arg1 (bits_t bits_sz) ->
-    wt_daction sig arg2 (bits_t shift_sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.ULsl) arg1 arg2)
-      (bits_t bits_sz)
-  | wt_daction_ulsr: forall sig arg1 arg2 bits_sz shift_sz,
-    wt_daction sig arg1 (bits_t bits_sz) ->
-    wt_daction sig arg2 (bits_t shift_sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.ULsr) arg1 arg2)
-      (bits_t bits_sz)
-  | wt_daction_uasr: forall sig arg1 arg2 bits_sz shift_sz,
-    wt_daction sig arg1 (bits_t bits_sz) ->
-    wt_daction sig arg2 (bits_t shift_sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UAsr) arg1 arg2)
-      (bits_t bits_sz)
-  | wt_daction_uconcat: forall sig arg1 arg2 sz1 sz2,
-    wt_daction sig arg1 (bits_t sz1) -> wt_daction sig arg2 (bits_t sz2) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UConcat) arg1 arg2)
-      (bits_t (sz1 + sz2))
-  | wt_daction_usel: forall sig arg1 arg2 sz,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t (log2 sz)) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.USel) arg1 arg2)
-      (bits_t 1)
-  | wt_daction_uslicesubst: forall sig arg1 arg2 sz offset width,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t width) ->
-    wt_daction sig
-      (DBinop (PrimUntyped.UBits2 (
-        PrimUntyped.USliceSubst offset width
-      )) arg1 arg2)
-      (bits_t sz)
-  | wt_daction_uindexedslice: forall sig arg1 arg2 sz width,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t (log2 sz)) ->
-    wt_daction sig
-      (DBinop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice width)) arg1 arg2)
-      (bits_t width)
-  | wt_daction_uplus: forall sig arg1 arg2 sz,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UPlus) arg1 arg2)
-      (bits_t sz)
-  | wt_daction_uminus: forall sig arg1 arg2 sz,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UMinus) arg1 arg2)
-      (bits_t sz)
-  | wt_daction_umul: forall sig arg1 arg2 sz1 sz2,
-    wt_daction sig arg1 (bits_t sz1) -> wt_daction sig arg2 (bits_t sz2) ->
-    wt_daction sig (DBinop (PrimUntyped.UBits2 PrimUntyped.UMul) arg1 arg2)
-      (bits_t (sz1 + sz2))
-  | wt_daction_ucompare: forall sig arg1 arg2 sz signed bits_comparison,
-    wt_daction sig arg1 (bits_t sz) -> wt_daction sig arg2 (bits_t sz) ->
-    wt_daction sig
-      (DBinop (PrimUntyped.UBits2 (
-        PrimUntyped.UCompare signed bits_comparison
-      )) arg1 arg2)
-      (bits_t 1)
-  | wt_daction_usubstfield: forall sig arg1 arg2 sg field_name idx,
-    wt_daction sig arg1 (struct_t sg) ->
-    PrimTypeInference.find_field sg field_name = Success idx ->
-    wt_daction sig arg2 (field_type sg idx) ->
-    wt_daction sig
-      (DBinop (PrimUntyped.UStruct2 (
-        PrimUntyped.USubstField field_name
-      )) arg1 arg2)
-      (struct_t sg)
-  | wt_daction_usubstfieldbits: forall sig arg1 arg2 sg field_name idx,
-      wt_daction sig arg1 (bits_t (struct_sz sg)) ->
-      PrimTypeInference.find_field sg field_name = Success idx ->
-      wt_daction sig arg2 (bits_t (field_sz sg idx)) ->
-      wt_daction sig
-        (DBinop (PrimUntyped.UStruct2 (
-          PrimUntyped.USubstFieldBits sg field_name
-        )) arg1 arg2)
-        (bits_t (struct_sz sg))
-  | wt_daction_usubstelement: forall sig arg1 arg2 sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_daction sig arg1 (array_t sg) ->
-    wt_daction sig arg2 (sg.(array_type)) ->
-    wt_daction sig
-      (DBinop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) arg1 arg2)
-      (array_t sg)
-  | wt_daction_usubsttelementbits: forall sig arg1 arg2 sg idx idx0,
-    PrimTypeInference.check_index sg idx = Success idx0 ->
-    wt_daction sig arg1 (bits_t (array_sz sg)) ->
-    wt_daction sig arg2 (bits_t (element_sz sg)) ->
-    wt_daction sig
-      (DBinop (PrimUntyped.UArray2 (
-        PrimUntyped.USubstElementBits sg idx
-      )) arg1 arg2)
-      (bits_t (array_sz sg))
+  | wt_daction_unop: forall sig ufn arg targ tret,
+    wt_unop ufn targ tret ->
+    wt_daction sig arg targ ->
+    wt_daction sig (DUnop ufn arg) tret
+  | wt_daction_binop: forall sig ufn arg1 arg2 targ1 targ2 tret,
+    wt_binop ufn targ1 targ2 tret ->
+    wt_daction sig arg1 targ1 ->
+    wt_daction sig arg2 targ2 ->
+    wt_daction sig (DBinop ufn arg1 arg2) tret
   | wt_daction_uexternalcall: forall sig fn a,
     wt_daction sig a (arg1Sig (Sigma fn)) ->
     wt_daction sig (DExternalCall fn a) (retSig (Sigma fn))

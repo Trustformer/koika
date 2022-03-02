@@ -254,49 +254,61 @@ Section WT.
     - repeat destr_in H; inv H. simpl.
       eapply IHua in Heqr. 2: simpl; lia. simpl in *.
       eapply cast_action_eq in Heqr1. destruct Heqr1. subst.
-      destruct ufn1; simpl in *.
-      + repeat destr_in Heqr0; simpl in Heqr0; inv Heqr0.
-        destr_in Heqr1; inv Heqr1. simpl in *. econstructor. 2: eauto.
-        inv x. reflexivity.
-        simpl in *. econstructor. eauto.
-      + repeat destr_in Heqr0; simpl in Heqr0; inv Heqr0; simpl in *.
-        econstructor. eauto.
-        econstructor. rewrite <- x; eauto.
-        econstructor. eauto.
-      + repeat destr_in Heqr0; simpl in Heqr0; inv Heqr0; simpl in *;
-          repeat destr_in Heqr1; inv Heqr1; simpl in *.
-        econstructor. eauto.
-        econstructor. eauto.
-        econstructor. eauto.
-        econstructor. eauto.
-        econstructor. eauto.
-        econstructor. eauto.
-      + repeat destr_in Heqr0; simpl in Heqr0; inv Heqr0; simpl in *;
-          repeat destr_in Heqr1; inv Heqr1; simpl in *.
-        econstructor. eauto. eauto.
-        econstructor. rewrite x in Heqr; simpl in Heqr. eauto. eauto.
-      + repeat destr_in Heqr0; simpl in Heqr0; inv Heqr0; simpl in *;
-          repeat destr_in Heqr1; inv Heqr1; simpl in *.
-        econstructor. eauto. eauto.
-        econstructor. eauto. rewrite x in Heqr; simpl in Heqr. eauto.
+      econstructor. 2: eauto.
+      rewrite x.
+      destruct (PrimTypeInference.tc1 ufn1 (projT1 s)) eqn:?; simpl in Heqr0; inv Heqr0.
+      Lemma wt_unop_primsigs:
+        forall ufn1 t s0,
+          PrimTypeInference.tc1 ufn1 t = Success s0 ->
+          wt_unop ufn1 (arg1Sig (PrimSignatures.Sigma1 s0))
+                  (retSig (PrimSignatures.Sigma1 s0)).
+      Proof.
+        intros ufn1 t s0 PTI.
+        destruct ufn1; simpl in *;
+          unfold opt_bind in PTI;
+          repeat destr_in PTI; inv PTI.
+        - repeat destr_in Heqr; inv Heqr; simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+        - simpl; econstructor; eauto.
+      Qed.
+      eapply wt_unop_primsigs; eauto.
     - repeat destr_in H; inv H. simpl.
       eapply IHua in Heqr. 2: simpl; lia. simpl in *.
       eapply IHua in Heqr0. 2: simpl; lia. simpl in *.
       eapply cast_action_eq in Heqr2. destruct Heqr2. subst.
       eapply cast_action_eq in Heqr3. destruct Heqr3. subst.
-      destruct s, s0; simpl in *. subst.
-      destruct ufn2; simpl in *.
-      + inv Heqr1. simpl. econstructor; eauto.
-        replace (arg1Sig (PrimSignatures.Sigma2 s1))
-          with (arg2Sig (PrimSignatures.Sigma2 s1)). eauto.
-        rewrite <- H0. simpl. eauto.
-      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *;
-          try (econstructor; eauto; fail).
-        * replace (s0 + s) with (s + s0). econstructor; eauto. lia.
-      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *;
-          try (econstructor; eauto; fail).
-      + repeat destr_in Heqr1; simpl in *; inv Heqr1; simpl in *;
-          try (econstructor; eauto; fail).
+      econstructor. 2-3: eauto.
+      rewrite x, x0.
+      destruct (PrimTypeInference.tc2 ufn2 (projT1 s) (projT1 s0)) eqn:?; simpl in Heqr1; inv Heqr1.
+      Lemma wt_binop_primsigs:
+        forall ufn2 t1 t2 s1,
+          PrimTypeInference.tc2 ufn2 t1 t2 = Success s1 ->
+          wt_binop ufn2 (arg1Sig (PrimSignatures.Sigma2 s1))
+                   (arg2Sig (PrimSignatures.Sigma2 s1))
+                  (retSig (PrimSignatures.Sigma2 s1)).
+      Proof.
+        intros ufn2 t1 t2 s1 PTI.
+        destruct ufn2; simpl in *;
+          unfold opt_bind in PTI;
+          repeat destr_in PTI; inv PTI; simpl; try now (econstructor; eauto).
+        repeat destr_in Heqr; inv Heqr.
+        repeat destr_in Heqr0; inv Heqr0.
+        rewrite Nat.add_comm.
+        econstructor; eauto.
+      Qed.
+      eapply wt_binop_primsigs; eauto.
     - repeat destr_in H; inv H. simpl.
       econstructor.
       eapply cast_action_eq in Heqr0. destruct Heqr0. subst. rewrite <- x;
@@ -639,272 +651,29 @@ Section WT.
     - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
       rewrite TA1.
       unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. rewrite EQt1. destruct tau; simpl in *; eauto. f_equal. f_equal. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1).  simpl; lia. eauto.
-      rewrite TA1.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      simpl. rewrite EQt1. auto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
       setoid_rewrite EQt1.
-      rewrite H0. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      rewrite H0. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      setoid_rewrite EQt1. simpl.
-      rewrite H. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
-    - edestruct (IHua _ _ arg) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      rewrite TA1.
-      unfold lift_fn1_tc_result. simpl.
-      rewrite H. simpl.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto.
+      inv H; simpl;       try erewrite cast_action_ok; try now (eexists; split; eauto).
+      + rewrite H1. simpl. erewrite cast_action_ok; try now (eexists; split; eauto).
+      + rewrite H1. simpl. erewrite cast_action_ok; try now (eexists; split; eauto).
+      + rewrite H1. simpl. erewrite cast_action_ok; try now (eexists; split; eauto).
+      + rewrite H1. simpl. erewrite cast_action_ok; try now (eexists; split; eauto).
+        Unshelve. all: auto. rewrite <- H3. destruct sg; simpl. f_equal. f_equal. simpl in *. auto.
     - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
       edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2).  simpl; lia. eauto.
       rewrite TA1, TA2.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. congruence.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto. simpl. rewrite Nat.add_comm. auto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. setoid_rewrite EQt2. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. rewrite H0. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      rewrite H0. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      setoid_rewrite EQt1. rewrite H. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
-    - edestruct (IHua _ _ arg1) as (a01 & TA1 & EQt1). simpl; lia. eauto.
-      edestruct (IHua _ _ arg2) as (a02 & TA2 & EQt2). simpl; lia. eauto.
-      rewrite TA1, TA2.
-      unfold lift_fn2_tc_result. simpl.
-      rewrite H. simpl.
-      erewrite cast_action_ok.
-      erewrite cast_action_ok.
-      eexists; split; eauto.
-      Unshelve. auto. auto.
+      fold (@desugar_action' pos_t var_t fn_name_t reg_t ext_fn_t reg_t' ext_fn_t').
+      unfold lift_fn2_tc_result. setoid_rewrite EQt1. setoid_rewrite EQt2.
+      inv H; simpl; repeat erewrite cast_action_ok; try now (eexists; split; eauto).
+      + eexists; split; eauto.  simpl. f_equal. lia.
+      + rewrite H2. simpl.
+        repeat erewrite cast_action_ok; try now (eexists; split; eauto).
+      + rewrite H2. simpl.
+        repeat erewrite cast_action_ok; try now (eexists; split; eauto).
+      + rewrite H2. simpl.
+        repeat erewrite cast_action_ok; try now (eexists; split; eauto).
+      + rewrite H2. simpl.
+        repeat erewrite cast_action_ok; try now (eexists; split; eauto).
+      Unshelve. all: auto.
     - edestruct (IHua _ _ a) as (a01 & TA1 & EQt1). simpl; lia. eauto.
       rewrite TA1.
       erewrite cast_action_ok.
@@ -1344,88 +1113,6 @@ Section WT.
     rewrite get_put_neq. eauto. auto.
   Qed.
 
-  Inductive wt_unop : PrimUntyped.ufn1 -> type -> type -> Prop :=
-  | wt_unop_display_utf8 sg:
-      array_type sg = bits_t 8 ->
-      wt_unop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) (array_t sg) unit_t
-  | wt_unop_display_value opts tau:
-      wt_unop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) tau unit_t
-  | wt_unop_upack tau:
-      wt_unop (PrimUntyped.UConv PrimUntyped.UPack) tau (bits_t (type_sz tau))
-  | wt_unop_uunpack tau:
-      wt_unop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) (bits_t (type_sz tau)) tau
-  | wt_unop_uignore tau:
-      wt_unop (PrimUntyped.UConv PrimUntyped.UIgnore) tau unit_t
-  | wt_unop_unot sz:
-      wt_unop (PrimUntyped.UBits1 PrimUntyped.UNot) (bits_t sz) (bits_t sz)
-  | wt_unop_usext sz width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) (bits_t sz) (bits_t (Nat.max sz width))
-  | wt_unop_uzextl sz width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) (bits_t sz) (bits_t (Nat.max sz width))
-  | wt_unop_uzextr sz width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) (bits_t sz) (bits_t (Nat.max sz width))
-  | wt_unop_urepeat sz times:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) (bits_t sz) (bits_t (times * sz))
-  | wt_unop_uslice sz ofs width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.USlice ofs width)) (bits_t sz) (bits_t width)
-  | wt_unop_ugetfield sg name idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) (struct_t sg) (field_type sg idx)
-  | wt_unop_ugetfieldbits sg name idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx)
-  | wt_unop_ugetelement sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) (array_t sg) (array_type sg)
-  | wt_unop_ugetelementbits sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg))
-  .
-
-  Inductive wt_binop : PrimUntyped.ufn2 -> type -> type -> type -> Prop :=
-  | wt_binop_eq neg tau:
-      wt_binop (PrimUntyped.UEq neg) tau tau (bits_t 1)
-  | wt_binop_and sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAnd) (bits_t sz) (bits_t sz) (bits_t sz)
-  | wt_binop_or sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UOr) (bits_t sz) (bits_t sz) (bits_t sz)
-  | wt_binop_xor sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UXor) (bits_t sz) (bits_t sz) (bits_t sz)
-  | wt_binop_lsl sz sh_sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsl) (bits_t sz) (bits_t sh_sz) (bits_t sz)
-  | wt_binop_lsr sz sh_sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
-  | wt_binop_asr sz sh_sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
-  | wt_binop_concat sz1 sz2:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UConcat) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
-  | wt_binop_sel sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.USel) (bits_t sz) (bits_t (log2 sz)) (bits_t 1)
-  | wt_binop_slice_subst sz ofs w:
-      wt_binop (PrimUntyped.UBits2 (PrimUntyped.USliceSubst ofs w)) (bits_t sz) (bits_t w) (bits_t sz)
-  | wt_binop_indexedslice sz w:
-      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) (bits_t sz) (bits_t (log2 sz)) (bits_t w)
-  | wt_binop_plus sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UPlus) (bits_t sz) (bits_t sz) (bits_t sz)
-  | wt_binop_minus sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMinus) (bits_t sz) (bits_t sz) (bits_t sz)
-  | wt_binop_mul sz1 sz2:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMul) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
-  | wt_binop_compare signed bc sz:
-      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UCompare signed bc)) (bits_t sz) (bits_t sz) (bits_t 1)
-  | wt_binop_substfield name sg idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) (struct_t sg) (field_type sg idx) (struct_t sg)
-  | wt_binop_substfieldbits name sg idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx) (struct_bits_t sg)
-  | wt_binop_substelement sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) (array_t sg) (array_type sg) (array_t sg)
-  | wt_binop_substelementbits sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg)) (bits_t (array_sz sg))
-  .
 
   Fixpoint typsz (t: type) : nat :=
     match t with
@@ -2354,35 +2041,7 @@ Section WT.
       destruct H18 as (? & ? & ?).
       repeat split. 2: constructor; reflexivity. auto.
       eapply wt_log_cons; eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. constructor; auto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. econstructor; eauto.
-      intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
-    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto. econstructor; eauto.
+    - eapply interp_unop_wt_preserves. 7: eauto. all: eauto.
       intros; eapply IHua. 8: eauto. auto. simpl; lia. all: eauto.
     - 
       Ltac autobinop IHua :=
@@ -2399,24 +2058,6 @@ Section WT.
                                              intros ? x; eapply IHua; eauto; try (destruct x; subst; simpl; lia)
                end.
       autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
-    - autobinop IHua.
     - iinv INT.
       Ltac iaauto :=
         match goal with
@@ -2654,93 +2295,260 @@ Section WT.
         eapply UntypedSemantics.fRinv_correct_inv in Heqo. subst; eauto.
   Qed.
 
-  Definition ret_type_unop (ufn: PrimUntyped.ufn1) (tau: type) :=
-    match ufn with
-    | PrimUntyped.UConv PrimUntyped.UPack => bits_t (type_sz tau)
-    | PrimUntyped.UConv (PrimUntyped.UUnpack tau0) => tau0
-    | PrimUntyped.UBits1 PrimUntyped.UNot => tau
-    | PrimUntyped.UBits1 (PrimUntyped.USExt width) |
-      PrimUntyped.UBits1 (PrimUntyped.UZExtL width) |
-      PrimUntyped.UBits1 (PrimUntyped.UZExtR width) =>
-        match tau with
-        | bits_t sz => bits_t (Nat.max sz width)
-        | _ => unit_t
-        end
-    | PrimUntyped.UBits1 (PrimUntyped.URepeat times) =>
-        match tau with
-        | bits_t sz => bits_t (times * sz)
-        | _ => unit_t
-        end
-    | PrimUntyped.UBits1 (PrimUntyped.USlice _ width) => bits_t width
-    | PrimUntyped.UStruct1 (PrimUntyped.UGetField name) =>
-        match tau with
-        | struct_t sg =>
-            match PrimTypeInference.find_field sg name with
-            | Success idx => field_type sg idx
-            | Failure _ => unit_t
-            end
-        | _ => unit_t
-        end
-    | PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name) =>
-        match PrimTypeInference.find_field sg name with
-        | Success idx => field_bits_t sg idx
-        | Failure _ => unit_t
-        end
-    | PrimUntyped.UArray1 (PrimUntyped.UGetElement _) =>
-        match tau with
-        | array_t sg => array_type sg
-        | _ => unit_t
-        end
-    | PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg _) =>
-        bits_t (element_sz sg)
-    | _ => unit_t
-    end.
-
-  Definition ret_type_binop (ufn: PrimUntyped.ufn2) (tau1 tau2: type) : type :=
-    match ufn with
-      (PrimUntyped.UEq _)
-    | (PrimUntyped.UBits2 PrimUntyped.USel)
-    | (PrimUntyped.UBits2 (PrimUntyped.UCompare _ _))
-      => bits_t 1
-    | (PrimUntyped.UBits2 PrimUntyped.UAnd)
-    | (PrimUntyped.UBits2 PrimUntyped.UOr)
-    | (PrimUntyped.UBits2 PrimUntyped.UXor)
-    | (PrimUntyped.UBits2 PrimUntyped.ULsl)
-    | (PrimUntyped.UBits2 PrimUntyped.ULsr)
-    | (PrimUntyped.UBits2 PrimUntyped.UAsr)
-    | (PrimUntyped.UBits2 (PrimUntyped.USliceSubst _ _))
-    | (PrimUntyped.UBits2 PrimUntyped.UPlus)
-    | (PrimUntyped.UBits2 PrimUntyped.UMinus)
-      => tau1
-    | (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) => bits_t w
-    | (PrimUntyped.UBits2 PrimUntyped.UConcat)
-    | (PrimUntyped.UBits2 PrimUntyped.UMul)=>
-        match tau1, tau2 with
-          bits_t s1, bits_t s2 => bits_t (s1 + s2)
-        | _, _ => bits_t 0
-        end
-    | (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) => tau1
-    | (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) => tau1
-    | (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) => tau1
-    | (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx)) => tau1
-    end.
-
-  Lemma wt_unop_type_unop_ret:
-    forall u t1 t2,
-      wt_unop u t1 t2 ->
-      t2 = ret_type_unop u t1.
+  Lemma wt_action_to_daction:
+    forall {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
+           sig ua t,
+      wt_action (R:=R) (Sigma:=Sigma) pos_t fn_name_t var_t sig ua t ->
+      forall da,
+        uaction_to_daction ua = Some da ->
+        wt_daction (R:=R) (Sigma:=Sigma) pos_t fn_name_t var_t sig da t.
   Proof.
-    induction 1; simpl; intros; eauto.
-    rewrite H; auto.
-    rewrite H; auto.
+    intros reg_t ext_fn_t R Sigma sig ua t.
+    remember (size_uaction ua).
+    revert reg_t ext_fn_t R Sigma sig ua t Heqn.
+    pattern n.
+    eapply Nat.strong_right_induction with (z:=0).
+    { red. red. intros. subst. tauto. } 2: lia.
+    intros n0 _ Plt reg_t ext_fn_t R Sigma sig ua t Heqn. subst.
+    assert (Plt':
+              forall
+                {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
+                (ua': Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t),
+                size_uaction ua' < size_uaction ua ->
+                forall (t : type) (sig : tsig var_t),
+                  wt_action (R:=R) (Sigma:=Sigma) pos_t fn_name_t var_t sig ua' t ->
+                  forall da,
+                    uaction_to_daction ua' = Some da ->
+                    wt_daction (R:=R) (Sigma:=Sigma) pos_t fn_name_t var_t sig da t).
+    { intros. eapply Plt. 4: apply H0. 3: reflexivity. lia. eauto. auto. } clear Plt.
+    rename Plt' into IHua. clear n.
+    intros WTA da UA.
+    inv WTA; simpl in UA; unfold opt_bind in UA; repeat destr_in UA; inv UA; try now (econstructor; eauto; try (eapply IHua; eauto; simpl; try lia)).
+    - econstructor; eauto.
+      eapply IHua. 3: eauto. simpl; lia. eauto.
+      eapply IHua. 3: eauto. simpl; lia. eauto.
+      eapply IHua. 3: eauto. simpl; lia. eauto.
+    - econstructor; eauto.
+      simpl.
+
+      Lemma Forall2_impl':
+        forall {A B C: Type} (P: A -> C -> Prop) (f: A -> option B) (Q: B -> C -> Prop)
+        l1 l2,
+          Forall2 P l1 l2 ->
+          forall l3,
+          Forall2 (fun a b => f a = Some b) l1 l3 ->
+          (forall x b t, In x l1 -> P x t -> f x = Some b -> Q b t) ->
+          Forall2 Q l3 l2.
+      Proof.
+        induction 1; simpl; intros; eauto.
+        - inv H. constructor.
+        - inv H1.
+          econstructor; eauto.
+      Qed.
+
+      eapply Forall2_impl'. apply H.
+      eapply UntypedSemantics.map_error_forall2. eauto.
+      intros. eapply IHua. 3: eauto. 2: eauto. simpl.
+      cut (size_uaction x <= list_sum (map size_uaction args)). lia.
+      clear - H1. revert x args H1. induction args; simpl; intros; eauto.
+      easy.
+      destruct H1. subst. lia.
+      apply IHargs in H. lia.
+
+      simpl. eapply IHua. 3: eauto. simpl; lia. eauto.
   Qed.
 
-
-  Lemma wt_binop_type_binop_ret:
-    forall u t1 t2 t3,
-      wt_binop u t1 t2 t3 ->
-      t3 = ret_type_binop u t1 t2.
+Fixpoint size_daction
+         {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+         (da: @daction pos_t var_t fn_name_t reg_t ext_fn_t) {struct da}
+  : nat :=
+  match da  with
+  | DError err => 0
+  | DFail tau => 0
+  | DVar var => 0
+  | DConst cst => 0
+  | DAssign v ex => 1 + size_daction ex
+  | DSeq a1 a2 => 1 + size_daction a1 + size_daction a2
+  | DBind v ex body => 1 + size_daction ex + size_daction body
+  | DIf cond tbranch fbranch =>
+    1 + size_daction cond + size_daction tbranch + size_daction fbranch
+  | DRead port idx => 0
+  | DWrite port idx value => 1 + size_daction value
+  | DUnop ufn1 arg1 => 1 + size_daction arg1
+  | DBinop ufn2 arg1 arg2 => 1 + size_daction arg1 + size_daction arg2
+  | DExternalCall ufn arg => 1 + size_daction arg
+  | DInternalCall ufn args =>
+    1 + size_daction (int_body ufn) + list_sum (map size_daction args)
+  | DAPos p e => 1 + size_daction e
+  end.
+  Lemma interp_dlist_wt:
+    forall
+      {reg_t ext_fn_t} (R: reg_t -> type)
+      (REnv: Env reg_t),
+    forall (i: list (var_t * BitsToLists.val) ->
+               UntypedSemantics.Log REnv ->
+               UntypedSemantics.Log REnv ->
+               @daction pos_t var_t fn_name_t reg_t ext_fn_t ->
+               option (UntypedSemantics.Log REnv * BitsToLists.val * list (var_t * BitsToLists.val)) ) args argtypes
+           sig
+           (* (WTR: wt_renv R REnv r) *)
+           (ARGS: Forall2 (fun a t =>
+                             forall ctx ctx' action_log sched_log action_log' v,
+                               wt_env sig ctx ->
+                               wt_log R REnv action_log ->
+                               wt_log R REnv sched_log ->
+                               i ctx action_log sched_log a =  Some (action_log', v, ctx') ->
+                               wt_env sig ctx' /\ wt_val t v /\ wt_log R REnv action_log'
+                          ) args argtypes),
+    forall ctx action_log sched_log,
+      wt_env sig ctx ->
+      wt_log R REnv action_log ->
+      wt_log R REnv sched_log ->
+      forall l0 at0,
+        Forall2 (fun v t => wt_val t v) (rev l0) at0 ->
+        forall action_log' ctx' lv,
+          fold_left (fun acc a =>
+                       match acc with
+                       | Some (action_log0, l, Gamma) =>
+                           match i Gamma sched_log action_log0 a with
+                           | Some (action_log, v, Gamma0) =>
+                               Some (action_log, v::l, Gamma0)
+                           | None => None
+                           end
+                       | None => None
+                       end
+                    ) args (Some (action_log, l0, ctx)) = Some (action_log', lv, ctx') ->
+          wt_env sig ctx' /\
+            Forall2 (fun v t => wt_val t v) (rev lv) (at0 ++ argtypes) /\
+            wt_log R REnv action_log'.
   Proof.
-    induction 1; simpl; intros; eauto.
+    induction args; simpl; intros; eauto.
+    - inv ARGS. inv H3. simpl; repeat split; eauto. rewrite app_nil_r; auto.
+    - inv ARGS. repeat destr_in H3.
+      edestruct H6 as (WTE & WTV & WTL). 4: now eauto. auto. auto. auto.
+      eapply IHargs in H3. 2: eauto. destruct H3; split; eauto.
+      revert H4. instantiate (1:=at0++[y]). rewrite <- app_assoc. simpl. auto. auto. auto.
+      auto.
+      simpl.
+      apply Forall2_app. eauto.
+      econstructor; eauto.
+      rewrite UntypedSemantics.fold_left_none in H3. congruence. auto.
   Qed.
+
+  Lemma wt_daction_preserves_wt_env:
+    forall {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
+           (REnv: Env reg_t)
+           (r: env_t REnv (fun _ => BitsToLists.val))
+           (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
+           (sigma_wt: forall fn v, wt_val (arg1Sig (Sigma fn)) v ->
+                                   wt_val (retSig (Sigma fn)) (sigma fn v))
+           a ctx ctx' t sig action_log sched_log action_log' v,
+      wt_renv R REnv r ->
+      wt_env sig ctx ->
+      wt_daction pos_t fn_name_t var_t (R:=R) (Sigma:=Sigma) sig a t ->
+      wt_log R REnv action_log ->
+      wt_log R REnv sched_log ->
+      UntypedSemantics.interp_daction r sigma ctx action_log sched_log a = Some (action_log', v, ctx') ->
+      wt_env sig ctx' /\ wt_val t v /\ wt_log R REnv action_log'.
+  Proof.
+    intros reg_t ext_fn_t R Sigma REnv r sigma sigma_wt ua.
+    remember (size_daction ua).
+    revert ua Heqn.
+    pattern n.
+    eapply Nat.strong_right_induction with (z:=0).
+    { red. red. intros. subst. tauto. } 2: lia.
+    intros n0 _ Plt ua Heqn. subst.
+    assert (Plt':
+             forall
+               (ua': @daction pos_t var_t fn_name_t reg_t ext_fn_t),
+               size_daction ua' < size_daction ua ->
+               forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+                      (action_log sched_log action_log' : UntypedSemantics.Log REnv) (v : BitsToLists.val),
+                 wt_renv R REnv r ->
+                 wt_env sig ctx ->
+                 wt_log R REnv action_log ->
+                 wt_log R REnv sched_log ->
+                 wt_daction pos_t fn_name_t var_t (R:=R) (Sigma:=Sigma) sig ua' t ->
+                 UntypedSemantics.interp_daction r sigma ctx action_log sched_log ua' = Some (action_log', v, ctx') -> wt_env sig ctx' /\ wt_val t v /\ wt_log R REnv action_log').
+    { intros. eapply Plt. 9: eauto. 3: reflexivity. lia. eauto. auto. eauto. all: eauto. } clear Plt.
+    rename Plt' into IHua. clear n.
+    intros ctx ctx' t sig action_log sched_log action_log' v WTR WTE WTA WTLa WTLs INT.
+    inv WTA; simpl in INT; unfold opt_bind in INT; repeat destr_in INT; inv INT.
+    - repeat split; auto.
+      eapply wt_env_list_assoc; eauto.
+    - repeat split; auto. apply wt_val_of_value.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (? & ? & ?).
+      repeat split; eauto.
+      + eapply wt_env_set; eauto.
+      + constructor; reflexivity.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (?&?&?).
+      eapply IHua in H2; eauto. simpl; lia. simpl; lia.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (?&?&?).
+      eapply IHua in Heqo0; eauto.
+      destruct Heqo0 as (?&?&?).
+      intuition. inv H4. simpl; auto. simpl; lia.
+      constructor; auto. simpl; lia.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (?&?&?).
+      eapply IHua in H3; eauto.
+      simpl; lia. simpl; lia.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (?&?&?).
+      eapply IHua in H3; eauto.
+      simpl; lia. simpl; lia.
+    - repeat split; auto.
+      eapply wt_log_cons. auto. simpl. inversion 1.
+    - repeat split; auto.
+      + unfold latest_write0 in Heqo.
+        edestruct @log_find_wt. apply Heqo.  intros. destruct x; simpl in H.
+        repeat destr_in H; inv H. reflexivity.
+        eapply wt_log_app; eauto. destruct H.
+        unfold log_latest_write0_fn in H. repeat destr_in H; inv H. simpl in *; auto.
+      + eapply wt_log_cons; eauto. simpl. congruence.
+    - repeat split; auto.
+      eapply wt_log_cons; eauto. simpl. congruence.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (?&?&?).
+      repeat split; auto. repeat constructor.
+      eapply wt_log_cons; eauto.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (?&?&?).
+      repeat split; auto.
+      eapply wt_unop_sigma1; eauto.
+    - eapply IHua in Heqo; eauto.
+      destruct Heqo as (?&?&?).
+      eapply IHua in Heqo0; eauto.
+      destruct Heqo0 as (?&?&?).
+      repeat split; auto.
+      eapply wt_binop_sigma1; eauto.
+      simpl; lia. simpl; lia.
+    - eapply IHua in Heqo; eauto. destruct Heqo as (?&?&?).
+      repeat split; eauto.
+    -
+
+
+      edestruct @interp_dlist_wt as (WTE' & WTLV & WTLA'). 6: now eauto.
+      + eapply Forall2_impl. eauto.
+        intros; eauto.
+        eapply IHua. 7: now eauto.
+        simpl.
+        clear - H1. revert H1; induction args; simpl; intros; eauto. easy.
+        destruct H1; subst; simpl in *; eauto. lia.
+        apply IHargs in H. lia.
+        all: eauto.
+      + auto.
+      + auto.
+      + auto.
+      + simpl. constructor.
+      + eapply IHua in Heqo0; eauto.
+        intuition; eauto.
+        simpl; lia.
+        eapply forall2_wt_wt_env in WTLV.
+        rewrite rev_involutive in WTLV. auto.
+    - eapply IHua in H1; eauto.
+  Qed.
+
 End WT.
