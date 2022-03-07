@@ -127,8 +127,7 @@ Section SimpleForm.
 
   (* Simple form and related structures *)
   Definition cond_log := list (reg_t * sact).
-  Record write_info := mkWriteInfo { wcond: sact; wval: sact }.
-  Definition write_log := list (reg_t * list (write_info)).
+  Record write_info := mkWriteInfo { wcond: sact; }.
   Definition write_log_raw := list (reg_t * (sact * list (write_info))).
   Definition var_value_map := list (nat * (type * sact)).
 
@@ -144,25 +143,6 @@ Section SimpleForm.
   Instance etaRuleInformationRaw : Settable _ :=
     settable! mkRuleInformationRaw
     <rir_read0s; rir_read1s; rir_write0s; rir_write1s; rir_vars; rir_failure_cond >.
-  Record rule_information_clean :=
-    mkRuleInformationClean {
-        ric_write0s: write_log;
-        ric_write1s: write_log;
-        ric_vars: var_value_map;
-        ric_failure_cond: sact
-      }.
-  Instance etaRuleInformationClean : Settable _ :=
-    settable! mkRuleInformationClean
-    < ric_write0s; ric_write1s; ric_vars; ric_failure_cond >.
-  Record schedule_information :=
-    mkScheduleInformation {
-        sc_write0s: cond_log;
-        sc_write1s: cond_log;
-        sc_vars: var_value_map
-      }.
-  Instance etaScheduleInformation : Settable _ :=
-    settable! mkScheduleInformation
-    < sc_write0s; sc_write1s; sc_vars >.
   Record simple_form :=
     mkSimpleForm {
         final_values: list (reg_t * nat);
@@ -238,10 +218,10 @@ Section SimpleForm.
     : rule_information_raw * sact :=
     let (new_grd, new_wi) :=
       match list_assoc (rir_write0s rir) reg with
-      | None => (grd, [{| wcond := grd; wval := val |}])
+      | None => (grd, [{| wcond := grd; |}])
       | Some c =>
           (uor (fst c) grd,
-            (snd c)++[{| wcond := grd; wval := val |}])
+            (snd c)++[{| wcond := grd; |}])
       end in
     ((rir <| rir_write0s := list_assoc_set (rir_write0s rir) reg (new_grd, new_wi) |>),
       merge_failures_list grd
@@ -261,10 +241,10 @@ Section SimpleForm.
     : rule_information_raw * sact :=
     let (new_grd, new_wi) :=
       match list_assoc (rir_write1s rir) reg with
-      | None => (grd, [{| wcond := grd; wval := val |}])
+      | None => (grd, [{| wcond := grd; |}])
       | Some c =>
           (uor (fst c) grd,
-            (snd c)++[{| wcond := grd; wval := val |}])
+            (snd c)++[{| wcond := grd; |}])
       end in
     ((rir <| rir_write1s := list_assoc_set (rir_write1s rir) reg (new_grd, new_wi) |>),
       merge_failures_list grd [rir_has_write1 rir reg; rir_has_write1 sched_rir reg]).
@@ -1382,8 +1362,8 @@ Section SimpleForm.
            Exists (fun wi => interp_sact vvs (wcond wi) (Bits 1 [true]) ) (snd a) );
       wf_wlr_each_cond: forall i a, In (i, a) wl ->
                                     Forall (fun wi => wt_sact vvs (wcond wi) (bits_t 1)) (snd a);
-      wf_wlr_each_act: forall i a, In (i, a) wl ->
-                                   Forall (fun wi => wt_sact vvs (wval wi) (R i)) (snd a);
+      (* wf_wlr_each_act: forall i a, In (i, a) wl -> *)
+      (*                              Forall (fun wi => wt_sact vvs (wval wi) (R i)) (snd a); *)
     }.
 
   Record wf_rir (r: rule_information_raw) (vvs: list (nat * (type * sact))) :=
@@ -1708,8 +1688,6 @@ Section SimpleForm.
       auto.
     - intros. eapply Forall_impl. 2: eapply wf_wlr_each_cond0; eauto.
       simpl; intros; eapply wt_sact_vvs_grows; eauto.
-    - intros. eapply Forall_impl. 2: eapply wf_wlr_each_act0; eauto.
-      simpl; intros; eapply wt_sact_vvs_grows; eauto.
   Qed.
 
   Lemma wf_rir_incr:
@@ -1833,13 +1811,12 @@ Section SimpleForm.
     split; eauto. simpl; easy.
   Qed.
 
-  Definition wwlr wl vvs :=
+  Definition wwlr (wl: write_log_raw) vvs :=
     forall i c wil,
       In (i, (c, wil)) wl ->
       wt_sact vvs c (bits_t 1)
       /\ (interp_sact vvs c (Bits 1 [true]) <-> Exists (fun wi => interp_sact vvs (wcond wi) (Bits 1 [true])) wil)
-      /\ Forall (fun wi => wt_sact vvs (wcond wi) (bits_t 1)) wil
-      /\ Forall (fun wi => wt_sact vvs (wval wi) (R i)) wil.
+      /\ Forall (fun wi => wt_sact vvs (wcond wi) (bits_t 1)) wil.
 
   Lemma wwlr_eq:
     forall wl vvs, wf_write_log_raw wl vvs <-> wwlr wl vvs.
@@ -1850,13 +1827,12 @@ Section SimpleForm.
       eapply wf_wlr_glob_interp0 in H; eauto. tauto.
       eapply wf_wlr_glob_interp0 in H; eauto. tauto.
       eapply wf_wlr_each_cond0 in H; eauto.
-      eapply wf_wlr_each_act0 in H; eauto.
     - intros. split; intros i (c & wil) IN; simpl; eauto.
       eapply H in IN. intuition.
       eapply H in IN. intuition.
       eapply H in IN. intuition.
-      eapply H in IN. intuition.
   Qed.
+
   Lemma nodup_list_assoc_set:
     forall {K V: Type} {ed: EqDec K} (l: list (K * V)) k v,
       NoDup (map fst l) ->
@@ -1896,15 +1872,15 @@ Section SimpleForm.
         * apply list_assoc_in in Heqo.
           destruct p.
           specialize (wf_rir_write0s0 _ _ _ Heqo).
-          destruct wf_rir_write0s0 as (? & ? & ? & ?). simpl.
+          destruct wf_rir_write0s0 as (? & ? & ?). simpl.
           repeat refine (conj _ _); eauto.
           -- econstructor; eauto. constructor.
           -- intros A. inv A.
-             exploit interp_sact_wt_bool. 5: apply H6. all: simpl; eauto.
-             exploit interp_sact_wt_bool. 5: apply H8. all: simpl; eauto.
-             intros (? & A) (? & B). subst. simpl in H9. inv H9.
-             apply orb_true_iff in H4.
-             destruct H4; subst; simpl.
+             exploit interp_sact_wt_bool. 5: apply H5. all: simpl; eauto.
+             exploit interp_sact_wt_bool. 5: apply H7. all: simpl; eauto.
+             intros (? & A) (? & B). subst. simpl in H8. inv H8.
+             apply orb_true_iff in H3.
+             destruct H3; subst; simpl.
              apply Exists_app. left. apply H0. auto.
              apply Exists_app. right. constructor. simpl. rewrite orb_true_r. auto.
           -- exploit wt_sact_interp_bool. 4: eapply H. all: eauto. intros (? & ?); subst.
@@ -1912,13 +1888,12 @@ Section SimpleForm.
              intros EX. econstructor; eauto. simpl. f_equal. f_equal.
              revert EX.
              rewrite Exists_app. intros [A|A].
-             apply H0 in A. exploit interp_sact_determ. apply A. apply H3. intros B; inv B. simpl.
+             apply H0 in A. exploit interp_sact_determ. apply A. apply H2. intros B; inv B. simpl.
              auto.
-             inv A. simpl in H6.
-             exploit interp_sact_determ. apply H4. apply H6. intros B; inv B.
+             inv A. simpl in H5.
+             exploit interp_sact_determ. apply H3. apply H5. intros B; inv B.
              rewrite orb_true_r; auto.
-             inv H6.
-          -- apply Forall_app. split; auto.
+             inv H5.
           -- apply Forall_app. split; auto.
         * repeat refine (conj _ _); auto.
           rewrite Exists_exists. intros (x & [EQ|[]] & IV). subst. simpl in IV. auto.
@@ -1968,15 +1943,15 @@ Section SimpleForm.
         * apply list_assoc_in in Heqo.
           destruct p.
           specialize (wf_rir_write1s0 _ _ _ Heqo).
-          destruct wf_rir_write1s0 as (? & ? & ? & ?). simpl.
+          destruct wf_rir_write1s0 as (? & ? & ?). simpl.
           repeat refine (conj _ _); eauto.
           -- econstructor; eauto. constructor.
           -- intros A. inv A.
-             exploit interp_sact_wt_bool. 5: apply H6. all: simpl; eauto.
-             exploit interp_sact_wt_bool. 5: apply H8. all: simpl; eauto.
-             intros (? & A) (? & B). subst. simpl in H9. inv H9.
-             apply orb_true_iff in H4.
-             destruct H4; subst; simpl.
+             exploit interp_sact_wt_bool. 5: apply H5. all: simpl; eauto.
+             exploit interp_sact_wt_bool. 5: apply H7. all: simpl; eauto.
+             intros (? & A) (? & B). subst. simpl in H8. inv H8.
+             apply orb_true_iff in H3.
+             destruct H3; subst; simpl.
              apply Exists_app. left. apply H0. auto.
              apply Exists_app. right. constructor. simpl. rewrite orb_true_r. auto.
           -- exploit wt_sact_interp_bool. 4: eapply H. all: eauto. intros (? & ?); subst.
@@ -1984,13 +1959,12 @@ Section SimpleForm.
              intros EX. econstructor; eauto. simpl. f_equal. f_equal.
              revert EX.
              rewrite Exists_app. intros [A|A].
-             apply H0 in A. exploit interp_sact_determ. apply A. apply H3. intros B; inv B. simpl.
+             apply H0 in A. exploit interp_sact_determ. apply A. apply H2. intros B; inv B. simpl.
              auto.
-             inv A. simpl in H6.
-             exploit interp_sact_determ. apply H4. apply H6. intros B; inv B.
+             inv A. simpl in H5.
+             exploit interp_sact_determ. apply H3. apply H5. intros B; inv B.
              rewrite orb_true_r; auto.
-             inv H6.
-          -- apply Forall_app. split; auto.
+             inv H5.
           -- apply Forall_app. split; auto.
         * repeat refine (conj _ _); auto.
           rewrite Exists_exists. intros (x & [EQ|[]] & IV). subst. simpl in IV. auto.
@@ -5223,7 +5197,7 @@ Section SimpleForm.
     | [] => wl1
     | (idx, (gcond, wil))::wl2 =>
         let gcond' := uand (unot cond2) gcond in
-        let wil' := map (fun wi => {| wcond := uand (unot cond2) (wcond wi); wval := wval wi |}) wil in
+        let wil' := map (fun wi => {| wcond := uand (unot cond2) (wcond wi); |}) wil in
         merge_write_logs
           (list_assoc_modify wl1 idx
                              (gcond', wil')
@@ -5291,9 +5265,9 @@ Section SimpleForm.
           apply list_assoc_in in Heqo.
           specialize (F1 _ _ _ Heqo).
           specialize (F2 _ _ _ (or_introl eq_refl)).
-          destruct F1 as (Wcond1 & Icond1 & Wecond1 & Weact1).
-          destruct F2 as (Wcond2 & Icond2 & Wecond2 & Weact2).
-          split; [|split;[|split]].
+          destruct F1 as (Wcond1 & Icond1 & Wecond1).
+          destruct F2 as (Wcond2 & Icond2 & Wecond2).
+          split; [|split].
           -- econstructor. eauto. econstructor. econstructor. eauto. constructor. eauto.
              constructor. constructor.
           -- split.
@@ -5353,14 +5327,12 @@ Section SimpleForm.
              apply Forall_map. simpl.
              eapply Forall_impl. 2: apply Wecond2. simpl. intros.
              econstructor; eauto. econstructor; eauto. constructor. constructor.
-          -- apply Forall_app. split; auto.
-             apply Forall_map. simpl. eauto.
-        * eapply F1. auto.
+        * eapply F1. eauto.
       + apply in_list_assoc_set_inv in IN. destruct IN; eauto.
         inv H.
         specialize (F2 _ _ _ (or_introl eq_refl)).
-        destruct F2 as (Wcond2 & Icond2 & Wecond2 & Weact2).
-        split; [|split;[|split]].
+        destruct F2 as (Wcond2 & Icond2 & Wecond2).
+        split; [|split].
         * econstructor. econstructor; eauto. constructor. eauto. constructor.
         * split.
           -- intro I. inv I. inv H2.
@@ -5396,7 +5368,6 @@ Section SimpleForm.
         * apply Forall_map. simpl.
           eapply Forall_impl. 2: apply Wecond2. simpl. intros.
           econstructor; eauto. econstructor; eauto. constructor. constructor.
-        * apply Forall_map. simpl. eauto.
   Qed.
 
 
@@ -5893,138 +5864,6 @@ Section SimpleForm.
       + destruct eq_dec; try congruence. tauto.
   Qed.
 
-  (* Record ok_logs (sched_log action_log: Log REnv) := *)
-  (*   { *)
-  (*     ol_read0: forall idx, *)
-  (*       log_existsb action_log idx is_read0 = true -> *)
-  (*       log_existsb sched_log idx is_write0 = false /\ *)
-  (*         log_existsb sched_log idx is_write1 = false; *)
-  (*     ol_read1: forall idx, *)
-  (*       log_existsb action_log idx is_read1 = true -> *)
-  (*       log_existsb sched_log idx is_write1 = false; *)
-  (*     ol_write0: forall idx, *)
-  (*       log_existsb action_log idx is_write0 = true -> *)
-  (*       log_existsb sched_log idx is_read1 = false /\ *)
-  (*         log_existsb sched_log idx is_write0 = false /\ *)
-  (*         log_existsb sched_log idx is_write1 = false; *)
-  (*     ol_write1: forall idx, *)
-  (*       log_existsb action_log idx is_write1 = true -> *)
-  (*       log_existsb sched_log idx is_write1 = false; *)
-  (*   }. *)
-
-  (* Lemma interp_daction_logs: *)
-  (*   forall Gamma sched_log action_log (da: uact) action_log' v Gamma' , *)
-  (*     interp_daction r sigma Gamma sched_log action_log da = Some (action_log', v, Gamma') -> *)
-  (*     ok_logs sched_log action_log -> *)
-  (*     ok_logs sched_log action_log'. *)
-  (* Proof. *)
-  (*   intros Gamma sched_log action_log da action_log' v Gamma'. *)
-  (*   revert Gamma sched_log action_log action_log' v Gamma'. *)
-  (*   remember (size_daction da). *)
-  (*   revert da Heqn. *)
-  (*   pattern n. *)
-  (*   eapply Nat.strong_right_induction with (z:=0). *)
-  (*   { red. red. intros. subst. tauto. } 2: lia. *)
-  (*   intros n0 _ Plt ua Heqn. subst. *)
-  (*   assert (Plt': *)
-  (*            forall *)
-  (*              (da': uact), *)
-  (*              size_daction da' < size_daction ua -> *)
-  (*              forall Gamma sched_log action_log action_log' v Gamma' , *)
-  (*                interp_daction r sigma Gamma sched_log action_log da' = Some (action_log', v, Gamma') -> *)
-  (*                ok_logs sched_log action_log -> *)
-  (*                ok_logs sched_log action_log'). *)
-  (*   { intros. eapply Plt. 4: eauto. 3: reflexivity. lia. eauto. auto.  } clear Plt. *)
-  (*   rename Plt' into IHua. clear n. *)
-  (*   intros Gamma sched_log action_log action_log' v Gamma' ID OK. *)
-  (*   destruct ua; simpl in ID; unfold opt_bind in ID; repeat destr_in ID; inv ID; eauto. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*     eapply IHua in H0; eauto. simpl; lia. simpl; lia. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*     eapply IHua in Heqo0; eauto. simpl; lia. simpl; lia. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*     eapply IHua in H0; eauto. simpl; lia. simpl; lia. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*     eapply IHua in H0; eauto. simpl; lia. simpl; lia. *)
-  (*   - unfold may_read in Heqb. *)
-  (*     rewrite andb_true_iff, !negb_true_iff in Heqb. destruct Heqb. *)
-  (*     destruct OK; split; simpl; eauto. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*     simpl. apply ol_read2. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*     eapply ol_write2; eauto. *)
-  (*     simpl. eapply ol_write2; eauto. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*   - unfold may_read in Heqb. *)
-  (*     rewrite !negb_true_iff in Heqb. *)
-  (*     destruct OK; split; simpl; eauto. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*     simpl. apply ol_read2. auto. *)
-  (*     simpl. apply ol_read2. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. apply ol_read3. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. *)
-  (*     eapply ol_write2; eauto. *)
-  (*     simpl. eapply ol_write2; eauto. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*   - unfold may_read in Heqb. *)
-  (*     rewrite !negb_true_iff in Heqb. *)
-  (*     destruct OK; split; simpl; eauto. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*     simpl. apply ol_read2. auto. *)
-  (*     simpl. apply ol_read2. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. apply ol_read3. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. *)
-  (*     eapply ol_write2; eauto. *)
-  (*     simpl. eapply ol_write2; eauto. *)
-  (*     intro. rewrite log_existsb_log_cons. simpl. destr. subst. simpl. intuition. *)
-  (*   - unfold may_write in Heqb. *)
-  (*     rewrite ! log_existsb_log_app in Heqb. *)
-  (*     rewrite ! negb_orb in Heqb. *)
-  (*     destr_in Heqb. *)
-  (*     rewrite ! andb_true_iff in Heqb. *)
-  (*     rewrite !negb_true_iff in Heqb. *)
-  (*     intuition. *)
-  (*     apply IHua in Heqo. clear OK. *)
-  (*     destruct Heqo; split; simpl; intro; rewrite log_existsb_log_cons; simpl. *)
-  (*     destr. subst. intuition. simpl. apply ol_read2. *)
-  (*     destr. simpl. apply ol_read3. *)
-  (*     destr. subst. intuition. simpl. apply ol_write2. *)
-  (*     destr. simpl. apply ol_write3. simpl; lia. auto. *)
-  (*     rewrite ! andb_true_iff in Heqb. *)
-  (*     rewrite !negb_true_iff in Heqb. *)
-  (*     intuition. *)
-  (*     apply IHua in Heqo. clear OK. *)
-  (*     destruct Heqo; split; simpl; intro; rewrite log_existsb_log_cons; simpl. *)
-  (*     destr. subst. simpl. apply ol_read2. simpl. apply ol_read2. *)
-  (*     destr. simpl. apply ol_read3. *)
-  (*     destr. subst. simpl. apply ol_write2. simpl. apply ol_write2. *)
-  (*     destr. simpl. apply ol_write3. simpl; lia. auto. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*     eapply IHua in Heqo0; eauto. simpl; lia. simpl; lia. *)
-  (*   - eapply IHua in Heqo; eauto. *)
-  (*   - eapply IHua. 2: apply Heqo0. simpl; lia. *)
-  (*     set (P:= (fun opt: option (Log REnv * list val * list (string * val)) => *)
-  (*                match opt with *)
-  (*                | Some (al, _, _) => ok_logs sched_log al *)
-  (*                | None => True *)
-  (*                end *)
-  (*             )). *)
-  (*     change (P (Some (l0, l1, Gamma'))). *)
-  (*     rewrite <- Heqo. *)
-  (*     apply fold_left_induction. *)
-  (*     unfold P; simpl; auto. *)
-  (*     intros. unfold P. repeat destr; auto. *)
-  (*     repeat destr_in Heqo1; inv Heqo1. *)
-  (*     eapply IHua in Heqo3; eauto. *)
-  (*     clear - H. revert H; induction args; simpl; intros; eauto. easy. *)
-  (*     destruct H; subst; simpl in *; eauto. lia. *)
-  (*     apply IHargs in H. lia. *)
-  (*   - eapply IHua in H0; eauto. *)
-  (* Qed. *)
-
   Lemma merge_cond_logs_interp_none:
     forall c2 c1 cond idx,
       list_assoc (merge_cond_logs c1 c2 cond) idx = None ->
@@ -6174,14 +6013,6 @@ Section SimpleForm.
      edestruct RV as (y2 & GET2 & INTERP). eauto.
      inv MLR1.
      exploit (mlr_read0 reg prt).
-     (* revert MR. unfold may_read. *)
-     (* rewrite ! log_existsb_log_app. *)
-     (* rewrite ! negb_orb. *)
-     (* destr. *)
-     (* rewrite ! andb_true_iff. *)
-     (* rewrite ! negb_true_iff. intuition. *)
-     (* rewrite ! andb_true_iff. *)
-     (* rewrite ! negb_true_iff. intuition. *)
      eauto.
      rewrite <- INTERP. unfold do_read. rewrite log_app_empty.
      eapply vvs_grows_interp_sact.
@@ -6953,21 +6784,6 @@ Section SimpleForm.
     repeat refine (conj _ _).
     - eapply wt_vvs_set; eauto.
       constructor. eapply WTR.
-      (* eapply vvs_range_list_assoc_set. *)
-      (* eapply vvs_range_incr. 2: eauto. lia. red; lia. *)
-      (* destr. *)
-      (* econstructor. *)
-      (* unfold latest_write0 in Heqo. *)
-      (* exploit @log_find_wt; eauto. *)
-      (* unfold log_latest_write0_fn. intros x y H; repeat destr_in H. easy. reflexivity. easy. *)
-      (* red; intros; eapply WTL. *)
-      (* unfold log_app in H. rewrite getenv_map2 in H. *)
-      (* rewrite in_app_iff in H. destruct H; eauto. *)
-      (* unfold log_empty in H. *)
-      (* rewrite getenv_create in H. easy. auto. *)
-      (* intros (x & LLW & WTv). unfold log_latest_write0_fn in LLW. repeat destr_in LLW; inv LLW. *)
-      (* simpl in WTv. auto. *)
-      (* econstructor. apply WTR. *)
     - intros.
       rewrite ! list_assoc_spec in H.
       rewrite ! list_assoc_spec.
@@ -6979,9 +6795,6 @@ Section SimpleForm.
       destr; eauto. subst.
       exploit R2V; eauto. intro H0.
       eapply VR in H0. red in H0; lia.
-      (* destr; eauto. subst. *)
-      (* exploit R2V; eauto. intro H0. *)
-      (* eapply VR in H0. red in H0; lia. *)
     - eapply vvs_range_list_assoc_set.
       eapply vvs_range_incr. 2: eauto. lia.
       red; lia.
@@ -7091,11 +6904,6 @@ Section SimpleForm.
     unfold get_rir_scheduler in GRI.
     repeat destr_in GRI.
     exploit wfs_init_r2v. eauto. eauto.
-    (* red; unfold log_empty; intros idx le; rewrite getenv_create; easy. eauto. *)
-    (* instantiate (1:=init_rir <| rir_vars := l0|>). *)
-    (* split; intros; *)
-    (*   unfold init_rir, log_existsb, log_empty, rir_has_read1, rir_has_read0, rir_has_write1, rir_has_write0; rewrite getenv_create; simpl; split; repeat constructor. *)
-    (* simpl. fold init_rir.  *)
     intros (WFS & _ & MLR).
     edestruct get_rir_scheduler_ok with (sched_log:=log_empty (REnv:=REnv) (reg_t:=reg_t) (V:=val)) as (WFS2 & _ & INTERP2). 2: eauto. all: eauto.
     red; unfold log_empty; intros idx le; rewrite getenv_create; easy.
