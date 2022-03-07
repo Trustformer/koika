@@ -7134,319 +7134,57 @@ Section SimpleForm.
     |}.
 
 
-  (* ** All scheduling conflicts *)
-  (* This function detects all the scheduling conflicts. It returns a list of
-     rule_information where the failure conditions have been edited
-     appropriately. *)
-  Definition detect_all_conflicts (rl: list rule_information_raw)
-  : list rule_information_clean :=
-    let raw := fold_left
-      (fun acc c => acc ++ [detect_conflicts_any_prior c acc])
-      rl []
-    in
-    (* TODO: PROVE STUFF HERE *)
-    map clean_rule_information raw.
+  Lemma list_assoc_filter_map:
+    forall {K1 K2 V: Type} {eqdec: EqDec K1} {eqdec: EqDec K2} (f: (K1*V) -> option (K2*V)) (l: list (K1*V)) idx idx' v,
+      list_assoc l idx = Some v ->
+      f (idx, v) = Some (idx', v) ->
+      (forall k1 k2 v1 v2, f (k1,v1) = Some (k2, v2) -> v1 = v2) ->
+      (forall k1 k2 k3 v1 v2 v3 v4, f (k1,v1) = Some (k3, v3) -> f (k2,v2) = Some (k3, v4) -> k1 = k2) ->
+      list_assoc (filter_map f l) idx' = Some v.
+  Proof.
+    induction l; simpl; intros; eauto.
+    repeat destr_in H.
+    - inv H. rewrite H0. simpl. rewrite eq_dec_refl.  auto.
+    - destr.
+      + destruct p. exploit H1. apply Heqo. intros ->. simpl.
+        destr. subst.
+        exploit H2. apply Heqo. apply H0. intro; subst. congruence.
+        eauto.
+      + eauto.
+  Qed.
 
-  (* * Schedule merger *)
-  (* Starting from a schedule with all the right failures conditions under the
-     form of a list of rule_information structures, we want to get to a
-     schedule_information structure (which is a collection of actions with no
-     failure condition, as a schedule can't fail). *)
-  (* ** Integrate failure conditions into actions *)
-  (* We start by extracting the action logs of all the rules in the schedule. In
-     fact, the failure condition was just a building block: we can remove it
-     without losing information as long as we integrate it into the conditions
-     of all the actions of the rule it guarded. *)
-  Definition prepend_condition_writes (cond: sact) (wl: write_log)
-  : write_log :=
-    map
-      (fun '(reg, wl') =>
-        (reg, map (fun wi => {| wcond := uand cond (wcond wi); wval := wval wi |}) wl'))
-      wl.
-  Definition prepend_condition_extcalls (cond: sact) (el: extcall_log)
-  : extcall_log :=
-    map
-      (fun '(ufn, ei) =>
-        (ufn, {|
-          econd := uand cond (econd ei);
-          ebind := ebind ei; earg := earg ei |}))
-      el.
+  Lemma schedule_to_simple_form_ok:
+    forall (rules: rule_name_t -> uact)
+           s
+           (GS: good_scheduler s)
+           sf
+           (GRI: schedule_to_simple_form rules s = sf)
+           (WT: forall r,
+             exists tret,
+               BitsToLists.wt_daction pos_t string string (R:=R) (Sigma:=Sigma) [] (rules r) tret)
+           (WTR: wt_renv R REnv r),
+    forall idx,
+      let v := match latest_write (interp_dscheduler rules r sigma s) idx with
+                 Some v => v
+               | None => getenv REnv r idx
+               end in
+      exists n,
+        list_assoc (final_values sf) idx = Some n /\
+        interp_sact (vars sf) (SVar n) v.
+  Proof.
+    intros.
+    unfold schedule_to_simple_form in GRI. repeat destr_in GRI. subst. simpl.
+    edestruct get_rir_scheduler2_ok as (WFS & MLR); eauto.
+    inv WFS. red in wfs_r2v_vvs0.
+    destruct (wfs_r2v_vvs0 (idx, inr tt)) as (y & GET1 & z & GET2).
+    inv MLR. exploit mlr_read0. apply GET1. simpl. rewrite log_app_empty.
+    intro INT.
+    erewrite list_assoc_filter_map. 2: eauto.
+    eexists; split. eauto. eauto. simpl. auto.
+    intros. repeat destr_in H; inv H. auto.
+    intros. repeat destr_in H; inv H. repeat destr_in H0; inv H0. auto.
+  Qed.
 
-  Definition prepend_failure_actions
-    (ric: rule_information_clean) (fail_var_name: string)
-  : rule_information_clean :=
-    let cond := (DVar fail_var_name) in
-    ric
-      <|ric_write0s := prepend_condition_writes cond (ric_write0s ric)|>
-      <|ric_write1s := prepend_condition_writes cond (ric_write1s ric)|>.
-
-  Definition to_negated_cond (cond: option sact) : sact :=
-    match cond with
-    | Some x => unot x
-    | None => const_true
-    end.
-
-  Definition integrate_failures (ri: list rule_information_clean) nid
-  : list rule_information_clean * nat :=
-    fold_left
-        (fun '(acc, id') r =>
-          let fail_var_name := id' in
-          let not_failure_cond := unot (ric_failure_cond r) in (
-            ((prepend_failure_actions r fail_var_name)
-              (* TODO perhaps return not_failure_cond separately and regroup all
-                 such variables at the end of the list so as to preserve order
-                *)
-              <|ric_vars := (ric_vars r)++[(fail_var_name, not_failure_cond)]|>
-              <|ric_failure_cond := const_false|>
-            )::acc, S id'))
-        ri
-        ([], nid).
-
-  (* ** Merge duplicated actions across rules *)
-  (* *** Merge one rule *)
-  (* Used for both write0 and write1 *)
-  Definition merge_next_write (reg: reg_t) (wl: write_log) (w: list write_info)
-  : write_log :=
-    let prev := list_assoc wl reg in
-    match prev with
-    | None => list_assoc_set wl reg w
-    | Some wil => list_assoc_set wl reg (wil ++ w)
-    end.
-
-  Definition merge_writes_single_rule (wl_acc wl_curr: write_log)
-  : write_log :=
-    fold_left (fun acc '(reg, x) => merge_next_write reg acc x) wl_curr wl_acc.
-
-  (* We do not use the schedule record since we still want to use write logs at
-     this point *)
-  Definition merge_single_rule (racc r: rule_information_clean)
-  : rule_information_clean :=
-    let write0s' :=
-      merge_writes_single_rule (ric_write0s racc) (ric_write0s r)
-    in
-    let write1s' :=
-      merge_writes_single_rule (ric_write1s racc) (ric_write1s r)
-    in
-    let extcalls' := app (ric_extcalls racc) (ric_extcalls r) in
-    {| ric_write0s := write0s'; ric_write1s := write1s';
-       ric_extcalls := extcalls';
-       ric_vars := List.concat [ric_vars r; ric_vars racc];
-       ric_failure_cond := const_false |}.
-
-  (* *** Merge full schedule *)
-  Fixpoint write_log_to_sact (r: reg_t) (wl: list write_info) (p: Port): sact :=
-    match wl with
-    | [] => DRead p r
-    | h::t => DIf (wcond h) (wval h) (write_log_to_sact r t p)
-    end.
-
-  Definition merge_schedule (rules_info: list rule_information_clean) nid
-  (* next_ids isn't used past this point and therefore isn't returned *)
-  : schedule_information * nat :=
-    let (rules_info', nid) := integrate_failures rules_info nid in
-    let res := fold_left
-      merge_single_rule (tl rules_info')
-      {| ric_write0s := []; ric_write1s := []; ric_extcalls := [];
-         ric_vars := []; ric_failure_cond := const_false |}
-    in ({|
-      sc_write0s :=
-        map (fun '(r, l) => (r, write_log_to_sact r l P0)) (ric_write0s res);
-      sc_write1s :=
-        map (fun '(r, l) => (r, write_log_to_sact r l P1)) (ric_write1s res);
-      sc_extcalls := ric_extcalls res; sc_vars := ric_vars res |}, nid).
-
-  (* * Final simplifications *)
-  Definition is_member {A: Type} {eq_dec_A: EqDec A} (l: list A) (i: A) :=
-    existsb (beq_dec i) l.
-
-  Fixpoint app_uniq (l1 l2: list reg_t) : list reg_t :=
-    match l1 with
-    | [] => l2
-    | h::t => if (is_member l2 h) then app_uniq t l2 else app_uniq t (h::l2)
-    end.
-
-  Fixpoint find_all_ua_regs (ua: sact) : list reg_t :=
-    match ua with
-    | DRead _ r => [r]
-    | DIf cond tb fb =>
-      app_uniq
-        (find_all_ua_regs cond)
-        (app_uniq (find_all_ua_regs tb) (find_all_ua_regs fb))
-    | DBinop ufn a1 a2 => app_uniq (find_all_ua_regs a1) (find_all_ua_regs a2)
-    | DUnop ufn a => find_all_ua_regs a
-    | _ => []
-    end.
-
-  Definition find_all_wr_regs (cl: cond_log) : list reg_t :=
-    fold_left
-      (fun acc '(r, ua) => app_uniq [r] (app_uniq (find_all_ua_regs ua) acc))
-      cl [].
-
-  Definition find_all_extc_regs (el: extcall_log) : list reg_t :=
-    fold_left
-      (fun acc '(_, ei) =>
-        app_uniq
-          (find_all_ua_regs (econd ei))
-          (app_uniq (find_all_ua_regs (earg ei)) acc))
-      el [].
-
-  Definition find_all_bind_regs (vvm: var_value_map) : list reg_t :=
-    fold_left (fun acc '(_, ua) => app_uniq (find_all_ua_regs ua) acc) vvm [].
-
-  Definition find_all_used_regs (s: schedule_information) : list reg_t :=
-    app_uniq
-      (app_uniq
-        (find_all_wr_regs (sc_write0s s))
-        (find_all_wr_regs (sc_write1s s)))
-      (app_uniq
-        (find_all_extc_regs (sc_extcalls s))
-        (find_all_bind_regs (sc_vars s))).
-
-  (* ** Remove read1s *)
-  (* *** Replacement of variables by expression *)
-  Fixpoint replace_rd1_with_var_in_sact (from: reg_t) (to ua: sact) :=
-    match ua with
-    | DRead p r =>
-      match p with
-      | P1 => if beq_dec from r then to else ua
-      | _ => ua
-      end
-    | DIf cond tb fb =>
-      DIf
-        (replace_rd1_with_var_in_sact from to cond)
-        (replace_rd1_with_var_in_sact from to tb)
-        (replace_rd1_with_var_in_sact from to fb)
-    | DBinop ufn a1 a2 =>
-      DBinop
-        ufn
-        (replace_rd1_with_var_in_sact from to a1)
-        (replace_rd1_with_var_in_sact from to a2)
-    | DUnop ufn a => DUnop ufn (replace_rd1_with_var_in_sact from to a)
-    | _ => ua
-    end.
-
-  Definition replace_rd1_with_var_w (w: cond_log) (from: reg_t) (to: sact)
-  : cond_log :=
-    map (fun '(reg, ua) => (reg, replace_rd1_with_var_in_sact from to ua)) w.
-
-  Definition replace_rd1_with_var_extc (e: extcall_log) (from: reg_t) (to: sact)
-  : extcall_log :=
-    map
-      (fun '(reg, ei) =>
-        (reg,
-          {| econd := replace_rd1_with_var_in_sact from to (econd ei);
-             earg := replace_rd1_with_var_in_sact from to (earg ei);
-             ebind := ebind ei |}))
-      e.
-
-  Definition replace_rd1_with_var_expr
-    (v: var_value_map) (from: reg_t) (to: sact)
-  : var_value_map :=
-    map (fun '(reg, val) => (reg, replace_rd1_with_var_in_sact from to val)) v.
-
-  (* Variables bound to the return values of read1s need to be replaced with the
-     appropriate value. TODO store res as expr instead and change name only *)
-  Definition replace_rd1_with_var
-    (s: schedule_information) (from: reg_t) (to: sact)
-  : schedule_information := {|
-      sc_write0s := replace_rd1_with_var_w (sc_write0s s) from to;
-      sc_write1s := replace_rd1_with_var_w (sc_write1s s) from to;
-      sc_extcalls := replace_rd1_with_var_extc (sc_extcalls s) from to;
-      sc_vars := replace_rd1_with_var_expr (sc_vars s) from to |}.
-
-  (* *** Removal *)
-  Definition get_intermediate_value (s: schedule_information) (r: reg_t)
-  : sact :=
-    match list_assoc (sc_write0s s) r with
-    | None => DRead P0 r
-    | Some v => v (* See write_log_to_sact *)
-    end.
-
-  Definition generate_intermediate_values_table
-    (s: schedule_information) (regs: list reg_t) nid
-  : ((list (reg_t * string)) * (list (nat * (type * sact)))) * nat :=
-    let (r, nid) :=
-      fold_left
-        (fun '(table, vars, id) r =>
-          let name := generate_binding_name (S id) in
-          ((r, name)::table, (name, get_intermediate_value s r)::vars, S id))
-        regs ([], [], nid)
-    in (r, nid).
-
-  Definition remove_read1s
-    (s: schedule_information) (active_regs: list reg_t)
-    (ivt: list (reg_t * string))
-  : schedule_information :=
-    fold_left
-      (fun s' r =>
-        match list_assoc ivt r with
-        | None => s' (* Unreachable *)
-        | Some v => replace_rd1_with_var s' r (DVar v)
-        end)
-      active_regs s.
-
-  (* ** Remove write0s *)
-  Definition get_final_value
-    (s: schedule_information) (ivt: list (reg_t * string)) (r: reg_t)
-  : sact :=
-    match list_assoc (sc_write1s s) r with
-    | None => (* Not every active reg is in write1s *)
-      match list_assoc ivt r with
-      | None => DRead P0 r (* Unreachable *)
-      | Some v => DVar v
-      end
-    | Some v => v
-    end.
-
-  Definition generate_final_values_table
-    (s: schedule_information) (regs: list reg_t) (ivt: list (reg_t * string)) nid
-  : ((list (reg_t * string)) * (list (nat * (type * sact)))) * nat :=
-      fold_left
-        (fun '(fvt, fvvm, id) r =>
-          let name := generate_binding_name (S id) in
-          ((r, name)::fvt, (name, get_final_value s ivt r)::fvvm, S id)
-        )
-        regs ([], [], nid).
-
-  Definition remove_interm (s: schedule_information) nid : simple_form * nat :=
-    let active_regs := find_all_used_regs s in
-    let '(ivt, ivvm, nid) := generate_intermediate_values_table s active_regs nid in
-    let s' := remove_read1s s active_regs ivt in
-    let '(fvt, fvvm, nid) := generate_final_values_table s' active_regs ivt nid in
-    ({|
-      final_values := fvt; vars := fvvm++ivvm++(sc_vars s');
-      external_calls := sc_extcalls s' |}, nid).
-
-  (* * Conversion *)
-  (* Schedule can contain try or spos, but they are not used in the case we care
-     about. *)
-  Fixpoint schedule_to_list_of_rules (s: schedule) (rules: rule_name_t -> sact)
-  : list sact :=
-    match s with
-    | Done => []
-    | Cons r s' => (rules r)::(schedule_to_list_of_rules s' rules)
-    | _ => []
-    end.
-
-  (* Precondition: only Cons and Done in schedule. *)
-  (* Precondition: rules desugared. TODO desugar from here instead? *)
-  Definition schedule_to_simple_form (s: schedule) (rules: rule_name_t -> sact)
-  : simple_form * nat :=
-    (* Get list of sact from scheduler *)
-    let rules_l := schedule_to_list_of_rules s rules in
-    (* Get rule_information from each rule *)
-    let '(rule_info_l, nid) :=
-      fold_left
-        (fun '(rir_acc, nid) r =>
-          let '(ri, nid) := get_rule_information r nid in
-          (rir_acc++[ri], nid))
-        rules_l ([], 0)
-    in
-    (* Detect inter-rules conflicts *)
-    let rule_info_with_conflicts_l := detect_all_conflicts rule_info_l in
-    (* To schedule info, merge cancel conditions with actions conditions *)
-    let (schedule_info, nid) := merge_schedule rule_info_with_conflicts_l nid in
-    (* To simple form *)
-    remove_interm schedule_info nid.
 End SimpleForm.
+
 Close Scope nat.
