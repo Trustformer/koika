@@ -5460,6 +5460,122 @@ Section SimpleForm.
     destruct ba, bb; simpl; auto. intuition congruence.
   Qed.
 
+ Lemma has_merge_rir:
+   forall rir1 rir2 n vvs reg v b vn
+          (WTV: wt_vvs vvs)
+          (VSV: vvs_smaller_variables vvs)
+          (VR: vvs_range vvs vn)
+          (WTn: wt_sact vvs (SVar n) (bits_t 1))
+
+          (f: rule_information_raw -> cond_log)
+          (ND: NoDup (map fst (f rir2)))
+
+          (has: rule_information_raw -> reg_t -> sact)
+          (* (hasf: cond_log -> reg_t -> sact) *)
+          (HAS: forall rir r, has rir r = match list_assoc (f rir) r with Some c => c | _ => const_false end)
+          (fmerge: forall rir1 rir2 n vvs, f (merge_rirs rir1 rir2 n vvs) =
+                                             merge_cond_logs (f rir1) (f rir2) (SVar n))
+   ,
+     interp_sact vvs (SVar n) (Bits 1 [b]) ->
+     wt_cond_log vvs (f rir1) ->
+     wt_cond_log vvs (f rir2) ->
+     interp_sact vvs (has (merge_rirs rir1 rir2 n vvs) reg) v <->
+       interp_sact vvs (uor (has rir1 reg) (uand (unot (SVar n)) (has rir2 reg))) v.
+  Proof.
+    intros. rewrite ! HAS. rewrite fmerge.
+    destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
+    - eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
+      split.
+      + intros. inv H2. econstructor. eauto.
+        destr_in H8. eauto.
+        inv H8. econstructor; eauto.
+        econstructor; eauto. simpl; eauto. constructor. simpl. rewrite andb_false_r. auto. auto.
+      + intro A; inv A.
+        econstructor; eauto.
+        inv H7. inv H6.
+        exploit interp_sact_determ. apply H4. apply H. intros ->. simpl in H9. inv H9.
+        destr. 
+        exploit interp_sact_wt_bool. 5: apply H10. 1-3: eauto.
+        eapply H1. apply list_assoc_in; eauto. intros (?&?). subst.
+        simpl in H11. inv H11.
+        econstructor. econstructor; eauto. simpl; reflexivity. eauto. simpl. auto.
+        inv H10. simpl in H11. inv H11. rewrite andb_false_r.
+        constructor.
+    - exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
+      intuition.
+      inv H2. repeat (econstructor; eauto). simpl. rewrite andb_false_r; auto.
+      inv H2. inv H6. inv H8. inv H7. inv H5.
+      exploit interp_sact_determ. apply H4. apply H. intros ->.
+      simpl in H7; inv H7. simpl in H10; inv H10. simpl in H9; inv H9.
+      rewrite andb_false_r; constructor.
+  Qed.
+
+  Lemma has_merge_rir2:
+    forall rir1 rir2 n vvs reg b vn
+           (WTV: wt_vvs vvs)
+           (VSV: vvs_smaller_variables vvs)
+           (VR: vvs_range vvs vn)
+           (WTn: wt_sact vvs (SVar n) (bits_t 1))
+
+           (f: rule_information_raw -> cond_log)
+           (ND: NoDup (map fst (f rir2)))
+
+           (has: rule_information_raw -> reg_t -> sact)
+           (* (hasf: cond_log -> reg_t -> sact) *)
+           (HAS: forall rir r, has rir r = match list_assoc (f rir) r with Some c => c | _ => const_false end)
+           (fmerge: forall rir1 rir2 n vvs, f (merge_rirs rir1 rir2 n vvs) =
+                                              merge_cond_logs (f rir1) (f rir2) (SVar n))
+    ,
+      interp_sact vvs (SVar n) (Bits 1 [b]) ->
+      wt_cond_log vvs (f rir1) ->
+      wt_cond_log vvs (f rir2) ->
+      interp_sact vvs (has (merge_rirs rir1 rir2 n vvs) reg) (Bits 1 [false]) <->
+        (interp_sact vvs (has rir1 reg) (Bits 1 [false]) /\
+           (b = true \/ interp_sact vvs (has rir2 reg) (Bits 1 [false]))).
+  Proof.
+    intros.
+    erewrite has_merge_rir; eauto.
+    assert (WThas1: forall r, wt_sact vvs (has rir1 r) (bits_t 1)).
+    {
+      intros; rewrite HAS. destr; eauto. apply list_assoc_in in Heqo; eauto. repeat constructor.
+    }
+    assert (WThas2: forall r, wt_sact vvs (has rir2 r) (bits_t 1)).
+    {
+      intros; rewrite HAS. destr; eauto. apply list_assoc_in in Heqo; eauto. repeat constructor.
+    }
+    split; intros.
+    - inv H2.
+      edestruct interp_sact_wt_bool. 5: apply H6. all: eauto. subst.
+      inv H8.
+      edestruct interp_sact_wt_bool. 5: apply H10. all: eauto. subst.
+      inv H5.
+      exploit interp_sact_determ. apply H4. apply H. intros ->.
+      simpl in H8; inv H8.
+      simpl in H11; inv H11. simpl in H9; inv H9.
+      rewrite orb_false_iff in H3.
+      rewrite andb_false_iff in H3.
+      rewrite negb_false_iff in H3.
+      destruct H3; subst. simpl.
+      destruct H3; subst; split; auto.
+      rewrite andb_false_r; auto.
+      rewrite andb_false_r; auto.
+    - destruct H2.
+      exploit wt_sact_interp_bool. 1-3: eauto. apply (WThas2 reg). intros (?&?).
+      econstructor; eauto.
+      econstructor. econstructor. eauto. simpl; eauto. eauto. simpl. eauto. simpl.
+      destruct b; auto.
+      destruct H3. congruence. exploit interp_sact_determ. apply H3. apply H4. intros A; inv A.
+      reflexivity.
+  Qed.
+
+  Lemma iff_cond:
+    forall (cond A B: Prop),
+      (cond -> A <-> B) ->
+      (cond -> A) <-> (cond -> B).
+  Proof.
+    tauto.
+  Qed.
+
   Lemma match_logs_merge:
     forall r2v l r1 n l0 l1 n0 sched_rir nid l2
            (Heqp1 : merge_reg2vars r2v l n
@@ -5489,7 +5605,6 @@ Section SimpleForm.
     eapply vvs_grows_set. apply WFS1. lia.
     eapply reg2var_vvs_grows. apply WFS1. eapply vvs_grows_set. apply WFS1. lia.
     econstructor. rewrite list_assoc_gss. eauto.
-
     generalize (r2v_vvs r2v l (rir_vars sched_rir)
                         (list_assoc_set (rir_vars r1) n
                                         (bits_t 1, (rir_failure_cond r1)))).
@@ -5509,7 +5624,6 @@ Section SimpleForm.
     eapply vvs_smaller_variables_set. apply WFS1.
     eapply wt_sact_below. eauto. apply WFS1.
     trim RV. econstructor. rewrite list_assoc_gss. eauto.
-
     assert (RV2:
              forall x y,
                list_assoc l0 x = Some y ->
@@ -5590,181 +5704,57 @@ Section SimpleForm.
       + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
         rewrite log_existsb_empty.
         rewrite if_eq_distr. rewrite if_prop.
-        Lemma iff_cond:
-          forall (cond A B: Prop),
-            (cond -> A <-> B) ->
-            (cond -> A) <-> (cond -> B).
-        Proof.
-          tauto.
-        Qed.
-        erewrite (iff_cond (b = false)). 2: intros; eapply mlv_read0; apply MLR1.
+        erewrite (iff_cond (b = false)). 2: intros; eapply mlv_read0; apply MLR1; auto.
         erewrite mlv_read0 with (log:=sched_log). 2: apply MLR.
-        unfold rir_has_read0. simpl.
-        destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-        eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        split.
-        * intros ((A1 & A2) & B).
-          apply interp_uor_false2. eauto.
-          destr. 2: repeat constructor.
-          exploit wf_rir_read0s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
-          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
-          eapply interp_uand_false.
-          econstructor; eauto. 2: eauto. simpl. reflexivity.
-          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
-        * intro A; inv A.
-          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_read0. eauto.
-          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
-          exploit wt_rir_has_read0. apply WFr1. unfold rir_has_read0. destr; rewrite Heqo.
-          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
-          auto.
-          intros (?&?) (?&?); subst. simpl in H5. inv H5.
-          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
-          split. split. auto. intro; subst.
-          destr. inv H4.
-          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
-          eapply wf_rir_read0s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
-          inv H3.
-          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
-          simpl in H7; inv H7. auto. auto.
-        * apply wf_rir_read0s. auto.
-        * apply wf_rir_read0s. auto.
-        * eapply wf_nodup_read0; eauto.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-          intuition.
+        erewrite has_merge_rir2 with (f:=rir_read0s) ; eauto.
+        destruct b; intuition try congruence.
+        apply WFr1. apply WFrir. apply WFr1.
       + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
         rewrite log_existsb_empty.
         rewrite if_eq_distr. rewrite if_prop.
         erewrite (iff_cond (b = false)). 2: intros; eapply mlv_read1; apply MLR1.
         erewrite mlv_read1 with (log:=sched_log). 2: apply MLR.
-        unfold rir_has_read1. simpl.
-        destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-        eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        split.
-        * intros ((A1 & A2) & B).
-          apply interp_uor_false2. eauto.
-          destr. 2: repeat constructor.
-          exploit wf_rir_read1s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
-          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
-          eapply interp_uand_false.
-          econstructor; eauto. 2: eauto. simpl. reflexivity.
-          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
-        * intro A; inv A.
-          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_read1. eauto.
-          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
-          exploit wt_rir_has_read1. apply WFr1. unfold rir_has_read1. destr; rewrite Heqo.
-          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
-          auto.
-          intros (?&?) (?&?); subst. simpl in H5. inv H5.
-          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
-          split. split. auto. intro; subst.
-          destr. inv H4.
-          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
-          eapply wf_rir_read1s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
-          inv H3.
-          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
-          simpl in H7; inv H7. auto. auto.
-        * apply wf_rir_read1s. auto.
-        * apply wf_rir_read1s. auto.
-        * eapply wf_nodup_read1; eauto.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-          intuition.
+        erewrite has_merge_rir2 with (f:=rir_read1s) ; eauto.
+        destruct b; intuition try congruence.
+        apply WFr1. apply WFrir. apply WFr1. auto.
       + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
         rewrite log_existsb_empty.
         rewrite if_eq_distr. rewrite if_prop.
         erewrite (iff_cond (b = false)). 2: intros; eapply mlv_write0; apply MLR1.
         erewrite mlv_write0 with (log:=sched_log). 2: apply MLR.
-        unfold rir_has_write0. simpl.
-        destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-        eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        split.
-        * intros ((A1 & A2) & B).
-          apply interp_uor_false2. eauto.
-          destr. 2: repeat constructor.
-          exploit wf_rir_write0s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
-          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
-          eapply interp_uand_false.
-          econstructor; eauto. 2: eauto. simpl. reflexivity.
-          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
-        * intro A; inv A.
-          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_write0. eauto.
-          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
-          exploit wt_rir_has_write0. apply WFr1. unfold rir_has_write0. destr; rewrite Heqo.
-          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
-          auto.
-          intros (?&?) (?&?); subst. simpl in H5. inv H5.
-          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
-          split. split. auto. intro; subst.
-          destr. inv H4.
-          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
-          eapply wf_rir_write0s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
-          inv H3.
-          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
-          simpl in H7; inv H7. auto. auto.
-        * apply wf_rir_write0s. auto.
-        * apply wf_rir_write0s. auto.
-        * eapply wf_nodup_write0; eauto.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-          intuition.
+        erewrite has_merge_rir2 with (f:=rir_write0s) ; eauto.
+        destruct b; intuition try congruence.
+        apply WFr1. apply WFrir. apply WFr1. auto.
       + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
         rewrite log_existsb_empty.
         rewrite if_eq_distr. rewrite if_prop.
         erewrite (iff_cond (b = false)). 2: intros; eapply mlv_write1; apply MLR1.
         erewrite mlv_write1 with (log:=sched_log). 2: apply MLR.
-        unfold rir_has_write1. simpl.
-        destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-        eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        split.
-        * intros ((A1 & A2) & B).
-          apply interp_uor_false2. eauto.
-          destr. 2: repeat constructor.
-          exploit wf_rir_write1s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
-          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
-          eapply interp_uand_false.
-          econstructor; eauto. 2: eauto. simpl. reflexivity.
-          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
-        * intro A; inv A.
-          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_write1. eauto.
-          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
-          exploit wt_rir_has_write1. apply WFr1. unfold rir_has_write1. destr; rewrite Heqo.
-          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
-          auto.
-          intros (?&?) (?&?); subst. simpl in H5. inv H5.
-          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
-          split. split. auto. intro; subst.
-          destr. inv H4.
-          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
-          eapply wf_rir_write1s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
-          inv H3.
-          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
-          simpl in H7; inv H7. auto. auto.
-        * apply wf_rir_write1s. auto.
-        * apply wf_rir_write1s. auto.
-        * eapply wf_nodup_write1; eauto.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-          intuition.
+        erewrite has_merge_rir2 with (f:=rir_write1s) ; eauto.
+        destruct b; intuition try congruence.
+        apply WFr1. apply WFrir. apply WFr1. auto.
    - split; intros;
        unfold log_existsb, log_empty, rir_has_read0, rir_has_read1, rir_has_write0, rir_has_write1; simpl; rewrite getenv_create; simpl; (split; [repeat constructor|auto]).
   Qed.
 
- Lemma match_logs_merge_false:
-   forall r2v l r1 n l0 l1 n0 sched_rir nid l2
-          (Heqp1 : merge_reg2vars r2v l n
-                                  (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
-                                  (n + 1) = (l0, l1, n0))
-          (sched_log : Log REnv)
-          (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
-          (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
-                                log_empty)
-          (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
-          (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
-          (* (NID : nid <= n) *)
-          (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [false]))
-          (MLR1 : match_logs_r2v l (rir_vars r1) sched_rir r1 sched_log l2),
-     match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
-                    (log_app l2 sched_log) log_empty.
- Proof.
-   intros.
-   exploit match_logs_merge; eauto.
+  Lemma match_logs_merge_false:
+    forall r2v l r1 n l0 l1 n0 sched_rir nid l2
+           (Heqp1 : merge_reg2vars r2v l n
+                                   (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
+                                   (n + 1) = (l0, l1, n0))
+           (sched_log : Log REnv)
+           (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
+           (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
+                                 log_empty)
+           (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
+           (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
+           (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [false]))
+           (MLR1 : match_logs_r2v l (rir_vars r1) sched_rir r1 sched_log l2),
+      match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
+                     (log_app l2 sched_log) log_empty.
+  Proof.
+    intros.
+    exploit match_logs_merge; eauto.
   Qed.
 
   Lemma merge_reg2var_nid:
@@ -5855,9 +5845,7 @@ Section SimpleForm.
           simpl.
           eapply match_logs_merge_false; eauto.
           repeat refine (conj _ _). eauto.
-          {
-            eapply merge_reg2var_nid in Heqp1. lia.
-          }
+          eapply merge_reg2var_nid in Heqp1. lia.
           intros. eauto.
         * unfold interp_drule in Heqo. repeat destr_in Heqo; inv Heqo.
           edestruct IHGS as (WFS2 & NID2 & INTERP2). eauto. eauto.
