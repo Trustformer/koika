@@ -5399,441 +5399,69 @@ Section SimpleForm.
     destr_in A; inv A. destr; subst. congruence. intuition. congruence.
   Qed.
 
- Lemma match_logs_merge:
-   forall r2v l r1 n l0 l1 n0 sched_rir nid l2
-          (Heqp1 : merge_reg2vars r2v l n
-                                  (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
-                                  (n + 1) = (l0, l1, n0))
-          (sched_log : Log REnv)
-          (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
-          (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
-                                log_empty)
-          (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
-          (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
-          (* (NID : nid <= n) *)
-          (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [false]))
-          (MLR1 : match_logs_r2v l (rir_vars r1) sched_rir r1 sched_log l2),
-     match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
-                    (log_app l2 sched_log) log_empty.
- Proof.
-   intros.
-   edestruct r2v_vvs_aux as (VG & VR & LE & WTV & VSV). eauto.
-   apply vvs_range_list_assoc_set. 2: red; lia.
-   eapply vvs_range_incr. 2: apply WFS1. lia.
-   eapply wt_vvs_set. apply WFS1. apply WFS1.
-   apply WFS1. lia.
-   eapply vvs_smaller_variables_set. apply WFS1.
-   eapply wt_sact_below. eauto. apply WFS1.
-   eapply reg2var_vvs_grows. apply WFS.
-   eapply vvs_grows_trans. eauto using rir_vvs_grows.
-   eapply vvs_grows_set. apply WFS1. lia.
-   eapply reg2var_vvs_grows. apply WFS1. eapply vvs_grows_set. apply WFS1. lia.
-   econstructor. rewrite list_assoc_gss. eauto.
-
-   generalize (r2v_vvs r2v l (rir_vars sched_rir)
-                       (list_assoc_set (rir_vars r1) n
-                                       (bits_t 1, (rir_failure_cond r1)))).
-   intro RV.
-   trim RV. apply WFS.
-   trim RV.
-   eapply reg2var_vvs_grows. apply WFS1. eapply vvs_grows_set. apply WFS1. lia.
-   trim RV. eapply vvs_grows_trans. eapply rir_vvs_grows; eauto.
-   eapply vvs_grows_set. apply WFS1. lia.
-   trim (RV n (n + 1)). lia.
-   trim (RV _ _ _ Heqp1).
-   apply vvs_range_list_assoc_set. 2: red; lia.
-   eapply vvs_range_incr. 2: apply WFS1. lia.
-   trim RV. eapply wt_vvs_set. apply WFS1. apply WFS1.
-   apply WFS1. lia.
-   trim RV.
-   eapply vvs_smaller_variables_set. apply WFS1.
-   eapply wt_sact_below. eauto. apply WFS1.
-   trim RV. econstructor. rewrite list_assoc_gss. eauto.
-
-   assert (RV2:
-            forall x y,
-              list_assoc l0 x = Some y ->
-              exists y2,
-                list_assoc l x = Some y2 /\
-                  (forall v,
-                      interp_sact l1 (SVar y2) v <-> interp_sact l1 (SVar y) v)
-          ).
-   {
-     intros.
-     edestruct (RV _ _ H) as (y1 & y2 & GET1 & GET2 & INTERP).
-     eexists; split; eauto. intros. rewrite <- INTERP.
-     2: eapply vvs_grows_interp_sact. 2: eauto.
-     2: econstructor. 2: rewrite list_assoc_gss; eauto.
-     2: eapply vvs_grows_interp_sact. 3: eauto.
-     2: eapply vvs_grows_set. 2: apply WFS1. 2: lia. simpl.
-     tauto.
-   }
-   clear RV.
-   rename RV2 into RV.
-   split.
-
-   - intros reg prt n1 GET.
-     edestruct RV as (y2 & GET2 & INTERP). eauto.
-     inv MLR1.
-     exploit (mlr_read0 reg prt).
-     eauto.
-     rewrite <- INTERP. unfold do_read. rewrite log_app_empty.
-     eapply vvs_grows_interp_sact.
-     eapply vvs_grows_trans. 2: eauto.
-     eapply vvs_grows_set. apply WFS1. lia.
-   - split.
-     + intros. rewrite log_existsb_log_app. rewrite orb_false_iff.
-       inv MLR1.
-       erewrite mlv_read0 with (log:=l2). 2: eauto.
-       erewrite mlv_read0 with (log:=sched_log). 2: eauto.
-       unfold rir_has_read0. simpl.
-       destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-       eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       split.
-       * intros (A & B). econstructor. eauto.
-         destr. econstructor. econstructor. eapply vvs_grows_interp_sact. apply VG.
-         econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia. reflexivity. eauto. reflexivity.
-         simpl. constructor.
-         simpl. auto.
-       * intro A; inv A.
-         split.
-         destr. inv H4. inv H3.
-         exploit interp_sact_wt_bool. 5: apply H7. 1-3: eauto.
-         eapply wt_sact_vvs_grows. 2: eapply wf_rir_read0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         intros (? & ?); subst.
-         exploit interp_sact_determ. apply H1.
-         eapply vvs_grows_interp_sact. eauto. econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS1. lia. eauto. intros ->.
-         simpl in H6. inv H6.
-         simpl in H8. inv H8.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto.
-         destr. eapply wt_sact_vvs_grows. 2: eapply wf_rir_read0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (?&?); subst. simpl in H5. inv H5.
-         rewrite orb_false_iff in H0. destruct H0; subst. simpl. auto. constructor.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (? & ?); subst.
-         exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto. destr.
-         econstructor. econstructor.
-         eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto. constructor.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         constructor.
-         repeat constructor. intros (? & ?); subst.
-         simpl in H5. inv H5. rewrite orb_false_iff in H0. destruct H0; subst. simpl; eauto.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS. eapply rir_vvs_grows. eauto. repeat constructor.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1. apply vvs_grows_refl. repeat constructor.
-       * eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss.
-         eauto.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * apply WFS1.
-       * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-         repeat constructor.
-     + intros. rewrite log_existsb_log_app. rewrite orb_false_iff.
-       inv MLR1.
-       erewrite mlv_read1 with (log:=l2). 2: eauto.
-       erewrite mlv_read1 with (log:=sched_log). 2: eauto.
-       unfold rir_has_read1. simpl.
-       destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-       eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       split.
-       * intros (A & B). econstructor. eauto.
-         destr. econstructor. econstructor. eapply vvs_grows_interp_sact. apply VG.
-         econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia. reflexivity. eauto. reflexivity.
-         simpl. constructor.
-         simpl. auto.
-       * intro A; inv A.
-         split.
-         destr. inv H4. inv H3.
-         exploit interp_sact_wt_bool. 5: apply H7. 1-3: eauto.
-         eapply wt_sact_vvs_grows. 2: eapply wf_rir_read1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         intros (? & ?); subst.
-         exploit interp_sact_determ. apply H1.
-         eapply vvs_grows_interp_sact. eauto. econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS1. lia. eauto. intros ->.
-         simpl in H6. inv H6.
-         simpl in H8. inv H8.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto.
-         destr. eapply wt_sact_vvs_grows. 2: eapply wf_rir_read1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (?&?); subst. simpl in H5. inv H5.
-         rewrite orb_false_iff in H0. destruct H0; subst. simpl. auto. constructor.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (? & ?); subst.
-         exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto. destr.
-         econstructor. econstructor.
-         eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto. constructor.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         constructor.
-         repeat constructor. intros (? & ?); subst.
-         simpl in H5. inv H5. rewrite orb_false_iff in H0. destruct H0; subst. simpl; eauto.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS. eapply rir_vvs_grows. eauto. repeat constructor.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_read1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1. apply vvs_grows_refl. repeat constructor.
-       * eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss.
-         eauto.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * apply WFS1.
-       * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-         repeat constructor.
-     + intros. rewrite log_existsb_log_app. rewrite orb_false_iff.
-       inv MLR1.
-       erewrite mlv_write0 with (log:=l2). 2: eauto.
-       erewrite mlv_write0 with (log:=sched_log). 2: eauto.
-       unfold rir_has_write0. simpl.
-       destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-       eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       split.
-       * intros (A & B). econstructor. eauto.
-         destr. econstructor. econstructor. eapply vvs_grows_interp_sact. apply VG.
-         econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia. reflexivity. eauto. reflexivity.
-         simpl. constructor.
-         simpl. auto.
-       * intro A; inv A.
-         split.
-         destr. inv H4. inv H3.
-         exploit interp_sact_wt_bool. 5: apply H7. 1-3: eauto.
-         eapply wt_sact_vvs_grows. 2: eapply wf_rir_write0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         intros (? & ?); subst.
-         exploit interp_sact_determ. apply H1.
-         eapply vvs_grows_interp_sact. eauto. econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS1. lia. eauto. intros ->.
-         simpl in H6. inv H6.
-         simpl in H8. inv H8.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto.
-         destr. eapply wt_sact_vvs_grows. 2: eapply wf_rir_write0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (?&?); subst. simpl in H5. inv H5.
-         rewrite orb_false_iff in H0. destruct H0; subst. simpl. auto. constructor.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (? & ?); subst.
-         exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto. destr.
-         econstructor. econstructor.
-         eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto. constructor.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         constructor.
-         repeat constructor. intros (? & ?); subst.
-         simpl in H5. inv H5. rewrite orb_false_iff in H0. destruct H0; subst. simpl; eauto.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS. eapply rir_vvs_grows. eauto. repeat constructor.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write0s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1. apply vvs_grows_refl. repeat constructor.
-       * eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss.
-         eauto.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * apply WFS1.
-       * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-         repeat constructor.
-     + intros. rewrite log_existsb_log_app. rewrite orb_false_iff.
-       inv MLR1.
-       erewrite mlv_write1 with (log:=l2). 2: eauto.
-       erewrite mlv_write1 with (log:=sched_log). 2: eauto.
-       unfold rir_has_write1. simpl.
-       destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
-       eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       erewrite <- (interp_sact_vvs_grows_iff (rir_vars r1) l1). 2,3,5: apply WFS1.
-       2: eapply vvs_grows_trans. 3: eauto.
-       2: eapply vvs_grows_set. 2: apply WFS1. 2: lia.
-       split.
-       * intros (A & B). econstructor. eauto.
-         destr. econstructor. econstructor. eapply vvs_grows_interp_sact. apply VG.
-         econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia. reflexivity. eauto. reflexivity.
-         simpl. constructor.
-         simpl. auto.
-       * intro A; inv A.
-         split.
-         destr. inv H4. inv H3.
-         exploit interp_sact_wt_bool. 5: apply H7. 1-3: eauto.
-         eapply wt_sact_vvs_grows. 2: eapply wf_rir_write1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         intros (? & ?); subst.
-         exploit interp_sact_determ. apply H1.
-         eapply vvs_grows_interp_sact. eauto. econstructor. rewrite list_assoc_gss. eauto.
-         eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS1. lia. eauto. intros ->.
-         simpl in H6. inv H6.
-         simpl in H8. inv H8.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto.
-         destr. eapply wt_sact_vvs_grows. 2: eapply wf_rir_write1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (?&?); subst. simpl in H5. inv H5.
-         rewrite orb_false_iff in H0. destruct H0; subst. simpl. auto. constructor.
-         exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         repeat constructor. intros (? & ?); subst.
-         exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto. destr.
-         econstructor. econstructor.
-         eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto. constructor.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-         constructor.
-         repeat constructor. intros (? & ?); subst.
-         simpl in H5. inv H5. rewrite orb_false_iff in H0. destruct H0; subst. simpl; eauto.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS. eapply rir_vvs_grows. eauto. repeat constructor.
-       * destr.
-         eapply wt_sact_vvs_grows.
-         2: eapply wf_rir_write1s. 3: apply list_assoc_in; eauto.
-         2: apply WFS1. apply vvs_grows_refl. repeat constructor.
-       * eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss.
-         eauto.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-         eapply vvs_grows_trans. 2: eauto.
-         eapply vvs_grows_set. apply WFS1. lia.
-       * apply WFS1.
-       * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-         repeat constructor.
-   - split; intros;
-       unfold log_existsb, log_empty, rir_has_read0, rir_has_read1, rir_has_write0, rir_has_write1; simpl; rewrite getenv_create; simpl; (split; [repeat constructor|auto]).
-  Qed.
-
-  Lemma merge_reg2var_nid:
-    forall r2v1 r2v2 n vvs m r2v3 vvs2 m2,
-      merge_reg2vars r2v1 r2v2 n vvs m = (r2v3, vvs2, m2) ->
-      m <= m2.
+  Lemma log_existsb_if:
+    forall (l1 l2: Log REnv) (b: bool) reg fn,
+      log_existsb (if b then l1 else l2) reg fn =
+        if b then log_existsb l1 reg fn else log_existsb l2 reg fn.
   Proof.
-    unfold merge_reg2vars.
-    intros r2v1.
-    generalize (@nil (reg_t * (Port+unit) * nat)).
-    generalize (map fst r2v1).
-    intro l; revert l r2v1.
-    induction l; simpl; intros; eauto.
-    inv H. lia.
-    repeat destr_in H.
-    apply IHl in H.
-    unfold merge_reg2vars_reg in Heqp0.
-    repeat destr_in Heqp0; inv Heqp0; lia.
+    intros; destr.
   Qed.
 
-  Lemma match_logs_merge_true:
-    forall r2v l r1 n l0 l1 n0 sched_rir nid (* l2 *)
+  Lemma if_eq_distr: forall {A:Type} (b: bool) (x y a: A),
+      (if b then x else y) = a <-> (if b then x = a else y = a).
+  Proof.
+    intros. destr; tauto.
+  Qed.
+
+  Lemma log_existsb_empty:
+    forall idx fn,
+    log_existsb (log_empty: Log REnv) idx fn = false.
+  Proof.
+    unfold log_empty, log_existsb. intros. rewrite getenv_create; reflexivity.
+  Qed.
+
+  Lemma if_prop: forall (b: bool) (P1 P2: Prop),
+      (if b then P1 else P2) <-> ((b = true -> P1) /\ (b = false -> P2)).
+  Proof.
+    intros. destruct b; split; intuition.
+  Qed.
+
+  Lemma wf_init_rir vvs: wf_rir init_rir vvs.
+  Proof.
+    split; simpl; intros.
+    red; easy.
+    red; easy.
+    red; easy.
+    red; easy.
+    repeat constructor.
+    constructor.
+    constructor.
+    constructor.
+    constructor.
+  Qed.
+
+  Lemma interp_uor_false2:
+    forall vvs a b,
+      interp_sact vvs a (Bits 1 [false]) ->
+      interp_sact vvs b (Bits 1 [false]) ->
+      interp_sact vvs (uor a b) (Bits 1 [false]).
+  Proof.
+    intros; econstructor; eauto.
+  Qed.
+
+  Lemma interp_uand_false:
+    forall vvs a b ba bb,
+      interp_sact vvs a (Bits 1 [ba]) ->
+      interp_sact vvs b (Bits 1 [bb]) ->
+      ba = false \/ bb = false ->
+      interp_sact vvs (uand a b) (Bits 1 [false]).
+  Proof.
+    intros; econstructor; eauto.
+    destruct ba, bb; simpl; auto. intuition congruence.
+  Qed.
+
+  Lemma match_logs_merge:
+    forall r2v l r1 n l0 l1 n0 sched_rir nid l2
            (Heqp1 : merge_reg2vars r2v l n
                                    (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
                                    (n + 1) = (l0, l1, n0))
@@ -5843,9 +5471,10 @@ Section SimpleForm.
                                  log_empty)
            (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
            (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
-           (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [true])),
+           b (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [b]))
+           (MLR1 : b = false -> match_logs_r2v l (rir_vars r1) sched_rir r1 sched_log l2),
       match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
-                     sched_log log_empty.
+                     (log_app (if b then log_empty else l2) sched_log) log_empty.
   Proof.
     intros.
     edestruct r2v_vvs_aux as (VG & VR & LE & WTV & VSV). eauto.
@@ -5884,249 +5513,296 @@ Section SimpleForm.
     assert (RV2:
              forall x y,
                list_assoc l0 x = Some y ->
-               exists y2,
-                 list_assoc r2v x = Some y2 /\
+               exists y1 y2,
+                 list_assoc r2v x = Some y1 /\
+                   list_assoc l x = Some y2 /\
                    (forall v,
-                       interp_sact l1 (SVar y2) v <-> interp_sact l1 (SVar y) v)
+                       interp_sact l1 (SVar (if b then y1 else y2)) v <-> interp_sact l1 (SVar y) v)
            ).
     {
       intros.
       edestruct (RV _ _ H) as (y1 & y2 & GET1 & GET2 & INTERP).
-      eexists; split; eauto. intros. rewrite <- INTERP.
-      2: eapply vvs_grows_interp_sact. 2: eauto.
-      2: econstructor. 2: rewrite list_assoc_gss; eauto.
-      2: eapply vvs_grows_interp_sact. 3: eauto.
-      2: eapply vvs_grows_set. 2: apply WFS1. 2: lia. simpl.
-      tauto.
+      eexists; eexists; split; eauto. split; eauto. intros. apply INTERP.
+      eapply vvs_grows_interp_sact. eauto.
+      econstructor. rewrite list_assoc_gss; eauto.
+      eapply vvs_grows_interp_sact. 2: eauto.
+      eapply vvs_grows_set. apply WFS1. lia.
     }
     clear RV.
     rename RV2 into RV.
-    split.
-
-    - intros reg prt n1 GET.
-      edestruct RV as (y2 & GET2 & INTERP). eauto.
-      inv MLR.
-      exploit (mlr_read0 reg prt). eauto. eauto.
-      rewrite <- INTERP.
-      eapply vvs_grows_interp_sact.
+    eapply match_logs_r2v_vvs_grows with (vvs':=l1) in MLR.
+    3-5: apply WFS.
+    2: {
       eapply vvs_grows_trans. 2: eauto.
-      eapply vvs_grows_trans. eapply rir_vvs_grows; eauto.
+      eapply vvs_grows_trans. eauto using rir_vvs_grows.
       eapply vvs_grows_set. apply WFS1. lia.
+    }
+    2: apply wf_init_rir.
+    2: apply WFS.
+    assert (MLR2: b = false -> match_logs_r2v l l1 sched_rir r1 sched_log l2).
+    {
+      intros; eapply match_logs_r2v_vvs_grows. eauto.
+      2-4: apply WFS1.
+      eapply vvs_grows_trans. 2: eauto.
+      eapply vvs_grows_set. apply WFS1. lia.
+      apply WFS1.
+      eapply wf_rir_grows. apply WFS.
+      eauto using rir_vvs_grows.
+    }
+    clear MLR1. rename MLR2 into MLR1.
+    assert (WFr1: wf_rir r1 l1).
+    {
+      eapply wf_rir_grows. apply WFS1.
+      eapply vvs_grows_trans. 2: eauto.
+      eapply vvs_grows_set. apply WFS1. lia.
+    }
+    assert (WFrir: wf_rir sched_rir l1).
+    {
+      eapply wf_rir_grows. apply WFS.
+      eapply vvs_grows_trans. eauto using rir_vvs_grows.
+      eapply vvs_grows_trans. 2: eauto.
+      eapply vvs_grows_set. apply WFS1. lia.
+    }
+    assert (INTn: interp_sact l1 (SVar n) (Bits 1 [b])).
+    {
+      eapply vvs_grows_interp_sact. apply VG.
+      econstructor. rewrite list_assoc_gss. eauto.
+      eapply vvs_grows_interp_sact. 2: eauto.
+      eapply vvs_grows_set. apply WFS1. lia.
+    }
+    assert (WTn: wt_sact l1 (SVar n) (bits_t 1)).
+    {
+      eapply wt_sact_vvs_grows. apply VG.
+      econstructor. rewrite list_assoc_gss. eauto.
+    }
+    clear Heqp1 WFS WFS1 RG1 VG LE IF1.
+    split.
+    - intros reg prt n1 GET.
+      edestruct RV as (y1 & y2 & GET1 & GET2 & INTERP). eauto.
+      rewrite <- INTERP.
+      destruct b.
+      exploit mlr_read. apply MLR. eauto.
+      rewrite ! log_app_empty. auto.
+      exploit mlr_read. apply MLR1. auto. eauto.
+      unfold do_read.
+      rewrite ! log_app_empty. auto.
     - split.
-      + intros.
-        inv MLR.
-        erewrite mlv_read0 with (log:=sched_log). 2: eauto.
+      + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
+        rewrite log_existsb_empty.
+        rewrite if_eq_distr. rewrite if_prop.
+        Lemma iff_cond:
+          forall (cond A B: Prop),
+            (cond -> A <-> B) ->
+            (cond -> A) <-> (cond -> B).
+        Proof.
+          tauto.
+        Qed.
+        erewrite (iff_cond (b = false)). 2: intros; eapply mlv_read0; apply MLR1.
+        erewrite mlv_read0 with (log:=sched_log). 2: apply MLR.
         unfold rir_has_read0. simpl.
         destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
         eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        rewrite interp_uor_snd_false.
-        symmetry. eapply interp_sact_vvs_grows_iff.
-        apply WFS. apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        apply WFS.
-        eapply wt_rir_has_read0; eauto. apply WFS.
-        auto. auto. eauto. 
-        eapply wt_sact_vvs_grows.
-        2: eapply wt_rir_has_read0; eauto. 2: apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        destr. 2: repeat constructor.
-        econstructor; eauto. econstructor; eauto.
-        eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto.
-        constructor.
-        eapply list_assoc_in in Heqo. eapply wf_rir_read0s in Heqo. 2: apply WFS1.
-        eapply wt_sact_vvs_grows. 2: apply Heqo.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        constructor.
-        destr.
-        eapply list_assoc_in in Heqo. eapply wf_rir_read0s in Heqo. 2: apply WFS1.
-        edestruct wt_sact_interp_bool. 4: apply Heqo. apply WFS1. apply WFS1. apply WFS1.
-        econstructor. econstructor.
-        eapply vvs_grows_interp_sact. apply VG.
-        econstructor. rewrite list_assoc_gss. eauto.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        constructor.
-        eapply wt_sact_vvs_grows. eauto.
-        econstructor. rewrite list_assoc_gss. eauto.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * apply WFS1.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A.
-          repeat constructor.
-      + intros.
-        inv MLR.
-        erewrite mlv_read1 with (log:=sched_log). 2: eauto.
+        split.
+        * intros ((A1 & A2) & B).
+          apply interp_uor_false2. eauto.
+          destr. 2: repeat constructor.
+          exploit wf_rir_read0s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
+          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
+          eapply interp_uand_false.
+          econstructor; eauto. 2: eauto. simpl. reflexivity.
+          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
+        * intro A; inv A.
+          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_read0. eauto.
+          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
+          exploit wt_rir_has_read0. apply WFr1. unfold rir_has_read0. destr; rewrite Heqo.
+          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
+          auto.
+          intros (?&?) (?&?); subst. simpl in H5. inv H5.
+          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
+          split. split. auto. intro; subst.
+          destr. inv H4.
+          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
+          eapply wf_rir_read0s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
+          inv H3.
+          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
+          simpl in H7; inv H7. auto. auto.
+        * apply wf_rir_read0s. auto.
+        * apply wf_rir_read0s. auto.
+        * eapply wf_nodup_read0; eauto.
+        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
+          intuition.
+      + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
+        rewrite log_existsb_empty.
+        rewrite if_eq_distr. rewrite if_prop.
+        erewrite (iff_cond (b = false)). 2: intros; eapply mlv_read1; apply MLR1.
+        erewrite mlv_read1 with (log:=sched_log). 2: apply MLR.
         unfold rir_has_read1. simpl.
         destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
         eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        rewrite interp_uor_snd_false.
-        symmetry. eapply interp_sact_vvs_grows_iff.
-        apply WFS. apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        apply WFS.
-        eapply wt_rir_has_read1; eauto. apply WFS.
-        auto. auto. eauto. 
-        eapply wt_sact_vvs_grows.
-        2: eapply wt_rir_has_read1; eauto. 2: apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        destr. 2: repeat constructor.
-        econstructor; eauto. econstructor; eauto.
-        eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto.
-        constructor.
-        eapply list_assoc_in in Heqo. eapply wf_rir_read1s in Heqo. 2: apply WFS1.
-        eapply wt_sact_vvs_grows. 2: apply Heqo.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        constructor.
-        destr.
-        eapply list_assoc_in in Heqo. eapply wf_rir_read1s in Heqo. 2: apply WFS1.
-        edestruct wt_sact_interp_bool. 4: apply Heqo. apply WFS1. apply WFS1. apply WFS1.
-        econstructor. econstructor.
-        eapply vvs_grows_interp_sact. apply VG.
-        econstructor. rewrite list_assoc_gss. eauto.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        constructor.
-        eapply wt_sact_vvs_grows. eauto.
-        econstructor. rewrite list_assoc_gss. eauto.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * apply WFS1.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A.
-          repeat constructor.
-      + intros.
-        inv MLR.
-        erewrite mlv_write0 with (log:=sched_log). 2: eauto.
+        split.
+        * intros ((A1 & A2) & B).
+          apply interp_uor_false2. eauto.
+          destr. 2: repeat constructor.
+          exploit wf_rir_read1s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
+          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
+          eapply interp_uand_false.
+          econstructor; eauto. 2: eauto. simpl. reflexivity.
+          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
+        * intro A; inv A.
+          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_read1. eauto.
+          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
+          exploit wt_rir_has_read1. apply WFr1. unfold rir_has_read1. destr; rewrite Heqo.
+          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
+          auto.
+          intros (?&?) (?&?); subst. simpl in H5. inv H5.
+          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
+          split. split. auto. intro; subst.
+          destr. inv H4.
+          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
+          eapply wf_rir_read1s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
+          inv H3.
+          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
+          simpl in H7; inv H7. auto. auto.
+        * apply wf_rir_read1s. auto.
+        * apply wf_rir_read1s. auto.
+        * eapply wf_nodup_read1; eauto.
+        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
+          intuition.
+      + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
+        rewrite log_existsb_empty.
+        rewrite if_eq_distr. rewrite if_prop.
+        erewrite (iff_cond (b = false)). 2: intros; eapply mlv_write0; apply MLR1.
+        erewrite mlv_write0 with (log:=sched_log). 2: apply MLR.
         unfold rir_has_write0. simpl.
         destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
         eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        rewrite interp_uor_snd_false.
-        symmetry. eapply interp_sact_vvs_grows_iff.
-        apply WFS. apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        apply WFS.
-        eapply wt_rir_has_write0; eauto. apply WFS.
-        auto. auto. eauto. 
-        eapply wt_sact_vvs_grows.
-        2: eapply wt_rir_has_write0; eauto. 2: apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        destr. 2: repeat constructor.
-        econstructor; eauto. econstructor; eauto.
-        eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto.
-        constructor.
-        eapply list_assoc_in in Heqo. eapply wf_rir_write0s in Heqo. 2: apply WFS1.
-        eapply wt_sact_vvs_grows. 2: apply Heqo.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        constructor.
-        destr.
-        eapply list_assoc_in in Heqo. eapply wf_rir_write0s in Heqo. 2: apply WFS1.
-        edestruct wt_sact_interp_bool. 4: apply Heqo. apply WFS1. apply WFS1. apply WFS1.
-        econstructor. econstructor.
-        eapply vvs_grows_interp_sact. apply VG.
-        econstructor. rewrite list_assoc_gss. eauto.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        constructor.
-        eapply wt_sact_vvs_grows. eauto.
-        econstructor. rewrite list_assoc_gss. eauto.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * apply WFS1.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A.
-          repeat constructor.
-      + intros.
-        inv MLR.
-        erewrite mlv_write1 with (log:=sched_log). 2: eauto.
+        split.
+        * intros ((A1 & A2) & B).
+          apply interp_uor_false2. eauto.
+          destr. 2: repeat constructor.
+          exploit wf_rir_write0s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
+          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
+          eapply interp_uand_false.
+          econstructor; eauto. 2: eauto. simpl. reflexivity.
+          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
+        * intro A; inv A.
+          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_write0. eauto.
+          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
+          exploit wt_rir_has_write0. apply WFr1. unfold rir_has_write0. destr; rewrite Heqo.
+          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
+          auto.
+          intros (?&?) (?&?); subst. simpl in H5. inv H5.
+          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
+          split. split. auto. intro; subst.
+          destr. inv H4.
+          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
+          eapply wf_rir_write0s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
+          inv H3.
+          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
+          simpl in H7; inv H7. auto. auto.
+        * apply wf_rir_write0s. auto.
+        * apply wf_rir_write0s. auto.
+        * eapply wf_nodup_write0; eauto.
+        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
+          intuition.
+      + intros. rewrite log_existsb_log_app. rewrite orb_false_iff. rewrite log_existsb_if.
+        rewrite log_existsb_empty.
+        rewrite if_eq_distr. rewrite if_prop.
+        erewrite (iff_cond (b = false)). 2: intros; eapply mlv_write1; apply MLR1.
+        erewrite mlv_write1 with (log:=sched_log). 2: apply MLR.
         unfold rir_has_write1. simpl.
         destruct (list_assoc (merge_cond_logs _ _ _) _) eqn:?.
         eapply merge_cond_logs_interp in Heqo. rewrite Heqo. clear Heqo. all: eauto.
-        rewrite interp_uor_snd_false.
-        symmetry. eapply interp_sact_vvs_grows_iff.
-        apply WFS. apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        apply WFS.
-        eapply wt_rir_has_write1; eauto. apply WFS.
-        auto. auto. eauto. 
-        eapply wt_sact_vvs_grows.
-        2: eapply wt_rir_has_write1; eauto. 2: apply WFS.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        destr. 2: repeat constructor.
-        econstructor; eauto. econstructor; eauto.
-        eapply wt_sact_vvs_grows. eauto. econstructor. rewrite list_assoc_gss. eauto.
-        constructor.
-        eapply list_assoc_in in Heqo. eapply wf_rir_write1s in Heqo. 2: apply WFS1.
-        eapply wt_sact_vvs_grows. 2: apply Heqo.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia.
-        constructor.
-        destr.
-        eapply list_assoc_in in Heqo. eapply wf_rir_write1s in Heqo. 2: apply WFS1.
-        edestruct wt_sact_interp_bool. 4: apply Heqo. apply WFS1. apply WFS1. apply WFS1.
-        econstructor. econstructor.
-        eapply vvs_grows_interp_sact. apply VG.
-        econstructor. rewrite list_assoc_gss. eauto.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        eapply vvs_grows_interp_sact. 2: eauto.
-        eapply vvs_grows_trans. 2: eauto.
-        eapply vvs_grows_set. apply WFS1. lia. reflexivity.
-        constructor.
-        eapply wt_sact_vvs_grows. eauto.
-        econstructor. rewrite list_assoc_gss. eauto.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_trans. eapply rir_vvs_grows. eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * intros. eapply wt_sact_vvs_grows. 2: eapply WFS1 in H; eauto.
-          eapply vvs_grows_trans. 2: eauto.
-          eapply vvs_grows_set. apply WFS1. lia.
-        * apply WFS1.
-        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A.
-          repeat constructor.
-    - split; intros;
-        unfold log_existsb, log_empty, rir_has_read0, rir_has_read1, rir_has_write0, rir_has_write1; simpl; rewrite getenv_create; simpl; (split; [repeat constructor|auto]).
+        split.
+        * intros ((A1 & A2) & B).
+          apply interp_uor_false2. eauto.
+          destr. 2: repeat constructor.
+          exploit wf_rir_write1s. 2: apply list_assoc_in; eauto. eauto. intro WTs0.
+          edestruct (wt_sact_interp_bool). 4: apply WTs0. 1-3: now eauto.
+          eapply interp_uand_false.
+          econstructor; eauto. 2: eauto. simpl. reflexivity.
+          destruct b; auto. exploit interp_sact_determ. apply H. apply A2; auto. intro A; inv A; auto.
+        * intro A; inv A.
+          exploit interp_sact_wt_bool. 5: apply H2. 1-3: eauto. apply wt_rir_has_write1. eauto.
+          exploit interp_sact_wt_bool. 5: apply H4. 1-3: eauto.
+          exploit wt_rir_has_write1. apply WFr1. unfold rir_has_write1. destr; rewrite Heqo.
+          intros. econstructor; eauto. econstructor; eauto. constructor. constructor.
+          auto.
+          intros (?&?) (?&?); subst. simpl in H5. inv H5.
+          rewrite orb_false_iff in H0. destruct H0; subst. simpl.
+          split. split. auto. intro; subst.
+          destr. inv H4.
+          exploit interp_sact_wt_bool. 1-3: eauto. 2: apply H6.
+          eapply wf_rir_write1s. 2: apply list_assoc_in; eauto. eauto. intros (?&?). subst.
+          inv H3.
+          exploit interp_sact_determ. apply H1. apply INTn. intros ->. simpl in H5; inv H5.
+          simpl in H7; inv H7. auto. auto.
+        * apply wf_rir_write1s. auto.
+        * apply wf_rir_write1s. auto.
+        * eapply wf_nodup_write1; eauto.
+        * exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
+          intuition.
+   - split; intros;
+       unfold log_existsb, log_empty, rir_has_read0, rir_has_read1, rir_has_write0, rir_has_write1; simpl; rewrite getenv_create; simpl; (split; [repeat constructor|auto]).
+  Qed.
+
+ Lemma match_logs_merge_false:
+   forall r2v l r1 n l0 l1 n0 sched_rir nid l2
+          (Heqp1 : merge_reg2vars r2v l n
+                                  (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
+                                  (n + 1) = (l0, l1, n0))
+          (sched_log : Log REnv)
+          (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
+          (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
+                                log_empty)
+          (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
+          (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
+          (* (NID : nid <= n) *)
+          (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [false]))
+          (MLR1 : match_logs_r2v l (rir_vars r1) sched_rir r1 sched_log l2),
+     match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
+                    (log_app l2 sched_log) log_empty.
+ Proof.
+   intros.
+   exploit match_logs_merge; eauto.
+  Qed.
+
+  Lemma merge_reg2var_nid:
+    forall r2v1 r2v2 n vvs m r2v3 vvs2 m2,
+      merge_reg2vars r2v1 r2v2 n vvs m = (r2v3, vvs2, m2) ->
+      m <= m2.
+  Proof.
+    unfold merge_reg2vars.
+    intros r2v1.
+    generalize (@nil (reg_t * (Port+unit) * nat)).
+    generalize (map fst r2v1).
+    intro l; revert l r2v1.
+    induction l; simpl; intros; eauto.
+    inv H. lia.
+    repeat destr_in H.
+    apply IHl in H.
+    unfold merge_reg2vars_reg in Heqp0.
+    repeat destr_in Heqp0; inv Heqp0; lia.
+  Qed.
+
+  Lemma match_logs_merge_true:
+    forall r2v l r1 n l0 l1 n0 sched_rir nid (* l2 *)
+           (Heqp1 : merge_reg2vars r2v l n
+                                   (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
+                                   (n + 1) = (l0, l1, n0))
+           (sched_log : Log REnv)
+           (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
+           (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
+                                 log_empty)
+           (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
+           (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
+           (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [true])),
+      match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
+                     sched_log log_empty.
+  Proof.
+    intros.
+    exploit match_logs_merge; eauto. congruence. simpl. rewrite log_app_empty. eauto.
+    Unshelve. eauto.
   Qed.
 
   Lemma get_rir_scheduler_ok:
@@ -6177,7 +5853,7 @@ Section SimpleForm.
           simpl.
           eapply wf_state_merge_rirs. 5: eauto. eauto. eauto. apply RG1. apply WFS1.
           simpl.
-          eapply match_logs_merge; eauto.
+          eapply match_logs_merge_false; eauto.
           repeat refine (conj _ _). eauto.
           {
             eapply merge_reg2var_nid in Heqp1. lia.
