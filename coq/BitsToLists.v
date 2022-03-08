@@ -1452,9 +1452,9 @@ Section WT.
     (forall a, In a aa -> wt_action sig a unit_t) ->
     wt_action sig (USugar (UProgn aa)) (bits_t 0)
   | wt_action_ulet: forall sig sig' bindings body (bind_taus : list type) body_tau,
-      wt_list wt_action sig bindings bind_taus ->
-      (* Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus -> *)
-      sig_of_bindings bindings bind_taus sig' ->
+    wt_list wt_action sig bindings bind_taus ->
+    (* Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus -> *)
+    sig_of_bindings bindings bind_taus sig' ->
     wt_action (rev sig' ++ sig) body body_tau ->
     wt_action sig (USugar (ULet bindings body)) body_tau
   | wt_action_uwhen: forall sig cond body,
@@ -1471,9 +1471,9 @@ Section WT.
     wt_action sig (USugar (USwitch var default branches)) tau'
   | wt_action_ustructinit: forall sig (sg: struct_sig) fields,
     Forall (
-        fun f => exists idx,
-            PrimTypeInference.find_field sg (fst f) = Success idx /\
-            wt_action sig (snd f) (snd (List_nth (struct_fields sg) idx))
+      fun f => exists idx,
+        PrimTypeInference.find_field sg (fst f) = Success idx /\
+        wt_action sig (snd f) (snd (List_nth (struct_fields sg) idx))
     ) fields ->
     wt_action sig (USugar (UStructInit sg fields)) (struct_t sg)
   | wt_action_uarrayinit: forall sig tau elements,

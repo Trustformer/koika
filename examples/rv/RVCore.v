@@ -102,8 +102,7 @@ Section RVHelpers.
   |}.
 
   (* TODO add fixed fields verification *)
-  Definition isLegalInstruction
-    `{finite_reg: FiniteType reg_t}
+  Definition isLegalInstruction `{finite_reg: FiniteType reg_t}
   : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name    := "isLegalInstruction";
     int_argspec := [("inst", bits_t 32)];
@@ -740,8 +739,8 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
 
   Definition host_id :=
     {| enum_name        := "hostID";
-       enum_members     := ["FPGA"; "Verilator"; "Cuttlesim"];
-       enum_bitpatterns := vect_map (Bits.of_nat 8) [128; 1; 0]
+       enum_members     := ["FPGA"; "NoHost"; "Verilator"; "Cuttlesim"];
+       enum_bitpatterns := vect_map (Bits.of_nat 8) [128; 8; 1; 0]
     |}%vect.
 
   Definition Sigma (fn: ext_fn_t) :=

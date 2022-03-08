@@ -36,19 +36,6 @@ Module RV32I <: Core.
     abstract (exact (@finite_injective _ FiniteType_reg_t)).
   Defined.
 
-Definition is_module_call
-  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
-  (ua: uaction pos_t var_t )
-: bool :=
-  match ua with
-  | USugar s =>
-    match s with
-    | UCallModule _ _ _ _ => true
-    | _ => false
-    end
-  | _ => false
-  end.
-
   Definition _reg_t := reg_t.
   Definition _ext_fn_t := ext_fn_t.
 
@@ -72,15 +59,14 @@ Definition is_module_call
   (* Definition last_controlled_expr := get_highest_binding_id expr desugared. *)
   (* Time Compute distill desugared last_controlled_act last_controlled_expr. *)
 
-  Definition sch : scheduler :=
-    UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem
-    |> Dmem |> Tick |> EndExecution |> done.
-  Definition rules_desug := (fun x => (desugar_action tt (rv_urules x))).
-  Definition sf := schedule_to_simple_form sch rules_desug.
-  Definition REnv := Env reg_t.
-  Definition env : REnv := ContextEnv.(create) (fun _ => r).
-  Type env.
-  Time Compute (interp_cycle (env) sf).
+  (* Definition sch : scheduler := *)
+  (*   UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem *)
+  (*   |> Dmem |> Tick |> EndExecution |> done. *)
+  (* Definition rules_desug := (fun x => (desugar_action tt (rv_urules x))). *)
+  (* Definition sf := schedule_to_simple_form sch rules_desug. *)
+  (* Definition REnv := Env reg_t. *)
+  (* Type env. *)
+  (* Time Compute (interp_cycle (env) sf). *)
 
 (*   Definition rules_l := schedule_to_list_of_rules rules_desug sch2. *)
 (*   Definition last_action_init := *)
@@ -107,7 +93,6 @@ Definition is_module_call
 (*   Compute rule_info_with_conflicts_l. *)
 (*   Compute schedule_info. *)
 (*   Compute schedule_info_simpl. *)
-
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with
