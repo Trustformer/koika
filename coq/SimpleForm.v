@@ -904,8 +904,8 @@ Section SimpleForm.
 
   Fixpoint size_sact (s: sact) : nat :=
     match s with
-      SVar _ => 0
-    | SConst _ => 0
+      SVar _ => 1
+    | SConst _ => 1
     | SIf c t f => 1 + size_sact c + size_sact t + size_sact f
     | SUnop _ a => 1 + size_sact a
     | SBinop _ a b => 1 + size_sact a + size_sact b

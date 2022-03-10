@@ -1046,6 +1046,8 @@ The following list shows the current state of the repo:
 .. _coq/Primitives.v: coq/Primitives.v
 .. |coq/ProgramTactics.v| replace:: ``ProgramTactics.v``
 .. _coq/ProgramTactics.v: coq/ProgramTactics.v
+.. |coq/Sact.v| replace:: ``Sact.v``
+.. _coq/Sact.v: coq/Sact.v
 .. |coq/SemanticProperties.v| replace:: ``SemanticProperties.v``
 .. _coq/SemanticProperties.v: coq/SemanticProperties.v
 .. |coq/Show.v| replace:: ``Show.v``
@@ -1054,6 +1056,8 @@ The following list shows the current state of the repo:
 .. _coq/SimpleForm.v: coq/SimpleForm.v
 .. |coq/SimpleFormInterpretation.v| replace:: ``SimpleFormInterpretation.v``
 .. _coq/SimpleFormInterpretation.v: coq/SimpleFormInterpretation.v
+.. |coq/SimpleFormTacticsWrites.v| replace:: ``SimpleFormTacticsWrites.v``
+.. _coq/SimpleFormTacticsWrites.v: coq/SimpleFormTacticsWrites.v
 .. |coq/SimpleLogs.v| replace:: ``SimpleLogs.v``
 .. _coq/SimpleLogs.v: coq/SimpleLogs.v
 .. |coq/SimpleTypedSemantics.v| replace:: ``SimpleTypedSemantics.v``
@@ -1148,6 +1152,8 @@ The following list shows the current state of the repo:
 .. _examples/pipeline_tutorial.v: examples/pipeline_tutorial.v
 .. |examples/producer_consumer.v| replace:: ``producer_consumer.v``
 .. _examples/producer_consumer.v: examples/producer_consumer.v
+.. |examples/rv/ExternalsModel.v| replace:: ``ExternalsModel.v``
+.. _examples/rv/ExternalsModel.v: examples/rv/ExternalsModel.v
 .. |examples/rv/IFields.v| replace:: ``IFields.v``
 .. _examples/rv/IFields.v: examples/rv/IFields.v
 .. |examples/rv/ISA.v| replace:: ``ISA.v``
