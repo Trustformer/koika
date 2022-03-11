@@ -1191,6 +1191,16 @@ Section SimpleForm.
                fst x = fst y /\ interp_sact vvs (SVar (snd y)) (snd x)
             ) Gamma env.
 
+  Lemma nodup_list_assoc_set:
+    forall {K V: Type} {ed: EqDec K} (l: list (K * V)) k v,
+      NoDup (map fst l) ->
+      NoDup (map fst (list_assoc_set l k v)).
+  Proof.
+    induction l; simpl; intros; eauto. constructor. easy. auto. inv H. destr.
+    destr; subst; simpl; econstructor; eauto.
+    intros IN; apply H2. simpl.
+    apply in_map_list_assoc_set_inv in IN. destruct IN; congruence.
+  Qed.
 
   Lemma merge_branches_grows:
     forall vm_tb vm_fb vvs nid cond_name vm' vvs' nid' tsig
@@ -1201,13 +1211,15 @@ Section SimpleForm.
            (VVSVALID: vvs_smaller_variables vvs)
            (VALIDCOND: valid_name cond_name nid)
            (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1))
-           (WTVVS: wt_vvs vvs),
+           (WTVVS: wt_vvs vvs)
+           (ND: NoDup (map fst vvs)),
       vvs_grows vvs vvs'
       /\ vvs_range vvs' nid'
       /\ env_vvs vm' vvs' tsig
       /\ nid <= nid'
       /\ vvs_smaller_variables vvs'
       /\ wt_vvs vvs'
+      /\ NoDup (map fst vvs')
       /\ Forall2 (fun '(xt,xf) x =>
                     forall b,
                       interp_sact vvs' (SVar cond_name) (Bits 1 [b]) ->
@@ -1222,7 +1234,7 @@ Section SimpleForm.
        + inv ENVVVS1. inv ENVVVS2. destruct y.
         destruct H1 as ( ? & ? & GET1).
         destruct H4 as ( ? & ? & GET2). subst.
-        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & EVAL3); eauto.
+        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & ND3 & EVAL3); eauto.
         repeat split; auto.
         constructor; eauto.
         constructor; eauto.
@@ -1230,7 +1242,7 @@ Section SimpleForm.
       + inv ENVVVS1. inv ENVVVS2. destruct y.
         destruct H1 as ( ? & ? & GET1).
         destruct H4 as ( ? & ? & GET2). subst.
-        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & EVAL3); eauto.
+        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & ND3 & EVAL3); eauto.
         repeat split; auto.
         * eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto.
         * eapply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia. red; lia.
@@ -1247,6 +1259,7 @@ Section SimpleForm.
           eapply wt_sact_vvs_grows; eauto.
           econstructor. eapply VVSGROWS3; eauto.
           econstructor. eapply VVSGROWS3; eauto.
+        * eapply nodup_list_assoc_set; eauto.
         * constructor; eauto.
           -- intros.
              split; intros IS.
@@ -1396,6 +1409,7 @@ Section SimpleForm.
       wfs_vvs_range: vvs_range vvs nid;
       wfs_vsv: vvs_smaller_variables vvs;
       wfs_rir: wf_rir rir vvs;
+      wfs_nd: NoDup (map fst vvs);
     }.
   Lemma interp_sact_vvs_grows_iff':
     forall (vvs vvs' : list (nat * (type * sact))) (a : sact)
@@ -1524,6 +1538,7 @@ Section SimpleForm.
            (VALIDCOND: valid_name cond_name nid)
            (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1))
            (WT: wt_vvs vvs)
+           (ND: NoDup (map fst vvs))
     ,
       vvs_grows vvs vvs'
       /\ vvs_range vvs' nid'
@@ -1532,6 +1547,7 @@ Section SimpleForm.
       /\ nid <= nid'
       /\ vvs_smaller_variables vvs'
       /\ wt_vvs vvs'
+      /\ NoDup (map fst vvs')
       /\ forall sched_rir rir sched_log action_log
                 (MLR: match_logs_r2v r2v vvs sched_rir rir sched_log action_log)
                 (WFR: wf_rir rir vvs)
@@ -1610,6 +1626,7 @@ Section SimpleForm.
         econstructor; eauto.
         econstructor; eauto.
         econstructor; eauto.
+      + eapply nodup_list_assoc_set. eauto.
       + intros.
         exploit wt_sact_interp. 4: apply WTCOND. auto. auto. eauto.
         intros (v & ISV & WTV). edestruct wt_val_bool. eauto. subst.
@@ -1665,6 +1682,7 @@ Section SimpleForm.
            (VALIDCOND: valid_name cond_name nid)
            (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1))
            (WT: wt_vvs vvs)
+           (ND: NoDup (map fst vvs))
     ,
       vvs_grows vvs vvs'
       /\ vvs_range vvs' nid'
@@ -1673,6 +1691,7 @@ Section SimpleForm.
       /\ nid <= nid'
       /\ vvs_smaller_variables vvs'
       /\ wt_vvs vvs'
+      /\ NoDup (map fst vvs')
       /\ forall sched_log action_log rir sched_rir
                 (MLR: match_logs_r2v r2v vvs sched_rir rir sched_log action_log)
                 (WFR: wf_rir rir vvs)
@@ -1687,8 +1706,8 @@ Section SimpleForm.
     induction ks; simpl; intros; eauto.
     - inv MB. repeat refine (conj _ _); eauto using vvs_grows_refl. apply incl_refl.
     - repeat destr_in MB; inv MB.
-      edestruct merge_reg2var_reg_grows as (VG1 & VR1 & EX1 & INCL1 & LT1 & VSV1 & WT1 & MLR1); eauto.
-      edestruct IHks as (VG2 & VR2 & EX2 & INCL2 & LT2 & VSV2 & WT2 & MLR2); eauto using reg2var_vvs_grows.
+      edestruct merge_reg2var_reg_grows as (VG1 & VR1 & EX1 & INCL1 & LT1 & VSV1 & WT1 & ND1 & MLR1); eauto.
+      edestruct IHks as (VG2 & VR2 & EX2 & INCL2 & LT2 & VSV2 & WT2 & ND2 & MLR2); eauto using reg2var_vvs_grows.
       red in VALIDCOND; red; lia.
       eapply wt_sact_vvs_grows; eauto.
       repeat refine (conj _ _); eauto using vvs_grows_trans. 2: lia.
@@ -1724,13 +1743,14 @@ Section SimpleForm.
            (VALIDCOND: valid_name cond_name nid)
            (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1))
            (WT: wt_vvs vvs)
-    ,
+           (ND: NoDup (map fst vvs)),
       vvs_grows vvs vvs'
       /\ vvs_range vvs' nid'
       /\ reg2var_vvs r2v' vvs'
       /\ nid <= nid'
       /\ vvs_smaller_variables vvs'
       /\ wt_vvs vvs'
+      /\ NoDup (map fst vvs')
       /\ forall sched_log action_log sched_rir rir
                 (WFR: wf_rir rir vvs)
                 (WFSR: wf_rir sched_rir vvs)
@@ -1742,7 +1762,7 @@ Section SimpleForm.
         match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log.
   Proof.
     unfold merge_reg2vars. simpl; intros.
-    edestruct merge_reg2var_aux_grows as (VG & VR & R2V1 & R2V2 & NG & VSV & WTVVS & EVAL); eauto.
+    edestruct merge_reg2var_aux_grows as (VG & VR & R2V1 & R2V2 & NG & VSV & WTVVS & ND2 & EVAL); eauto.
     simpl; easy.
     repeat refine (conj _ _); eauto.
     rewrite app_nil_r in R2V2.
@@ -1763,16 +1783,6 @@ Section SimpleForm.
     split; eauto. simpl; easy.
   Qed.
 
-  Lemma nodup_list_assoc_set:
-    forall {K V: Type} {ed: EqDec K} (l: list (K * V)) k v,
-      NoDup (map fst l) ->
-      NoDup (map fst (list_assoc_set l k v)).
-  Proof.
-    induction l; simpl; intros; eauto. constructor. easy. auto. inv H. destr.
-    destr; subst; simpl; econstructor; eauto.
-    intros IN; apply H2. simpl.
-    apply in_map_list_assoc_set_inv in IN. destruct IN; congruence.
-  Qed.
 
   Lemma wf_rir_add_write0:
     forall sched_rir rir vvs guard v idx rir' fail
@@ -2236,6 +2246,7 @@ Section SimpleForm.
       eapply wt_sact_valid_vars; eauto.
     + eapply wf_rir_grows; eauto.
       eapply vvs_grows_set; eauto.
+    + apply nodup_list_assoc_set; eauto.
   Qed.
 
   Lemma wf_state_vvs_set:
@@ -2258,6 +2269,7 @@ Section SimpleForm.
       red; lia.
     + eapply vvs_smaller_variables_set; eauto.
     + eapply wf_rir_grows; eauto. eapply vvs_grows_set; eauto.
+    + apply nodup_list_assoc_set; eauto.
     + eapply vvs_grows_set; eauto.
   Qed.
 
@@ -2282,10 +2294,11 @@ Section SimpleForm.
       vvs_range vvs' n' ->
       vvs_smaller_variables vvs' ->
       wf_rir rir' vvs' ->
+      NoDup (map fst vvs') ->
       n <= n' ->
       wf_state tsig env r2v vvs' rir' n'.
   Proof.
-    intros tsig env r2v vvs rir n rir' vvs' n' grd WFS RG WTV VR VSV WFR LE.
+    intros tsig env r2v vvs rir n rir' vvs' n' grd WFS RG WTV VR VSV WFR LE ND.
     inv WFS; split; eauto.
     eapply env_vvs_vvs_grows; eauto using rir_vvs_grows.
     eapply reg2var_vvs_grows; eauto using rir_vvs_grows.
@@ -2310,7 +2323,7 @@ Section SimpleForm.
                 ) (combine vm_tb vm_fb) vm'.
   Proof.
     intros. inv H0; inv H1.
-    edestruct merge_branches_grows as (VVSGROWS4 & VVSRANGE4 & ENVVVS4 & NIDGROWS4 & VVSVALID4 & WTVVS4 & EVAL); eauto.
+    edestruct merge_branches_grows as (VVSGROWS4 & VVSRANGE4 & ENVVVS4 & NIDGROWS4 & VVSVALID4 & WTVVS4 & ND4 & EVAL); eauto.
     repeat refine (conj _ _); eauto.
     split; eauto.
     eapply reg2var_vvs_grows; eauto.
@@ -2334,7 +2347,7 @@ Section SimpleForm.
             match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log).
   Proof.
     intros. inv H0; inv H1.
-    edestruct merge_reg2var_grows as (VVSGROWS4 & VVSRANGE4 & R2VVVS4 & NIDGROWS4 & VSV4 & WTVVS4 & EVAL4); eauto.
+    edestruct merge_reg2var_grows as (VVSGROWS4 & VVSRANGE4 & R2VVVS4 & NIDGROWS4 & VSV4 & WTVVS4 & ND4 & EVAL4); eauto.
     repeat (refine (conj _ _)); eauto.
     split; eauto.
     eapply env_vvs_vvs_grows; eauto.
@@ -2361,6 +2374,7 @@ Section SimpleForm.
       red. eauto.
     + eapply vvs_smaller_variables_set; eauto.
     + eapply wf_rir_grows; eauto. eapply vvs_grows_set; eauto.
+    + eapply nodup_list_assoc_set; eauto.
   Qed.
 
   Lemma wf_state_tl:
@@ -2863,6 +2877,7 @@ Section SimpleForm.
           eapply wfs_vsv0 in H0; eauto. eapply H0; eauto.
         * eapply vvs_range_list_assoc_set. instantiate (1:=n+1).
           eapply vvs_range_incr. 2: eauto. lia. red; lia.
+      + eapply nodup_list_assoc_set; eauto.
     - assert (VG: vvs_grows vvs (list_assoc_set vvs n (R idx, v))).
       {
         inv H0.
@@ -2974,6 +2989,7 @@ Section SimpleForm.
           eapply wfs_vsv0 in H0; eauto. eapply H0; eauto.
         * eapply vvs_range_list_assoc_set. instantiate (1:=n+1).
           eapply vvs_range_incr. 2: eauto. lia. red; lia.
+      + eapply nodup_list_assoc_set; eauto.
     - assert (VG: vvs_grows vvs (list_assoc_set vvs n (R idx, v))).
       {
         inv H0.
@@ -3457,6 +3473,7 @@ Section SimpleForm.
         eapply vvs_smaller_variables_set. eauto. eapply wt_sact_valid_vars. eauto. eauto.
         eapply wf_rir_grows; eauto.
         eapply vvs_grows_set. eauto using rir_vvs_grows. lia.
+        eapply nodup_list_assoc_set; eauto.
       + simpl. constructor; eauto. split; auto.
         rewrite list_assoc_gss; eauto.
         eapply Forall2_impl. apply NAMES. simpl.
@@ -3869,6 +3886,7 @@ Section SimpleForm.
       }
       edestruct merge_reg2var_grows2 as (VVSGROWS5 & NIDGROWS5 & WFS5 & EVAL5); eauto.
       eapply wf_state_vvs_grows_incr; eauto. 1-4: inv WFS4; eauto.
+      apply WFS4.
       lia.
       eapply wf_rir_grows. apply WFRsched1. eauto.
       red; lia.
@@ -5041,7 +5059,9 @@ Section SimpleForm.
     }
     eapply wf_rir_grows; eauto. apply H0.
     eapply vvs_grows_set; eauto.
-    apply H0. lia.
+    apply H0.
+    eapply nodup_list_assoc_set; eauto. apply H0.
+    lia.
     {
       intros.
       eapply wt_sact_valid_vars in H4. eauto. apply H0. eauto.
@@ -5124,8 +5144,9 @@ Section SimpleForm.
            (VVS: vvs_smaller_variables vvs2)
            (R2V1: reg2var_vvs r2v1 vvs2)
            (R2V2: reg2var_vvs r2v2 vvs2)
-           (WTn: wt_sact vvs2 (SVar n) (bits_t 1)),
-      vvs_grows vvs2 vvs3 /\ vvs_range vvs3 m2 /\ m <= m2 /\ wt_vvs vvs3 /\ vvs_smaller_variables vvs3.
+           (WTn: wt_sact vvs2 (SVar n) (bits_t 1))
+           (ND: NoDup (map fst vvs2)),
+      vvs_grows vvs2 vvs3 /\ vvs_range vvs3 m2 /\ m <= m2 /\ wt_vvs vvs3 /\ vvs_smaller_variables vvs3 /\ NoDup (map fst vvs3).
   Proof.
     induction ks; simpl; intros; eauto.
     - inv MRA. split; eauto using vvs_grows_refl.
@@ -5136,7 +5157,7 @@ Section SimpleForm.
         eapply vvs_grows_set. eauto. lia.
         eapply vvs_grows_set. eauto. lia.
       eapply IHks in MRA.
-      destruct MRA as (?&?&?&?&?); repeat refine (conj _ _); auto.
+      destruct MRA as (?&?&?&?&?&?); repeat refine (conj _ _); auto.
       + eapply vvs_grows_trans; eauto.
       + unfold merge_reg2vars_reg in Heqp0.
         repeat destr_in Heqp0; inv Heqp0; lia.
@@ -5169,6 +5190,10 @@ Section SimpleForm.
       + eapply reg2var_vvs_grows; eauto using vvs_grows_trans.
       + eapply reg2var_vvs_grows; eauto using vvs_grows_trans.
       + eapply wt_sact_vvs_grows; eauto.
+      + unfold merge_reg2vars_reg in Heqp0.
+        repeat destr_in Heqp0; inv Heqp0; eauto.
+        eapply nodup_list_assoc_set; eauto.
+        eapply nodup_list_assoc_set; eauto.
   Qed.
 
   Lemma r2v_vvs_aux_merge:
@@ -5179,6 +5204,7 @@ Section SimpleForm.
            (R2V2: reg2var_vvs r2v2 vvs)
            (VR: vvs_range vvs m)
            (WTV: wt_vvs vvs)
+           (ND: NoDup (map fst vvs))
            (VVS: vvs_smaller_variables vvs)
            (WTcond: wt_sact vvs (SVar n) (bits_t 1))
            (IH: forall x y,
@@ -5246,16 +5272,17 @@ Section SimpleForm.
         eapply IHks in MRA; eauto.
         * eapply reg2var_vvs_grows. eauto. eauto.
         * eapply reg2var_vvs_grows. eauto. eauto.
+        * eapply nodup_list_assoc_set; eauto.
         * intros x4 y0 GET.
           rewrite list_assoc_spec in GET. destr_in GET.
           -- inv GET. do 2 eexists; split.  eauto. split. eauto.
              intros.
 
-             edestruct r2v_vvs_aux as (VG3 & VR3 & LE2 & WTVVS2 & VSV2). eauto.
+             edestruct r2v_vvs_aux as (VG3 & VR3 & LE2 & WTVVS2 & VSV2 & ND2). eauto.
              all: eauto.
              eapply reg2var_vvs_grows; eauto using vvs_grows_trans.
              eapply reg2var_vvs_grows; eauto using vvs_grows_trans.
-
+             eapply nodup_list_assoc_set; eauto.
              rewrite (interp_sact_vvs_grows_iff) with (a:=SVar y0).
              4: apply VG3. all: eauto.
              ++ split; intros.
@@ -5286,6 +5313,7 @@ Section SimpleForm.
         vvs_range vvs2 m ->
         wt_vvs vvs2 ->
         vvs_smaller_variables vvs2 ->
+        NoDup (map fst vvs2) ->
         wt_sact vvs2 (SVar n) (bits_t 1) ->
         forall x y,
           list_assoc r2v3 x = Some y ->
@@ -5593,7 +5621,7 @@ Section SimpleForm.
                      (log_app (if b then log_empty else l2) sched_log) log_empty.
   Proof.
     intros.
-    edestruct r2v_vvs_aux as (VG & VR & LE & WTV & VSV). eauto.
+    edestruct r2v_vvs_aux as (VG & VR & LE & WTV & VSV & ND). eauto.
     apply vvs_range_list_assoc_set. 2: red; lia.
     eapply vvs_range_incr. 2: apply WFS1. lia.
     eapply wt_vvs_set. apply WFS1. apply WFS1.
@@ -5605,6 +5633,7 @@ Section SimpleForm.
     eapply vvs_grows_set. apply WFS1. lia.
     eapply reg2var_vvs_grows. apply WFS1. eapply vvs_grows_set. apply WFS1. lia.
     econstructor. rewrite list_assoc_gss. eauto.
+    eapply nodup_list_assoc_set. apply WFS1.
     generalize (r2v_vvs r2v l (rir_vars sched_rir)
                         (list_assoc_set (rir_vars r1) n
                                         (bits_t 1, (rir_failure_cond r1)))).
@@ -5623,6 +5652,8 @@ Section SimpleForm.
     trim RV.
     eapply vvs_smaller_variables_set. apply WFS1.
     eapply wt_sact_below. eauto. apply WFS1.
+    trim RV.
+    eapply nodup_list_assoc_set. apply WFS1.
     trim RV. econstructor. rewrite list_assoc_gss. eauto.
     assert (RV2:
              forall x y,
@@ -5883,14 +5914,17 @@ Section SimpleForm.
       (forall x y, list_assoc r2v x = Some y -> list_assoc vvs y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
       vvs_range vvs nid ->
       vvs_smaller_variables vvs ->
+      NoDup (map fst vvs) ->
       wt_vvs vvs' 
       /\ (forall x y, list_assoc r2v' x = Some y -> list_assoc vvs' y = Some (R (fst x), SConst (getenv REnv r (fst x))))
       /\ vvs_range vvs' nid'
-      /\ vvs_smaller_variables vvs' /\ nid <= nid' /\
+      /\ vvs_smaller_variables vvs'
+      /\ NoDup (map fst vvs')
+      /\ nid <= nid' /\
         forall i p, In (i,p) (map fst r2v) \/ i = idx ->
                     In (i,p) (map fst r2v').
   Proof.
-    intros r2v vvs nid idx r2v' vvs' nid' IR WTR WT R2V VR VSV.
+    intros r2v vvs nid idx r2v' vvs' nid' IR WTR WT R2V VR VSV ND.
     unfold init_reg in IR. inv IR.
     repeat refine (conj _ _).
     - eapply wt_vvs_set; eauto.
@@ -5911,6 +5945,7 @@ Section SimpleForm.
       red; lia.
     - eapply vvs_smaller_variables_set; eauto.
       inversion 1.
+    - eapply nodup_list_assoc_set; eauto.
     - lia.
     - intros.
       destruct H.
@@ -5936,10 +5971,13 @@ Section SimpleForm.
       (forall x y, list_assoc r2v x = Some y -> list_assoc vvs y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
       vvs_range vvs nid ->
       vvs_smaller_variables vvs ->
+      NoDup (map fst vvs) ->
       wt_vvs vvs' 
       /\ (forall x y, list_assoc r2v' x = Some y -> list_assoc vvs' y = Some (R (fst x), SConst (getenv REnv r (fst x)))) 
       /\ vvs_range vvs' nid'
-      /\ vvs_smaller_variables vvs' /\ nid <= nid' /\
+      /\ vvs_smaller_variables vvs'
+      /\ NoDup (map fst vvs')
+      /\ nid <= nid' /\
         forall i p, In (i,p) (map fst r2v) \/ In i l ->
                     In (i,p) (map fst r2v').
   Proof.
@@ -5948,7 +5986,7 @@ Section SimpleForm.
     - inv H. repeat refine (conj _ _); eauto. intuition.
     - destruct (init_reg r2v vvs nid a) eqn:?.
       destruct p.
-      edestruct init_reg_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & LE & INCL); eauto.
+      edestruct init_reg_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & ND' & LE & INCL); eauto.
       eapply IHl in H; eauto.
       intuition.
   Qed.
@@ -5967,8 +6005,8 @@ Section SimpleForm.
   Proof.
     intros n0 r2v vvs n IR WTR. simpl.
     unfold init_r2v in IR.
-    edestruct init_regs_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & LE & INCL); eauto.
-    red; easy. simpl; easy. red; easy. red; easy.
+    edestruct init_regs_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & ND & LE & INCL); eauto.
+    red; easy. simpl; easy. red; easy. red; easy. constructor.
     split. split; eauto. constructor.
     red; intros.
     simpl in INCL.
@@ -6082,26 +6120,39 @@ Section SimpleForm.
              exists tret,
                BitsToLists.wt_daction pos_t string string (R:=R) (Sigma:=Sigma) [] (rules r) tret)
            (WTR: wt_renv R REnv r),
-    forall idx,
-      let v := match latest_write (interp_dscheduler rules r sigma s) idx with
-                 Some v => v
-               | None => getenv REnv r idx
-               end in
-      exists n,
-        list_assoc (final_values sf) idx = Some n /\
-        interp_sact (vars sf) (SVar n) v.
+      wt_vvs (vars sf)
+      /\ vvs_smaller_variables (vars sf)
+      /\ NoDup (map fst (vars sf))
+      /\ (forall idx, In idx (map fst (final_values sf)))
+      /\ forall idx,
+        let v := match latest_write (interp_dscheduler rules r sigma s) idx with
+                   Some v => v
+                 | None => getenv REnv r idx
+                 end in
+        exists n,
+          list_assoc (final_values sf) idx = Some n /\
+            interp_sact (vars sf) (SVar n) v.
   Proof.
     intros.
     unfold schedule_to_simple_form in GRI. repeat destr_in GRI. subst. simpl.
     edestruct get_rir_scheduler2_ok as (WFS & MLR); eauto.
-    inv WFS. red in wfs_r2v_vvs0.
-    destruct (wfs_r2v_vvs0 (idx, inr tt)) as (y & GET1 & z & GET2).
-    inv MLR. exploit mlr_read0. apply GET1. simpl. rewrite log_app_empty.
-    intro INT.
-    erewrite list_assoc_filter_map. 2: eauto.
-    eexists; split. eauto. eauto. simpl. auto.
-    intros. repeat destr_in H; inv H. auto.
-    intros. repeat destr_in H; inv H. repeat destr_in H0; inv H0. auto.
+    repeat refine (conj _ _).
+    - apply WFS.
+    - apply WFS.
+    - apply WFS.
+    - inv WFS. red in wfs_r2v_vvs0. intro idx.
+      destruct (wfs_r2v_vvs0 (idx, inr tt)) as (y & GET1 & z & GET2).
+      rewrite in_map_iff. setoid_rewrite filter_map_In.
+      apply list_assoc_in in GET1. eexists; split.
+      2: eexists; split. 3: apply GET1. 2: simpl; reflexivity. reflexivity.
+    - intro idx. inv WFS. red in wfs_r2v_vvs0.
+      destruct (wfs_r2v_vvs0 (idx, inr tt)) as (y & GET1 & z & GET2).
+      inv MLR. exploit mlr_read0. apply GET1. simpl. rewrite log_app_empty.
+      intro INT.
+      erewrite list_assoc_filter_map. 2: eauto.
+      eexists; split. eauto. eauto. simpl. auto.
+      intros. repeat destr_in H; inv H. auto.
+      intros. repeat destr_in H; inv H. repeat destr_in H0; inv H0. auto.
   Qed.
 
 End SimpleForm.

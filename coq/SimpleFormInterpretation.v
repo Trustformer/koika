@@ -758,6 +758,7 @@ Section SimpleFormInterpretation.
       Forall (fun '(var,v) => interp_sact (sigma:=sigma) (vars sf') (SVar var) v) l
       /\ vvs_smaller_variables (vars sf')
       /\ wt_vvs (Sigma:=Sigma) (vars sf')
+      /\ NoDup (map fst l)
       /\ (forall a res t,
              wt_sact (Sigma:=Sigma) (vars sf) a t ->
              interp_sact (sigma:=sigma) (vars sf) a res ->
@@ -811,6 +812,7 @@ Section SimpleFormInterpretation.
         setoid_rewrite Heqo. simpl; eauto.
         intros; repeat destr.
         Unshelve. exact Sigma.
+    - simpl. constructor. easy. constructor.
     - simpl. intros.
       erewrite <- interp_sact_replace_iff; eauto.
       eapply interp_sact_replace_one; eauto.
@@ -849,8 +851,8 @@ Section SimpleFormInterpretation.
       unfold option_map; intros OM; repeat destr_in OM; inv OM.
       setoid_rewrite Heqo1. eexists; split; eauto.
       eapply var_in_sact_replace; eauto.
-    - repeat refine (conj _ _); eauto.
-    - repeat refine (conj _ _); eauto.
+    - repeat refine (conj _ _); eauto. constructor.
+    - repeat refine (conj _ _); eauto. constructor.
   Qed.
 
 
@@ -902,18 +904,35 @@ Section SimpleFormInterpretation.
                      (sf,l1++l)) lvars (sf, l) = (sf', l'))
            (WTV: wt_vvs (Sigma:=Sigma) (vars sf))
            (VSV: vvs_smaller_variables (vars sf))
+           (NDlvars: NoDup lvars)
+           (ND: NoDup (map fst l))
+           (DISJ: forall x, In x lvars -> ~ In x (map fst l))
            (NIV: (forall x t y v, list_assoc (vars sf) x = Some (t,y) ->
                                   var_in_sact y v -> ~ In v (map fst l))),
       vvs_smaller_variables (vars sf') /\
-        wt_vvs (Sigma:=Sigma) (vars sf') /\ (incl l l')
+        wt_vvs (Sigma:=Sigma) (vars sf') /\ (incl l l') /\ NoDup (map fst l')
       /\ (forall x t y v, list_assoc (vars sf') x = Some (t,y) ->
                           var_in_sact y v -> ~ In v (map fst l')).
   Proof.
     induction lvars; simpl; intros; eauto.
     - inv FL. repeat refine (conj _ _); eauto. easy.
     - repeat destr_in FL.
-      edestruct simplify_var_correct as (INT & VSV2 & WT2 & INTERP2 & INTERP3 & NAV1 & VIS1); eauto.
-      edestruct (IHlvars _ _ _ _ FL) as (VSV3 & WTV3 & INCL & NIV2); auto.
+      edestruct simplify_var_correct as (INT & VSV2 & WT2 & ND2 & INTERP2 & INTERP3 & NAV1 & VIS1); eauto.
+      edestruct (IHlvars _ _ _ _ FL) as (VSV3 & WTV3 & INCL & ND3 & NIV2); auto.
+      inv NDlvars; eauto.
+      {
+        rewrite map_app.
+        unfold simplify_var in Heqp.
+        repeat destr_in Heqp; inv Heqp; simpl; eauto.
+        constructor; eauto.
+      }
+      {
+        intros x IN IN2.
+        rewrite map_app, in_app_iff in IN2.
+        unfold simplify_var in Heqp.
+        repeat destr_in Heqp; inv Heqp; simpl in IN2; intuition eauto.
+        subst. inv NDlvars; eauto.
+      }
       intros.
       specialize (NAV1 _ _ _ _ H H0).
       rewrite map_app. rewrite in_app_iff. intros [IN|IN]; eauto.
@@ -958,7 +977,7 @@ Section SimpleFormInterpretation.
       intros x t y v GET VIS; eapply NOvarsl in GET; eauto. destruct GET; easy.
       easy. easy.
     - repeat destr_in FL.
-      edestruct simplify_var_correct as (INT & VSV2 & WT2 & INTERP2 & INTERP3 & NAV1 & VIS1); eauto.
+      edestruct simplify_var_correct as (INT & VSV2 & WT2 & ND2 & INTERP2 & INTERP3 & NAV1 & VIS1); eauto.
       edestruct (IHlvars _ _ _ _ FL) as (LGROWS & VSV3 & WT3 & INTERPl & NAV2 & INCL & INl'); auto.
       * inv SORTED; auto.
       * inv VARS_EXIST. rewrite Forall_forall in H2 |- *. intros x IN.
@@ -1202,7 +1221,7 @@ Section SimpleFormInterpretation.
   Qed.
 
   Definition inlining_pass (sf: simple_form)
-    : simple_form * list (nat * val) :=
+    : list (nat * val) :=
     (* Try to determine the value of variables *)
     let ks := NatSort.sort (map fst (vars sf)) in
     let '(sf,l) := fold_left
@@ -1210,22 +1229,18 @@ Section SimpleFormInterpretation.
                         let '(sf,l1) := simplify_var sf var in
                         (sf, l1++l))
                      ks (sf,[]) in
-    let sf := fold_left (remove_by_name_var) (map fst l) sf in
-    (sf,l).
+  l.
 
-  Lemma inlining_pass_preserves:
-    forall sf sf' l
-           (IP: inlining_pass sf = (sf', l))
-           (VSV: vvs_smaller_variables (vars sf))
-           (WT: wt_vvs (Sigma:=Sigma) (vars sf)),
-      vvs_smaller_variables (vars sf') /\ wt_vvs (Sigma:=Sigma) (vars sf').
+  Lemma Sorted_strict:
+    forall le1 le2 (STRICT: forall x y, le2 x y <-> (le1 x y /\ x <> y))
+           (l: list nat),
+      Sorted le1 l ->
+      NoDup l ->
+      Sorted le2 l.
   Proof.
-    unfold inlining_pass. intros.
-    repeat destr_in IP. inv IP.
-    exploit simplify_vars_preserves; eauto.
-    intros (VVS' & WT' & _ & NIV).
-    split. eapply remove_vars_preserves_vsv. eauto.
-    eapply remove_vars_preserves_wt_vvs. eauto. eauto.
+    induction 2; simpl; intros; eauto.
+    inv H1. econstructor. eauto.
+    inv H0. econstructor. econstructor. rewrite STRICT. split; auto. intro; subst. apply H4; simpl; auto.
   Qed.
 
   Lemma sorted_lt:
@@ -1235,18 +1250,6 @@ Section SimpleFormInterpretation.
   Proof.
     intros.
     generalize (NatSort.Sorted_sort l). intros.
-
-    Lemma Sorted_strict:
-      forall le1 le2 (STRICT: forall x y, le2 x y <-> (le1 x y /\ x <> y))
-             (l: list nat),
-        Sorted le1 l ->
-        NoDup l ->
-        Sorted le2 l.
-    Proof.
-      induction 2; simpl; intros; eauto.
-      inv H1. econstructor. eauto.
-      inv H0. econstructor. econstructor. rewrite STRICT. split; auto. intro; subst. apply H4; simpl; auto.
-    Qed.
     eapply Sorted_strict. 2: apply H0.
     intros. simpl. fold (Nat.leb x y).  unfold is_true. rewrite Nat.leb_le. lia.
     eapply Permutation.Permutation_NoDup. 2: apply H.
@@ -1280,18 +1283,22 @@ Section SimpleFormInterpretation.
   Qed.
 
   Lemma inlining_pass_correct:
-    forall sf sf' l
+    forall sf l
            (ND: NoDup (map fst (vars sf)))
-           (IP: inlining_pass sf = (sf', l))
+           (IP: inlining_pass sf = l)
            (VSV: vvs_smaller_variables (vars sf))
-           (WT: wt_vvs (Sigma:=Sigma) (vars sf))
-           v reg (REG: list_assoc (final_values sf) reg = Some v) res
-           (INT: interp_sact (sigma:=sigma) (vars sf) (SVar v) res),
-      (* interp_sact (sigma:=sigma) (vars sf') (SVar v) res \/ *) In (v,res) l.
+           (WT: wt_vvs (Sigma:=Sigma) (vars sf)),
+      NoDup (map fst l) /\
+        forall v reg (REG: list_assoc (final_values sf) reg = Some v) res
+               (INT: interp_sact (sigma:=sigma) (vars sf) (SVar v) res),
+          In (v,res) l.
   Proof.
     unfold inlining_pass. intros.
     repeat destr_in IP. inv IP.
-
+    split.
+    eapply simplify_vars_preserves; eauto.
+    eapply Permutation.Permutation_NoDup. apply NatSort.Permuted_sort. eauto. constructor.
+    intros.
     exploit simplify_vars_correct; eauto.
     - apply sorted_lt. auto.
     - eapply Permutation.Permutation_Forall. apply NatSort.Permuted_sort.
@@ -1310,8 +1317,8 @@ Section SimpleFormInterpretation.
       rewrite Forall_forall in INTERPl.
       exploit INTERPl. eauto. simpl. intro.
       inv INT. edestruct IMPL as (y' & GET & INT2). eauto. eauto.
-      inv H0. rewrite GET in H4; inv H4.
-      exploit @interp_sact_determ. apply H5. apply INT2. intro; subst. auto.
+      inv H1. rewrite GET in H5; inv H5.
+      exploit @interp_sact_determ. apply H6. apply INT2. intro; subst. auto.
   Qed.
 
   (* Cycles between variables are possible (a variable v can depend on another
@@ -1323,52 +1330,6 @@ Section SimpleFormInterpretation.
      Note that we don't need our simplifications to be exhaustive: for instance
      we choose to ignore that an and can be short-circuited based on its right
      operand. *)
-  Fixpoint simplify_sact (ua: sact) : sact :=
-    match ua with
-    | SIf cond tb fb =>
-      let cond' := simplify_sact cond in
-      let tb' := simplify_sact tb in
-      let fb' := simplify_sact fb in
-      match eval_sact_no_vars cond' with
-      | Some (Bits 1 [true]) => tb'
-      | Some (Bits 1 [false]) => fb'
-      | _ => SIf cond' tb' fb'
-      end
-    | SBinop ufn a1 a2 =>
-      let a1' := simplify_sact a1 in
-      let a2' := simplify_sact a2 in
-      match ufn with
-      | PrimUntyped.UBits2 PrimUntyped.UAnd =>
-          match eval_sact_no_vars a1', eval_sact_no_vars a2' with
-          | Some (Bits 1 [false]), _ => const_false
-          | Some (Bits 1 [true]), _ => a2'
-          | _, Some (Bits 1 [false]) => const_false
-          | _, Some (Bits 1 [true]) => a1'
-          | _, _ => SBinop ufn a1' a2'
-          end
-        | PrimUntyped.UBits2 PrimUntyped.UOr =>
-          match eval_sact_no_vars a1', eval_sact_no_vars a2' with
-          | Some (Bits 1 [true]), _
-          | _, Some (Bits 1 [true]) => const_true
-          | Some (Bits 1 [false]), _  => a2'
-          | _, _ => SBinop ufn a1' a2'
-          end
-        | _ => SBinop ufn a1' a2'
-        end
-    | SUnop ufn a => (* Perhaps not strictly required *)
-        let a := simplify_sact a in
-        match ufn with
-        | PrimUntyped.UBits1 PrimUntyped.UNot =>
-            match eval_sact_no_vars a with
-            | Some (Bits 1 [b]) => SConst (Bits 1 [negb b])
-            | _ => SUnop ufn a
-            end
-        | _ => SUnop ufn a
-        end
-    | SExternalCall ufn a => SExternalCall ufn (simplify_sact a)
-    | SVar _
-    | SConst _ => ua
-    end.
 
   Lemma eval_sact_eval_sact_no_vars:
     forall vvs n a res res2,
@@ -1396,42 +1357,6 @@ Section SimpleFormInterpretation.
       exploit IHn. apply Heqo. eauto. intro; subst. congruence. congruence.
   Qed.
 
-  Lemma simplify_unop_cases:
-    forall ufn a a' ,
-      simplify_sact (SUnop ufn a) = a' ->
-      (exists b, ufn = PrimUntyped.UBits1 PrimUntyped.UNot /\ eval_sact_no_vars (simplify_sact a) = Some (Bits 1 [b]) /\ a' = SConst (Bits 1 [negb b]))
-      \/ a' = SUnop ufn (simplify_sact a).
-  Proof.
-    intros. simpl in H. subst. repeat destr; eauto.
-  Qed.
-
-  Lemma simplify_bnop_cases:
-    forall ufn a1 a2 a' ,
-      simplify_sact (SBinop ufn a1 a2) = a' ->
-      a' = SBinop ufn (simplify_sact a1) (simplify_sact a2)
-      \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UAnd
-          /\ ((eval_sact_no_vars (simplify_sact a1) = Some (Bits 1 [true])
-               /\ a' = simplify_sact a2)
-              \/ (eval_sact_no_vars (simplify_sact a1) = Some (Bits 1 [false])
-                  /\ a' = const_false)
-              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits 1 [true])
-                  /\ a' = simplify_sact a1)
-              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits 1 [false])
-                  /\ a' = const_false)))
-      \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UOr
-          /\ ((eval_sact_no_vars (simplify_sact a1) = Some (Bits 1 [true])
-               /\ a' = const_true)
-              \/ (eval_sact_no_vars (simplify_sact a1) = Some (Bits 1 [false])
-                  /\ a' = simplify_sact a2)
-              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits 1 [true])
-                  /\ a' = const_true)
-              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits 1 [false])
-                  /\ a' = simplify_sact a1))).
-  Proof.
-    intros. simpl in H. subst.
-    repeat destr; intuition eauto.
-  Qed.
-
   Lemma eval_sact_wt:
     forall vvs (WT: wt_vvs (Sigma:=Sigma) vvs) n a r t (WTa: wt_sact (Sigma:=Sigma) vvs a t)
            (EVAL: eval_sact vvs a n = Some r),
@@ -1445,108 +1370,6 @@ Section SimpleFormInterpretation.
     - eapply Wt.wt_binop_sigma1; eauto.
   Qed.
 
-  Lemma simplify_sact_correct:
-    forall vvs (WTV: wt_vvs (Sigma:=Sigma) vvs) n a res t,
-      wt_sact (Sigma:=Sigma) vvs a t ->
-      eval_sact vvs a n = Some res ->
-      eval_sact vvs (simplify_sact a) n = Some res.
-  Proof.
-    induction n; intros a res t WT EVAL; eauto.
-    simpl in EVAL.
-    unfold opt_bind in EVAL.
-    repeat destr_in EVAL; inv EVAL; auto.
-    - simpl. rewrite Heqo; eauto.
-    - inv WT.
-      simpl.
-      destruct (eval_sact_no_vars (simplify_sact s1)) eqn:?.
-      eapply eval_sact_eval_sact_no_vars in Heqo0; eauto. subst.
-      transitivity (eval_sact vvs (simplify_sact s2) (S n)). reflexivity.
-      exploit IHn. 2: apply H0. eauto. intro ES. exploit eval_sact_more_fuel. apply ES.
-      2: intro ES'; rewrite ES'. lia. eauto.
-      erewrite IHn. 2-3: eauto. simpl.
-      erewrite IHn; eauto.
-    - inv WT.
-      simpl.
-      destruct (eval_sact_no_vars (simplify_sact s1)) eqn:?.
-      eapply eval_sact_eval_sact_no_vars in Heqo0; eauto. subst.
-      transitivity (eval_sact vvs (simplify_sact s3) (S n)). reflexivity.
-      exploit IHn. 2: apply H0. eauto. intro ES. exploit eval_sact_more_fuel. apply ES.
-      2: intro ES'; rewrite ES'. lia. eauto.
-      erewrite IHn. 2-3: eauto. simpl.
-      erewrite IHn; eauto.
-    - destruct (simplify_unop_cases ufn1 s _ eq_refl) as [(b & EQ & ESNV & EQ')|EQ].
-      + inv WT.
-        rewrite EQ'. simpl.
-        exploit eval_sact_eval_sact_no_vars. 2: eauto. eapply IHn. eauto. eauto. intros ->.
-        simpl. auto.
-      + inv WT; rewrite EQ. simpl. erewrite IHn; simpl; eauto.
-    - inv WT.
-      exploit eval_sact_wt. 3: apply Heqo. all: eauto.
-      exploit eval_sact_wt. 3: apply Heqo0. all: eauto.
-      intros WTv2 WTv1.
-      exploit Wt.wt_binop_sigma1. eauto. eauto. eauto. eauto. intro WTres.
-      eapply IHn in Heqo; eauto.
-      eapply IHn in Heqo0; eauto.
-
-      destruct (simplify_bnop_cases ufn2 s1 s2 _ eq_refl) as
-        [EQ|[(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])
-            |(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])]]; rewrite EQ; clear EQ.
-      + simpl. rewrite Heqo, Heqo0.  reflexivity.
-      + exploit eval_sact_eval_sact_no_vars. apply Heqo. apply ESNV. intros ->.
-        inv WTv1. inv H6.
-        apply wt_val_bool in WTv2.
-        apply wt_val_bool in WTres.
-        destruct WTv2, WTres. subst.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl. auto. lia.
-      + exploit eval_sact_eval_sact_no_vars. apply Heqo. apply ESNV. intros ->.
-        inv WTv1. inv H6.
-        apply wt_val_bool in WTv2.
-        apply wt_val_bool in WTres.
-        destruct WTv2, WTres. subst.
-        simpl. auto.
-      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply wt_val_bool in WTv1.
-        apply wt_val_bool in WTres.
-        destruct WTv1, WTres. subst.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl. rewrite andb_true_r; auto. lia.
-      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply wt_val_bool in WTv1.
-        apply wt_val_bool in WTres.
-        destruct WTv1, WTres. subst.
-        simpl. rewrite andb_false_r; auto.
-      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
-        inv WTv1. inv H6.
-        apply wt_val_bool in WTv2.
-        apply wt_val_bool in WTres.
-        destruct WTv2, WTres. subst. simpl; auto.
-      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
-        inv WTv1. inv H6.
-        apply wt_val_bool in WTv2.
-        apply wt_val_bool in WTres.
-        destruct WTv2, WTres. subst.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl. auto. lia.
-      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply wt_val_bool in WTv1.
-        apply wt_val_bool in WTres.
-        destruct WTv1, WTres. subst. simpl. rewrite orb_true_r; auto.
-      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply wt_val_bool in WTv1.
-        apply wt_val_bool in WTres.
-        destruct WTv1, WTres. subst.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl. rewrite orb_false_r; auto. lia.
-    - simpl. inv WT;  erewrite IHn; simpl; eauto.
-  Qed.
-
-  Definition expr_simplification_pass (sf: simple_form)
-    : simple_form :=
-    {|
-      final_values := final_values sf;
-      vars := map (fun '(vn, (t,vu)) => (vn, (t, simplify_sact vu))) (vars sf);
-    |}.
 
   Lemma wt_sact_replace_vars_gen:
     forall vvs f a t,
@@ -1577,62 +1400,6 @@ Section SimpleFormInterpretation.
     eapply wt_sact_replace_vars_gen. eapply H0; eauto.
   Qed.
 
-  Lemma simplify_sact_wt:
-    forall vvs a t,
-      wt_sact (Sigma:=Sigma) vvs a t ->
-      wt_sact (Sigma:=Sigma) vvs (simplify_sact a) t.
-  Proof.
-    induction 1; simpl; intros; eauto.
-    - econstructor; eauto.
-    - econstructor; eauto.
-    - destr. exploit eval_sact_no_vars_wt.  2: apply Heqo. eauto.
-      intro WT. apply wt_val_bool in WT. destruct WT.  subst. destr.
-      econstructor; eauto.
-    - repeat destr; try now (econstructor; eauto).
-      subst.
-      exploit eval_sact_no_vars_wt.  2: apply Heqo. eauto.
-      intro WT. inv WT. inv H0. repeat econstructor.
-    - destr; try now (econstructor; eauto).
-      destr; try now (econstructor; eauto).
-      + destr; try now (econstructor; eauto).
-        exploit eval_sact_no_vars_wt.  2: apply Heqo. eauto.
-        intro WT1. inv H1. inv WT1.
-        destruct (eval_sact_no_vars (simplify_sact a2)) eqn:?.
-        exploit eval_sact_no_vars_wt.  2: apply Heqo0. eauto.
-        intro WT2. inv WT2.
-        destr; try now (econstructor; eauto). repeat econstructor; eauto.
-        destruct bs, bs0; simpl in *; try lia.
-        destr; try now (econstructor; eauto).
-        destruct bs, bs0; simpl in *; try lia.
-        destr; eauto. repeat econstructor. repeat econstructor; eauto.
-        repeat destr; try now (repeat econstructor; eauto).
-        destr; try now (repeat econstructor; eauto).
-        exploit eval_sact_no_vars_wt.  2: apply Heqo0. eauto.
-        intro WT2. inv H1. inv WT2.
-        repeat destr; try now (repeat econstructor; eauto).
-      + destr; try now (econstructor; eauto).
-        exploit eval_sact_no_vars_wt.  2: apply Heqo. eauto.
-        intro WT1. inv H1. inv WT1.
-        destruct (eval_sact_no_vars (simplify_sact a2)) eqn:?.
-        exploit eval_sact_no_vars_wt.  2: apply Heqo0. eauto.
-        intro WT2. inv WT2.
-        repeat destr; try now (repeat econstructor; eauto).
-        repeat destr; try now (repeat econstructor; eauto).
-        destr; try now (repeat econstructor; eauto).
-        exploit eval_sact_no_vars_wt.  2: apply Heqo0. eauto.
-        intro WT2. inv H1. inv WT2.
-        repeat destr; try now (repeat econstructor; eauto).
-    - econstructor. eauto.
-  Qed.
-
-  Lemma simplify_sact_vars_correct_preserves_wt:
-    forall sf (WTV: wt_vvs (Sigma:=Sigma) (vars sf)) sf' (ESP: expr_simplification_pass sf = sf'),
-      wt_vvs (Sigma:=Sigma) (vars sf').
-  Proof.
-    intros; subst.
-    simpl. eapply wt_vvs_replace_gen. auto.
-    intros. eapply simplify_sact_wt. auto.
-  Qed.
 
   Lemma interp_map_vvs:
     forall vvs (VSV: vvs_smaller_variables vvs) (WTvvs: wt_vvs (Sigma:=Sigma) vvs)
@@ -1687,141 +1454,50 @@ Section SimpleFormInterpretation.
       erewrite IHn; eauto.
   Qed.
 
-  Lemma simplify_sact_vars:
-    forall (v : nat) (s : SimpleForm.sact),
-      var_in_sact (simplify_sact s) v -> var_in_sact s v.
-  Proof.
-    induction s; intros; eauto.
-    -
-      Lemma simplify_if_cases s1 s2 s3 s:
-        simplify_sact (SIf s1 s2 s3) = s ->
-        s = SIf (simplify_sact s1) (simplify_sact s2) (simplify_sact s3)
-        \/ (eval_sact_no_vars (simplify_sact s1) = Some (Bits 1 [true]) /\ s = simplify_sact s2)
-        \/ (eval_sact_no_vars (simplify_sact s1) = Some (Bits 1 [false]) /\ s = simplify_sact s3).
-      Proof.
-        intros <-. simpl. repeat destr; auto.
-      Qed.
-      destruct (simplify_if_cases s1 s2 s3 _ eq_refl) as [EQ|[(ESNV & EQ)|(ESNV & EQ)]];
-        rewrite EQ in H; clear EQ.
-      + inv H.
-        eapply var_in_if_cond; eauto.
-        eapply var_in_if_true; eauto.
-        eapply var_in_if_false; eauto.
-      + eapply var_in_if_true; eauto.
-      + eapply var_in_if_false; eauto.
-    - destruct (simplify_unop_cases ufn1 s _ eq_refl) as [(b & EQ & ESNV & EQ')|EQ']; rewrite EQ' in H; clear EQ'. inv H. inv H.
-      eapply var_in_sact_unop; eauto.
-    - destruct (simplify_bnop_cases ufn2 s1 s2 _ eq_refl) as
-        [EQ|[(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])
-            |(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])]]; rewrite EQ in H; clear EQ.
-      + inv H. eapply var_in_sact_binop_1; eauto.
-        eapply var_in_sact_binop_2; eauto.
-      + eapply var_in_sact_binop_2; eauto.
-      + inv H.
-      + eapply var_in_sact_binop_1; eauto.
-      + inv H.
-      + inv H.
-      + eapply var_in_sact_binop_2; eauto.
-      + inv H.
-      + eapply var_in_sact_binop_1; eauto.
-    - inv H. eapply var_in_sact_external; eauto.
-  Qed.
 
-  Lemma simplify_sact_vars_correct:
-    forall sf (VSV: vvs_smaller_variables (vars sf))
-           (WTV: wt_vvs (Sigma:=Sigma) (vars sf)) sf' (ESP: expr_simplification_pass sf = sf')
-           x t y res
-           (GET: list_assoc (vars sf) x = Some (t, y))
-           (INT: interp_sact (sigma:=sigma) (vars sf) y res),
-    exists y' ,
-      list_assoc (vars sf') x = Some (t, y') /\
-        interp_sact (sigma:=sigma) (vars sf') y' res.
-  Proof.
-    intros. subst. simpl.
-    setoid_rewrite list_assoc_map with (g:= fun '(t,a) => (t, simplify_sact a)). 2: intros; repeat destr.
-    setoid_rewrite GET. simpl. eexists; split; eauto.
-    eapply interp_map_vvs; eauto.
-    eapply simplify_sact_wt; eauto.
-    eapply simplify_sact_vars; eauto.
-    eapply simplify_sact_wt; eauto.
-    intros vvs s t0 n res0 WTVVS. eapply simplify_sact_correct. auto.
-
-    eapply interp_sact_eval_sact in INT; eauto.
-    revert INT.
-    generalize (S (max_var (vars sf)) + vvs_size (vars sf) (S (max_var (vars sf))) +
-                  size_sact y). intros.
-    eapply simplify_sact_correct in INT; eauto.
-    eapply eval_sact_interp_sact; eauto.
-  Qed.
-
-  Definition simplification_pass (sf: simple_form)
-  : simple_form * list (nat * val)  :=
-    inlining_pass (expr_simplification_pass sf).
-
-  (* Lemma simplification_pass_correct: *)
-  (*   forall sf (VSV: vvs_smaller_variables (vars sf)) *)
-  (*          (WTV: wt_vvs (Sigma:=Sigma) (vars sf)) *)
-  (*          sf' l *)
-  (*          (SP: simplification_pass sf = (sf', l)) *)
-  (*          x t y res *)
-  (*          (GET: list_assoc (vars sf) x = Some (t, y)) *)
-  (*          (INT: interp_sact (sigma:=sigma) (vars sf) y res), *)
-  (*   exists y' , *)
-  (*     list_assoc (vars sf') x = Some (t, y') /\ *)
-  (*       interp_sact (sigma:=sigma) (vars sf') y' res. *)
-  (* Proof. *)
-
-
-  (* Fixpoint simplify (sf: simple_form) (fuel: nat) *)
-  (* : list (nat * val) := *)
-  (*   match fuel with *)
-  (*   | O => [] *)
-  (*   | S f' => *)
-  (*     let (sf', vals) := simplification_pass sf in *)
-  (*     vals++(simplify sf' f') *)
-  (*   end. *)
-
-
-
-  Definition interp_cycle (sf: @simple_form pos_t reg_t ext_fn_t) : UREnv :=
-    let fenv :=
-      simplify sf (List.length (vars sf))
-    in
-    (* No need to explicitly inline read0s: delegated to interp_action *)
-    fold_left
-      (fun acc '(reg, n) =>
-        REnv.(putenv)
-          acc reg
-          (match list_assoc fenv n with
-           | Some v => v
-           | None => getenv REnv r reg (* Should be unreachable *)
-           end))
-      (final_values sf) r.
+  Definition interp_cycle (sf: simple_form) : UREnv :=
+    let fenv := inlining_pass sf in
+    create REnv (fun k =>
+                   match list_assoc (final_values sf) k with
+                     | Some n =>
+                         match list_assoc fenv n with
+                         | Some v => v
+                         | None => getenv REnv r k (* Should be unreachable *)
+                         end
+                   | None => getenv REnv r k
+                   end).
 
   Lemma normal_form_ok:
     forall
-      (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> sact)
-      (s: schedule) (p: pos_t)
+      {finreg: FiniteType reg_t}
+      (rules: rule_name_t -> daction)
+      (s: schedule)
+      (GS: good_scheduler s)
+      (WTr: Wt.wt_renv R REnv r)
       (TA:
-        forall rule, exists tcr,
-        TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr),
-    UntypedSemantics.interp_cycle rules r sigma s =
-    SimpleForm.interp_cycle r sigma
-      (SimpleForm.schedule_to_normal_form rules s).
+        forall rule,
+          exists t,
+            wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules rule) t),
+    UntypedSemantics.interp_dcycle rules r sigma s =
+      interp_cycle (SimpleForm.schedule_to_simple_form (Sigma:=Sigma) REnv r R rules s).
   Proof.
-  Admitted.
-  (* Lemma simple_form_ok: *)
-  (*   forall *)
-  (*     (r: UREnv) (sigma: ext_funs_defs) (rules: rule_name_t -> sact) *)
-  (*     (s: schedule) (p: pos_t) *)
-  (*     (TA: *)
-  (*       forall rule, exists tcr, *)
-  (*       TypeInference.tc_rule TR Sigma p (rules rule) = Success tcr), *)
-  (*   UntypedSemantics.env_t_R *)
-  (*     (fun _ _ => ) *)
-  (*     (UntypedSemantics.interp_cycle rules r sigma s) *)
-  (*     (SimpleFormInterpretation.interp_cycle r sigma *)
-  (*       (SimpleForm.schedule_to_simple_form rules s)). *)
-  (* Proof. *)
-  (* Admitted. *)
+    intros.
+    unfold interp_dcycle.
+    generalize (schedule_to_simple_form_ok
+                  (wt_sigma:=wt_sigma)
+                  REnv r R rules _ GS _ eq_refl TA WTr). simpl.
+    intros (WTV & VSV & ND & INFINAL & SPECFINAL).
+    unfold interp_cycle. unfold commit_update.
+    apply create_funext. intro k.
+
+    generalize (inlining_pass_correct _ _ ND eq_refl VSV WTV).
+    intros (ND2 & INLINING).
+    destruct (SPECFINAL k) as (n & GET & INTERP).
+    exploit INLINING. apply GET. apply INTERP.
+    intro IN. apply in_list_assoc in IN.
+    rewrite GET.
+    rewrite IN.
+    auto. auto.
+  Qed.
+
 End SimpleFormInterpretation.
