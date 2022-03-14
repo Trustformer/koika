@@ -13,7 +13,7 @@ Ltac destr :=
 Ltac inv H := inversion H; try subst; clear H.
 
 Inductive val :=
-| Bits (sz: nat) (v: list bool)
+| Bits (v: list bool)
 | Enum (sig: enum_sig) (v: list bool)
 | Struct (sig: struct_sig) (v: list val)
 | Array (sig: array_sig) (v: list val).
@@ -28,7 +28,7 @@ Fixpoint val_of_value {tau: type} (x: type_denote tau) {struct tau} : val :=
       end x
   ) in
   match tau return type_denote tau -> val with
-  | bits_t   sz  => fun bs  => Bits   sz  (vect_to_list bs)
+  | bits_t   sz  => fun bs  => Bits       (vect_to_list bs)
   | enum_t   sig => fun bs  => Enum   sig (vect_to_list bs)
   | struct_t sig => fun str => Struct sig (val_of_struct_value str)
   | array_t  sig => fun v   => Array  sig (map val_of_value (vect_to_list v))
@@ -36,7 +36,7 @@ Fixpoint val_of_value {tau: type} (x: type_denote tau) {struct tau} : val :=
 
 Fixpoint ubits_of_value (v: val) : list bool :=
   match v with
-  | Bits   _ bs => bs
+  | Bits     bs => bs
   | Enum   _ bs => bs
   | Struct _ lv => List.concat (rev (map ubits_of_value lv))
   | Array  _ lv => List.concat (rev (map ubits_of_value lv))
@@ -192,7 +192,7 @@ Proof.
 Qed.
 
 Inductive wt_val: type -> val -> Prop :=
-| wt_bits: forall n bs, List.length bs = n -> wt_val (bits_t n) (Bits n bs)
+| wt_bits: forall n bs, List.length bs = n -> wt_val (bits_t n) (Bits bs)
 | wt_enum: forall sig bs,
   List.length bs = enum_bitsize sig -> wt_val (enum_t sig) (Enum sig bs)
 | wt_struct: forall sig lv,
@@ -217,7 +217,7 @@ Lemma wt_val_ind':
   forall
     (P : type -> val -> Prop)
     (Hbits: forall (n : nat) (bs : list bool),
-      Datatypes.length bs = n -> P (bits_t n) (Bits n bs)
+      Datatypes.length bs = n -> P (bits_t n) (Bits bs)
     )
     (Henum: forall (sig : enum_sig) (bs : list bool),
       Datatypes.length bs = enum_bitsize sig -> P (enum_t sig) (Enum sig bs)
@@ -277,7 +277,7 @@ Qed.
 
 Fixpoint size_val (v: val) :=
   match v with
-  | Bits _ _ => 1
+  | Bits _ => 1
   | Enum _ _ => 1
   | Struct sig lv => 1 + list_sum (map size_val lv)
   | Array sig lv => 1 + list_sum (map size_val lv)
@@ -370,7 +370,7 @@ Fixpoint uvalue_of_bits {tau: type} (bs: list bool) {struct tau}: option val :=
       end
   in
   match tau with
-  | bits_t _ => Some (Bits (Datatypes.length bs) bs)
+  | bits_t _ => Some (Bits bs)
   | enum_t sig =>
     let/opt2 b0, b1 := take_drop (enum_bitsize sig) bs in
     (* TODO check b1 is empty ? *)
@@ -391,7 +391,6 @@ Proof.
   intros tau v WT.
   pattern tau, v.
   eapply wt_val_ind'; simpl; intros; eauto.
-  - congruence.
   - rewrite take_drop_succeeds_eq; simpl; auto.
   - revert sig lv H H0. destruct sig. simpl.
     induction struct_fields; simpl; intros.
@@ -676,7 +675,7 @@ Qed.
 
 Lemma val_ind':
   forall
-    (P : val -> Type) (Hbits: forall (n : nat) (bs : list bool), P (Bits n bs))
+    (P : val -> Type) (Hbits: forall (bs : list bool), P (Bits bs))
     (Henum: forall (sig : enum_sig) (bs : list bool), P (Enum sig bs))
     (Hstruct: forall (sig : struct_sig) (lv : list val),
       (forall x, In x lv -> P x) -> P (Struct sig lv)
@@ -733,7 +732,6 @@ Proof.
   pattern v1. revert v1.
   eapply val_ind'; simpl; intros.
   - destruct v2; try (right; intro A; inv A; congruence).
-    destruct (eq_dec n sz); try (right; intro A; inv A; congruence).
     destruct (eq_dec bs v); try (right; intro A; inv A; congruence).
     subst; left; reflexivity.
   - destruct v2; try (right; intro A; inv A; congruence).
@@ -772,12 +770,12 @@ Lemma and_correct:
     ret,
   PrimSpecs.sigma2 (PrimTyped.Bits2 (PrimTyped.And sz)) arg1 arg2 = ret ->
   match val_of_value arg1, val_of_value arg2 with
-  | Bits _ arg1, Bits _ arg2 =>
-    exists sz, Bits sz (bitwise andb arg1 arg2) = (val_of_value ret)
+  | Bits arg1, Bits arg2 =>
+      Bits (bitwise andb arg1 arg2) = (val_of_value ret)
   | _, _ => False
   end.
 Proof.
-  simpl. intros. eexists. f_equal. subst.
+  simpl. intros. f_equal. subst.
   revert arg1 arg2.
   induction sz; simpl. reflexivity.
   destruct arg1, arg2. simpl.

@@ -1287,10 +1287,9 @@ Section WT.
   Qed.
 
   Lemma wt_val_bits:
-    forall n m l,
-      n = m ->
-      m = List.length l ->
-      wt_val (bits_t n) (Bits m l).
+    forall n l,
+      n = List.length l ->
+      wt_val (bits_t n) (Bits l).
   Proof.
     intros; subst; constructor; auto.
   Qed.
@@ -1306,14 +1305,14 @@ Section WT.
     inv WTU; simpl in *.
     - inv SIG; constructor; reflexivity.
     - inv SIG; constructor; reflexivity.
-    - inv SIG. erewrite ubits_of_value_len'; eauto. constructor.
+    - inv SIG. constructor.
       apply ubits_of_value_len'. auto.
     - unfold opt_bind in SIG. repeat destr_in SIG; inv SIG.
       inv WTv.
       eapply uvalue_of_bits_wt; eauto.
     - inv SIG; constructor; auto.
     - inv WTv. simpl in *. inv SIG.
-      rewrite map_length. constructor. apply map_length.
+      constructor. apply map_length.
     - inv WTv. simpl in *. inv SIG.
       apply wt_val_bits; auto.
       rewrite app_length. rewrite repeat_length. lia.

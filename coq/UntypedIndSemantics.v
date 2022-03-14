@@ -423,7 +423,7 @@ Section Interp.
       (sched_log: Log REnv) (action_log: Log REnv) k a action_log' Gamma' v,
     interp_action r sigma Gamma sched_log action_log a action_log' v Gamma'
     -> interp_action
-      r sigma Gamma sched_log action_log (UAssign k a) action_log' (Bits 0 [])
+      r sigma Gamma sched_log action_log (UAssign k a) action_log' (Bits [])
       (list_assoc_set Gamma' k v)
   | interp_action_seq:
     forall
@@ -454,7 +454,7 @@ Section Interp.
       (sched_log: Log REnv) (action_log: Log REnv) cond b athen aelse v2
       action_log' Gamma' action_log'' Gamma'',
     interp_action
-      r sigma Gamma sched_log action_log cond action_log' (Bits 1 [b]) Gamma'
+      r sigma Gamma sched_log action_log cond action_log' (Bits [b]) Gamma'
     -> interp_action
       r sigma Gamma' sched_log action_log' (if b then athen else aelse)
       action_log'' v2 Gamma''
@@ -469,7 +469,7 @@ Section Interp.
     may_read sched_log prt idx = true
     -> interp_action
       r sigma Gamma sched_log action_log (URead prt idx)
-      (log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log)
+      (log_cons idx (LE Logs.LogRead prt (Bits [])) action_log)
       (match prt with
         | P0 => REnv.(getenv) r idx
         | P1 =>
@@ -490,7 +490,7 @@ Section Interp.
     -> may_write sched_log action_log' prt idx = true
     -> interp_action
       r sigma Gamma sched_log action_log (UWrite prt idx a)
-      (log_cons idx (LE Logs.LogWrite prt v) action_log') (Bits 0 []) Gamma'
+      (log_cons idx (LE Logs.LogWrite prt v) action_log') (Bits []) Gamma'
   | interp_action_unop:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
@@ -553,7 +553,7 @@ Section Interp.
       (sched_log: Log REnv) (action_log: Log REnv),
       interp_action
         r sigma Gamma sched_log action_log (USugar USkip) action_log
-        (Bits 0 []) Gamma
+        (Bits []) Gamma
   | interp_action_constbits:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
@@ -562,7 +562,7 @@ Section Interp.
     let l := vect_to_list v in
     interp_action
       r sigma Gamma sched_log action_log (USugar (UConstBits v)) action_log
-      (Bits (List.length l) l) Gamma
+      (Bits l) Gamma
   | interp_action_conststring:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
@@ -573,7 +573,7 @@ Section Interp.
       (Array
         {| array_type := bits_t 8; array_len := String.length s |}
         (List.map
-          (fun x => Bits 8 (vect_to_list x))
+          (fun x => Bits (vect_to_list x))
           (vect_to_list (SyntaxMacros.array_of_bytes s))
         )
       )
@@ -599,7 +599,7 @@ Section Interp.
       lv Gamma'
     -> interp_action
       r sigma Gamma sched_log action_log (USugar (UProgn aa)) action_log'
-      (List.hd (Bits 0 []) lv) Gamma'
+      (List.hd (Bits []) lv) Gamma'
   | interp_action_let:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
@@ -621,7 +621,7 @@ Section Interp.
       (sched_log: Log REnv) (action_log: Log REnv) cond athen v2 action_log'
       Gamma' action_log'' Gamma'',
     interp_action
-      r sigma Gamma sched_log action_log cond action_log' (Bits 1 [true]) Gamma'
+      r sigma Gamma sched_log action_log cond action_log' (Bits [true]) Gamma'
     -> interp_action
       r sigma Gamma' sched_log action_log' athen action_log'' v2 Gamma''
     -> interp_action
@@ -788,7 +788,7 @@ Section Interp.
     interp_action r sigma Gamma sched_log action_log (UAssign k a) action_log'
       v Gamma'
     -> exists v_init Gamma_init,
-    v = Bits 0 [] /\ Gamma' = list_assoc_set Gamma_init k v_init
+    v = Bits [] /\ Gamma' = list_assoc_set Gamma_init k v_init
     /\ interp_action r sigma Gamma sched_log action_log a action_log' v_init
       Gamma_init.
   Proof.
@@ -855,7 +855,7 @@ Section Interp.
     -> exists v2 b Gamma1 Gamma2 action_log1 action_log2,
     v = v2 /\ action_log' = action_log2 /\ Gamma' = Gamma2
     /\ interp_action r sigma Gamma sched_log action_log cond action_log1
-      (Bits 1 [b]) Gamma1
+      (Bits [b]) Gamma1
     /\ interp_action r sigma Gamma1 sched_log action_log1
       (if b then athen else aelse) action_log2 v2 Gamma2.
   Proof.
@@ -877,7 +877,7 @@ Section Interp.
     interp_action r sigma Gamma sched_log action_log (URead prt idx) action_log'
       v Gamma'
     -> may_read sched_log prt idx = true /\ Gamma' = Gamma
-    /\ action_log' = log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log
+    /\ action_log' = log_cons idx (LE Logs.LogRead prt (Bits [])) action_log
     /\ v = (match prt with
       | P0 => REnv.(getenv) r idx
       | P1 =>
@@ -909,7 +909,7 @@ Section Interp.
     interp_action r sigma Gamma sched_log action_log (UWrite prt idx a)
       action_log' v_after Gamma'
     -> exists v_init action_log_init,
-    v_after = Bits 0 []
+    v_after = Bits []
     /\ action_log' = log_cons idx (LE Logs.LogWrite prt v_init) action_log_init
     /\ may_write sched_log action_log_init prt idx = true
     /\ interp_action r sigma Gamma sched_log action_log a action_log_init
@@ -1030,7 +1030,7 @@ Section Interp.
       (sched_log action_log action_log': Log REnv) v,
     interp_action r sigma Gamma sched_log action_log (USugar USkip) action_log'
       v Gamma'
-    -> Gamma = Gamma' /\ action_log = action_log' /\ v = Bits 0 [].
+    -> Gamma = Gamma' /\ action_log = action_log' /\ v = Bits [].
   Proof.
     intros.
     dependent destruction H.
@@ -1047,7 +1047,7 @@ Section Interp.
     interp_action r sigma Gamma sched_log action_log (USugar (UConstBits b))
       action_log' v Gamma'
     -> let l := vect_to_list b in
-    Gamma = Gamma' /\ action_log = action_log' /\ v = Bits (List.length l) l.
+    Gamma = Gamma' /\ action_log = action_log' /\ v = Bits l.
   Proof.
     intros.
     dependent destruction H.
@@ -1067,7 +1067,7 @@ Section Interp.
     /\ v = (Array
         {| array_type := bits_t 8; array_len := String.length s |}
         (List.map
-          (fun x => Bits 8 (vect_to_list x))
+          (fun x => Bits (vect_to_list x))
           (vect_to_list (SyntaxMacros.array_of_bytes s))
         )
       ).
@@ -1108,7 +1108,7 @@ Section Interp.
     interp_action r sigma Gamma sched_log action_log (USugar (UProgn aa))
       action_log' v Gamma'
     -> exists lv,
-    v = List.hd (Bits 0 []) lv
+    v = List.hd (Bits []) lv
     /\ interp_list r sigma (interp_action r sigma) Gamma sched_log action_log aa
       action_log' lv Gamma'.
   Proof.
@@ -1152,7 +1152,7 @@ Section Interp.
       action_log' v Gamma'
     -> exists action_log1 Gamma1,
     interp_action r sigma Gamma sched_log action_log cond action_log1
-      (Bits 1 [true]) Gamma1
+      (Bits [true]) Gamma1
     /\ interp_action r sigma Gamma1 sched_log action_log1 athen action_log' v
       Gamma'.
   Proof.

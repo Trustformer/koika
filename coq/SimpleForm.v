@@ -40,9 +40,9 @@ Section SimpleForm.
   | SBinop (ufn2: PrimUntyped.ufn2) (arg1: sact) (arg2: sact)
   | SExternalCall (ufn: ext_fn_t) (arg: sact).
 
-  Definition const_nil := SConst (Bits 0 []).
-  Definition const_true := SConst (Bits 1 [true]).
-  Definition const_false := SConst (Bits 1 [false]).
+  Definition const_nil := SConst (Bits []).
+  Definition const_true := SConst (Bits [true]).
+  Definition const_false := SConst (Bits [false]).
 
   Definition uor (x y: sact) := SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x y.
   Definition uand (x y: sact) := SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) x y.
@@ -92,7 +92,7 @@ Section SimpleForm.
     interp_sact vvs (SVar var) v
   | interp_sact_const v: interp_sact vvs (SConst v) v
   | interp_sact_if c t f b v:
-    interp_sact vvs c (Bits 1 [b]) ->
+    interp_sact vvs c (Bits [b]) ->
     interp_sact vvs (if b then t else f) v ->
     interp_sact vvs (SIf c t f) v
   | interp_sact_unop ufn a v v':
@@ -1053,7 +1053,7 @@ Section SimpleForm.
       forall n a,
         vvs_range vvs n ->
         wt_sact vvs a (bits_t 1) ->
-      exists b, interp_sact vvs a (Bits 1 [b]).
+      exists b, interp_sact vvs a (Bits [b]).
   Proof.
     intros.
     edestruct wt_sact_interp as (v & Iv & WTv); eauto.
@@ -1099,7 +1099,7 @@ Section SimpleForm.
         wt_sact vvs a (bits_t 1) ->
         forall v,
         interp_sact vvs a v ->
-        exists b, v = Bits 1 [b].
+        exists b, v = Bits [b].
   Proof.
     intros.
     eapply interp_sact_wt in H3; eauto. eapply wt_val_bool; eauto.
@@ -1222,7 +1222,7 @@ Section SimpleForm.
       /\ NoDup (map fst vvs')
       /\ Forall2 (fun '(xt,xf) x =>
                     forall b,
-                      interp_sact vvs' (SVar cond_name) (Bits 1 [b]) ->
+                      interp_sact vvs' (SVar cond_name) (Bits [b]) ->
                       (forall v,
                           interp_sact vvs' (SVar (snd (if b then xt else xf))) v
                           <-> interp_sact vvs' (SVar (snd x)) v)
@@ -1341,19 +1341,19 @@ Section SimpleForm.
       mlv_read0:
       forall idx,
         log_existsb log idx is_read0 = false <->
-        interp_sact vvs (rir_has_read0 rir idx) (Bits 1 [false]);
+        interp_sact vvs (rir_has_read0 rir idx) (Bits [false]);
       mlv_read1:
       forall idx,
         log_existsb log idx is_read1 = false <->
-        interp_sact vvs (rir_has_read1 rir idx) (Bits 1 [false]);
+        interp_sact vvs (rir_has_read1 rir idx) (Bits [false]);
       mlv_write0:
       forall idx,
         log_existsb log idx is_write0 = false <->
-        interp_sact vvs (rir_has_write0 rir idx) (Bits 1 [false]);
+        interp_sact vvs (rir_has_write0 rir idx) (Bits [false]);
       mlv_write1:
       forall idx,
         log_existsb log idx is_write1 = false <->
-        interp_sact vvs (rir_has_write1 rir idx) (Bits 1 [false]);
+        interp_sact vvs (rir_has_write1 rir idx) (Bits [false]);
     }.
 
   Definition wt_cond_log vvs (cl: cond_log) :=
@@ -1554,7 +1554,7 @@ Section SimpleForm.
                 (WFSR: wf_rir sched_rir vvs)
                 (R2VOK: 
                   forall b n,
-                    interp_sact vvs (SVar cond_name) (Bits 1 [b]) ->
+                    interp_sact vvs (SVar cond_name) (Bits [b]) ->
                     list_assoc (if b then r2v_tb else r2v_fb) (reg,prt) = Some n ->
                     interp_sact vvs (SVar n) (match prt with
                                                 inl prt => do_read sched_log action_log reg prt
@@ -1698,7 +1698,7 @@ Section SimpleForm.
                 (WFSR: wf_rir sched_rir vvs)
            (MLR2:
              forall (b : bool),
-               interp_sact vvs (SVar cond_name) (Bits 1 [b]) ->
+               interp_sact vvs (SVar cond_name) (Bits [b]) ->
                match_logs_r2v (if b then r2v_tb else r2v_fb) vvs sched_rir rir sched_log action_log
            ),
         match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log.
@@ -1722,7 +1722,7 @@ Section SimpleForm.
         eapply wf_rir_grows; eauto.
         eapply wf_rir_grows; eauto.
         intros.
-        assert (interp_sact vvs (SVar cond_name) (Bits 1 [b])).
+        assert (interp_sact vvs (SVar cond_name) (Bits [b])).
         {
           eapply interp_sact_vvs_grows_inv; eauto.
         }
@@ -1756,7 +1756,7 @@ Section SimpleForm.
                 (WFSR: wf_rir sched_rir vvs)
                 (MLR2:
                   forall (b : bool),
-                    interp_sact vvs (SVar cond_name) (Bits 1 [b]) ->
+                    interp_sact vvs (SVar cond_name) (Bits [b]) ->
                     match_logs_r2v (if b then r2v_tb else r2v_fb) vvs sched_rir rir sched_log action_log
                 ),
         match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log.
@@ -1897,15 +1897,15 @@ Section SimpleForm.
   Qed.
 
   Definition bool_sact_grows vvs1 c1 vvs2 c2 : Prop :=
-    interp_sact vvs1 c1 (Bits 1 [true]) ->
-    interp_sact vvs2 c2 (Bits 1 [true]).
+    interp_sact vvs1 c1 (Bits [true]) ->
+    interp_sact vvs2 c2 (Bits [true]).
 
   Definition cond_log_grows vvs1 (cl1: cond_log) vvs2 cl2 grd :=
     forall idx,
       let c := match list_assoc cl1 idx with Some c => c | None => const_false end in
       let c' := match list_assoc cl2 idx with Some c => c | None => const_false end in
       bool_sact_grows vvs1 c vvs2 c'
-      /\ (interp_sact vvs2 grd (Bits 1 [false]) ->
+      /\ (interp_sact vvs2 grd (Bits [false]) ->
           forall b, interp_sact vvs1 c b <-> interp_sact vvs2 c' b
          ).
 
@@ -2211,7 +2211,7 @@ Section SimpleForm.
   Lemma rir_grows_weaken_guard:
     forall vvs1 rir1 vvs2 rir2 grd1 grd2,
       rir_grows vvs1 rir1 vvs2 rir2 grd1 ->
-      (interp_sact vvs2 grd2 (Bits 1 [false]) -> interp_sact vvs2 grd1 (Bits 1 [false])) ->
+      (interp_sact vvs2 grd2 (Bits [false]) -> interp_sact vvs2 grd1 (Bits [false])) ->
       wt_sact vvs2 grd2 (bits_t 1) ->
       rir_grows vvs1 rir1 vvs2 rir2 grd2.
   Proof.
@@ -2316,7 +2316,7 @@ Section SimpleForm.
         wf_state tsig vm' r2v' vvs' rir nid' /\
         Forall2 (fun '(xt,xf) x =>
                    forall b,
-                     interp_sact vvs' (SVar cond_name) (Bits 1 [b]) ->
+                     interp_sact vvs' (SVar cond_name) (Bits [b]) ->
                      (forall v,
                          interp_sact vvs' (SVar (snd (if b then xt else xf))) v
                          <-> interp_sact vvs' (SVar (snd x)) v)
@@ -2342,7 +2342,7 @@ Section SimpleForm.
         wf_state tsig env r2v' vvs' rir nid' /\
         (forall sched_log action_log
                 (MLR: forall b : bool,
-                    interp_sact vvs (SVar cond_name) (Bits 1 [b]) ->
+                    interp_sact vvs (SVar cond_name) (Bits [b]) ->
                     match_logs_r2v (if b then r2vt else r2vf) vvs sched_rir rir sched_log action_log),
             match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log).
   Proof.
@@ -2480,10 +2480,10 @@ Section SimpleForm.
       Forall2 (fun x y => fst x = fst y) env1 env2 ->
       Forall2 (fun x y => fst x = fst y) env1 env' ->
       match_Gamma_env Gamma (if b then env1 else env2) vvs ->
-      interp_sact vvs (SVar cond_name) (Bits 1 [b]) ->
+      interp_sact vvs (SVar cond_name) (Bits [b]) ->
       Forall2 (fun '(xt,xf) x =>
                  forall b,
-                   interp_sact vvs (SVar cond_name) (Bits 1 [b]) ->
+                   interp_sact vvs (SVar cond_name) (Bits [b]) ->
                    (forall v,
                        interp_sact vvs (SVar (snd (if b then xt else xf))) v
                        <-> interp_sact vvs (SVar (snd x)) v)
@@ -2537,7 +2537,7 @@ Section SimpleForm.
       vvs_range vvs' n' ->
       vvs_smaller_variables vvs' ->
       wt_vvs vvs' ->
-      interp_sact vvs' grd (Bits 1 [false]) ->
+      interp_sact vvs' grd (Bits [false]) ->
       match_logs_r2v r2v vvs' sr rir' sl al.
   Proof.
     intros. inv H. inv H0.
@@ -2601,10 +2601,10 @@ Section SimpleForm.
 
   Lemma interp_sact_fold_or_conds_false:
     forall vvs l,
-      Forall (fun a => interp_sact vvs a (Bits 1 [false])) l ->
+      Forall (fun a => interp_sact vvs a (Bits [false])) l ->
       forall c0,
-        interp_sact vvs c0 (Bits 1 [false]) ->
-        interp_sact vvs (fold_left uor l c0) (Bits 1 [false]).
+        interp_sact vvs c0 (Bits [false]) ->
+        interp_sact vvs (fold_left uor l c0) (Bits [false]).
   Proof.
     induction 1; simpl; intros; eauto.
     apply IHForall. econstructor; eauto.
@@ -2612,8 +2612,8 @@ Section SimpleForm.
 
   Lemma interp_sact_or_conds_false:
     forall vvs l,
-      Forall (fun a => interp_sact vvs a (Bits 1 [false])) l ->
-      interp_sact vvs (or_conds l) (Bits 1 [false]).
+      Forall (fun a => interp_sact vvs a (Bits [false])) l ->
+      interp_sact vvs (or_conds l) (Bits [false]).
   Proof.
     intros; eapply interp_sact_fold_or_conds_false; eauto. constructor.
   Qed.
@@ -2650,9 +2650,9 @@ Section SimpleForm.
     forall r2v vvs sched_rir rir (sched_log action_log: Log REnv)
            (MLR : match_logs_r2v r2v vvs sched_rir rir sched_log action_log)
            idx guard
-           (GOK: interp_sact vvs guard (Bits 1 [true])),
+           (GOK: interp_sact vvs guard (Bits [true])),
       match_logs_r2v r2v vvs sched_rir (add_read0 rir guard idx) sched_log
-                     (log_cons idx (LE (V:=val) Logs.LogRead P0 (Bits 0 [])) action_log).
+                     (log_cons idx (LE (V:=val) Logs.LogRead P0 (Bits [])) action_log).
   Proof.
     intros.
     inv MLR. unfold add_read0.
@@ -2671,7 +2671,7 @@ Section SimpleForm.
         intros IS. destr_in IS. inv IS. simpl in H5.
         exploit interp_sact_determ. apply GOK. apply H4. intros <-.
         repeat destr_in H5; inv H5.
-        destruct v; simpl in H1. congruence. inv H1. rewrite orb_true_r in H3. congruence.
+        destruct v; simpl in H0. congruence. inv H0. rewrite orb_true_r in H1. congruence.
         exploit interp_sact_determ. apply GOK. apply IS. congruence. simpl.
         rewrite mlv_read2. unfold rir_has_read0.
         rewrite list_assoc_gso. tauto. auto.
@@ -2699,9 +2699,9 @@ Section SimpleForm.
     forall r2v vvs sched_rir rir (sched_log action_log: Log REnv)
            (MLR : match_logs_r2v r2v vvs sched_rir rir sched_log action_log)
            idx guard
-           (GOK: interp_sact vvs guard (Bits 1 [true])),
+           (GOK: interp_sact vvs guard (Bits [true])),
       match_logs_r2v r2v vvs sched_rir (add_read1 rir guard idx) sched_log
-                     (log_cons idx (LE (V:=val) Logs.LogRead P1 (Bits 0 [])) action_log).
+                     (log_cons idx (LE (V:=val) Logs.LogRead P1 (Bits [])) action_log).
   Proof.
     intros.
     inv MLR. unfold add_read0.
@@ -2726,7 +2726,7 @@ Section SimpleForm.
         intros IS. destr_in IS. inv IS. simpl in H5.
         exploit interp_sact_determ. apply GOK. apply H4. intros <-.
         repeat destr_in H5; inv H5.
-        destruct v; simpl in H1. congruence. inv H1. rewrite orb_true_r in H3. congruence.
+        destruct v; simpl in H0. congruence. inv H0. rewrite orb_true_r in H1. congruence.
         exploit interp_sact_determ. apply GOK. apply IS. congruence. simpl.
         rewrite mlv_read3. unfold rir_has_read0.
         rewrite list_assoc_gso. tauto. auto.
@@ -2769,7 +2769,7 @@ Section SimpleForm.
       vvs_range vvs n ->
       wt_sact vvs a (bits_t 1) ->
       wt_sact vvs b (bits_t 1) ->
-      interp_sact vvs b (Bits 1 [false]) ->
+      interp_sact vvs b (Bits [false]) ->
       interp_sact vvs (uor a b) v <-> interp_sact vvs a v.
   Proof.
     intros.
@@ -3011,8 +3011,8 @@ Section SimpleForm.
       wf_state tsig env r2v vvs rir g' ->
       match_logs_r2v r2v vvs sched_rir rir sched_log action_log ->
       add_write0 sched_rir rir grd idx v = (rir', fail_cond) ->
-      interp_sact vvs grd (Bits 1 [true]) ->
-      interp_sact vvs fail_cond (Bits 1 [false]).
+      interp_sact vvs grd (Bits [true]) ->
+      interp_sact vvs fail_cond (Bits [false]).
   Proof.
     intros sched_log action_log idx vvs sched_rir rir rir' fail_cond grd v tsig env r2v g' MW WR MLR AW GRD.
     unfold add_write0 in AW.
@@ -3039,8 +3039,8 @@ Section SimpleForm.
       wf_state tsig env r2v vvs rir g' ->
       match_logs_r2v r2v vvs sched_rir rir sched_log action_log ->
       add_write1 sched_rir rir grd idx v = (rir', fail_cond) ->
-      interp_sact vvs grd (Bits 1 [true]) ->
-      interp_sact vvs fail_cond (Bits 1 [false]).
+      interp_sact vvs grd (Bits [true]) ->
+      interp_sact vvs fail_cond (Bits [false]).
   Proof.
     intros sched_log action_log idx vvs sched_rir rir rir' fail_cond grd v tsig env r2v g' MW WR MLR AW GRD.
     unfold add_write1 in AW.
@@ -3088,7 +3088,7 @@ Section SimpleForm.
       wt_sact vvs v (R idx) ->
       interp_sact vvs v v' ->
       wt_sact vvs guard (bits_t 1) ->
-      interp_sact vvs guard (Bits 1 [true]) ->
+      interp_sact vvs guard (Bits [true]) ->
       wf_rir sched_rir vvs ->
       match_logs_r2v
         (list_assoc_set (list_assoc_set r2v (idx, inl P1) n) (idx, inr tt) n)
@@ -3155,7 +3155,7 @@ Section SimpleForm.
         inv INTs.
         exploit interp_sact_determ. apply GOK. clear GOK. eauto. intros <-. simpl in H5.
         repeat destr_in H5; inv H5.
-        destruct v0; simpl in H1.  congruence. inv H1. rewrite orb_true_r in H3. congruence.
+        destruct v0; simpl in H0.  congruence. inv H0. rewrite orb_true_r in H1. congruence.
         exploit interp_sact_determ. apply GOK. clear GOK. eauto. congruence.
         rewrite list_assoc_gso by auto. tauto.
       + rewrite log_existsb_log_cons. simpl.
@@ -3178,7 +3178,7 @@ Section SimpleForm.
       wt_sact vvs v (R idx) ->
       interp_sact vvs v v' ->
       wt_sact vvs guard (bits_t 1) ->
-      interp_sact vvs guard (Bits 1 [true]) ->
+      interp_sact vvs guard (Bits [true]) ->
       wf_rir sched_rir vvs ->
       match_logs_r2v
         (list_assoc_set r2v (idx, inr tt) n)
@@ -3230,7 +3230,7 @@ Section SimpleForm.
         inv INTs.
         exploit interp_sact_determ. apply GOK. clear GOK. eauto. intros <-. simpl in H5.
         repeat destr_in H5; inv H5.
-        destruct v0; simpl in H1.  congruence. inv H1. rewrite orb_true_r in H3. congruence.
+        destruct v0; simpl in H0.  congruence. inv H0. rewrite orb_true_r in H1. congruence.
         exploit interp_sact_determ. apply GOK. clear GOK. eauto. congruence.
         rewrite list_assoc_gso by auto. tauto.
       + eapply wf_rir_add_write1.
@@ -3267,18 +3267,18 @@ Section SimpleForm.
                                 (WTLS: wt_log R REnv sched_log)
                                 (GE: match_Gamma_env Gamma env vvs0)
                                 (MLR: match_logs_r2v r2v vvs0 sched_rir rir sched_log action_log)
-                                (GUARDOK: interp_sact vvs0 guard (Bits 1 [true])),
+                                (GUARDOK: interp_sact vvs0 guard (Bits [true])),
                                 (forall  action_log' vret Gamma'
                                          (INTERP: interp_daction r sigma Gamma sched_log action_log u = Some (action_log', vret, Gamma')),
                                     interp_sact vvs (reduce t v) vret
-                                    /\ interp_sact vvs fail_cond (Bits 1 [false])
+                                    /\ interp_sact vvs fail_cond (Bits [false])
                                     /\ match_Gamma_env Gamma' env' vvs
                                     /\ match_logs_r2v r2v' vvs sched_rir rir' sched_log action_log'
                                     /\ wt_log R REnv action_log'
                                     /\ wt_env _ tsig Gamma') /\
                                   (forall
                                       (INTERP: interp_daction r sigma Gamma sched_log action_log u = None),
-                                      interp_sact vvs fail_cond (Bits 1 [true])
+                                      interp_sact vvs fail_cond (Bits [true])
                                   )
                  ) args)
       lt
@@ -3306,7 +3306,7 @@ Section SimpleForm.
       /\ List.length names = List.length names0 + List.length args
       /\ wt_sact vvs fail1 (bits_t 1)
       /\ nid <= nid'
-      /\ (interp_sact vvs0 fail0 (Bits 1 [true]) -> interp_sact vvs fail1 (Bits 1 [true]))
+      /\ (interp_sact vvs0 fail0 (Bits [true]) -> interp_sact vvs fail1 (Bits [true]))
       /\ forall Gamma sched_log action_log
                 (WTRENV: wt_renv R REnv r)
                 (WTG: wt_env _ tsig Gamma)
@@ -3316,8 +3316,8 @@ Section SimpleForm.
                 (MLR: match_logs_r2v r2v vvs0 sched_rir rir sched_log action_log)
                 lv0
                 (INIT: Forall2 (fun '(n,t) v => interp_sact vvs0 (SVar n) v) names0 lv0)
-                (INITFAIL: interp_sact vvs0 fail0 (Bits 1 [false]))
-                (GUARDOK: interp_sact vvs0 guard (Bits 1 [true])),
+                (INITFAIL: interp_sact vvs0 fail0 (Bits [false]))
+                (GUARDOK: interp_sact vvs0 guard (Bits [true])),
         (forall action_log' Gamma' lv
                 (INTERP: fold_left
                            (fun acc a0 =>
@@ -3327,7 +3327,7 @@ Section SimpleForm.
                                   in Some (action_log1, v :: l, Gamma1))) args
                            (Some (action_log, lv0, Gamma)) = Some (action_log', lv, Gamma')),
             Forall2 (fun '(n,t) v => interp_sact vvs (SVar n) v) names lv
-            /\ interp_sact vvs fail1 (Bits 1 [false])
+            /\ interp_sact vvs fail1 (Bits [false])
             /\ match_Gamma_env Gamma' env' vvs
             /\ match_logs_r2v r2v' vvs sched_rir rir' sched_log action_log'
             /\ wt_log R REnv action_log'
@@ -3339,7 +3339,7 @@ Section SimpleForm.
                                        := interp_daction r sigma Gamma0 sched_log action_log0 a0
                                      in Some (action_log1, v :: l, Gamma1))) args
                               (Some (action_log, lv0, Gamma)) = None),
-               interp_sact vvs fail1 (Bits 1 [true])).
+               interp_sact vvs fail1 (Bits [true])).
   Proof.
     induction 1; simpl; intros; eauto.
     - inv GRIA. repeat refine (conj _ _); eauto.
@@ -3510,18 +3510,18 @@ Section SimpleForm.
                 (WTLS: wt_log R REnv sched_log)
                 (GE: match_Gamma_env Gamma env vvs0)
                 (MLR: match_logs_r2v reg2var vvs0 sched_rir rir sched_log action_log)
-                (GUARDOK: interp_sact vvs0 guard (Bits 1 [true])),
+                (GUARDOK: interp_sact vvs0 guard (Bits [true])),
       (forall  action_log' vret Gamma'
         (INTERP: interp_daction r sigma Gamma sched_log action_log ua = Some (action_log', vret, Gamma')),
         interp_sact vvs (reduce t v) vret
-        /\ interp_sact vvs fail_cond (Bits 1 [false])
+        /\ interp_sact vvs fail_cond (Bits [false])
         /\ match_Gamma_env Gamma' env' vvs
         /\ match_logs_r2v reg2var' vvs sched_rir rir' sched_log action_log'
         /\ wt_log R REnv action_log'
         /\ wt_env _ tsig Gamma') /\
         (forall
             (INTERP: interp_daction r sigma Gamma sched_log action_log ua = None),
-            interp_sact vvs fail_cond (Bits 1 [true])).
+            interp_sact vvs fail_cond (Bits [true])).
   Proof.
     Opaque skipn.
     intros ua; pattern ua; eapply daction_ind'; simpl; intros; eauto.
@@ -3920,14 +3920,14 @@ Section SimpleForm.
 
 
 
-        assert (interp_sact ll3 guard (Bits 1 [false])).
+        assert (interp_sact ll3 guard (Bits [false])).
         {
           eapply interp_sact_vvs_grows_inv. 6: eauto. all: inv WFSl3; eauto.
           eapply vvs_grows_trans; eauto using rir_vvs_grows.
           eapply wt_sact_vvs_grows. 2: eauto.
           eapply vvs_grows_trans; eauto using rir_vvs_grows.
         }
-        assert (exists b, interp_sact ll3 (SVar n) (Bits 1 [b])).
+        assert (exists b, interp_sact ll3 (SVar n) (Bits [b])).
         {
           edestruct wt_sact_interp as (vv & IS & WTv).
           4: apply WTRES. 1-3: inv WFS0; eauto.
@@ -3939,14 +3939,14 @@ Section SimpleForm.
           eapply vvs_grows_interp_sact. 2: eauto.
           eauto using rir_vvs_grows.
         } destruct H7.
-        assert (interp_sact ll3 (SVar (n + 1)) (Bits 1 [false])).
+        assert (interp_sact ll3 (SVar (n + 1)) (Bits [false])).
         {
           econstructor.
           unfold ll3; rewrite list_assoc_gso by lia.
           unfold ll2; rewrite list_assoc_gss. eauto.
           econstructor; eauto.
         }
-        assert (interp_sact ll3 (SVar (n + 2)) (Bits 1 [false])).
+        assert (interp_sact ll3 (SVar (n + 2)) (Bits [false])).
         {
           econstructor.
           unfold ll3; rewrite list_assoc_gss. eauto.
@@ -4110,11 +4110,11 @@ Section SimpleForm.
              eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
           -- econstructor.
              eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
-             instantiate (1:=Bits 1 [false]).
+             instantiate (1:=Bits [false]).
              econstructor. econstructor.
              eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
              eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows. simpl. reflexivity.
-             instantiate (1:=Bits 1 [false]).
+             instantiate (1:=Bits [false]).
              edestruct wt_sact_interp with (a:=s1) as (? & IV & WTv). 4: eauto.
              1-3: inv WFS2; eauto.
              econstructor. econstructor.
@@ -4203,7 +4203,7 @@ Section SimpleForm.
                 destruct (wt_val_bool _ WTv); subst.
                 econstructor.
                 eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
-                (* instantiate (1:=Bits 1 [false]). *)
+                (* instantiate (1:=Bits [false]). *)
                 econstructor. econstructor.
                 eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
                 eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows. simpl. reflexivity.
@@ -4255,7 +4255,7 @@ Section SimpleForm.
                 all: apply WFS2.
         * econstructor.
           eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
-          instantiate (1:=Bits 1 [true]).
+          instantiate (1:=Bits [true]).
           destr_in INTERP.
           -- destruct INTERPHYP0 as (_ & FAIL0). auto.
              edestruct wt_sact_interp_bool with (a:=s1). 4: eauto.
@@ -4474,7 +4474,7 @@ Section SimpleForm.
               eauto using rir_vvs_grows.
               econstructor.  eapply vvs_grows_interp_sact. 2: eauto.
               eauto using vvs_grows_trans, rir_vvs_grows.
-              instantiate(1:=Bits 1 [true]).
+              instantiate(1:=Bits [true]).
               exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write0. 4: apply WFRS. 1-3: apply WFS.
               exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFRS. 1-3: apply WFS.
               exploit wt_sact_interp_bool. 4: eapply wt_rir_has_read1. 4: apply WFRS. 1-3: apply WFS.
@@ -4509,7 +4509,7 @@ Section SimpleForm.
               econstructor.  eapply vvs_grows_interp_sact. 2: eauto.
               eauto using vvs_grows_trans, rir_vvs_grows.
               eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS0. lia.
-              instantiate(1:=Bits 1 [true]).
+              instantiate(1:=Bits [true]).
               exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFRS. 1-3: apply WFS.
               exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFS0. 1-3: apply WFS0.
               intros (?&?) (?&?).
@@ -4839,12 +4839,12 @@ Section SimpleForm.
         /\ nid <= nid'
         /\ (forall action_log' vret Gamma'
                   (INTERP: interp_daction r sigma [] sched_log log_empty ua = Some (action_log', vret, Gamma')),
-          interp_sact (rir_vars rir') (rir_failure_cond rir') (Bits 1 [false])
+          interp_sact (rir_vars rir') (rir_failure_cond rir') (Bits [false])
           /\ wt_env _ [] Gamma'
           /\ match_logs_r2v r2v' (rir_vars rir') sched_rir rir' sched_log action_log')
         /\ (forall
                   (INTERP: interp_daction r sigma [] sched_log log_empty ua = None),
-          interp_sact (rir_vars rir') (rir_failure_cond rir') (Bits 1 [true])).
+          interp_sact (rir_vars rir') (rir_failure_cond rir') (Bits [true])).
   Proof.
     intros.
     unfold get_rule_information in GRI.
@@ -5213,7 +5213,7 @@ Section SimpleForm.
                  list_assoc r2v1 x = Some y1
                  /\ list_assoc r2v2 x = Some y2
                  /\ forall b v,
-                   interp_sact vvs3 (SVar n) (Bits 1 [b]) ->
+                   interp_sact vvs3 (SVar n) (Bits [b]) ->
                    interp_sact vvs3 (SVar (if b then y1 else y2)) v <->
                      interp_sact vvs3 (SVar y) v),
     forall x y,
@@ -5222,7 +5222,7 @@ Section SimpleForm.
         list_assoc r2v1 x = Some y1
         /\ list_assoc r2v2 x = Some y2
         /\ forall b v,
-          interp_sact vvs3 (SVar n) (Bits 1 [b]) ->
+          interp_sact vvs3 (SVar n) (Bits [b]) ->
           interp_sact vvs3 (SVar (if b then y1 else y2)) v <->
             interp_sact vvs3 (SVar y) v.
   Proof.
@@ -5321,7 +5321,7 @@ Section SimpleForm.
             list_assoc r2v1 x = Some y1
             /\ list_assoc r2v2 x = Some y2
             /\ forall b v,
-              interp_sact vvs3 (SVar n) (Bits 1 [b]) ->
+              interp_sact vvs3 (SVar n) (Bits [b]) ->
               interp_sact vvs3 (SVar (if b then y1 else y2)) v <->
                 interp_sact vvs3 (SVar y) v.
   Proof.
@@ -5470,19 +5470,19 @@ Section SimpleForm.
 
   Lemma interp_uor_false2:
     forall vvs a b,
-      interp_sact vvs a (Bits 1 [false]) ->
-      interp_sact vvs b (Bits 1 [false]) ->
-      interp_sact vvs (uor a b) (Bits 1 [false]).
+      interp_sact vvs a (Bits [false]) ->
+      interp_sact vvs b (Bits [false]) ->
+      interp_sact vvs (uor a b) (Bits [false]).
   Proof.
     intros; econstructor; eauto.
   Qed.
 
   Lemma interp_uand_false:
     forall vvs a b ba bb,
-      interp_sact vvs a (Bits 1 [ba]) ->
-      interp_sact vvs b (Bits 1 [bb]) ->
+      interp_sact vvs a (Bits [ba]) ->
+      interp_sact vvs b (Bits [bb]) ->
       ba = false \/ bb = false ->
-      interp_sact vvs (uand a b) (Bits 1 [false]).
+      interp_sact vvs (uand a b) (Bits [false]).
   Proof.
     intros; econstructor; eauto.
     destruct ba, bb; simpl; auto. intuition congruence.
@@ -5504,7 +5504,7 @@ Section SimpleForm.
           (fmerge: forall rir1 rir2 n vvs, f (merge_rirs rir1 rir2 n vvs) =
                                              merge_cond_logs (f rir1) (f rir2) (SVar n))
    ,
-     interp_sact vvs (SVar n) (Bits 1 [b]) ->
+     interp_sact vvs (SVar n) (Bits [b]) ->
      wt_cond_log vvs (f rir1) ->
      wt_cond_log vvs (f rir2) ->
      interp_sact vvs (has (merge_rirs rir1 rir2 n vvs) reg) v <->
@@ -5554,12 +5554,12 @@ Section SimpleForm.
            (fmerge: forall rir1 rir2 n vvs, f (merge_rirs rir1 rir2 n vvs) =
                                               merge_cond_logs (f rir1) (f rir2) (SVar n))
     ,
-      interp_sact vvs (SVar n) (Bits 1 [b]) ->
+      interp_sact vvs (SVar n) (Bits [b]) ->
       wt_cond_log vvs (f rir1) ->
       wt_cond_log vvs (f rir2) ->
-      interp_sact vvs (has (merge_rirs rir1 rir2 n vvs) reg) (Bits 1 [false]) <->
-        (interp_sact vvs (has rir1 reg) (Bits 1 [false]) /\
-           (b = true \/ interp_sact vvs (has rir2 reg) (Bits 1 [false]))).
+      interp_sact vvs (has (merge_rirs rir1 rir2 n vvs) reg) (Bits [false]) <->
+        (interp_sact vvs (has rir1 reg) (Bits [false]) /\
+           (b = true \/ interp_sact vvs (has rir2 reg) (Bits [false]))).
   Proof.
     intros.
     erewrite has_merge_rir; eauto.
@@ -5615,7 +5615,7 @@ Section SimpleForm.
                                  log_empty)
            (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
            (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
-           b (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [b]))
+           b (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits [b]))
            (MLR1 : b = false -> match_logs_r2v l (rir_vars r1) sched_rir r1 sched_log l2),
       match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
                      (log_app (if b then log_empty else l2) sched_log) log_empty.
@@ -5708,7 +5708,7 @@ Section SimpleForm.
       eapply vvs_grows_trans. 2: eauto.
       eapply vvs_grows_set. apply WFS1. lia.
     }
-    assert (INTn: interp_sact l1 (SVar n) (Bits 1 [b])).
+    assert (INTn: interp_sact l1 (SVar n) (Bits [b])).
     {
       eapply vvs_grows_interp_sact. apply VG.
       econstructor. rewrite list_assoc_gss. eauto.
@@ -5779,7 +5779,7 @@ Section SimpleForm.
                                  log_empty)
            (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
            (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
-           (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [false]))
+           (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits [false]))
            (MLR1 : match_logs_r2v l (rir_vars r1) sched_rir r1 sched_log l2),
       match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
                      (log_app l2 sched_log) log_empty.
@@ -5817,7 +5817,7 @@ Section SimpleForm.
                                  log_empty)
            (WFS1 : wf_state [] [] l (rir_vars r1) r1 n)
            (RG1 : rir_grows (rir_vars sched_rir) init_rir (rir_vars r1) r1 const_true)
-           (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits 1 [true])),
+           (IF1 : interp_sact (rir_vars r1) (rir_failure_cond r1) (Bits [true])),
       match_logs_r2v l0 l1 (merge_rirs sched_rir r1 n l1) init_rir
                      sched_log log_empty.
   Proof.

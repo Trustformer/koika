@@ -71,8 +71,8 @@ Definition usigma1' (fn: PrimUntyped.ubits1) (bs: list bool)
 
 Definition usigma1 fn v : option val :=
   match v with
-  | Bits _ bs =>
-      let res := usigma1' fn bs in Some (Bits (List.length res) res)
+  | Bits bs =>
+      let res := usigma1' fn bs in Some (Bits res)
   | _ => None
   end.
 
@@ -80,20 +80,20 @@ Definition sigma1 (fn: PrimUntyped.ufn1) : val -> option val :=
   match fn with
   | PrimUntyped.UDisplay fn =>
     match fn with
-    | PrimUntyped.UDisplayUtf8 => fun _ => Some (Bits 0 [])
-    | PrimUntyped.UDisplayValue _ => fun _ => Some (Bits 0 [])
+    | PrimUntyped.UDisplayUtf8 => fun _ => Some (Bits [])
+    | PrimUntyped.UDisplayValue _ => fun _ => Some (Bits [])
     end
   | PrimUntyped.UConv fn =>
     match fn with
     | PrimUntyped.UPack => fun v =>
-      let bs := ubits_of_value v in Some (Bits (List.length bs) bs)
+      let bs := ubits_of_value v in Some (Bits bs)
     | PrimUntyped.UUnpack tau =>
       fun bs =>
         match bs with
-        | Bits _ bs => let/opt v := uvalue_of_bits (tau:=tau) bs in Some v
+        | Bits bs => let/opt v := uvalue_of_bits (tau:=tau) bs in Some v
         | _ => None
         end
-    | PrimUntyped.UIgnore => fun _ => Some (Bits 0 [])
+    | PrimUntyped.UIgnore => fun _ => Some (Bits [])
     end
   | PrimUntyped.UBits1 fn => usigma1 fn
   | PrimUntyped.UStruct1 (PrimUntyped.UGetField f) => fun v => get_field v f
@@ -129,8 +129,7 @@ Proof.
       intro arg. reflexivity.
   - destruct fn.
     + inv H. revert arg. rewrite <- H2. simpl.
-      intros. f_equal.
-      erewrite ubits_of_value_len; eauto. f_equal.
+      intros. f_equal. f_equal.
       erewrite ubits_of_value_ok; eauto.
     + inv H.
       generalize (wt_val_of_value _ arg). simpl. inversion 1; subst.
@@ -139,20 +138,16 @@ Proof.
       intros. f_equal.
   - subst. destr_in H. inv H. simpl in *. inv Heqr.
     revert arg. rewrite <- H0. simpl. destruct fn; simpl in *; intros.
-    + rewrite map_length. rewrite vect_to_list_length. f_equal.
+    + f_equal.
       f_equal. rewrite <- vect_to_list_map. f_equal.
     + f_equal. f_equal.
-      * rewrite app_length.
-        rewrite repeat_length. rewrite vect_to_list_length. lia.
-      * unfold Bits.extend_end. simpl.
-        rewrite vect_to_list_eq_rect.
-        rewrite vect_to_list_app. f_equal.
-        rewrite vect_to_list_length.
-        rewrite repeat_bits_const. f_equal. f_equal.
-        rewrite msb_spec; auto.
+      unfold Bits.extend_end. simpl.
+      rewrite vect_to_list_eq_rect.
+      rewrite vect_to_list_app. f_equal.
+      rewrite vect_to_list_length.
+      rewrite repeat_bits_const. f_equal. f_equal.
+      rewrite msb_spec; auto.
     + f_equal. f_equal.
-      * rewrite app_length.
-        rewrite repeat_length. rewrite vect_to_list_length. lia.
       * unfold Bits.extend_end. simpl.
         unfold eq_rect.
         refine (
@@ -164,8 +159,6 @@ Proof.
         rewrite vect_to_list_length.
         rewrite repeat_bits_const. f_equal.
     + f_equal. f_equal.
-      * rewrite app_length.
-        rewrite repeat_length. rewrite vect_to_list_length. lia.
       * unfold Bits.extend_beginning. simpl.
         unfold eq_rect.
         refine (
@@ -177,20 +170,11 @@ Proof.
         rewrite vect_to_list_length.
         rewrite repeat_bits_const. f_equal.
     + f_equal. f_equal.
-      * erewrite length_concat_same.
-        rewrite repeat_length. reflexivity.
-        rewrite Forall_forall; intros x IN.
-        apply repeat_spec in IN. subst. rewrite vect_to_list_length. lia.
       * induction times; simpl; auto.
         rewrite vect_to_list_app. f_equal. eauto.
     + destruct (take_drop' offset (vect_to_list arg)) as (l1 & l2) eqn:Heq1.
       destruct (take_drop' width l2) as (l3 & l4) eqn:Heq2. simpl.
       f_equal. f_equal.
-      apply take_drop'_spec in Heq2.
-      apply take_drop'_spec in Heq1.
-      intuition subst.
-      rewrite app_length.
-      rewrite repeat_length. lia.
       unfold Bits.slice.
       rewrite vect_extend_end_firstn.
       unfold Bits.extend_end.
@@ -202,7 +186,7 @@ Proof.
       rewrite <- repeat_bits_const.
       f_equal. f_equal. f_equal.
       apply take_drop'_spec2 in Heq2. destruct Heq2 as (Heq21 & Heq22).
-      rewrite Heq22.
+      rewrite Heq22. f_equal.
       apply take_drop'_spec2 in Heq1. destruct Heq1 as (Heq11 & Heq12).
       cut (List.length l2 = s - List.length l1). intro A; rewrite A.
       rewrite Heq12.
@@ -220,7 +204,7 @@ Proof.
       revert s0 Heqo arg. destruct s. simpl. clear.
       induction struct_fields; intros; eauto. easy.
       destruct a. destruct arg.
-      Opaque eq_dec.
+
       simpl. simpl in Heqo.
       destr_in Heqo. inv Heqo. simpl in *. rewrite Heqs2. auto.
       destr.  subst. congruence.
@@ -234,9 +218,9 @@ Proof.
       2: rewrite EQ in Heqp.
       rewrite vect_to_list_length.
       apply field_offset_right_le. f_equal.
-      rewrite app_length. rewrite repeat_length.
-      cut (List.length l1 <= field_sz sig s). lia.
-      apply take_drop'_spec in Heqp0. intuition.
+      (* rewrite app_length. rewrite repeat_length. *)
+      (* cut (List.length l1 <= field_sz sig s). lia. *)
+      (* apply take_drop'_spec in Heqp0. intuition. *)
       unfold Bits.slice. rewrite vect_extend_end_firstn.
       unfold Bits.extend_end.
       rewrite vect_to_list_eq_rect.
@@ -278,9 +262,9 @@ Proof.
       cut (index_to_nat s < array_len sig). nia.
       apply index_to_nat_bounded.
       f_equal. f_equal.
-      rewrite app_length, repeat_length.
-      inv Heqp0.
-      apply take_drop_spec in EQ'. intuition.
+      (* rewrite app_length, repeat_length. *)
+      (* inv Heqp0. *)
+      (* apply take_drop_spec in EQ'. intuition. *)
       inv Heqp0.
       unfold Bits.slice. rewrite vect_extend_end_firstn.
       unfold Bits.extend_end.
@@ -401,7 +385,7 @@ Lemma ubits2_correct:
     (arg2: arg2Sig (PrimSignatures.Sigma2 (PrimTyped.Bits2 b))) ret,
   CircuitPrimSpecs.sigma2 b arg1 arg2 = ret ->
   match val_of_value arg1, val_of_value arg2 with
-  | Bits _ arg1, Bits _ arg2 => (ubits2_sigma ub arg1 arg2) = (vect_to_list ret)
+  | Bits arg1, Bits arg2 => (ubits2_sigma ub arg1 arg2) = (vect_to_list ret)
   | _, _ => False
   end.
 Proof.
@@ -497,12 +481,12 @@ Qed.
 
 Definition sigma2 (fn: ufn2) (v1 v2: val) : option val :=
   match fn with
-  | UEq false  => Some (Bits 1 [if val_eq_dec v1 v2 then true else false])
-  | UEq true  =>  Some (Bits 1 [if val_eq_dec v1 v2 then false else true])
+  | UEq false  => Some (Bits [if val_eq_dec v1 v2 then true else false])
+  | UEq true  =>  Some (Bits [if val_eq_dec v1 v2 then false else true])
   | UBits2 fn =>
     match v1, v2 with
-    | Bits _ v1, Bits _ v2 =>
-      let res := ubits2_sigma fn v1 v2 in Some (Bits (List.length res) res)
+    | Bits v1, Bits v2 =>
+      let res := ubits2_sigma fn v1 v2 in Some (Bits res)
     | _, _ => None
     end
   | UStruct2 (USubstField fname) =>
@@ -514,9 +498,9 @@ Definition sigma2 (fn: ufn2) (v1 v2: val) : option val :=
     end
   | UStruct2 (USubstFieldBits sig fname) =>
     match v1, v2 with
-    | Bits sz v1, Bits _ v2 =>
+    | Bits v1, Bits v2 =>
       let/opt2 ofs, w := find_field_offset_right (struct_fields sig) fname in
-      let res := ubits2_sigma (USliceSubst ofs w) v1 v2 in Some (Bits sz res)
+      let res := ubits2_sigma (USliceSubst ofs w) v1 v2 in Some (Bits res)
     | _, _ => None
     end
   | UArray2 (USubstElement n) =>
@@ -531,12 +515,12 @@ Definition sigma2 (fn: ufn2) (v1 v2: val) : option val :=
     end
   | UArray2 (USubstElementBits sig n) =>
     match v1, v2 with
-    | Bits sz v1, Bits _ v2 =>
+    | Bits v1, Bits v2 =>
       let res :=
         ubits2_sigma (
           USliceSubst ((array_len sig - S n) * element_sz sig) (element_sz sig)
         ) v1 v2
-      in Some (Bits sz res)
+      in Some (Bits res)
     | _, _ => None
     end
   end.
@@ -569,8 +553,7 @@ Proof.
     inv Heqr0. inv Heqr. inv H.
     generalize (ubits2_correct fn _ s s0 eq_refl arg1 arg2 _ eq_refl).
     destr; try easy.
-    destr; try easy. intro A; rewrite A. simpl.
-    rewrite vect_to_list_length. simpl. auto.
+    destr; try easy. intro A; rewrite A. simpl.  auto.
   - destr_in H.
     + destr_in H; try congruence.
       destr_in Heqr; try congruence.
@@ -811,7 +794,7 @@ Section Interp.
     | UAssign k a =>
       let/opt3 action_log, v, Gamma :=
         interp_action r sigma Gamma sched_log action_log a in
-      Some (action_log, Bits 0 [], list_assoc_set Gamma k v)
+      Some (action_log, Bits [], list_assoc_set Gamma k v)
     | USeq a1 a2 =>
       let/opt3 action_log, v, Gamma :=
         interp_action r sigma Gamma sched_log action_log a1 in
@@ -826,7 +809,7 @@ Section Interp.
       let/opt3 action_log, v, Gamma :=
         interp_action r sigma Gamma sched_log action_log cond in
       match v with
-      | Bits 1 [b] =>
+      | Bits [b] =>
         if b then interp_action r sigma Gamma sched_log action_log athen
         else interp_action r sigma Gamma sched_log action_log aelse
       | _ => None
@@ -834,7 +817,7 @@ Section Interp.
     | URead prt idx =>
       if may_read sched_log prt idx then
         Some (
-          log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log,
+          log_cons idx (LE Logs.LogRead prt (Bits [])) action_log,
           match prt with
           | P0 => REnv.(getenv) r idx
           | P1 =>
@@ -850,7 +833,7 @@ Section Interp.
         interp_action r sigma Gamma sched_log action_log v in
       if may_write sched_log action_log prt idx then
         Some (
-          log_cons idx (LE Logs.LogWrite prt val) action_log, Bits 0 [], Gamma
+          log_cons idx (LE Logs.LogWrite prt val) action_log, Bits [], Gamma
         )
       else None
     | UUnop fn arg =>
@@ -884,16 +867,16 @@ Section Interp.
       Some (action_log, v, Gamma)
     | UAPos p a => interp_action r sigma Gamma sched_log action_log a
     | USugar UErrorInAst => None
-    | USugar USkip => Some (action_log, Bits 0 [], Gamma)
+    | USugar USkip => Some (action_log, Bits [], Gamma)
     | USugar (UConstBits v) =>
       let l := vect_to_list v in
-      Some (action_log, Bits (List.length l) l, Gamma)
+      Some (action_log, Bits l, Gamma)
     | USugar (UConstString s) =>
       Some (
         action_log,
         Array {| array_type := bits_t 8; array_len := String.length s |}
         (List.map
-          (fun x => Bits 8 (vect_to_list x))
+          (fun x => Bits (vect_to_list x))
           (vect_to_list (SyntaxMacros.array_of_bytes s))
         ), Gamma)
     | USugar (UConstEnum sig name) =>
@@ -910,7 +893,7 @@ Section Interp.
       List.fold_left (fun acc a =>
         let/opt3 action_log, v, Gamma := acc in
         interp_action r sigma Gamma sched_log action_log a
-      ) aa (Some (action_log, Bits 0 [], Gamma))
+      ) aa (Some (action_log, Bits [], Gamma))
     | USugar (ULet bindings body) =>
       let/opt2 action_log, Gamma' :=
         List.fold_left (fun acc '(var, a) =>
@@ -926,7 +909,7 @@ Section Interp.
       let/opt3 action_log, v, Gamma :=
         interp_action r sigma Gamma sched_log action_log cond in
       match v with
-      | Bits 1 [b] =>
+      | Bits [b] =>
         if b then interp_action r sigma Gamma sched_log action_log body
         else None
       | _ => None
@@ -1025,7 +1008,7 @@ Section Interp.
     | DAssign k a =>
       let/opt3 action_log, v, Gamma :=
         interp_daction r sigma Gamma sched_log action_log a in
-      Some (action_log, Bits 0 [], list_assoc_set Gamma k v)
+      Some (action_log, Bits [], list_assoc_set Gamma k v)
     | DSeq a1 a2 =>
       let/opt3 action_log, v, Gamma :=
         interp_daction r sigma Gamma sched_log action_log a1 in
@@ -1040,7 +1023,7 @@ Section Interp.
       let/opt3 action_log, v, Gamma :=
         interp_daction r sigma Gamma sched_log action_log cond in
       match v with
-      | Bits 1 [b] =>
+      | Bits [b] =>
         if b then interp_daction r sigma Gamma sched_log action_log athen
         else interp_daction r sigma Gamma sched_log action_log aelse
       | _ => None
@@ -1048,7 +1031,7 @@ Section Interp.
     | DRead prt idx =>
       if may_read sched_log prt idx then
         Some (
-          log_cons idx (LE Logs.LogRead prt (Bits 0 [])) action_log,
+          log_cons idx (LE Logs.LogRead prt (Bits [])) action_log,
           match prt with
           | P0 => REnv.(getenv) r idx
           | P1 =>
@@ -1064,7 +1047,7 @@ Section Interp.
         interp_daction r sigma Gamma sched_log action_log v in
       if may_write sched_log action_log prt idx then
         Some (
-          log_cons idx (LE Logs.LogWrite prt val) action_log, Bits 0 [], Gamma
+          log_cons idx (LE Logs.LogWrite prt val) action_log, Bits [], Gamma
         )
       else None
     | DUnop fn arg =>
@@ -2041,14 +2024,16 @@ Section Desugar.
     - rewrite <- (IHua) with (REnv':=REnv').
       unfold opt_bind.
       destr; auto. destruct p0. destruct p0. simpl.
-      destr; auto. destr; auto. destr; auto. destr; auto. destr; auto.
-      rewrite <- (IHua) with (REnv':=REnv')
-        by (auto; simpl in *; try tauto; lia).
+      destr; auto. destr; auto. destr; auto. destr; auto.
       rewrite <- (IHua) with (REnv':=REnv')
         by (auto; simpl in *; try tauto; lia).
       rewrite fLog_fLog'; auto.
       unfold fState'. repeat destr.
       unfold opt_bind; repeat destr; auto. rewrite fLog'_fLog'; auto.
+      rewrite <- (IHua) with (REnv':=REnv')
+        by (auto; simpl in *; try tauto; lia).
+      rewrite fLog_fLog'; auto.
+      unfold fState'. repeat destr.
       unfold opt_bind; repeat destr; auto. rewrite fLog'_fLog'; auto.
       simpl; lia.
       simpl in *. tauto.
@@ -2163,7 +2148,7 @@ Section Desugar.
         with (desugar p fR fSigma s).
       destruct s; simpl; intros; auto.
       + rewrite fLog'_fLog. reflexivity.
-      + rewrite fLog'_fLog. rewrite vect_to_list_length. reflexivity.
+      + rewrite fLog'_fLog. reflexivity.
       + rewrite fLog'_fLog. reflexivity.
       + cbn. destr; auto. simpl.
         rewrite fLog'_fLog. auto.
@@ -2815,7 +2800,7 @@ Section Eq.
       | Logs.LogWrite => type_denote V
       end -> Prop
     ) with
-    | Logs.LogRead  => fun _ => UntypedLogs.val ule = Bits 0 []
+    | Logs.LogRead  => fun _ => UntypedLogs.val ule = Bits []
     | Logs.LogWrite => fun v => UntypedLogs.val ule = val_of_value v
     end (Logs.val le).
 

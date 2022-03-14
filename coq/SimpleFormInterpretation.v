@@ -97,7 +97,7 @@ Section SimpleFormInterpretation.
         | SIf c t f =>
             let/opt v := eval_sact vars c fuel in
             match v with
-            | Bits 1 [b] =>
+            | Bits [b] =>
                 if b then eval_sact vars t fuel
                 else eval_sact vars f fuel
             | _ => None
@@ -296,7 +296,7 @@ Section SimpleFormInterpretation.
     | SIf c t f =>
         let/opt v := eval_sact_no_vars c in
         match v with
-        | Bits 1 [b] =>
+        | Bits [b] =>
             if b then eval_sact_no_vars t
             else eval_sact_no_vars f
         | _ => None

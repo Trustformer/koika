@@ -290,7 +290,7 @@ Qed.
 
 Fixpoint val_of_type (t: type) : val :=
   match t with
-  | bits_t n => Bits n (repeat false n)
+  | bits_t n => Bits (repeat false n)
   | enum_t sg => Enum sg (repeat false (enum_bitsize sg))
   | struct_t sg => Struct sg (map (fun x => val_of_type (snd x)) (struct_fields sg))
   | array_t sg => Array sg (repeat (val_of_type (array_type sg)) (array_len sg))
@@ -393,7 +393,7 @@ Proof.
 Qed.
 
 Lemma wt_val_bool:
-  forall x, wt_val (bits_t 1) x -> exists b, x = Bits 1 [b].
+  forall x, wt_val (bits_t 1) x -> exists b, x = Bits [b].
 Proof.
   inversion 1. subst.
   destruct bs; simpl in *; try lia.
