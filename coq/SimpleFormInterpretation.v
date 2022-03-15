@@ -1,6 +1,6 @@
 Require Import Coq.Strings.Ascii.
 Require Import Koika.Environments Koika.SimpleForm Koika.TypeInference
-  Koika.UntypedSemantics.
+        Koika.UntypedSemantics.
 Require Import Koika.BitsToLists.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
@@ -28,6 +28,359 @@ Section SimpleFormInterpretation.
   Context (sigma: ext_funs_defs).
 
   Definition sact := sact (ext_fn_t:=ext_fn_t).
+
+  Fixpoint vars_in_sact (s: sact (ext_fn_t:=RV32I.ext_fn_t)) : list nat :=
+    match s with
+    | SConst _ => []
+    | SVar v => [v]
+    | SExternalCall _ a
+    | SUnop _ a => vars_in_sact a
+    | SBinop _ a1 a2 => vars_in_sact a1 ++ vars_in_sact a2
+    | SIf c t f => vars_in_sact c ++ vars_in_sact t ++ vars_in_sact f
+    end.
+
+  Fixpoint reachable_vars_aux (vvs: var_value_map) (n: nat) (visited: list nat) fuel :=
+    match fuel with
+      O => visited
+    | S fuel =>
+        if in_dec Nat.eq_dec n visited
+        then visited
+        else
+          n::match list_assoc vvs n with
+             | None => visited
+             | Some (_, s) =>
+                 fold_left (fun visited n =>
+                              reachable_vars_aux vvs n visited fuel
+                           ) (vars_in_sact s) visited
+             end
+    end.
+
+  Inductive reachable_var (vvs: var_value_map) : sact -> nat -> Prop :=
+  | reachable_var_var:
+    forall n, reachable_var vvs (SVar n) n
+  | reachable_var_in_var:
+    forall n x t a,
+      list_assoc vvs x = Some (t, a) ->
+      reachable_var vvs a n ->
+      reachable_var vvs (SVar x) n
+  | reachable_var_if_cond:
+    forall n c t f,
+      reachable_var vvs c n ->
+      reachable_var vvs (SIf c t f) n
+  | reachable_var_if_true:
+    forall n c t f,
+      reachable_var vvs t n ->
+      reachable_var vvs (SIf c t f) n
+  | reachable_var_if_false:
+    forall n c t f,
+      reachable_var vvs f n ->
+      reachable_var vvs (SIf c t f) n
+  | reachable_var_binop1:
+    forall n c a1 a2,
+      reachable_var vvs a1 n ->
+      reachable_var vvs (SBinop c a1 a2) n
+  | reachable_var_binop2:
+    forall n c a1 a2,
+      reachable_var vvs a2 n ->
+      reachable_var vvs (SBinop c a1 a2) n
+  | reachable_var_unop:
+    forall n c a1,
+      reachable_var vvs a1 n ->
+      reachable_var vvs (SUnop c a1) n
+  | reachable_var_externalCall:
+    forall n c a1,
+      reachable_var vvs a1 n ->
+      reachable_var vvs (SExternalCall c a1) n.
+
+  Inductive subexpr : sact -> sact -> Prop :=
+  | subexpr_refl: forall s, subexpr s s
+  | subexpr_if_cond: forall c t f, subexpr c (SIf c t f)
+  | subexpr_if_true: forall c t f, subexpr t (SIf c t f)
+  | subexpr_if_false: forall c t f, subexpr f (SIf c t f)
+  | subexpr_unop: forall u a, subexpr a (SUnop u a)
+  | subexpr_binop1: forall u a1 a2, subexpr a1 (SBinop u a1 a2)
+  | subexpr_binop2: forall u a1 a2, subexpr a2 (SBinop u a1 a2)
+  | subexpr_ext: forall u a, subexpr a (SExternalCall (ext_fn_t:=RV32I.ext_fn_t) u a).
+
+  Lemma reachable_vars_aux_incr:
+    forall vvs fuel n visited,
+      incl visited (reachable_vars_aux vvs n visited fuel).
+  Proof.
+    induction fuel; simpl; intros; eauto.
+    apply incl_refl.
+    destr. destr.
+    - destr. apply incl_tl.
+      apply fold_left_induction. apply incl_refl.
+      intros. eapply incl_tran. apply H0. apply IHfuel.
+    - apply incl_tl, incl_refl.
+  Qed.
+
+
+  Lemma reachable_var_aux_below:
+    forall vvs (VSV: vvs_smaller_variables vvs)
+           a n (GET: forall v, var_in_sact a v -> (v < n)%nat)
+           v (RV: reachable_var vvs a v),
+      (v < n)%nat.
+  Proof.
+    intros vvs VSV a n.
+    change n with (projT1 (existT (fun _ => sact) n a)).
+    change a with (projT2 (existT (fun _ => sact) n a)) at 1 3.
+    generalize (existT (fun _ => sact) n a).
+    clear n a. intro s. pattern s.
+    eapply well_founded_induction.
+    apply wf_order_sact. clear s.
+    intros x IH BELOW v RV.
+    destruct x; simpl in *.
+    inv RV.
+    - eapply BELOW. constructor.
+    - eapply VSV in H.
+      Sact.exploit (IH (existT _ x0 a)). constructor. apply BELOW. constructor.
+      simpl. apply H. simpl. eauto. simpl.
+      Sact.trim (BELOW x0). constructor.  lia.
+    - eapply (IH (existT _ x c)). constructor 2. simpl; lia.
+      simpl. intros v0 VIS. eapply BELOW. eapply var_in_if_cond; eauto. simpl; auto.
+    - eapply (IH (existT _ x t)). constructor 2. simpl; lia.
+      simpl. intros v0 VIS. eapply BELOW. eapply var_in_if_true; eauto. simpl; auto.
+    - eapply (IH (existT _ x f)). constructor 2. simpl; lia.
+      simpl. intros v0 VIS. eapply BELOW. eapply var_in_if_false; eauto. simpl; auto.
+    - eapply (IH (existT _ x a1)). constructor 2. simpl; lia.
+      simpl. intros v0 VIS. eapply BELOW. eapply var_in_sact_binop_1; eauto. simpl; auto.
+    - eapply (IH (existT _ x a2)). constructor 2. simpl; lia.
+      simpl. intros v0 VIS. eapply BELOW. eapply var_in_sact_binop_2; eauto. simpl; auto.
+    - eapply (IH (existT _ x a1)). constructor 2. simpl; lia.
+      simpl. intros v0 VIS. eapply BELOW. eapply var_in_sact_unop; eauto. simpl; auto.
+    - eapply (IH (existT _ x a1)). constructor 2. simpl; lia.
+      simpl. intros v0 VIS. eapply BELOW. eapply var_in_sact_external; eauto. simpl; auto.
+  Qed.
+
+  Lemma reachable_var_aux_below_get:
+    forall vvs (VSV: vvs_smaller_variables vvs)
+           a n t (GET: list_assoc vvs n = Some (t,a))
+           v (RV: reachable_var vvs a v),
+      (v < n)%nat.
+  Proof.
+    intros; eapply reachable_var_aux_below; eauto.
+    eapply VSV. eauto.
+  Qed.
+
+  Lemma reachable_inv:
+    forall vvs a v,
+      reachable_var vvs a v ->
+      exists v' , var_in_sact a v' /\ (v = v' \/ exists t' a', list_assoc vvs v' = Some (t', a') /\ reachable_var vvs a' v).
+  Proof.
+    induction 1; simpl; intros; eauto.
+    - exists n. split. constructor. left; auto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists x; split. constructor.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]. subst.
+      right; eauto.
+      right; exists t, a; split. eauto. eauto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists v'; split. eapply var_in_if_cond. auto.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto. right. eauto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists v'; split. eapply var_in_if_true. auto.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto. right. eauto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists v'; split. eapply var_in_if_false. auto.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto. right. eauto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists v'; split. eapply var_in_sact_binop_1. auto.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto. right. eauto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists v'; split. eapply var_in_sact_binop_2. auto.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto. right. eauto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists v'; split. eapply var_in_sact_unop. auto.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto. right. eauto.
+    - destruct IHreachable_var as (v'& VIS & OTHER).
+      exists v'; split. eapply var_in_sact_external. auto.
+      destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto. right. eauto.
+  Qed.
+
+  Lemma var_in_sact_ok:
+    forall a v,
+      var_in_sact a v -> In v (vars_in_sact a).
+  Proof.
+    induction 1; simpl; intros; eauto.
+    rewrite ! in_app_iff; now eauto.
+    rewrite ! in_app_iff; now eauto.
+    rewrite ! in_app_iff; now eauto.
+    rewrite ! in_app_iff; now eauto.
+    rewrite ! in_app_iff; now eauto.
+  Qed.
+
+  Lemma var_in_sact_ok_inv:
+    forall a v,
+      In v (vars_in_sact a) -> var_in_sact a v.
+  Proof.
+    induction a; simpl; intros; eauto; intuition.
+    - subst. constructor.
+    - rewrite ! in_app_iff in H. intuition.
+      econstructor; eauto.
+      eapply var_in_if_true; eauto.
+      eapply var_in_if_false; eauto.
+    - econstructor; eauto.
+    - rewrite ! in_app_iff in H. intuition.
+      eapply var_in_sact_binop_1; eauto.
+      eapply var_in_sact_binop_2; eauto.
+    - econstructor; eauto.
+  Qed.
+
+  Lemma rev_sym:
+    forall {A: Type} (l1 l2: list A),
+      l1 = rev l2 <-> rev l1 = l2.
+  Proof.
+    split; intro.
+    - rewrite H. rewrite rev_involutive. easy.
+    - rewrite <- H. rewrite rev_involutive. easy.
+  Qed.
+  Lemma app_inv_last:
+    forall {A: Type} (l1 l2: list A) (x y: A),
+      l1 ++ [x] = l2 ++ [y]
+      -> x = y.
+  Proof.
+    intros.
+    apply (f_equal (@rev A)) in H.
+    rewrite rev_app_distr in H. rewrite rev_app_distr in H at 1.
+    simpl in H. inv H.
+    easy.
+  Qed.
+
+  Lemma fold_left_prop_eventually_no_tail:
+    forall {A B: Type} (P: B -> Prop) (f: B -> A -> B) (lb: list A) (s: B) x,
+      (forall e, P (f e x))
+      -> P (fold_left f (lb ++ [x]) s).
+  Proof.
+    intros.
+    assert (exists l', l' = rev (lb ++ [x])).
+    { exists (rev (lb ++ [x])). easy. }
+    destruct H0.
+    apply rev_sym in H0.
+    rewrite <- H0.
+    induction x0.
+    - destruct lb; easy.
+    - rewrite <- fold_left_rev_right. rewrite rev_involutive.
+      assert (x = a). { simpl in H0. apply app_inv_last in H0. easy. }
+      simpl. inv H1. eapply H.
+  Qed.
+
+  Lemma fold_left_prop_eventually:
+    forall {A B: Type} (P: B -> Prop) (f: B -> A -> B) (lb la: list A) (s: B) x,
+      (forall e, P (f e x))
+      -> (forall y e, In y la -> P e -> P (f e y))
+      -> P (fold_left f (lb ++ [x] ++ la) s).
+  Proof.
+    intros A B P f0 lb la s x H0.
+    remember (rev la) as la'. apply rev_sym in Heqla'. rewrite <- Heqla'.
+    generalize dependent la.
+    induction la'; intros; simpl.
+    - apply fold_left_prop_eventually_no_tail. easy.
+    - rewrite <- fold_left_rev_right.
+      repeat (rewrite rev_app_distr; simpl). rewrite rev_involutive.
+      apply H.
+      + apply in_rev. rewrite rev_involutive. left. easy.
+      + assert ((la' ++ [x]) ++ rev lb = rev (lb ++ [x] ++ rev la')).
+        { repeat (rewrite rev_app_distr). rewrite rev_involutive. easy. }
+        rewrite H1.
+        rewrite fold_left_rev_right.
+        eapply IHla'.
+        * eauto.
+        * intros. apply H.
+          ** apply in_rev. rewrite rev_involutive.
+             apply in_rev in H2. right. easy.
+          ** easy.
+  Qed.
+  Lemma reachable_vars_aux_in:
+    forall vvs fuel visited n, (fuel > 0)%nat -> In n (reachable_vars_aux vvs n visited fuel).
+  Proof.
+    destruct fuel. lia. intros. simpl. destr. destr. destr.
+    left; auto. left; auto.
+  Qed.
+  Lemma reachable_vars_aux_ok:
+    forall vvs (VSV: vvs_smaller_variables vvs)
+           fuel n visited l,
+      reachable_vars_aux vvs n visited fuel = l ->
+      (forall n, In n visited ->
+                 forall v t a,
+                   list_assoc vvs n = Some (t, a) ->
+                   reachable_var vvs a v ->
+                   In v visited) ->
+      ((n<fuel)%nat) ->
+      forall n1 (IN: In n1 l) v t a,
+        list_assoc vvs n1 = Some (t, a) ->
+        reachable_var vvs a v ->
+        In v l.
+  Proof.
+    induction fuel; simpl; intros; eauto. lia.
+    destr_in H.
+    - subst. eapply H0; eauto.
+    - subst. destruct IN as [EQ|IN].
+      2:{
+
+        
+      }
+      + subst.
+        rewrite H2.
+        Sact.exploit reachable_var_aux_below_get. eauto. eauto. eauto. intros LT.
+        right.
+
+        Sact.exploit reachable_inv. eauto. intros (v' & VIS & OTHER).
+        destruct OTHER as [EQ | (t' & a' & GET & RV)]; auto.
+        subst.
+
+        
+        apply var_in_sact_ok in VIS.
+        apply in_split in VIS.
+        destruct VIS as (l1 & l2 & EQ). rewrite EQ.
+        change (l1 ++ v' :: l2) with (l1 ++ [v'] ++ l2).
+        apply fold_left_prop_eventually.
+
+                
+        destruct n. lia. intros; eapply reachable_vars_aux_in. lia.
+        intros. eapply reachable_vars_aux_incr; eauto.
+
+        apply var_in_sact_ok in VIS.
+        apply in_split in VIS.
+        destruct VIS as (l1 & l2 & EQ). rewrite EQ.
+        change (l1 ++ v' :: l2) with (l1 ++ [v'] ++ l2).
+        cut ((fun visited1 =>
+                (forall n : nat,
+                    In n visited1 ->
+                    forall (v : nat) (t : type) (a : SimpleForm.sact),
+                      list_assoc vvs n = Some (t, a) ->
+                      reachable_var vvs a v -> In v visited1
+                ) /\ In v visited1
+             ) (fold_left
+                  (fun (visited0 : list nat) (n1 : nat) =>
+                     reachable_vars_aux vvs n1 visited0 fuel) (l1 ++ [v'] ++ l2) visited)
+            ). intro A; apply A.
+        apply fold_left_prop_eventually.
+        {
+          intros. 
+          
+        }
+        intros. Sact.exploit IHfuel. 4: apply GET. 4: apply RV. reflexivity. 3: eauto. apply H0.
+        eapply VSV in VIS. 2: eauto. red in VIS. lia.
+        intros.
+        
+        eq_refl.
+
+    -  subst. destruct todo. constructor.
+       specialize (H0 _ (or_introl eq_refl)). lia.
+    - subst. destr; subst. constructor.
+      destr. constructor.
+      + intros. rewrite H in Heqp.
+        destr_in Heqp; inv Heqp.
+        eapply reachable_vars_aux_incr; eauto.
+  Qed.
+
+  Definition useful_vars
+             (sf: simple_form (reg_t:=RV32I.reg_t) (ext_fn_t:=RV32I.ext_fn_t)) : list nat :=
+    let todo := map snd (final_values sf) in
+    useful_vars_aux (vars sf) todo [] (List.length (vars sf)).
+
+  (* FIN DU BAZAR *)
 
   Fixpoint contains_vars (e: sact) : bool :=
     match e with
