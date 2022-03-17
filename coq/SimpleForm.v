@@ -7,6 +7,7 @@ Require Import UntypedSemantics Koika.BitsToLists.
 Require Import Wt.
 Require Import Wellfounded.
 Require Import Sact.
+Require Import Maps.
 
 (* When reasoning about a Koîka schedule, a lot of tedious implicit mechanisms
    have to be considered explicitly (rules merging, cancellation, ...).
@@ -25,7 +26,7 @@ Require Import Sact.
    of the emitted extcalls, although the latter are not really considered in
    Koîka's pure semantics). *)
 
-Open Scope nat.
+Open Scope positive.
 Section SimpleForm.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
@@ -33,7 +34,7 @@ Section SimpleForm.
   Definition uact := @daction pos_t string string reg_t ext_fn_t.
 
   Inductive sact :=
-  | SVar (var: nat)
+  | SVar (var: positive)
   | SConst (v:val)
   | SIf (cond: sact) (tbranch: sact) (fbranch: sact)
   | SUnop (ufn1: PrimUntyped.ufn1) (arg1: sact)
@@ -60,9 +61,9 @@ Section SimpleForm.
 
   Definition schedule := scheduler pos_t rule_name_t.
 
-  Inductive wt_sact (vt: list (nat * (type * sact))) : sact -> type -> Prop :=
+  Inductive wt_sact (vt: PTree.t (type * sact)) : sact -> type -> Prop :=
   | wt_sact_var var t s:
-    list_assoc vt var = Some (t, s) ->
+    vt ! var = Some (t, s) ->
     wt_sact vt (SVar var) t
   | wt_sact_const v t:
     wt_val t v ->
@@ -85,9 +86,9 @@ Section SimpleForm.
     wt_sact vt a (arg1Sig (Sigma ufn)) ->
     wt_sact vt (SExternalCall ufn a) (retSig (Sigma ufn)).
 
-  Inductive interp_sact (vvs: list (nat * (type * sact))) : sact -> val -> Prop :=
+  Inductive interp_sact (vvs: PTree.t (type * sact)) : sact -> val -> Prop :=
   | interp_sact_var var t a v:
-    list_assoc vvs var = Some (t, a) ->
+    vvs ! var = Some (t, a) ->
     interp_sact vvs a v ->
     interp_sact vvs (SVar var) v
   | interp_sact_const v: interp_sact vvs (SConst v) v
@@ -128,7 +129,7 @@ Section SimpleForm.
   (* Simple form and related structures *)
   Definition cond_log := list (reg_t * sact).
   Definition write_log_raw := list (reg_t * sact).
-  Definition var_value_map := list (nat * (type * sact)).
+  Definition var_value_map := PTree.t (type * sact).
 
   Record rule_information_raw :=
     mkRuleInformationRaw {
@@ -144,7 +145,7 @@ Section SimpleForm.
     <rir_read0s; rir_read1s; rir_write0s; rir_write1s; rir_vars; rir_failure_cond >.
   Record simple_form :=
     mkSimpleForm {
-        final_values: list (reg_t * nat);
+        final_values: list (reg_t * positive);
         vars: var_value_map
       }.
   Instance etaSimpleForm : Settable _ :=
@@ -249,75 +250,50 @@ Section SimpleForm.
     end.
 
   Fixpoint merge_branches
-           (vm_tb vm_fb: list (string*nat))
-           (vvs: list (nat * (type * sact)))
-           (nid: nat)
-           (cond_name: nat) :=
+           (vm_tb vm_fb: list (string*positive))
+           (vvs: PTree.t (type * sact))
+           (nid: positive)
+           (cond_name: positive) :=
     match vm_tb, vm_fb with
     | (str, n1)::vm_tb, (_, n2)::vm_fb =>
         let '(acc, vv', nid) := merge_branches vm_tb vm_fb vvs nid cond_name in
-        if eq_nat_dec n1 n2
+        if Pos.eq_dec n1 n2
         then ((str, n1)::acc, vv', nid)
         else
           let t :=
-            match list_assoc vvs n1 with
+            match vvs ! n1 with
             | Some (t, _) => t
             | None => bits_t 0
             end in
           ((str, nid)::acc,
-            list_assoc_set vv' nid (t, SIf (SVar cond_name) (SVar n1) (SVar n2)),
-            S nid)
+            PTree.set nid (t, SIf (SVar cond_name) (SVar n1) (SVar n2)) vv',
+            Pos.succ nid)
     | _, _ => ([], vvs, nid)
     end.
 
 
   Fixpoint merge_branches2
-           (vm_tb vm_fb: list (string*nat)) (tsig: list (string * type))
-           (vvs: list (nat * (type * sact)))
-           (nid: nat)
-           (cond_name: nat) :=
+           (vm_tb vm_fb: list (string*positive)) (tsig: list (string * type))
+           (vvs: PTree.t (type * sact))
+           (nid: positive)
+           (cond_name: positive) :=
     match vm_tb, vm_fb, tsig with
     | (str, n1)::vm_tb, (_, n2)::vm_fb, (_,t)::tsig =>
         let '(acc, vv', nid) := merge_branches2 vm_tb vm_fb tsig vvs nid cond_name in
-        if eq_nat_dec n1 n2
+        if Pos.eq_dec n1 n2
         then ((str, n1)::acc, vv', nid)
         else
           ((str, nid)::acc,
-            (nid, (t, SIf (SVar cond_name) (SVar n1) (SVar n2)))::vv',
-            S nid)
+            PTree.set nid (t, SIf (SVar cond_name) (SVar n1) (SVar n2)) vv',
+            Pos.succ nid)
     | _, _, _ => ([], vvs, nid)
     end.
 
-  Definition env_vvs (env: list (string * nat)) (vvs: list (nat * (type * sact))) (tsig: tsig string) :=
+  Definition env_vvs (env: list (string * positive)) (vvs: PTree.t (type * sact)) (tsig: tsig string) :=
     Forall2 (fun '(var1, fv) '(var2, t) =>
-               var1 = var2 /\ exists s, list_assoc vvs fv = Some (t, s)
+               var1 = var2 /\ exists s, vvs ! fv = Some (t, s)
             ) env tsig.
 
-  (* Lemma merge_branches2_ok: *)
-  (*   forall vm_tb vm_fb tsig vvs nid cond_name vm' vvs' nid', *)
-  (*     merge_branches vm_tb vm_fb vvs nid cond_name = (vm', vvs', nid') -> *)
-  (*     (forall x y, list_assoc vvs x = Some y -> x < nid) -> *)
-  (*     env_vvs vm_tb vvs tsig -> *)
-  (*     env_vvs vm_fb vvs tsig -> *)
-  (*     forall vvs1, *)
-  (*       (forall x, list_assoc vvs x = list_assoc vvs1 x)-> *)
-  (*       exists vvs2, *)
-  (*         merge_branches2 vm_tb vm_fb tsig vvs1 nid cond_name = (vm', vvs2, nid') /\ *)
-  (*           forall x, list_assoc vvs' x = list_assoc vvs2 x. *)
-  (* Proof. *)
-  (*   induction vm_tb; simpl; intros; eauto. *)
-  (*   - inv H1; inv H2; inv H. eauto. *)
-  (*   - inv H1; inv H2. destruct a, x, y. *)
-  (*     do 2 destr_in H. *)
-  (*     edestruct IHvm_tb as (vvs2 & MB2 & EQ). eauto. eauto. *)
-  (*     eauto. auto. apply H3. *)
-  (*     rewrite MB2. destr_in H. *)
-  (*     + inv H. eauto. *)
-  (*     + inv H. eexists; split. eauto. *)
-  (*       intros. rewrite list_assoc_spec. simpl. *)
-  (*       repeat destruct (Nat.eq_dec); try congruence. subst. *)
-  (*       destruct H6 as (? & ? & GET). rewrite GET. auto. *)
-  (* Qed. *)
   Lemma nodup_list_assoc_set:
     forall {K V: Type} {ed: EqDec K} (l: list (K * V)) k v,
       NoDup (map fst l) ->
@@ -331,133 +307,121 @@ Section SimpleForm.
 
   Lemma merge_branches2_nd:
     forall vm_tb vm_fb tsig vvs nid cond_name vm' vvs' nid' ,
-      (forall x y, list_assoc vvs x = Some y -> x < nid) ->
-      NoDup (map fst vvs) ->
+      (forall x y, vvs ! x = Some y -> x < nid) ->
       merge_branches2 vm_tb vm_fb tsig vvs nid cond_name = (vm', vvs', nid') ->
-      (forall x y, list_assoc vvs' x = Some y -> x < nid') /\ NoDup (map fst vvs').
+      (forall x y, vvs' ! x = Some y -> x < nid').
   Proof.
-    induction vm_tb; simpl; intros; eauto. inv H1. auto.
-    destr_in H1. destr_in H1. inv H1; auto.
-    destr_in H1. destr_in H1. inv H1; auto.
-    repeat (destr_in H1; [idtac]).
-    eapply IHvm_tb in Heqp2; eauto. destruct Heqp2.
-    destr_in H1; inv H1. auto. simpl.
-    split. intros. destr_in H1. inv H1.  lia. apply H2 in H1. lia.
-    constructor; auto.
-    intro IN.
-    edestruct (@in_keys_list_assoc_ex). apply IN. apply H2 in H1. lia.
+    induction vm_tb; simpl; intros; eauto. inv H0. eauto.
+    repeat (destr_in H0; [idtac]).
+    destr_in H0. inv H0; eauto.
+    destr_in H0. destr_in H0. inv H0; eauto.
+    repeat (destr_in H0; [idtac]). subst.
+    specialize (IHvm_tb _ _ _ _ _ _ _ _ H Heqp0).
+    destr_in H0; inv H0. eauto.
+    rewrite PTree.gsspec in H1. destr_in H1. inv H1. lia. apply IHvm_tb in H1. lia.
   Qed.
   
   Lemma merge_branches2_ok' :
     forall vm_tb vm_fb tsig vvs nid cond_name vm' vvs' nid' ,
       merge_branches2 vm_tb vm_fb tsig vvs nid cond_name = (vm', vvs', nid') ->
-      (forall x y, list_assoc vvs x = Some y -> x < nid) ->
+      (forall x y, vvs ! x = Some y -> x < nid) ->
       env_vvs vm_tb vvs tsig ->
       env_vvs vm_fb vvs tsig ->
-      forall vvs1,
-        (forall x, list_assoc vvs x = list_assoc vvs1 x)->
-        NoDup (map fst vvs1) ->
-        exists vvs2,
-          merge_branches vm_tb vm_fb vvs1 nid cond_name = (vm', vvs2, nid') /\
-            NoDup (map fst vvs2) /\
-            forall x, list_assoc vvs' x = list_assoc vvs2 x.
+      merge_branches vm_tb vm_fb vvs nid cond_name = (vm', vvs', nid').
   Proof.
     induction vm_tb; simpl; intros; eauto.
-    - inv H1; inv H2; inv H. eauto.
     - inv H1; inv H2. destruct a, x, y.
       do 2 destr_in H.
-      edestruct IHvm_tb as (vvs2 & MB2 & ND & EQ). eauto. eauto.
-      eauto. auto. apply H3. eauto. eauto.
-      rewrite MB2. destr_in H.
+      eapply IHvm_tb in Heqp1. rewrite Heqp1.
+      destr_in H.
       + inv H. eauto.
       + inv H.
-        eexists; split. eauto. split.
-        apply nodup_list_assoc_set. auto.
-        intros. rewrite list_assoc_spec. simpl.
-        repeat destruct (Nat.eq_dec); try congruence. subst.
-        destruct H7 as (? & ? & GET). rewrite <-H3, GET. auto.
+        intros.
+        destruct H5 as (? & ? & GET).  rewrite GET. auto.
+      + eauto.
+      + eauto.
+      + eauto.
   Qed.
 
   Lemma merge_branches2_ok:
     forall vm_tb vm_fb tsig vvs nid cond_name vm' vvs' nid' ,
       merge_branches2 vm_tb vm_fb tsig vvs nid cond_name = (vm', vvs', nid') ->
-      (forall x y, list_assoc vvs x = Some y -> x < nid) ->
+      (forall x y, vvs ! x = Some y -> x < nid) ->
       env_vvs vm_tb vvs tsig ->
       env_vvs vm_fb vvs tsig ->
-      NoDup (map fst vvs) ->
-      NoDup (map fst vvs') /\
-      exists vvs2,
-        merge_branches vm_tb vm_fb vvs nid cond_name = (vm', vvs2, nid') /\
-          NoDup (map fst vvs2) /\ forall x, list_assoc vvs' x = list_assoc vvs2 x.
+      merge_branches vm_tb vm_fb vvs nid cond_name = (vm', vvs', nid').
   Proof.
-    intros; split. 2: eapply merge_branches2_ok'; eauto.
-    eapply merge_branches2_nd; eauto.
+    intros. eapply merge_branches2_ok'; eauto.
   Qed.
-  
-  Definition r2vtype := list (reg_t * (Port + unit) * nat).
-  Definition merge_reg2vars_reg (r1 r2: r2vtype) reg prt cond_name r vvs nid :=
-    match list_assoc r1 (reg,prt), list_assoc r2 (reg,prt) with
-    | Some v1, Some v2 =>
-        if eq_nat_dec v1 v2 then (list_assoc_set r (reg,prt) v1, vvs, nid)
-        else
-          let t :=
-            match list_assoc vvs v1 with
-            | Some (t, _) => t
-            | None => bits_t 0
-            end in
-          (list_assoc_set r (reg,prt) nid,
-            list_assoc_set vvs nid (t, SIf (SVar cond_name) (SVar v1) (SVar v2)),
-            S nid)
-    | _, _ => (r, vvs, nid)
+
+
+  Definition p2n pu :=
+    match pu with
+      inl P0 => O
+    | inl P1 => 1%nat
+    | inr tt => 2%nat
     end.
 
-  Fixpoint merge_reg2vars_aux ks (r1 r2: r2vtype) r cond_name vvs nid :=
-    match ks with
-    | [] => (r, vvs, nid)
-    | (reg,prt)::ks =>
-        let '(r, vvs, nid) := merge_reg2vars_reg r1 r2 reg prt cond_name r vvs nid in
-        merge_reg2vars_aux ks r1 r2 r cond_name vvs nid
-    end.
+  Context {finreg_t: FiniteType reg_t}.
+
+  Definition rp2p (r: reg_t * (Port + unit)): positive :=
+    Pos.of_nat (S (finite_index (fst r) * 3 + p2n (snd r))).
+
+  Lemma rp2p_inj:
+    forall r1 r2,
+      rp2p r1 = rp2p r2 -> r1 = r2.
+  Proof.
+    unfold rp2p. intros.
+    apply Pnat.Nat2Pos.inj_iff in H.
+    apply Nat.succ_inj in H. 2-3: lia.
+    cut (p2n (snd r1) < 3)%nat. cut (p2n (snd r2) < 3)%nat.
+    intros.
+    assert (finite_index (fst r1) = finite_index (fst r2)). nia.
+    assert (p2n (snd r1) = p2n (snd r2)) by nia.
+    apply finite_index_injective in H2.
+    destruct r1, r2. simpl in *. subst.
+    revert H3; unfold p2n. destruct s as [[|]|[]], s0 as [[|]|[]]; try congruence.
+    unfold p2n. repeat destr; lia.
+    unfold p2n. repeat destr; lia.
+  Qed.
+
+  Definition r2vtype := list (reg_t * (Port + unit) * positive).
 
   Fixpoint merge_reg2vars_reg2 (r1 r2: r2vtype) cond_name r vvs nid :=
     match r1, r2 with
     | ((reg,prt),v1)::r1, (_,v2)::r2 =>
         let '(r,vvs,nid) := merge_reg2vars_reg2 r1 r2 cond_name r vvs nid
         in
-          if eq_nat_dec v1 v2 then (((reg,prt), v1)::r, vvs, nid)
+          if Pos.eq_dec v1 v2 then (((reg,prt), v1)::r, vvs, nid)
           else
             (((reg,prt), nid)::r,
-              (nid, (R reg, SIf (SVar cond_name) (SVar v1) (SVar v2)))::vvs,
-              S nid)
+              PTree.set nid (R reg, SIf (SVar cond_name) (SVar v1) (SVar v2)) vvs,
+              Pos.succ nid)
     | _, _ => (r, vvs, nid)
     end.
-
-  Definition merge_reg2vars (r1 r2: r2vtype) cond_name vvs nid :=
-    let keys := List.map fst r1 in
-    merge_reg2vars_aux keys r1 r2 [] cond_name vvs nid.
 
   Definition merge_reg2vars2 (r1 r2: r2vtype) cond_name vvs nid :=
     merge_reg2vars_reg2 r1 r2 cond_name [] vvs nid.
 
-  Definition reg2var_vvs (reg2var: r2vtype) (vvs: list (nat * (type * sact))) :=
-    forall x, exists y, list_assoc reg2var x = Some y /\ exists z, list_assoc vvs y = Some (R (fst x), z).
+  Definition reg2var_vvs (reg2var: r2vtype) (vvs: PTree.t (type * sact)) :=
+    forall x, exists y, list_assoc reg2var x = Some y /\ exists z, vvs ! y = Some (R (fst x), z).
   Lemma same_regenv_refl: forall reg2var' ,
-      Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) reg2var' reg2var' .
+      Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) reg2var' reg2var' .
   Proof.
     induction reg2var' ; simpl; intros; eauto.
   Qed.
 
   Lemma same_regenv_trans: forall r1 r2,
-      Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r1 r2 ->
+      Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r1 r2 ->
       forall r3,
-        Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2 r3 ->
-        Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r1 r3.
+        Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2 r3 ->
+        Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r1 r3.
   Proof.
     induction 1; simpl; intros; eauto. inv H1. econstructor; eauto. congruence.
   Qed.
   Lemma same_regenv_sym: forall r1 r2,
-      Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r1 r2 ->
-      Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2 r1.
+      Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r1 r2 ->
+      Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2 r1.
   Proof.
     induction 1; simpl; intros; eauto.
   Qed.
@@ -471,7 +435,7 @@ Section SimpleForm.
   Proof.
     induction 1; simpl; intros; eauto. inv H.
     - apply same_regenv_refl.
-    - repeat (destr_in H1; [idtac]). apply IHForall2 in Heqp2.
+    - repeat (destr_in H1; [idtac]). apply IHForall2 in Heqp3.
       destr_in H1; inv H1; constructor; eauto.
   Qed.
 
@@ -486,76 +450,7 @@ Section SimpleForm.
     exploit merge_reg2vars_reg_same_structure. 2 : apply H0. auto. rewrite app_nil_r. auto.
   Qed.
 
-
-  (* Opaque eq_dec. *)
-  (* Lemma merge_reg2vars_reg2_ok: *)
-  (*   forall r1 r2, *)
-  (*     Forall2 (fun a b => fst a = fst b) r1 r2 -> *)
-  (*     NoDup (map fst r1) -> *)
-  (*     forall r, *)
-  (*     (forall k, In k (map fst r1) -> ~ In k (map fst r)) -> *)
-  (*     forall cond_name vvs nid r' vvs' nid' *)
-  (*            (R2V: *)
-  (*              forall x y, list_assoc r1 x = Some y -> exists z, list_assoc vvs y = Some (R (fst x), z)) *)
-  (*            (VR: forall x t a, list_assoc vvs x = Some (t,a) -> x < nid), *)
-  (*       merge_reg2vars_reg2 r1 r2 cond_name r vvs nid = (r', vvs', nid') -> *)
-  (*       forall rr1 rr2 rr *)
-  (*              (RR1: forall k, In k (map fst r1) -> list_assoc r1 k = list_assoc rr1 k) *)
-  (*              (RR2: forall k, In k (map fst r1) -> list_assoc r2 k = list_assoc rr2 k) *)
-  (*              (RR: forall k, list_assoc r k = list_assoc rr k) *)
-  (*              vvs1 (VVS1: forall k, list_assoc vvs k = list_assoc vvs1 k) *)
-  (*              (ND1: NoDup (map fst vvs1)), *)
-  (*              exists vvs2' rr' , *)
-  (*                merge_reg2vars_aux (List.map fst r1) rr1 rr2 rr cond_name vvs1 nid = (rr', vvs2', nid') /\ *)
-  (*                  (forall k, list_assoc vvs' k = list_assoc vvs2' k) *)
-  (*                /\ (forall k, list_assoc r' k = list_assoc rr' k) *)
-  (*                /\ NoDup (map fst vvs2'). *)
-  (* Proof. *)
-  (*   induction 1; simpl; intros; eauto. *)
-  (*   - inv H1. do 2 eexists; split. eauto. split; eauto. *)
-  (*   - destruct x. destruct p. destruct y. do 2 destr_in H3. simpl in *. *)
-  (*     subst. unfold merge_reg2vars_reg. *)
-  (*     rewrite <- RR1. destruct (eq_dec); try congruence. 2: auto. *)
-  (*     rewrite <- RR2. destruct (eq_dec); try congruence. 2: auto. *)
-  (*     inv H1. *)
-  (*     destr_in Heqp0. *)
-  (*     + inv Heqp0. *)
-  (*       edestruct IHForall2 as (vvs2' & rr' & MRA & EQv & EQr & ND). auto. 10: setoid_rewrite MRA. 4: eauto. *)
-  (*       * simpl; intros. generalize (H2 _ (or_intror H)). intuition congruence. *)
-  (*       * intros x y GET1. edestruct (R2V x) as (z & GET2). *)
-  (*         destr. apply list_assoc_in in GET1. apply (in_map fst) in GET1. simpl in GET1. subst. congruence. *)
-  (*         eauto.  eauto. *)
-  (*       * eauto. *)
-  (*       * intros; rewrite <- RR1; eauto. destr; congruence. *)
-  (*       * intros; rewrite <- RR2; eauto. destr; congruence. *)
-  (*       * intros. rewrite list_assoc_cons. rewrite list_assoc_spec. rewrite RR. *)
-  (*         destr. destr. elim n. auto. *)
-  (*         destr. elim n; auto. *)
-  (*       * eauto. *)
-  (*       * auto. *)
-  (*       * do 2 eexists; split. eauto. split; auto. *)
-  (*     + inv Heqp0. *)
-  (*       edestruct IHForall2 as (vvs2' & rr' & MRA & EQv & EQr & ND). auto. 10: setoid_rewrite MRA. 4: eauto. *)
-  (*       * simpl; intros. generalize (H2 _ (or_intror H)). intuition congruence. *)
-  (*       * intros x y GET1. edestruct (R2V x) as (z & GET2). *)
-  (*         destr. apply list_assoc_in in GET1. apply (in_map fst) in GET1. simpl in GET1. subst. congruence. *)
-  (*         eauto. rewrite list_assoc_cons. destr; eauto. *)
-  (*         apply VR in GET2. lia. *)
-  (*       * intros x t a. rewrite list_assoc_cons. destr. intro A; inv A. lia. *)
-  (*         intro GET. apply VR in GET. lia. *)
-  (*       * intros; rewrite <- RR1; eauto. destr; congruence. *)
-  (*       * intros; rewrite <- RR2; eauto. destr; congruence. *)
-  (*       * intros. rewrite list_assoc_cons. rewrite list_assoc_spec. rewrite RR. *)
-  (*         destr. destr. elim n1. auto. *)
-  (*         destr. elim n1; auto. *)
-  (*       * intros. rewrite list_assoc_cons. rewrite list_assoc_spec. rewrite VVS1. *)
-  (*         repeat (destruct (eq_dec)); try congruence. subst. *)
-  (*         destruct (R2V (r1,s) n) as (z & GET2). destr. rewrite <- VVS1, GET2. simpl. auto. *)
-  (*       * apply nodup_list_assoc_set. auto. *)
-  (*       * do 2 eexists; split. eauto. split; auto. *)
-  (* Qed. *)
-
-  Definition var_lt (v1 v2: nat) :=
+  Definition var_lt (v1 v2: positive) :=
     v1 < v2.
 
   Lemma var_lt_gen_r:
@@ -566,8 +461,8 @@ Section SimpleForm.
   Proof.
     unfold var_lt; intros; lia.
   Qed.
-  
-  Inductive var_in_sact : sact -> nat -> Prop :=
+
+  Inductive var_in_sact : sact -> positive -> Prop :=
   | var_in_sact_var v: var_in_sact (SVar v) v
   | var_in_if_cond c t f v:
     var_in_sact c v ->
@@ -586,13 +481,13 @@ Section SimpleForm.
     var_in_sact a2 v -> var_in_sact (SBinop ufn a1 a2) v
   | var_in_sact_external ufn a v: var_in_sact a v -> var_in_sact (SExternalCall ufn a) v.
 
-  Definition vvs_smaller_variables (vvs: list (nat * (type * sact))) :=
-    forall (v : nat) (t: type) (a : sact),
-      list_assoc vvs v = Some (t, a) ->
-      forall v' : nat, var_in_sact a v' -> var_lt v' v.
+  Definition vvs_smaller_variables (vvs: PTree.t (type * sact)) :=
+    forall (v : positive) (t: type) (a : sact),
+      vvs ! v = Some (t, a) ->
+      forall v' : positive, var_in_sact a v' -> var_lt v' v.
 
-  Definition vvs_grows (vvs1 vvs2: list (nat * (type*sact))) :=
-    forall x y, list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y.
+  Definition vvs_grows (vvs1 vvs2: var_value_map) :=
+    forall x y, vvs1 ! x = Some y -> vvs2 ! x = Some y.
 
   Lemma vvs_grows_refl: forall v, vvs_grows v v.
   Proof.
@@ -609,28 +504,26 @@ Section SimpleForm.
     unfold vvs_grows; intros; eauto.
   Qed.
 
-  Definition wt_vvs (vvs: list (nat * (type * sact))) :=
+  Definition wt_vvs (vvs: PTree.t (type * sact)) :=
     forall v s t,
-      list_assoc vvs v = Some (t, s) ->
+      vvs ! v = Some (t, s) ->
       wt_sact vvs s t.
 
   Definition valid_name name nid :=
     name < nid.
 
-  Definition vvs_range (vvs: list (nat * (type * sact))) (nid: nat) :=
+  Definition vvs_range (vvs: PTree.t (type * sact)) (nid: positive) :=
     forall x y,
-      list_assoc vvs x = Some y -> valid_name x nid.
+      vvs ! x = Some y -> valid_name x nid.
 
   Lemma vvs_range_list_assoc_set:
     forall vvs n name v,
       vvs_range vvs n ->
       valid_name name n ->
-      vvs_range (list_assoc_set vvs name v) n.
+      vvs_range (PTree.set name v vvs) n.
   Proof.
     unfold vvs_range; simpl; intros.
-    destruct (eq_dec name x). subst.
-    rewrite list_assoc_gss in H1. inv H1; eauto.
-    rewrite list_assoc_gso in H1; eauto.
+    rewrite PTree.gsspec in H1; destr_in H1; eauto. inv H1. auto.
   Qed.
 
   Lemma valid_name_incr:
@@ -653,10 +546,10 @@ Section SimpleForm.
       forall k v n,
         vvs_range vvs n ->
         k >= n ->
-        wt_sact (list_assoc_set vvs k v) s t.
+        wt_sact (PTree.set k v vvs) s t.
   Proof.
     induction 1; simpl; intros; eauto.
-    - econstructor. rewrite list_assoc_gso; eauto. apply H0 in H. red in H; lia.
+    - econstructor. rewrite PTree.gso. eauto. apply H0 in H. red in H; lia.
     - econstructor; eauto.
     - econstructor; eauto.
     - econstructor; eauto.
@@ -671,54 +564,20 @@ Section SimpleForm.
       forall k t v,
         wt_sact vvs v t ->
         k >= n ->
-        wt_vvs (list_assoc_set vvs k (t, v)).
+        wt_vvs (PTree.set k (t, v) vvs).
   Proof.
-    red; intros.
-    rewrite list_assoc_spec in H3.
+    red; intros. rewrite PTree.gsspec in H3.
     destr_in H3; eauto.
     inv H3.
     eapply wt_sact_vvs_set; eauto.
     eapply wt_sact_vvs_set; eauto.
   Qed.
 
-  Lemma wt_sact_vvs_cons:
-    forall vvs s t,
-      wt_sact vvs s t ->
-      forall k v n,
-        vvs_range vvs n ->
-        k >= n ->
-        wt_sact ((k,v)::vvs) s t.
-  Proof.
-    induction 1; simpl; intros; eauto.
-    - econstructor. simpl. destr. apply H0 in H. red in H. lia. eauto.
-    - econstructor; eauto.
-    - econstructor; eauto.
-    - econstructor; eauto.
-    - econstructor; eauto.
-    - econstructor; eauto.
-  Qed.
-
-  Lemma wt_vvs_cons:
-    forall vvs n,
-      wt_vvs vvs ->
-      vvs_range vvs n ->
-      forall k t v,
-        wt_sact vvs v t ->
-        k >= n ->
-        wt_vvs ((k,(t, v))::vvs).
-  Proof.
-    red; intros. simpl in H3.
-    destr_in H3; eauto.
-    inv H3.
-    eapply wt_sact_vvs_cons; eauto.
-    eapply wt_sact_vvs_cons; eauto.
-  Qed.
   Lemma wt_sact_vvs_grows:
     forall vvs vvs' ,
       vvs_grows vvs vvs' ->
       forall s t,
         wt_sact vvs s t ->
-
         wt_sact vvs' s t.
   Proof.
     induction 2; simpl; intros; eauto.
@@ -729,6 +588,7 @@ Section SimpleForm.
     - econstructor; eauto.
     - econstructor; eauto.
   Qed.
+
   Lemma wt_sact_valid_vars:
     forall vvs n
       (WFS: vvs_range vvs n)
@@ -745,6 +605,7 @@ Section SimpleForm.
     - inv H0; eauto.
     - inv H; eauto.
   Qed.
+
   Lemma nodup_in_assoc:
     forall {K V: Type} {eqdec: EqDec K} (l: list (K*V)) k v,
       NoDup (map fst l) ->
@@ -758,6 +619,7 @@ Section SimpleForm.
     destr. simpl in *. destr. apply (in_map fst) in H. simpl in H; subst. congruence.
     eauto.
   Qed.
+
   Fixpoint size_sact (s: sact) : nat :=
     match s with
       SVar _ => 1
@@ -770,15 +632,17 @@ Section SimpleForm.
 
   Definition order_sact :=
     Relation_Operators.lexprod
-      nat (fun _ => sact)
+      positive (fun _ => sact)
       (fun s1 s2 => s1 < s2)
-      (fun s s1 s2 => size_sact s1 < size_sact s2).
+      (fun s s1 s2 => size_sact s1 < size_sact s2)%nat.
 
   Lemma wf_order_sact:
     well_founded (order_sact).
   Proof.
     apply wf_lexprod.
-    - apply lt_wf.
+    -
+      eapply well_founded_lt_compat with (f:=Pos.to_nat).
+      intros. rewrite <- Pnat.Pos2Nat.inj_lt. auto.
     - intros. apply wf_inverse_image. apply lt_wf.
   Qed.
   Lemma wt_sact_interp':
@@ -870,7 +734,6 @@ Section SimpleForm.
       eapply wt_sigma; eauto.
   Qed.
 
-
   Lemma wt_sact_interp:
     forall vvs,
       wt_vvs vvs ->
@@ -909,8 +772,8 @@ Section SimpleForm.
   Qed.
 
   Lemma interp_sact_vvs_grows_iff:
-    forall (vvs vvs' : list (nat * (type * sact))) (a : sact)
-           (v : val) (t : type) (n : nat),
+    forall (vvs vvs' : PTree.t (type * sact)) (a : sact)
+           (v : val) (t : type) (n : positive),
       wt_vvs vvs ->
       vvs_smaller_variables vvs ->
       vvs_grows vvs vvs' ->
@@ -921,38 +784,36 @@ Section SimpleForm.
     eapply interp_sact_vvs_grows_inv; eauto.
     eapply vvs_grows_interp_sact; eauto.
   Qed.
+  Lemma vvs_grows_set:
+    forall vvs n k l,
+      vvs_range vvs n ->
+      k >= n ->
+      vvs_grows vvs (PTree.set k l vvs).
+  Proof.
+    red; intros.
+    rewrite PTree.gso; eauto.
+    eapply H in H1. red in H1. lia.
+  Qed.
 
   Lemma merge_reg2vars_reg2_nd:
     forall r1 r2 cond_name vvs nid r r' vvs' nid'
            (RNG: vvs_range vvs nid)
-           (ND: NoDup (map fst vvs))
            (NDr1: NoDup (map fst r1))
            (NDr: NoDup (map fst r))
            (DISJ: forall k, In k (map fst r1) -> ~ In k (map fst r))
            (WTv: wt_vvs vvs)
            (VSV: vvs_smaller_variables vvs)
            (F2: Forall2 (fun x y => fst x = fst y) r1 r2)
-           (R2V1: forall x y, In (x,y) r1 -> exists z, list_assoc vvs y = Some (R (fst x), z))
-           (R2V2: forall x y, In (x,y) r2 -> exists z, list_assoc vvs y = Some (R (fst x), z))
-           (R2VR: forall x y, In (x,y) r -> exists z, list_assoc vvs y = Some (R (fst x), z))
-           (WTcond: wt_sact vvs (SVar cond_name) (bits_t 1))
-           (* (IH: forall x y, *)
-           (*     list_assoc r x = Some y -> *)
-           (*     exists y1 y2, *)
-           (*       list_assoc r1 x = Some y1 *)
-           (*       /\ list_assoc r2 x = Some y2 *)
-           (*       /\ forall b v, *)
-           (*         interp_sact vvs (SVar cond_name) (Bits [b]) -> *)
-           (*         interp_sact vvs (SVar (if b then y1 else y2)) v <-> *)
-           (*           interp_sact vvs (SVar y) v) *)
-    ,
+           (R2V1: forall x y, In (x,y) r1 -> exists z, vvs !y = Some (R (fst x), z))
+           (R2V2: forall x y, In (x,y) r2 -> exists z, vvs !y = Some (R (fst x), z))
+           (R2VR: forall x y, In (x,y) r -> exists z, vvs !y = Some (R (fst x), z))
+           (WTcond: wt_sact vvs (SVar cond_name) (bits_t 1)),
       merge_reg2vars_reg2 r1 r2 cond_name r vvs nid = (r', vvs', nid') ->
       vvs_range vvs' nid'
-      /\ NoDup (map fst vvs')
       /\ NoDup (map fst r')
       /\ (forall k, In k (map fst r') -> In k (map fst r) \/ In k (map fst r1))
       /\ vvs_grows vvs vvs' /\ nid <= nid' /\ wt_vvs vvs' /\ vvs_smaller_variables vvs'
-      /\ (forall x y, In (x,y) r' -> exists z, list_assoc vvs' y = Some (R (fst x), z))
+      /\ (forall x y, In (x,y) r' -> exists z, vvs' ! y = Some (R (fst x), z))
       /\ (forall x y,
              list_assoc r' x = Some y ->
              list_assoc r x = Some y \/
@@ -966,14 +827,14 @@ Section SimpleForm.
   Proof.
     Opaque list_assoc.
     induction r1; simpl; intros; eauto.
-    - inv H; eauto. repeat refine (conj _ _); auto. apply vvs_grows_refl.
+    - inv H; eauto. repeat refine (conj _ _); auto. apply vvs_grows_refl. lia.
     - inv F2. destr_in H.
       destr_in H.
       destr_in H.
       do 2 destr_in H.
       inv NDr1.
-      eapply IHr1 in Heqp2; eauto.
-      destruct Heqp2 as (RNG2 & ND2 & ND3 & INCL & GROWS & LE & WTv2 & VSV2 & R2VR2 & EVAL).
+      eapply IHr1 in Heqp3; eauto.
+      destruct Heqp3 as (RNG2 & ND2 & INCL & GROWS & LE & WTv2 & VSV2 & R2VR2 & EVAL).
       destr_in H; inv H; eauto.
       * repeat refine (conj _ _); eauto.
         -- simpl. constructor; eauto. intro IN; apply INCL in IN. destruct IN; eauto.
@@ -994,26 +855,23 @@ Section SimpleForm.
               rewrite Heqs1. eauto.
       * simpl.
         repeat refine (conj _ _); eauto.
-        -- intros x y GET. rewrite list_assoc_cons in GET. destr_in GET. inv GET. red; lia.
+        -- intros x y GET. rewrite PTree.gsspec in GET. destr_in GET. inv GET. red; lia.
            eapply RNG2 in GET. red in GET; red; lia.
-        -- constructor; eauto.
-           intro IN.
-           edestruct (@in_keys_list_assoc_ex). apply IN. apply RNG2 in H. red in H; lia.
         -- constructor; eauto.
            intro IN. apply INCL in IN. destruct IN; eauto.
            apply DISJ in H. auto. auto.
         -- intros k [EQ|IN]; eauto. apply INCL in IN; eauto. destruct IN; auto.
-        -- eapply vvs_grows_trans. eauto. red; simpl; intros. rewrite list_assoc_cons. destr.
-           apply RNG2 in H. red in H; lia.
-        -- eapply wt_vvs_cons; eauto.
+        -- eapply vvs_grows_trans. eauto. eapply vvs_grows_set. eauto. lia.
+        -- lia.
+        -- eapply wt_vvs_set; eauto.
            edestruct (R2V1 _ _ (or_introl eq_refl)) as (? & GET1).
            edestruct (R2V2 _ _ (or_introl eq_refl)) as (? & GET2).
            econstructor.
            eapply wt_sact_vvs_grows. 2: eauto. eauto.
            eapply wt_sact_vvs_grows. eauto. econstructor; eauto.
            simpl in H2. subst.
-           eapply wt_sact_vvs_grows. eauto. econstructor; eauto.
-        -- red; simpl; intros x t a GET. rewrite list_assoc_cons in GET. destr_in GET; eauto.
+           eapply wt_sact_vvs_grows. eauto. econstructor; eauto. lia.
+        -- red; simpl; intros x ? a GET. rewrite PTree.gsspec in GET. destr_in GET; eauto.
            inv GET. intros v' VIS.
            inv VIS; inv H7.
            eapply wt_sact_valid_vars in WTcond. 3: constructor. 2: eauto. red; lia.
@@ -1021,8 +879,8 @@ Section SimpleForm.
            apply RNG in GET1; red in GET1. red; lia.
            edestruct (R2V2 _ _ (or_introl eq_refl)) as (? & GET2).
            apply RNG in GET2; red in GET2. red; lia.
-        -- intros x y [EQ|IN]; eauto. rewrite list_assoc_cons. inv EQ. rewrite eq_dec_refl. eauto.
-           rewrite list_assoc_cons. destr; try congruence. simpl in H2. subst.
+        -- intros x y [EQ|IN]; eauto. rewrite PTree.gsspec. inv EQ. destr; try congruence. eauto.
+           rewrite PTree.gsspec. destr; try congruence. simpl in H2. subst.
            apply R2VR2 in IN. destruct IN. apply RNG2 in H. red in H; lia.
            eauto.
         -- intros x y GET; rewrite list_assoc_cons in GET. destr_in GET; eauto.
@@ -1034,12 +892,13 @@ Section SimpleForm.
 
               Lemma interp_sact_var_cons:
                 forall k v vvs x,
-                  interp_sact ((k,v)::vvs) (SVar k) x <->
-                    interp_sact ((k,v)::vvs) (snd v) x.
+                  interp_sact (PTree.set k v vvs) (SVar k) x <->
+                    interp_sact (PTree.set k v vvs) (snd v) x.
               Proof.
                 split.
-                inversion 1; subst. rewrite list_assoc_cons in H1. rewrite eq_dec_refl in H1. inv H1. auto.
-                destruct v. intros; econstructor. rewrite list_assoc_cons, eq_dec_refl. eauto. auto.
+                inversion 1; subst. rewrite PTree.gsspec in H1. destr_in H1; try congruence. inv H1. auto.
+                destruct v. intros; econstructor.
+                rewrite PTree.gss. eauto. auto.
               Qed.
               rewrite interp_sact_var_cons. simpl.
               Lemma interp_sact_iff:
@@ -1058,19 +917,19 @@ Section SimpleForm.
               setoid_rewrite list_assoc_cons.
               rewrite Heqs1.
 
-              assert (vvs_grows l0 ((n1, (R r2, SIf (SVar cond_name) (SVar n) (SVar n0))) :: l0)).
+              assert (vvs_grows t (PTree.set p4 (R r2, SIf (SVar cond_name) (SVar p0) (SVar p2)) t)).
               {
-                red; simpl; intros. rewrite list_assoc_cons. destr; eauto.
+                red; simpl; intros. rewrite PTree.gso. auto.
                 apply RNG2 in H. red in H; lia.
               }
               edestruct EVAL.  apply GET.  auto.
               destruct H0 as (y1 & y2 & GET1 & GET2 & EVAL2).
               right; exists y1, y2. split; auto. split; auto. intros b v INT.
-              setoid_rewrite (interp_sact_vvs_grows_iff l0) in INT; eauto.
+              setoid_rewrite (interp_sact_vvs_grows_iff t) in INT; eauto.
               destruct (R2VR2 _ _ (list_assoc_in _ _ _ GET)).
               destruct (R2V1 _ _ (or_intror (list_assoc_in _ _ _ GET1))).
               destruct (R2V2 _ _ (or_intror (list_assoc_in _ _ _ GET2))).
-              setoid_rewrite (interp_sact_vvs_grows_iff l0); eauto.
+              setoid_rewrite (interp_sact_vvs_grows_iff t); eauto.
               econstructor. eapply GROWS.
               instantiate (1:=if b then x1 else x2). destr; eauto.
               econstructor. eauto.
@@ -1080,27 +939,26 @@ Section SimpleForm.
 
   Lemma merge_reg2vars2_nd:
     forall r1 r2 cond_name vvs nid r' vvs' nid'
-           (ND: NoDup (map fst vvs))
            (NDr: NoDup (map fst r1))
            (RNG: vvs_range vvs nid)
            (WTv: wt_vvs vvs)
            (VSV: vvs_smaller_variables vvs)
            (F2: Forall2 (fun x y => fst x = fst y) r1 r2)
-           (R2V1: forall x y, In (x,y) r1 -> exists z, list_assoc vvs y = Some (R (fst x), z))
-           (R2V2: forall x y, In (x,y) r2 -> exists z, list_assoc vvs y = Some (R (fst x), z))
+           (R2V1: forall x y, In (x,y) r1 -> exists z, vvs !y = Some (R (fst x), z))
+           (R2V2: forall x y, In (x,y) r2 -> exists z, vvs !y = Some (R (fst x), z))
            (WTcond: wt_sact vvs (SVar cond_name) (bits_t 1))
     ,
       merge_reg2vars2 r1 r2 cond_name vvs nid = (r', vvs', nid') ->
-      NoDup (map fst vvs') /\ NoDup (map fst r')
+      NoDup (map fst r')
       /\ (forall k, In k (map fst r') -> In k (map fst r1))
       /\ vvs_grows vvs vvs' /\
        nid <= nid' /\
        wt_vvs vvs' /\
         vvs_smaller_variables vvs' /\
         vvs_range vvs' nid' /\
-       (forall (x : reg_t * (Port + unit)) (y : nat),
+       (forall (x : reg_t * (Port + unit)) (y : positive),
         In (x, y) r' ->
-        exists z : sact, list_assoc vvs' y = Some (R (fst x), z))
+        exists z : sact, vvs' ! y = Some (R (fst x), z))
   /\ (forall x y,
              list_assoc r' x = Some y ->
              exists y1 y2,
@@ -1112,57 +970,34 @@ Section SimpleForm.
                    interp_sact vvs' (SVar y) v).
   Proof.
     unfold merge_reg2vars2. intros.
-    edestruct merge_reg2vars_reg2_nd as (RNG2 & NDv & NDr2 & INCL & GROWS & LE & WTv2 & VSV2 & R2V & EVAL).
-    13: eauto. all: eauto.
+    edestruct merge_reg2vars_reg2_nd as (RNG2 & NDr2 & INCL & GROWS & LE & WTv2 & VSV2 & R2V & EVAL).
+    12: eauto. all: eauto.
     constructor. simpl; easy. repeat refine (conj _ _); eauto.
     intros k IN. apply INCL in IN. simpl in IN. intuition.
     intros.
     edestruct EVAL; eauto. inv H1.
   Qed.
   Transparent list_assoc.
-  (* Lemma merge_reg2vars2_ok: *)
-  (*   forall r1 r2, *)
-  (*     Forall2 (fun a b => fst a = fst b) r1 r2 -> *)
-  (*     NoDup (map fst r1) -> *)
-  (*     forall cond_name vvs nid r' vvs' nid' *)
-  (*            (R2V: reg2var_vvs r1 vvs) *)
-  (*            (VR: forall x t a, list_assoc vvs x = Some (t,a) -> x < nid) *)
-  (*            (ND: NoDup (map fst vvs)), *)
-  (*       merge_reg2vars2 r1 r2 cond_name vvs nid = (r', vvs', nid') -> *)
-  (*       NoDup (map fst vvs') /\ *)
-  (*         exists vvs2' rr' , *)
-  (*           merge_reg2vars r1 r2 cond_name vvs nid = (rr', vvs2', nid') /\ *)
-  (*             (forall k, list_assoc vvs' k = list_assoc vvs2' k) *)
-  (*           /\ (forall k, list_assoc r' k = list_assoc rr' k) *)
-  (*           /\ NoDup (map fst vvs2'). *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   edestruct merge_reg2vars_reg2_ok as (vvs2' & rr' & MR & GET1 & GET2 & ND2); eauto. simpl; easy. *)
-  (*   intros. edestruct (R2V x) as (? & GET1 & ? & GET2). rewrite H2 in GET1; inv GET1. eauto. *)
-  (*   split. *)
-  (*   eapply merge_reg2vars2_nd. 4: eauto. auto. auto. intros x (? & ?); eauto. *)
-  (*   exists vvs2', rr'; eauto. *)
-  (* Qed. *)
 
   Definition gria_list
              (guard: sact)
-             (rec: uact -> (list (string * type)) -> list (string * nat) ->
-                   r2vtype -> list(nat * (type*sact)) ->
-                   sact -> rule_information_raw -> rule_information_raw -> nat ->
-                   (option sact * list (string * nat) * r2vtype * list (nat * (type * sact)) * sact * rule_information_raw * nat * type))
+             (rec: uact -> (list (string * type)) -> list (string * positive) ->
+                   r2vtype -> var_value_map ->
+                   sact -> rule_information_raw -> rule_information_raw -> positive ->
+                   (option sact * list (string * positive) * r2vtype * PTree.t (type * sact) * sact * rule_information_raw * positive * type))
     :=
     fix gria_list
         (args: list uact)
         (tsig: list (string * type))
-        (env: list (string * nat))
+        (env: list (string * positive))
         (reg2var : r2vtype)
-        (vvs: list (nat * (type * sact)))
+        (vvs: PTree.t (type * sact))
         (sched_rir: rule_information_raw)
         (rir: rule_information_raw)
-        (nid: nat)
+        (nid: positive)
         names0
         fail0
-      : list (nat * type) * list (string * nat) * r2vtype * list (nat * (type * sact)) * sact * rule_information_raw * nat
+      : list (positive * type) * list (string * positive) * r2vtype * PTree.t (type * sact) * sact * rule_information_raw * positive
       :=
       match args with
         [] => (names0, env, reg2var, vvs, fail0, rir, nid)
@@ -1171,8 +1006,8 @@ Section SimpleForm.
             rec a tsig env reg2var vvs guard sched_rir rir nid in
           let arg_bind_name := nid in
           gria_list args tsig vms reg2var
-                    (list_assoc_set vvs arg_bind_name (t, reduce t vc))
-                    sched_rir rir (S nid) ((arg_bind_name, t) :: names0) (merge_failures failure fail0)
+                    (PTree.set arg_bind_name (t, reduce t vc) vvs)
+                    sched_rir rir (Pos.succ nid) ((arg_bind_name, t) :: names0) (merge_failures failure fail0)
       end.
 
   (* This function extracts the actions for a given rule. *)
@@ -1189,12 +1024,12 @@ Section SimpleForm.
 
     Returns:
     - option sact : a simple action which evaluates equivalently to the original daction
-    - list (string * nat) : updated env
-    - list ((reg_t * Port) * nat) : updated reg2var
-    - list (nat * (type * sact)) : updated vvs
+    - list (string * positive) : updated env
+    - list ((reg_t * Port) * positive) : updated reg2var
+    - PTree.t (type * sact) : updated vvs
     - sact : the condition under which the action fails
     - rule_information_raw : updated rir
-    - nat : updated nid
+    - positive : updated nid
     - type : the type of the original action
 
    *)
@@ -1207,19 +1042,19 @@ Section SimpleForm.
        different actions are also dealt with here. *)
            (ua: uact)
            (tsig: list (string * type))
-           (env: list (string * nat))
+           (env: list (string * positive))
            (reg2var: r2vtype)
-           (vvs: list (nat * (type * sact)))
+           (vvs: PTree.t (type * sact))
            (guard: sact)
            (sched_rir: rule_information_raw)
-           (rir: rule_information_raw) (nid: nat)
+           (rir: rule_information_raw) (nid: positive)
     (* Returns value, env, var_values, failure condition, rule_information_raw,
        next_ids *)
     : option (sact)
-      * list (string * nat)
+      * list (string * positive)
       * r2vtype
-      * (list (nat * (type * sact)))
-      * sact * rule_information_raw * nat * type
+      * (PTree.t (type * sact))
+      * sact * rule_information_raw * positive * type
     (* TODO remove redundancies with rule_information_raw (failure_cond,
          var_values) *)
     :=
@@ -1231,8 +1066,8 @@ Section SimpleForm.
         let '(ret_body, vm_body, reg2var, vv_body, failures_body, rir_body, nid, tbody) :=
           get_rule_information_aux
             body ((var, tval)::tsig) ((var, name)::vm_val) reg2var
-            (list_assoc_set vv_val name (tval, (reduce tval ret_val)))
-            guard sched_rir rir_val (S nid) in
+            (PTree.set name (tval,reduce tval ret_val) vv_val)
+            guard sched_rir rir_val (Pos.succ nid) in
         (ret_body, skipn 1 vm_body (* var's binding goes out of scope *),
           reg2var,
           vv_body,
@@ -1244,8 +1079,8 @@ Section SimpleForm.
         (None,
           list_assoc_set vm_val var name,
           reg2var,
-          list_assoc_set vv_val name (t, (reduce t ret_val)),
-          failures_val, rir_val, S nid, bits_t 0
+          PTree.set name (t, (reduce t ret_val)) vv_val,
+          failures_val, rir_val, Pos.succ nid, bits_t 0
         )
     | DVar var =>
         match list_assoc env var, list_assoc tsig var with
@@ -1264,16 +1099,16 @@ Section SimpleForm.
         let '(ret_cond, vm_cond, reg2var, vv_cond, failures_cond, rir_cond, nid, t) :=
           get_rule_information_aux cond tsig env reg2var vvs guard sched_rir rir nid in
         let cond_name := nid in
-        let guard_tb_name := (nid + 1) in
-        let guard_fb_name := (nid + 2) in
+        let guard_tb_name := Pos.succ nid in
+        let guard_fb_name := Pos.succ guard_tb_name in
         let guard_tb := uand guard (SVar cond_name) in
         let guard_fb := uand guard (unot (SVar cond_name)) in
-        let vv_cond := list_assoc_set vv_cond cond_name (bits_t 1, reduce (bits_t 1) ret_cond) in
-        let vv_cond := list_assoc_set vv_cond guard_tb_name (bits_t 1, guard_tb) in
-        let vv_cond := list_assoc_set vv_cond guard_fb_name (bits_t 1, guard_fb) in
+        let vv_cond := PTree.set cond_name (bits_t 1, reduce (bits_t 1) ret_cond) vv_cond in
+        let vv_cond := PTree.set guard_tb_name (bits_t 1, guard_tb) vv_cond in
+        let vv_cond := PTree.set guard_fb_name (bits_t 1, guard_fb) vv_cond in
         let '(ret_tb, vm_tb, reg2var_tb, vv_tb, failures_tb, rir_tb, nid, t1) :=
           get_rule_information_aux tb tsig vm_cond reg2var vv_cond (SVar guard_tb_name) sched_rir rir_cond
-                                   (nid + 3)
+                                   (Pos.succ guard_fb_name)
         in
         let '(ret_fb, vm_fb, reg2var_fb, vv_fb, failures_fb, rir_fb, nid, t2) :=
           (* We use rir_tb here even though we know that none of the actions added
@@ -1350,21 +1185,18 @@ Section SimpleForm.
           | P1 => add_write1 sched_rir rir guard reg (reduce t ret_val)
           end
         in
-        let '(reg2var, vvs, nid, t) :=
+        let v_read1 := nid in
+        let nid := Pos.succ nid in
+        let vvs := PTree.set v_read1 (t, reduce t ret_val) vvs in
+        let reg2var :=
           match port with
           | P0 =>
-              let v_read1 := nid in
-              let nid := nid + 1 in
-              let vvs := list_assoc_set vvs v_read1 (t, reduce t ret_val) in
               let reg2var := list_assoc_set reg2var (reg, inl P1) v_read1 in
               let reg2var := list_assoc_set reg2var (reg, inr tt) v_read1 in
-              (reg2var, vvs, nid, t)
+              reg2var
           | P1 =>
-              let v_read1 := nid in
-              let nid := nid + 1 in
-              let vvs := list_assoc_set vvs v_read1 (t, reduce t ret_val) in
               let reg2var := list_assoc_set reg2var (reg, inr tt) v_read1 in
-              (reg2var, vvs, nid, t)
+              reg2var
           end in
         (None, vm_val, reg2var, vvs, merge_failures failures_val failure_wr, rir_wr,
           nid, bits_t 0)
@@ -1373,18 +1205,17 @@ Section SimpleForm.
           get_rule_information_aux arg tsig env reg2var vvs guard sched_rir rir nid in
         let name := nid in
         (Some (SVar name), vm_arg, reg2var,
-          list_assoc_set vv_arg name (retSig (Sigma ufn), SExternalCall ufn (reduce t ret_arg)),
+          (PTree.set name (retSig (Sigma ufn), SExternalCall ufn (reduce t ret_arg)) vv_arg),
           failures_arg, rir,
-          S nid, retSig (Sigma ufn))
+          Pos.succ nid, retSig (Sigma ufn))
     | DError _ => (None, env, reg2var, vvs, const_true, rir, nid, bits_t 0)
     | DFail tau => (None, env, reg2var, vvs, const_true, rir, nid, tau)
     | @DConst _ _ _ _ _ tau c =>
         (Some (SConst (BitsToLists.val_of_value c)), env, reg2var, vvs, const_false, rir, nid, tau)
     end.
 
-
   Definition same_env env1 env2 :=
-    Forall2 (fun x y : string * nat => fst x = fst y) env1 env2.
+    Forall2 (fun x y : string * positive => fst x = fst y) env1 env2.
 
   Lemma same_env_set_in:
     forall env' env
@@ -1410,14 +1241,14 @@ Section SimpleForm.
   Qed.
 
   Lemma same_env_refl:
-    forall (l: list (string * nat)),
+    forall (l: list (string * positive)),
       same_env l l.
   Proof.
     unfold same_env; induction l; simpl; intros; eauto.
   Qed.
 
   Lemma same_env_sym:
-    forall (l1 l2: list (string * nat)),
+    forall (l1 l2: list (string * positive)),
       same_env l1 l2 ->
       same_env l2 l1.
   Proof.
@@ -1426,9 +1257,9 @@ Section SimpleForm.
   Qed.
 
   Lemma merge_vms_preserve_same_env:
-    forall (l2 l4: list (string*nat))
+    forall (l2 l4: list (string*positive))
            (F: same_env l2 l4)
-           (l3: list (nat*(type*sact))) cname n1 env' vvs n2,
+           (l3: var_value_map) cname n1 env' vvs n2,
       merge_branches l2 l4 l3 n1 cname = (env', vvs, n2) ->
       same_env l2 env'.
   Proof.
@@ -1454,24 +1285,12 @@ Section SimpleForm.
     forall l n name,
       vvs_range l n ->
       ~ valid_name name n ->
-      list_assoc l name = None.
+      l ! name = None.
   Proof.
     unfold vvs_range; intros.
-    destruct (list_assoc l name) eqn:?; eauto. eapply H in Heqo; eauto. congruence.
+    destruct (l ! name) eqn:?; eauto. eapply H in Heqo; eauto. congruence.
   Qed.
 
-
-
-  Lemma vvs_grows_set:
-    forall vvs n k l,
-      vvs_range vvs n ->
-      k >= n ->
-      vvs_grows vvs (list_assoc_set vvs k l).
-  Proof.
-    red; intros.
-    rewrite list_assoc_gso; eauto.
-    eapply H in H1. red in H1. lia.
-  Qed.
 
   Lemma wt_sact_fold_uor:
     forall conds vvs,
@@ -1499,7 +1318,7 @@ Section SimpleForm.
            x v t
            (GET1: list_assoc env x = Some v)
            (GET2: list_assoc tsig x = Some t),
-    exists s, list_assoc vvs v = Some (t, s).
+    exists s, vvs !v = Some (t, s).
   Proof.
     induction 1; simpl; intros; eauto. inv GET1.
     repeat destr_in H. subst.
@@ -1527,19 +1346,19 @@ Section SimpleForm.
       forall  v n t a,
         list_assoc tsig v = Some t ->
         vvs_range vvs n ->
-        env_vvs (list_assoc_set env v n) (list_assoc_set vvs n (t, a)) tsig.
+        env_vvs (list_assoc_set env v n) (PTree.set n (t, a) vvs) tsig.
   Proof.
     induction 1; simpl; intros; eauto. easy.
     repeat destr_in H. destruct H as (EQ & ss & GET). subst.
     destr_in H1; inv H1.
-    + constructor. split; auto. rewrite list_assoc_gss; eauto.
+    + constructor. split; auto. rewrite PTree.gss; eauto.
       eapply Forall2_impl. eauto.
       simpl; intros; eauto.
       repeat destr_in H3. destruct H3 as (? & ? & GET2). subst. split; eauto.
-      rewrite list_assoc_gso; eauto.
+      rewrite PTree.gso; eauto.
       intro; subst.
       eapply H2 in GET2. red in GET2. lia.
-    + constructor. split; auto. rewrite list_assoc_gso. eauto.
+    + constructor. split; auto. rewrite PTree.gso. eauto.
       eapply H2 in GET. red in GET. lia.
       eapply Forall2_impl.
       eapply IHForall2. eauto. auto.
@@ -1552,15 +1371,16 @@ Section SimpleForm.
       forall n k v,
         vvs_range vvs n ->
         k >= n ->
-        env_vvs env (list_assoc_set vvs k v) tsig.
+        env_vvs env (PTree.set k v vvs) tsig.
   Proof.
     induction 1; simpl; intros; eauto. constructor.
     repeat destr_in H. destruct H as (? & ? & ?). subst.
     constructor; eauto.
-    - split; auto. rewrite list_assoc_gso. eauto.
+    - split; auto. rewrite PTree.gso. eauto.
       apply H1 in H3. red in H3. lia.
     - eapply IHForall2; eauto.
   Qed.
+
   Lemma env_vvs_vvs_grows:
     forall env vvs tsig,
       env_vvs env vvs tsig ->
@@ -1579,15 +1399,12 @@ Section SimpleForm.
       vvs_smaller_variables vvs ->
       forall n t a,
         (forall v, var_in_sact a v -> v < n) ->
-        vvs_smaller_variables (list_assoc_set vvs n (t, a)).
+        vvs_smaller_variables (PTree.set n (t, a) vvs).
   Proof.
     red; intros.
-    rewrite list_assoc_spec in H1. destr_in H1. inv H1. red. eauto.
+    rewrite PTree.gsspec in H1. destr_in H1. inv H1. red. eauto.
     eauto.
   Qed.
-
-
-
 
   Lemma wt_sact_reduce:
     forall vvs t o,
@@ -1598,8 +1415,6 @@ Section SimpleForm.
     destruct o. simpl. eauto.
     simpl. constructor. apply wt_val_of_type.
   Qed.
-
-
 
   Lemma wt_sact_interp_bool:
     forall vvs,
@@ -1632,7 +1447,7 @@ Section SimpleForm.
     forall vvs,
       wt_vvs vvs ->
       vvs_smaller_variables vvs ->
-      forall (n : nat) (a : sact) (t : type),
+      forall (n : positive) (a : sact) (t : type),
         vvs_range vvs n ->
         wt_sact vvs a t ->
         forall v,
@@ -1649,7 +1464,7 @@ Section SimpleForm.
     forall vvs,
       wt_vvs vvs ->
       vvs_smaller_variables vvs ->
-      forall (n : nat) (a : sact),
+      forall (n : positive) (a : sact),
         vvs_range vvs n ->
         wt_sact vvs a (bits_t 1) ->
         forall v,
@@ -1668,7 +1483,7 @@ Section SimpleForm.
         (forall v, var_in_sact a v -> v < n) ->
         forall m,
           n <= m ->
-          interp_sact (list_assoc_set vvs m x) a v -> interp_sact vvs a v.
+          interp_sact (PTree.set m x vvs) a v -> interp_sact vvs a v.
   Proof.
     intros vvs WTvvs VSV n a.
     change n with (projT1 (existT (fun _ => sact) n a)).
@@ -1680,7 +1495,7 @@ Section SimpleForm.
     intros x IH t vv BELOW m LE INTERP.
     destruct x; simpl in *.
     inv INTERP.
-    - trim (BELOW var). constructor. rewrite list_assoc_gso in H by lia.
+    - trim (BELOW var). constructor. rewrite PTree.gso in H by lia.
       econstructor; eauto.
       generalize (VSV _ _ _ H). intros.
       eapply (IH (existT _ var a)). 4: simpl; eauto.
@@ -1733,15 +1548,15 @@ Section SimpleForm.
       forall n a x v,
         vvs_range vvs n ->
         (forall v, var_in_sact a v -> v < n) ->
-        interp_sact (list_assoc_set vvs n x) a v <-> interp_sact vvs a v.
+        interp_sact (PTree.set n x vvs) a v <-> interp_sact vvs a v.
   Proof.
     intros; split.
-    eapply interp_sact_list_assoc_set; eauto.
+    eapply interp_sact_list_assoc_set; eauto. lia.
     intros; eapply vvs_grows_interp_sact; eauto.
-    eapply vvs_grows_set; eauto.
+    eapply vvs_grows_set; eauto. lia.
   Qed.
 
-  Definition match_Gamma_env (Gamma: list (string * val)) (env: list (string * nat)) vvs :=
+  Definition match_Gamma_env (Gamma: list (string * val)) (env: list (string * positive)) vvs :=
     Forall2 (fun x y =>
                fst x = fst y /\ interp_sact vvs (SVar (snd y)) (snd x)
             ) Gamma env.
@@ -1756,15 +1571,13 @@ Section SimpleForm.
            (VVSVALID: vvs_smaller_variables vvs)
            (VALIDCOND: valid_name cond_name nid)
            (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1))
-           (WTVVS: wt_vvs vvs)
-           (ND: NoDup (map fst vvs)),
+           (WTVVS: wt_vvs vvs),
       vvs_grows vvs vvs'
       /\ vvs_range vvs' nid'
       /\ env_vvs vm' vvs' tsig
       /\ nid <= nid'
       /\ vvs_smaller_variables vvs'
       /\ wt_vvs vvs'
-      /\ NoDup (map fst vvs')
       /\ Forall2 (fun '(xt,xf) x =>
                     forall b,
                       interp_sact vvs' (SVar cond_name) (Bits [b]) ->
@@ -1774,12 +1587,12 @@ Section SimpleForm.
                  ) (combine vm_tb vm_fb) vm'.
   Proof.
     induction vm_tb; simpl; intros; eauto.
-    - inv MB. repeat split; eauto using vvs_grows_refl.
+    - inv MB. repeat split; eauto using vvs_grows_refl. lia.
     - repeat destr_in MB; inv MB. now auto.
        + inv ENVVVS1. inv ENVVVS2. destruct y.
         destruct H1 as ( ? & ? & GET1).
         destruct H4 as ( ? & ? & GET2). subst.
-        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & ND3 & EVAL3); eauto.
+        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & EVAL3); eauto.
         repeat split; auto.
         constructor; eauto.
         constructor; eauto.
@@ -1787,12 +1600,13 @@ Section SimpleForm.
       + inv ENVVVS1. inv ENVVVS2. destruct y.
         destruct H1 as ( ? & ? & GET1).
         destruct H4 as ( ? & ? & GET2). subst.
-        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & ND3 & EVAL3); eauto.
+        edestruct IHvm_tb as (VVSGROWS3 & VVSRANGE3 & ENVVVS3 & NIDGROWS3 & VVSVALID3 & WTVVS3 & EVAL3); eauto.
         repeat split; auto.
-        * eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto.
+        * eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto. lia.
         * eapply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia. red; lia.
-        * constructor. split; auto. rewrite list_assoc_gss.  assert (t = t0) by congruence. subst; eauto.
+        * constructor. split; auto. rewrite PTree.gss.  assert (t1 = t0) by congruence. subst; eauto.
           eapply env_vvs_change_vvs. eauto. eauto. lia.
+        * lia.
         * eapply vvs_smaller_variables_set; eauto.
           intros v VIS. inv VIS.
           -- inv H4. red in VALIDCOND; lia.
@@ -1803,14 +1617,13 @@ Section SimpleForm.
           econstructor; eauto.
           eapply wt_sact_vvs_grows; eauto.
           econstructor. eapply VVSGROWS3; eauto.
-          econstructor. eapply VVSGROWS3; eauto.
-        * eapply nodup_list_assoc_set; eauto.
+          econstructor. eapply VVSGROWS3; eauto. lia.
         * constructor; eauto.
           -- intros.
              split; intros IS.
-             ++ econstructor. rewrite list_assoc_gss. eauto.
+             ++ econstructor. rewrite PTree.gss. eauto.
                 econstructor. eauto. destruct b; eauto.
-             ++ simpl in IS. inv IS. rewrite list_assoc_gss in H1. inv H1.
+             ++ simpl in IS. inv IS. rewrite PTree.gss in H1. inv H1.
                 inv H2.
                 exploit interp_sact_determ. apply H. apply H7. intro A; inv A.
                 destruct b0; eauto.
@@ -1855,7 +1668,7 @@ Section SimpleForm.
   Lemma reg2var_vvs_set:
     forall r2v vvs r v,
       reg2var_vvs r2v vvs ->
-      (exists z : sact, list_assoc vvs v = Some (R (fst r), z)) ->
+      (exists z : sact, vvs !v = Some (R (fst r), z)) ->
       reg2var_vvs (list_assoc_set r2v r v) vvs.
   Proof.
     red; intros.
@@ -1875,7 +1688,7 @@ Section SimpleForm.
 
 
   Record match_log_vvs
-         (vvs: list (nat * (type*sact)))
+         (vvs: var_value_map)
          (rir: rule_information_raw)
          (log: Log REnv)
     :=
@@ -1901,7 +1714,7 @@ Section SimpleForm.
   Definition wt_cond_log vvs (cl: cond_log) :=
     forall i a, In (i, a) cl -> wt_sact vvs a (bits_t 1).
 
-  Record wf_rir (r: rule_information_raw) (vvs: list (nat * (type * sact))) :=
+  Record wf_rir (r: rule_information_raw) (vvs: PTree.t (type * sact)) :=
     {
       wf_rir_read0s: wt_cond_log vvs (rir_read0s r);
       wf_rir_read1s: wt_cond_log vvs (rir_read1s r);
@@ -1922,12 +1735,12 @@ Section SimpleForm.
       wfs_vvs_range: vvs_range vvs nid;
       wfs_vsv: vvs_smaller_variables vvs;
       wfs_rir: wf_rir rir vvs;
-      wfs_nd: NoDup (map fst vvs);
       wfs_ndr: NoDup (map fst reg2var);
     }.
+
   Lemma interp_sact_vvs_grows_iff':
-    forall (vvs vvs' : list (nat * (type * sact))) (a : sact)
-           (v : val) (t : type) (n : nat) env tsig r2v rir,
+    forall (vvs vvs' : PTree.t (type * sact)) (a : sact)
+           (v : val) (t : type) (n : positive) env tsig r2v rir,
       wf_state tsig env r2v vvs rir n ->
       vvs_grows vvs vvs' ->
       wt_sact vvs a t -> interp_sact vvs' a v <-> interp_sact vvs a v.
@@ -2018,8 +1831,8 @@ Section SimpleForm.
   Qed.
 
   Record match_logs_r2v
-         (r2v: list (reg_t * (Port + unit) * nat))
-         (vvs: list (nat * (type*sact)))
+         (r2v: list (reg_t * (Port + unit) * positive))
+         (vvs: var_value_map)
          sched_rir
          (rir: rule_information_raw)
          (sched_log action_log: Log REnv)
@@ -2041,132 +1854,6 @@ Section SimpleForm.
       mlr_mlv_action: match_log_vvs vvs rir action_log;
     }.
 
-  (* Lemma merge_reg2var_reg_grows: *)
-  (*   forall reg prt r2v_tb r2v_fb r2v vvs nid cond_name r2v' vvs' nid' *)
-  (*          (MB: merge_reg2vars_reg2 r2v_tb r2v_fb cond_name r2v vvs nid = (r2v', vvs', nid')) *)
-  (*          (ENVVVS1: reg2var_vvs r2v_tb vvs) *)
-  (*          (ENVVVS2: reg2var_vvs r2v_fb vvs) *)
-  (*          (ENVVVSR: forall x y, list_assoc r2v x = Some y -> exists z, list_assoc vvs y = Some (R (fst x), z)) *)
-  (*          (RNGVVS: vvs_range vvs nid) *)
-  (*          (VVSVALID: vvs_smaller_variables vvs) *)
-  (*          (VALIDCOND: valid_name cond_name nid) *)
-  (*          (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1)) *)
-  (*          (WT: wt_vvs vvs) *)
-  (*          (ND: NoDup (map fst vvs)) *)
-  (*   , *)
-  (*     vvs_grows vvs vvs' *)
-  (*     /\ vvs_range vvs' nid' *)
-  (*     /\ (forall x y, list_assoc r2v' x = Some y -> exists z, list_assoc vvs' y = Some (R (fst x), z)) *)
-  (*     /\ (incl ((reg,prt)::map fst r2v) (map fst r2v')) *)
-  (*     /\ nid <= nid' *)
-  (*     /\ vvs_smaller_variables vvs' *)
-  (*     /\ wt_vvs vvs' *)
-  (*     /\ NoDup (map fst vvs') *)
-  (*     /\ forall sched_rir rir sched_log action_log *)
-  (*               (MLR: match_logs_r2v r2v vvs sched_rir rir sched_log action_log) *)
-  (*               (WFR: wf_rir rir vvs) *)
-  (*               (WFSR: wf_rir sched_rir vvs) *)
-  (*               (R2VOK:  *)
-  (*                 forall b n, *)
-  (*                   interp_sact vvs (SVar cond_name) (Bits [b]) -> *)
-  (*                   list_assoc (if b then r2v_tb else r2v_fb) (reg,prt) = Some n -> *)
-  (*                   interp_sact vvs (SVar n) (match prt with *)
-  (*                                               inl prt => do_read sched_log action_log reg prt *)
-  (*                                             | _ => *)
-  (*                                                   match latest_write (log_app action_log sched_log) reg with *)
-  (*                                                     Some v => v *)
-  (*                                                   | None => getenv REnv r reg *)
-  (*                                                   end *)
-  (*                                             end *)
-  (*               )), *)
-  (*       match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   unfold merge_reg2vars_reg in MB. *)
-  (*   repeat destr_in MB; inv MB; eauto using vvs_grows_refl. *)
-  (*   - repeat refine (conj _ _); eauto using vvs_grows_refl. *)
-  (*     intros. rewrite list_assoc_spec in H; destr_in H; eauto. *)
-  (*     subst. inv H. *)
-  (*     edestruct ENVVVS1 as (? & GET1 & ? & GET2). setoid_rewrite Heqo in GET1; inv GET1. eauto. *)
-  (*     red; intros. simpl in H; destruct H. subst. *)
-  (*     apply list_assoc_set_key_in. *)
-  (*     eapply list_assoc_set_key_stays_in; eauto. *)
-  (*     + intros. *)
-  (*       exploit wt_sact_interp_bool. 4: apply WTCOND. auto. auto. eauto. *)
-  (*       intros (b & ISV). *)
-  (*       specialize (fun n => R2VOK _ n ISV). *)
-  (*       split; eauto. *)
-  (*       * intros reg0 prt0 n GET. *)
-  (*         rewrite list_assoc_spec in GET. destr_in GET. *)
-  (*         -- inv GET. clear Heqs0. inv e. *)
-  (*            exploit R2VOK. eauto. destr; eauto. tauto. *)
-  (*         -- eapply MLR; eauto. *)
-  (*       * apply MLR. *)
-  (*       * apply MLR. *)
-  (*   - repeat refine (conj _ _); eauto using vvs_grows_refl. *)
-  (*     + red; intros. rewrite list_assoc_gso; eauto. *)
-  (*       intro; subst. eapply RNGVVS in H.  red in H.  lia. *)
-  (*     + eapply vvs_range_list_assoc_set; eauto. *)
-  (*       eapply vvs_range_incr. 2: eauto. lia. *)
-  (*       red; lia. *)
-  (*     + edestruct (ENVVVS1) as (z & IN & ? & IN2). *)
-  (*       setoid_rewrite Heqo in IN. inv IN. *)
-  (*       intros. rewrite list_assoc_spec in H. destr_in H. inv H. *)
-  (*       rewrite list_assoc_gss. *)
-  (*       rewrite Heqo1 in IN2. inv IN2. eauto. *)
-  (*       rewrite list_assoc_gso. eauto. *)
-  (*       edestruct ENVVVSR; eauto. eapply RNGVVS in H0; red in H0. lia. *)
-  (*     + red; intros. simpl in H; destruct H. *)
-  (*       subst. apply list_assoc_set_key_in. *)
-  (*       eapply list_assoc_set_key_stays_in; eauto. *)
-  (*     + red; intros. rewrite list_assoc_spec in H. destr_in H; inv H; eauto. *)
-  (*       red in VVSVALID. *)
-  (*       inv H0. *)
-  (*       -- inv H4. red in VALIDCOND; red; lia. *)
-  (*       -- inv H4; eauto. *)
-  (*          edestruct ENVVVS1 as (? & IN & ? & IN'). *)
-  (*          setoid_rewrite Heqo in IN; inv IN. *)
-  (*          apply RNGVVS in IN'. auto. *)
-  (*       -- inv H4; eauto. *)
-  (*          edestruct ENVVVS2 as (? & IN & ? & IN'). *)
-  (*          setoid_rewrite Heqo0 in IN; inv IN. *)
-  (*          apply RNGVVS in IN'. auto. *)
-  (*     + eapply wt_vvs_set; eauto. *)
-  (*       edestruct ENVVVS1 as (? & IN & ? & IN'). *)
-  (*       setoid_rewrite Heqo in IN; inv IN. *)
-  (*       edestruct ENVVVS2 as (? & IN & ? & IN''). *)
-  (*       setoid_rewrite Heqo0 in IN; inv IN. *)
-  (*       rewrite Heqo1 in IN'; inv IN'. *)
-  (*       econstructor; eauto. *)
-  (*       econstructor; eauto. *)
-  (*       econstructor; eauto. *)
-  (*     + eapply nodup_list_assoc_set. eauto. *)
-  (*     + intros. *)
-  (*       exploit wt_sact_interp. 4: apply WTCOND. auto. auto. eauto. *)
-  (*       intros (v & ISV & WTV). edestruct wt_val_bool. eauto. subst. *)
-  (*       split. *)
-  (*       * intros reg0 prt0 n2 GET. *)
-  (*         rewrite list_assoc_spec in GET. destr_in GET. *)
-  (*         -- inv GET. clear Heqs0. inv e. *)
-  (*            exploit R2VOK. eauto. eauto. *)
-  (*            instantiate (1:=if x then n else n0). destr; eauto. *)
-  (*            intro IS. *)
-  (*            econstructor. rewrite list_assoc_gss. eauto. *)
-  (*            eapply vvs_grows_interp_sact. *)
-  (*            eapply vvs_grows_set; eauto. *)
-  (*            econstructor. eauto. destr; auto. *)
-  (*         -- inv MLR. eapply vvs_grows_interp_sact. 2: eauto. *)
-  (*            eapply vvs_grows_set; eauto. *)
-  (*       * eapply match_log_vvs_grows'. eapply mlr_mlv_sched; eauto. *)
-  (*         eapply vvs_grows_set; eauto. eauto. auto. auto. auto. *)
-  (*       * eapply match_log_vvs_grows'. eapply mlr_mlv_action; eauto. *)
-  (*         eapply vvs_grows_set; eauto. eauto. auto. auto. auto. *)
-  (*   - edestruct ENVVVS1 as (? & ? & ? & ?); eauto. *)
-  (*     setoid_rewrite Heqo in H. congruence. *)
-  (*   - edestruct (ENVVVS2 (reg,prt)) as (? & ? & ? & ? ). setoid_rewrite Heqo0 in H. congruence. *)
-  (*   - edestruct (ENVVVS1 (reg,prt)) as (? & ? & ? & ? ). setoid_rewrite Heqo in H. congruence. *)
-  (* Qed. *)
-
   Lemma wt_cond_log_grows:
     forall r n1 n2,
       wt_cond_log n1 r ->
@@ -2184,33 +1871,42 @@ Section SimpleForm.
   Proof.
     intros. inv H. split; eauto using wt_sact_vvs_grows, wt_cond_log_grows.
   Qed.
+  Lemma vvs_range_set:
+    forall vvs n v,
+      vvs_range vvs n ->
+      vvs_range (PTree.set n v vvs) (Pos.succ n).
+  Proof.
+    unfold vvs_range; simpl; intros.
+    rewrite PTree.gsspec in H0; destr_in H0; eauto. inv H0. red; lia.
+    apply H in H0. red in H0; red; lia.
+  Qed.
 
+
+  
   Lemma merge_reg2var_aux_grows:
     forall r2v_tb r2v_fb
            (F2: Forall2 (fun x y => fst x = fst y) r2v_tb r2v_fb)
            r2v vvs nid cond_name r2v' vvs' nid'
            (MB: merge_reg2vars_reg2 r2v_tb r2v_fb cond_name r2v vvs nid = (r2v', vvs', nid'))
-           (ENVVVS1: Forall (fun '(x,y) => exists z, list_assoc vvs y = Some (R (fst x), z)) r2v_tb)
-           (ENVVVS2: Forall (fun '(x,y) => exists z, list_assoc vvs y = Some (R (fst x), z)) r2v_fb)
-           (ENVVVSR: Forall (fun '(x,y) => exists z, list_assoc vvs y = Some (R (fst x), z)) r2v)
+           (ENVVVS1: Forall (fun '(x,y) => exists z, vvs !y = Some (R (fst x), z)) r2v_tb)
+           (ENVVVS2: Forall (fun '(x,y) => exists z, vvs !y = Some (R (fst x), z)) r2v_fb)
+           (ENVVVSR: Forall (fun '(x,y) => exists z, vvs !y = Some (R (fst x), z)) r2v)
            (DISJ: forall k, In k (map fst r2v_tb) -> ~ In k (map fst r2v))
            (RNGVVS: vvs_range vvs nid)
            (VVSVALID: vvs_smaller_variables vvs)
            (VALIDCOND: valid_name cond_name nid)
            (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1))
            (WT: wt_vvs vvs)
-           (ND: NoDup (map fst vvs))
            (NDr: NoDup (map fst r2v))
            (NDrt: NoDup (map fst r2v_tb))
     ,
       vvs_grows vvs vvs'
       /\ vvs_range vvs' nid'
-      /\ (Forall (fun '(x,y) => exists z, list_assoc vvs' y = Some (R (fst x), z)) r2v')
+      /\ (Forall (fun '(x,y) => exists z, vvs' ! y = Some (R (fst x), z)) r2v')
       /\ (incl (map fst r2v_tb) (map fst r2v'))
       /\ nid <= nid'
       /\ vvs_smaller_variables vvs'
       /\ wt_vvs vvs'
-      /\ NoDup (map fst vvs')
       /\ NoDup (map fst r2v')
       /\ forall sched_log action_log rir sched_rir
                 (MLR: match_logs_r2v r2v vvs sched_rir rir sched_log action_log)
@@ -2224,16 +1920,16 @@ Section SimpleForm.
         match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log.
   Proof.
     induction 1; simpl; intros; eauto.
-    - inv MB. repeat refine (conj _ _); eauto using vvs_grows_refl. red; easy.
+    - inv MB. repeat refine (conj _ _); eauto using vvs_grows_refl. red; easy. lia.
     - do 5 destr_in MB.
-      edestruct IHF2 as (VG2 & VR2 & EX2 & INCL2 & LT2 & VSV2 & WT2 & ND2 & NDr2 & MLR2); eauto using reg2var_vvs_grows.
+      edestruct IHF2 as (VG2 & VR2 & EX2 & INCL2 & LT2 & VSV2 & WT2 & NDr2 & MLR2); eauto using reg2var_vvs_grows.
       inv ENVVVS1; auto.
       inv ENVVVS2; auto.
       inv NDrt; auto.
       inv ENVVVS1.
       inv ENVVVS2.
       destruct H2, H4. simpl in *; subst.
-      edestruct merge_reg2vars_reg2_nd as (VR3 & NDv & NDl0 & INl0 & _). 13: eauto.
+      edestruct merge_reg2vars_reg2_nd as (VR3 & NDl0 & INl0 & _). 12: eauto.
       all: eauto. inv NDrt; auto.
       rewrite Forall_forall in H3; eauto.
       intros x1 y INN; apply H3 in INN. auto.
@@ -2272,34 +1968,23 @@ Section SimpleForm.
           eapply EVAL in H. destruct H.
           eapply vvs_grows_interp_sact. eauto. apply mlr_read1.
           destr; simpl; destr.
-      + eapply vvs_grows_trans. eauto.
-        red; simpl. intros. destr. subst. apply VR2 in H. red in H; lia.
-      + red; simpl. intros. destr_in H. subst; red; lia.
-        apply VR2 in H. red in H; red; lia.
-      + constructor. simpl. destr; eauto.
+      + eapply vvs_grows_trans. eauto. eapply vvs_grows_set; eauto. lia.
+      + eapply vvs_range_set; eauto.
+      + constructor. simpl. rewrite PTree.gss. eauto.
         eapply Forall_impl. 2: apply EX2. simpl. intros (rp & nn) (z & GET).
         exploit VR2. eauto. unfold valid_name; intros.
-        destr. lia. eauto.
+        rewrite PTree.gso by lia. eauto.
       + simpl. red; intros a [EQ|IN]; subst; simpl; eauto.
-      + red; intros. simpl in H. destr_in H. inv H.
-        inv H2; inv H8.
-        red in VALIDCOND; red; lia.
-        apply RNGVVS in H0; red in H0; red; lia.
-        apply RNGVVS in H1; red in H1; red; lia.
-        eapply VSV2; eauto.
-      + red; intros.
-        simpl in H. destr_in H. inv H.
-        eapply wt_sact_vvs_grows with (vvs:=vvs).
-        eapply vvs_grows_trans. eauto. red; simpl; intros.
-        destr. apply VR2 in H. red in H; lia.
+      + lia.
+      + eapply vvs_smaller_variables_set. auto. intros v VIS.
+        inv VIS; inv H7.
+        red in VALIDCOND; lia.
+        apply RNGVVS in H0; red in H0; lia.
+        apply RNGVVS in H1; red in H1; lia.
+      + eapply wt_vvs_set; eauto. 2: lia.
+        eapply wt_sact_vvs_grows with (vvs:=vvs). eauto.
         econstructor; eauto. econstructor; eauto.
         econstructor; eauto.
-        eapply wt_sact_vvs_grows with (vvs:=l1).
-        red; simpl; intros.
-        destr. apply VR2 in H2. red in H2; lia.
-        eauto.
-      + simpl. constructor; eauto. intros IN; apply in_keys_list_assoc_ex in IN.
-        destruct IN as (? & IN). apply VR2 in IN. red in IN; lia.
       + simpl. constructor; eauto.
         intro IN. apply INl0 in IN. destruct IN; eauto.
         eapply DISJ in H. auto. left; auto.
@@ -2321,23 +2006,20 @@ Section SimpleForm.
                 edestruct wt_sact_interp_bool. apply WT. apply VVSVALID. apply RNGVVS.
                 eapply WTCOND.
                 exploit EVAL. apply H. destruct 1.
-                econstructor. simpl. rewrite eq_dec_refl. eauto.
+                econstructor. rewrite PTree.gss; eauto.
                 eapply vvs_grows_interp_sact with (v1:=vvs).
-                eapply vvs_grows_trans. eauto.
-                red; simpl; intros. destr. apply VR2 in H2. red in H2; lia.
+                eapply vvs_grows_trans. eauto. eapply vvs_grows_set; eauto. lia.
                 econstructor. eauto.
                 destruct x1; eapply mlr_read1. simpl. rewrite eq_dec_refl. auto.
                 simpl. rewrite eq_dec_refl. auto.
-             ++ eapply vvs_grows_interp_sact with (v1:=l1).
-                red; simpl; intros. destr. apply VR2 in H2. red in H2; lia.
+             ++ eapply vvs_grows_interp_sact with (v1:=t).
+                eapply vvs_grows_set; eauto. lia.
                 eapply mlr_read0. auto.
           -- eapply match_log_vvs_grows'; eauto.
-             red; simpl; intros ? ? GET.
-             generalize (VR2 _ _ GET). unfold valid_name. destr. lia.
+             eapply vvs_grows_set; eauto. lia.
              eapply wf_rir_grows; eauto.
           -- eapply match_log_vvs_grows'; eauto.
-             red; simpl; intros ? ? GET.
-             generalize (VR2 _ _ GET). unfold valid_name. destr. lia.
+             eapply vvs_grows_set; eauto. lia.
              eapply wf_rir_grows; eauto.
   Qed.
 
@@ -2353,7 +2035,6 @@ Section SimpleForm.
            (VALIDCOND: valid_name cond_name nid)
            (WTCOND: wt_sact vvs (SVar cond_name) (bits_t 1))
            (WT: wt_vvs vvs)
-           (ND: NoDup (map fst vvs))
            (ND2: NoDup (map fst r2v_tb)),
       vvs_grows vvs vvs'
       /\ vvs_range vvs' nid'
@@ -2361,7 +2042,6 @@ Section SimpleForm.
       /\ nid <= nid'
       /\ vvs_smaller_variables vvs'
       /\ wt_vvs vvs'
-      /\ NoDup (map fst vvs')
       /\ NoDup (map fst r2v')
       /\ forall sched_log action_log sched_rir rir
                 (WFR: wf_rir rir vvs)
@@ -2374,7 +2054,7 @@ Section SimpleForm.
         match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log.
   Proof.
     unfold merge_reg2vars2. simpl; intros.
-    edestruct merge_reg2var_aux_grows as (VG & VR & R2V1 & R2V2 & NG & VSV & WTVVS & NDv2 & NDr2 & EVAL); eauto.
+    edestruct merge_reg2var_aux_grows as (VG & VR & R2V1 & R2V2 & NG & VSV & WTVVS & NDr2 & EVAL); eauto.
     rewrite Forall_forall; intros (x & y) IN. apply nodup_in_assoc in IN; auto.
     destruct (ENVVVS1 x) as (? & GET1 & ? & GET2). rewrite IN in GET1; inv GET1; eauto.
     rewrite Forall_forall; intros (x & y) IN. apply nodup_in_assoc in IN; auto.
@@ -2398,7 +2078,6 @@ Section SimpleForm.
     specialize (MLR2 _ INT). inv MLR2.
     split; eauto. simpl; easy.
   Qed.
-
 
   Lemma wf_rir_add_write0:
     forall sched_rir rir vvs guard v idx rir' fail
@@ -2720,14 +2399,14 @@ Section SimpleForm.
 
   Lemma interp_sact_change_vvs:
     forall a
-           (vvs1: list (nat * (type * sact)))
+           (vvs1: PTree.t (type * sact))
            v
-           (vvs2: list (nat * (type * sact)))
+           (vvs2: PTree.t (type * sact))
            n
            (VVSRANGE: vvs_range vvs1 n)
            (VVSGROWS: forall x,
                valid_name x n ->
-               forall y, list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y)
+               forall y, vvs1 ! x = Some y -> vvs2 ! x = Some y)
            (INF: interp_sact vvs1 a v),
       interp_sact vvs2 a v.
   Proof.
@@ -2741,7 +2420,7 @@ Section SimpleForm.
       (forall x,
           valid_name x n ->
           forall y,
-            list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y) ->
+            vvs1 ! x = Some y -> vvs2 ! x = Some y) ->
       (forall i a, In (i, a) cl -> wt_sact vvs1 a (bits_t 1)) ->
       cond_log_grows vvs1 cl vvs2 cl grd.
   Proof.
@@ -2764,7 +2443,7 @@ Section SimpleForm.
       (forall x,
           valid_name x n ->
           forall y,
-            list_assoc vvs1 x = Some y -> list_assoc vvs2 x = Some y) ->
+            vvs1 ! x = Some y -> vvs2 ! x = Some y) ->
       wt_sact vvs2 grd (bits_t 1) ->
       rir_grows vvs1 rir vvs2 rir grd.
   Proof.
@@ -2785,12 +2464,11 @@ Section SimpleForm.
     forall vvs rir name n v tsig env r2v,
       wf_state tsig env r2v vvs rir n ->
       ~ valid_name name n ->
-      rir_grows vvs rir (list_assoc_set vvs name v) rir const_false.
+      rir_grows vvs rir (PTree.set name v vvs) rir const_false.
   Proof.
     intros; eapply rir_grows_change_vvs; eauto.
-    intros; rewrite list_assoc_gso; eauto. congruence.
-    eapply wt_sact_vvs_grows; eauto. eapply vvs_grows_set; eauto. inv H; eauto.
-    eapply vvs_range_incr. 2: eauto. unfold valid_name in H0. lia.
+    intros; rewrite PTree.gso; eauto. congruence.
+    eapply wt_sact_vvs_grows; eauto. eapply vvs_grows_set; eauto. apply H.
     repeat constructor.
   Qed.
 
@@ -2849,20 +2527,18 @@ Section SimpleForm.
       forall t v vv,
         wt_sact vvs vv t ->
         list_assoc tsig v = Some t ->
-        wf_state tsig (list_assoc_set env v n) reg2var (list_assoc_set vvs n (t, vv)) rir (S n).
+        wf_state tsig (list_assoc_set env v n) reg2var (PTree.set n (t, vv) vvs) rir (Pos.succ n).
   Proof.
     intros tsig env reg2var vvs rir n WFS t v vv WTA GETt.
     inv WFS; split; eauto.
-    + eapply wt_vvs_set; eauto.
+    + eapply wt_vvs_set; eauto. lia.
     + eapply env_vvs_set; auto.
-    + eapply reg2var_vvs_grows. eauto. eapply vvs_grows_set; eauto.
-    + eapply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia.
-      red; lia.
+    + eapply reg2var_vvs_grows. eauto. eapply vvs_grows_set; eauto. lia.
+    + eapply vvs_range_set. eauto.
     + eapply vvs_smaller_variables_set; eauto.
       eapply wt_sact_valid_vars; eauto.
     + eapply wf_rir_grows; eauto.
-      eapply vvs_grows_set; eauto.
-    + apply nodup_list_assoc_set; eauto.
+      eapply vvs_grows_set; eauto. lia.
   Qed.
 
   Lemma wf_state_vvs_set:
@@ -2873,8 +2549,8 @@ Section SimpleForm.
         forall k, k >= n ->
                   (forall v0, var_in_sact vv v0 -> v0 < k) ->
                   forall m, m > k ->
-                            wf_state tsig env reg2var (list_assoc_set vvs k (t, vv)) rir m
-                            /\ vvs_grows vvs (list_assoc_set vvs k (t,vv)).
+                            wf_state tsig env reg2var (PTree.set k (t,vv) vvs) rir m
+                            /\ vvs_grows vvs (PTree.set k (t,vv) vvs).
   Proof.
     intros tsig env reg2var vvs rir n WFS t vv WTA k GEk VARRES m GTk.
     inv WFS; split; [split|]; eauto.
@@ -2885,7 +2561,6 @@ Section SimpleForm.
       red; lia.
     + eapply vvs_smaller_variables_set; eauto.
     + eapply wf_rir_grows; eauto. eapply vvs_grows_set; eauto.
-    + apply nodup_list_assoc_set; eauto.
     + eapply vvs_grows_set; eauto.
   Qed.
 
@@ -2910,11 +2585,10 @@ Section SimpleForm.
       vvs_range vvs' n' ->
       vvs_smaller_variables vvs' ->
       wf_rir rir' vvs' ->
-      NoDup (map fst vvs') ->
       n <= n' ->
       wf_state tsig env r2v vvs' rir' n'.
   Proof.
-    intros tsig env r2v vvs rir n rir' vvs' n' grd WFS RG WTV VR VSV WFR LE ND.
+    intros tsig env r2v vvs rir n rir' vvs' n' grd WFS RG WTV VR VSV WFR LE.
     inv WFS; split; eauto.
     eapply env_vvs_vvs_grows; eauto using rir_vvs_grows.
     eapply reg2var_vvs_grows; eauto using rir_vvs_grows.
@@ -2939,7 +2613,7 @@ Section SimpleForm.
                 ) (combine vm_tb vm_fb) vm'.
   Proof.
     intros. inv H0; inv H1.
-    edestruct merge_branches_grows as (VVSGROWS4 & VVSRANGE4 & ENVVVS4 & NIDGROWS4 & VVSVALID4 & WTVVS4 & ND4 & EVAL); eauto.
+    edestruct merge_branches_grows as (VVSGROWS4 & VVSRANGE4 & ENVVVS4 & NIDGROWS4 & VVSVALID4 & WTVVS4 &  EVAL); eauto.
     repeat refine (conj _ _); eauto.
     split; eauto.
     eapply reg2var_vvs_grows; eauto.
@@ -2948,7 +2622,7 @@ Section SimpleForm.
 
   Lemma merge_reg2var_grows2 :
     forall r2vt r2vf vvs nid cond_name r2v' vvs' nid' sched_rir rir env tsig env2
-           (F2: Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y)
+           (F2: Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y)
                         r2vt r2vf),
       merge_reg2vars2 r2vt r2vf cond_name vvs nid = (r2v', vvs', nid') ->
       wf_state tsig env2 r2vt vvs rir nid ->
@@ -2965,7 +2639,7 @@ Section SimpleForm.
             match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log).
   Proof.
     intros. inv H0; inv H1.
-    edestruct merge_reg2var_grows as (VVSGROWS4 & VVSRANGE4 & R2VVVS4 & NIDGROWS4 & VSV4 & WTVVS4 & ND4 & NDr4 & EVAL4); eauto.
+    edestruct merge_reg2var_grows as (VVSGROWS4 & VVSRANGE4 & R2VVVS4 & NIDGROWS4 & VSV4 & WTVVS4 & NDr4 & EVAL4); eauto.
     repeat (refine (conj _ _)); eauto.
     split; eauto.
     eapply env_vvs_vvs_grows; eauto.
@@ -2978,21 +2652,20 @@ Section SimpleForm.
       forall v vv t,
         wt_sact vvs vv t ->
         (forall v0, var_in_sact vv v0 -> v0 < n) ->
-        wf_state ((v,t)::tsig) ((v,n)::env) r2v (list_assoc_set vvs n (t, vv)) rir (S n).
+        wf_state ((v,t)::tsig) ((v,n)::env) r2v (PTree.set n (t, vv) vvs) rir (Pos.succ n).
   Proof.
     intros tsig env r2v vvs rir n WFS v vv t WTs VIS.
     inv WFS; split; eauto.
-    + eapply wt_vvs_set; eauto.
-    + constructor. split; auto. rewrite list_assoc_gss. eauto.
+    + eapply wt_vvs_set; eauto. lia.
+    + constructor. split; auto. rewrite PTree.gss. eauto.
       eapply env_vvs_vvs_grows. eauto.
-      eapply vvs_grows_set; eauto.
+      eapply vvs_grows_set; eauto. lia.
     + eapply reg2var_vvs_grows. eauto.
-      eapply vvs_grows_set; eauto.
+      eapply vvs_grows_set; eauto. lia.
     + apply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia.
-      red. eauto.
+      red. lia.
     + eapply vvs_smaller_variables_set; eauto.
-    + eapply wf_rir_grows; eauto. eapply vvs_grows_set; eauto.
-    + eapply nodup_list_assoc_set; eauto.
+    + eapply wf_rir_grows; eauto. eapply vvs_grows_set; eauto. lia.
   Qed.
 
   Lemma wf_state_tl:
@@ -3021,7 +2694,7 @@ Section SimpleForm.
     forall tsig env r2v vvs rir n,
       wf_state tsig env r2v vvs rir n ->
       forall r v,
-        (exists z : sact, list_assoc vvs v = Some (R (fst r), z)) ->
+        (exists z : sact, vvs !v = Some (R (fst r), z)) ->
         wf_state tsig env (list_assoc_set r2v r v) vvs rir n.
   Proof.
     intros tsig env r2v vvs rir n H r0 v H0.
@@ -3040,7 +2713,7 @@ Section SimpleForm.
           exists n t s,
             list_assoc env var = Some n /\
               list_assoc tsig var = Some t /\
-              list_assoc vvs n = Some (t, s) /\
+              vvs !n = Some (t, s) /\
               interp_sact vvs s v.
   Proof.
     induction 1; simpl; intros; eauto.
@@ -3049,9 +2722,8 @@ Section SimpleForm.
     inv H1.
     repeat destr_in H6. destruct H6 as (? & ? & ?). destruct x; simpl in *. subst.
     repeat destr_in H2; inv H2; eauto.
-    exists n, t, x0; repeat split; eauto. inv H3. rewrite H4 in H1; inv H1; auto.
+    exists p, t, x0; repeat split; eauto. inv H3. rewrite H4 in H1; inv H1; auto.
   Qed.
-
 
   Lemma match_Gamma_env_set:
     forall Gamma env vvs,
@@ -3060,27 +2732,27 @@ Section SimpleForm.
         vvs_range vvs n ->
         interp_sact vvs (reduce t0 o) v1 ->
         match_Gamma_env (list_assoc_set Gamma v v1) (list_assoc_set env v n)
-                        (list_assoc_set vvs n (t0, reduce t0 o)).
+                        (PTree.set n (t0, reduce t0 o) vvs).
   Proof.
     induction 1; simpl; intros; eauto.
     - constructor; simpl. split; auto.
-      econstructor. rewrite list_assoc_gss. eauto.
-      eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto.
+      econstructor. rewrite PTree.gss. eauto.
+      eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto. lia.
       constructor.
     - destruct H. inv H3. destruct x, y. simpl in *; subst.
       destr.
       + subst.
         constructor; simpl; eauto.
         split; auto.
-        econstructor. rewrite list_assoc_gss. eauto.
-        eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto.
+        econstructor. rewrite PTree.gss. eauto.
+        eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto. lia.
         eapply Forall2_impl. eapply H0. simpl; intros. destruct H4; split; auto.
         inv H7.
-        eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto.
+        eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto. lia.
         econstructor; eauto.
       + constructor; simpl; eauto.
         split; auto.
-        eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto.
+        eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto. lia.
         econstructor; eauto. eapply IHForall2; eauto.
   Qed.
 
@@ -3123,17 +2795,15 @@ Section SimpleForm.
       + eapply IHGamma. 3: eauto. all: eauto.
   Qed.
 
-
-
   Lemma match_logs_r2v_vvs_set:
     forall r2v vvs sl al n x sched_rir rir tsig env,
       match_logs_r2v r2v vvs sched_rir rir sl al ->
       wf_state tsig env r2v vvs rir n ->
       wf_rir sched_rir vvs ->
-      match_logs_r2v r2v (list_assoc_set vvs n x) sched_rir rir sl al.
+      match_logs_r2v r2v (PTree.set n x vvs) sched_rir rir sl al.
   Proof.
     intros; inv H0. eapply match_logs_r2v_vvs_grows; eauto.
-    eapply vvs_grows_set; eauto.
+    eapply vvs_grows_set; eauto. lia.
   Qed.
 
   Lemma Forall_iff:
@@ -3408,7 +3078,7 @@ Section SimpleForm.
       add_write0 sched_rir rir grd idx v = (rir', grd') ->
       forall (WFSR: wf_rir sched_rir vvs),
       forall (WTv: wt_sact vvs v (R idx)),
-        let vvs1 := list_assoc_set vvs n (R idx, v) in
+        let vvs1 := PTree.set n (R idx, v) vvs in
         let r2v1 := list_assoc_set r2v (idx, inl P1) n in
         let r2v1 := list_assoc_set r2v1 (idx, inr tt) n in
         rir_grows vvs rir vvs1 rir' grd /\
@@ -3419,10 +3089,10 @@ Section SimpleForm.
     split; [|split].
     - split; simpl; eauto using incl_refl, cond_log_grows_refl, vvs_grows_refl.
       + eapply cond_log_grows_change_vvs. eauto. inv H0; eauto. intros.
-        red in H1. repeat rewrite list_assoc_gso by lia. eauto.
+        red in H1. repeat rewrite PTree.gso by lia. eauto.
         intros i a IN; eapply wf_rir_read0s in IN; eauto. inv H0; eauto.
       + eapply cond_log_grows_change_vvs. eauto. inv H0; eauto. intros.
-        red in H1. repeat rewrite list_assoc_gso by lia. eauto.
+        red in H1. repeat rewrite PTree.gso by lia. eauto.
         intros i a IN; eapply wf_rir_read1s in IN; eauto. inv H0; eauto.
       + red. intros; split; intros.
         * rewrite list_assoc_spec.
@@ -3434,12 +3104,12 @@ Section SimpleForm.
              exploit wt_sact_interp_bool. 4: apply H. 1-3: apply H0. intros (?&?).
              econstructor; eauto. inv EX.
           -- eapply cond_log_grows_change_vvs. eauto. apply H0. apply H0.
-             intros x V y; red in V. repeat rewrite list_assoc_gso by lia. eauto.
+             intros x V y; red in V. repeat rewrite PTree.gso by lia. eauto.
              apply H0.
         * rewrite list_assoc_spec.
           destr.
           exploit wf_rir_write0s. apply H0. apply list_assoc_in. eauto. intro WTs.
-          rewrite interp_sact_vvs_grows_iff with (vvs':=list_assoc_set vvs n (R idx, v)).
+          rewrite interp_sact_vvs_grows_iff with (vvs':=PTree.set n (R idx, v) vvs).
           4: eapply vvs_grows_set. 2-4,6: apply H0. 2: lia.
           exploit wt_sact_interp_bool. 4: apply H. 1-3: apply H0. intros (?&?).
           exploit interp_sact_determ. apply H1. eapply vvs_grows_interp_sact. 2: apply H2.
@@ -3454,32 +3124,28 @@ Section SimpleForm.
           exploit interp_sact_determ. apply H1. apply H2. intros <-. constructor.
           split; intros A; inv A; constructor.
       + eapply cond_log_grows_change_vvs. eauto. inv H0; eauto. intros.
-        red in H1. repeat rewrite list_assoc_gso by lia. eauto.
+        red in H1. repeat rewrite PTree.gso by lia. eauto.
         intros i a IN; eapply wf_rir_write1s in IN; eauto. inv H0; eauto.
       + eapply vvs_grows_set. apply H0. lia.
       + eapply wt_sact_vvs_grows; eauto.
         eapply vvs_grows_set. apply H0. lia.
     - inv H0.
       assert (VG: vvs_grows vvs
-                            (list_assoc_set vvs n (R idx, v))).
+                            (PTree.set n (R idx, v) vvs)).
       {
         eapply vvs_grows_set. eauto. lia.
       }
       split.
-      + eapply wt_vvs_set; eauto.
-      + eapply env_vvs_change_vvs; eauto.
+      + eapply wt_vvs_set; eauto. lia.
+      + eapply env_vvs_change_vvs; eauto. lia.
       + eapply reg2var_vvs_set.
         eapply reg2var_vvs_set.
         eapply reg2var_vvs_grows. eauto. eauto.
-        simpl. rewrite list_assoc_gss; eauto.
-        simpl. rewrite list_assoc_gss; eauto.
+        simpl. rewrite PTree.gss; eauto.
+        simpl. rewrite PTree.gss; eauto.
       + eapply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia. red; lia.
-      + red; intros.
-        repeat rewrite list_assoc_spec in H0.
-        red.
-        repeat destr_in H0; subst; eauto. inv H0.
+      + eapply vvs_smaller_variables_set; eauto.
         eapply wt_sact_valid_vars; eauto.
-        eapply wfs_vsv0 in H0; eauto. eapply H0; eauto.
       + eapply wf_rir_add_write0.
         7:{
           unfold add_write0. simpl; eauto.
@@ -3487,22 +3153,16 @@ Section SimpleForm.
         * eapply wf_rir_grows; eauto.
         * eapply wf_rir_grows; eauto.
         * eapply wt_sact_vvs_grows. 2: eauto. eauto.
-        * eapply wt_vvs_set; eauto.
-        * red; intros.
-          repeat rewrite list_assoc_spec in H0.
-          red.
-          repeat destr_in H0; subst; eauto. inv H0.
+        * eapply wt_vvs_set; eauto. lia.
+        * eapply vvs_smaller_variables_set; eauto.
           eapply wt_sact_valid_vars; eauto.
-          eapply wfs_vsv0 in H0; eauto. eapply H0; eauto.
-        * eapply vvs_range_list_assoc_set. instantiate (1:=n+1).
-          eapply vvs_range_incr. 2: eauto. lia. red; lia.
-      + eapply nodup_list_assoc_set; eauto.
+        * eapply vvs_range_set. eauto.
       + eapply nodup_list_assoc_set; eauto.
         eapply nodup_list_assoc_set; eauto.
-    - assert (VG: vvs_grows vvs (list_assoc_set vvs n (R idx, v))).
+    - assert (VG: vvs_grows vvs (PTree.set n (R idx, v) vvs)).
       {
         inv H0.
-        eapply vvs_grows_set; eauto.
+        eapply vvs_grows_set; eauto. lia.
       }
       econstructor.
       eapply wt_sact_vvs_grows; eauto.
@@ -3525,23 +3185,23 @@ Section SimpleForm.
       add_write1 sched_rir rir grd idx v = (rir', grd') ->
       forall (WFSR: wf_rir sched_rir vvs),
       forall (WTv: wt_sact vvs v (R idx)),
-        let vvs1 := list_assoc_set vvs n (R idx, v) in
+        let vvs1 := PTree.set n (R idx, v) vvs in
         let r2v1 := list_assoc_set r2v (idx, inr tt) n in
         rir_grows vvs rir vvs1 rir' grd /\
-          wf_state tsig env r2v1 vvs1 rir' (S n) /\
+          wf_state tsig env r2v1 vvs1 rir' (Pos.succ n) /\
           wt_sact vvs1 grd' (bits_t 1).
   Proof.
     unfold add_write1. intros. inv H1.
     split; [|split].
     - split; simpl; eauto using incl_refl, cond_log_grows_refl, vvs_grows_refl.
       + eapply cond_log_grows_change_vvs. eauto. inv H0; eauto. intros.
-        red in H1. repeat rewrite list_assoc_gso by lia. eauto.
+        red in H1. repeat rewrite PTree.gso by lia. eauto.
         intros i a IN; eapply wf_rir_read0s in IN; eauto. inv H0; eauto.
       + eapply cond_log_grows_change_vvs. eauto. inv H0; eauto. intros.
-        red in H1. repeat rewrite list_assoc_gso by lia. eauto.
+        red in H1. repeat rewrite PTree.gso by lia. eauto.
         intros i a IN; eapply wf_rir_read1s in IN; eauto. inv H0; eauto.
       + eapply cond_log_grows_change_vvs. eauto. inv H0; eauto. intros.
-        red in H1. repeat rewrite list_assoc_gso by lia. eauto.
+        red in H1. repeat rewrite PTree.gso by lia. eauto.
         intros i a IN; eapply wf_rir_write0s in IN; eauto. inv H0; eauto.
       + red. intros; split; intros.
         * rewrite list_assoc_spec.
@@ -3553,12 +3213,12 @@ Section SimpleForm.
              exploit wt_sact_interp_bool. 4: apply H. 1-3: apply H0. intros (?&?).
              econstructor; eauto. inv EX.
           -- eapply cond_log_grows_change_vvs. eauto. apply H0. apply H0.
-             intros x V y; red in V. repeat rewrite list_assoc_gso by lia. eauto.
+             intros x V y; red in V. repeat rewrite PTree.gso by lia. eauto.
              apply H0.
         * rewrite list_assoc_spec.
           destr.
           exploit wf_rir_write1s. 2: apply list_assoc_in; eauto. apply H0. intro WTs.
-          rewrite interp_sact_vvs_grows_iff with (vvs':=list_assoc_set vvs n (R idx, v)).
+          rewrite interp_sact_vvs_grows_iff with (vvs':=PTree.set n (R idx, v) vvs).
           4: eapply vvs_grows_set. 2-4,6: apply H0. 2: lia.
           exploit wt_sact_interp_bool. 4: apply H. 1-3: apply H0. intros (?&?).
           exploit interp_sact_determ. apply H1. eapply vvs_grows_interp_sact. 2: apply H2.
@@ -3577,19 +3237,19 @@ Section SimpleForm.
         eapply vvs_grows_set. apply H0. lia.
     - inv H0.
       assert (VG: vvs_grows vvs
-                            (list_assoc_set vvs n (R idx, v))).
+                            (PTree.set n (R idx, v) vvs)).
       {
         eapply vvs_grows_set. eauto. lia.
       }
       split.
-      + eapply wt_vvs_set; eauto.
-      + eapply env_vvs_change_vvs; eauto.
+      + eapply wt_vvs_set; eauto. lia.
+      + eapply env_vvs_change_vvs; eauto. lia.
       + eapply reg2var_vvs_set.
         eapply reg2var_vvs_grows. eauto. eauto.
-        simpl. rewrite list_assoc_gss; eauto.
-      + eapply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia. red; lia.
+        simpl. rewrite PTree.gss; eauto.
+      + eapply vvs_range_set. eauto.
       + red; intros.
-        repeat rewrite list_assoc_spec in H0.
+        repeat rewrite PTree.gsspec in H0.
         red.
         repeat destr_in H0; subst; eauto. inv H0.
         eapply wt_sact_valid_vars; eauto.
@@ -3601,21 +3261,16 @@ Section SimpleForm.
         * eapply wf_rir_grows; eauto.
         * eapply wf_rir_grows; eauto.
         * eapply wt_sact_vvs_grows. 2: eauto. eauto.
-        * eapply wt_vvs_set; eauto.
-        * red; intros.
-          repeat rewrite list_assoc_spec in H0.
-          red.
-          repeat destr_in H0; subst; eauto. inv H0.
+        * eapply wt_vvs_set; eauto. lia.
+        * eapply vvs_smaller_variables_set; eauto.
           eapply wt_sact_valid_vars; eauto.
-          eapply wfs_vsv0 in H0; eauto. eapply H0; eauto.
-        * eapply vvs_range_list_assoc_set. instantiate (1:=n+1).
-          eapply vvs_range_incr. 2: eauto. lia. red; lia.
+        * eapply vvs_range_set. eauto.
       + eapply nodup_list_assoc_set; eauto.
-      + eapply nodup_list_assoc_set; eauto.
-    - assert (VG: vvs_grows vvs (list_assoc_set vvs n (R idx, v))).
+
+    - assert (VG: vvs_grows vvs (PTree.set n (R idx, v) vvs)).
       {
         inv H0.
-        eapply vvs_grows_set; eauto.
+        eapply vvs_grows_set; eauto. lia.
       }
       econstructor.
       eapply wt_sact_vvs_grows; eauto.
@@ -3714,7 +3369,7 @@ Section SimpleForm.
       wf_rir sched_rir vvs ->
       match_logs_r2v
         (list_assoc_set (list_assoc_set r2v (idx, inl P1) n) (idx, inr tt) n)
-        (list_assoc_set vvs n (R idx, v))
+        (PTree.set n (R idx, v) vvs)
         sched_rir
         rir' sched_log
         (log_cons idx (LE (V:=val) Logs.LogWrite P0 v') action_log).
@@ -3727,24 +3382,24 @@ Section SimpleForm.
       rewrite ! list_assoc_spec in GET.
       repeat destr_in GET; eauto.
       + inv GET. clear Heqs. inv e.
-        econstructor. rewrite list_assoc_gss. eauto.
+        econstructor. rewrite PTree.gss. eauto.
         unfold do_read. rewrite log_app_log_cons. unfold latest_write.
         rewrite log_find_log_cons. rewrite eq_dec_refl. simpl.
         eapply vvs_grows_interp_sact. 2: eauto.
         eapply vvs_grows_set; eauto.
-        apply WFS.
+        apply WFS. lia.
       + inv GET. clear Heqs0. inv e.
-        econstructor. rewrite list_assoc_gss. eauto.
+        econstructor. rewrite PTree.gss. eauto.
         unfold do_read. rewrite log_app_log_cons. unfold latest_write0.
         rewrite log_find_log_cons. rewrite eq_dec_refl. simpl.
         eapply vvs_grows_interp_sact. 2: eauto.
         eapply vvs_grows_set; eauto.
-        apply WFS.
+        apply WFS. lia.
       + destruct (eq_dec idx reg). subst. destruct prt; try congruence. destruct p; try congruence.
         simpl.
         exploit mlr_read0. eauto. simpl.
         eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto.
-        apply WFS.
+        apply WFS. lia.
         destruct u; congruence.
         exploit mlr_read0. eauto. simpl.
         rewrite log_app_log_cons. unfold latest_write. rewrite log_find_log_cons. simpl.
@@ -3753,11 +3408,11 @@ Section SimpleForm.
         destr.
         rewrite do_read_log_cons_write_other.
         eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto.
-        apply WFS. auto.
+        apply WFS. lia. auto.
         eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto.
-        apply WFS.
+        apply WFS. lia.
     - eapply match_log_vvs_grows'. eauto.
-      eapply vvs_grows_set; eauto. all: try apply WFS. eauto.
+      eapply vvs_grows_set; eauto. all: try apply WFS. lia. eauto.
     - eapply match_log_vvs_grows'. 2: eapply vvs_grows_set; eauto.
       all: try apply WFS.
       inv mlr_mlv_action0. split; simpl; intros; eauto.
@@ -3783,6 +3438,7 @@ Section SimpleForm.
       + rewrite log_existsb_log_cons. simpl.
         replace (if eq_dec idx0 idx then false else false) with false by (destr; eauto). simpl.
         rewrite mlv_write3. tauto.
+      + lia.
       + eapply wf_rir_add_write0.
         7:{
           unfold add_write0. simpl. eauto.
@@ -3804,7 +3460,7 @@ Section SimpleForm.
       wf_rir sched_rir vvs ->
       match_logs_r2v
         (list_assoc_set r2v (idx, inr tt) n)
-        (list_assoc_set vvs n (R idx, v))
+        (PTree.set n (R idx, v) vvs)
         sched_rir
         rir' sched_log
         (log_cons idx (LE (V:=val) Logs.LogWrite P1 v') action_log).
@@ -3816,7 +3472,7 @@ Section SimpleForm.
     - intros reg prt n0 GET.
       rewrite list_assoc_spec in GET. destr_in GET.
       + inv GET. clear Heqs. inv e.
-        econstructor. rewrite list_assoc_gss. eauto.
+        econstructor. rewrite PTree.gss. eauto.
         rewrite log_app_log_cons. unfold latest_write.
         rewrite log_find_log_cons. simpl. rewrite eq_dec_refl.
         eapply vvs_grows_interp_sact. 2: eauto. eapply vvs_grows_set. apply WFS. lia.
@@ -3855,6 +3511,7 @@ Section SimpleForm.
         destruct v0; simpl in H0.  congruence. inv H0. rewrite orb_true_r in H1. congruence.
         exploit interp_sact_determ. apply GOK. clear GOK. eauto. congruence.
         rewrite list_assoc_gso by auto. tauto.
+      + lia.
       + eapply wf_rir_add_write1.
         7:{
           unfold add_write1. eauto.
@@ -3915,7 +3572,7 @@ Section SimpleForm.
       lt0
       (NAMES: Forall2 (fun '(var1, t1) t2 =>
                          t1 = t2 /\
-                           exists s, list_assoc vvs0 var1 = Some (t1, s)
+                           exists s, vvs0 ! var1 = Some (t1, s)
                       ) names0 lt0)
     ,
       same_env env env'
@@ -3925,9 +3582,9 @@ Section SimpleForm.
       /\ wt_sact vvs guard (bits_t 1)
       /\ (Forall2 (fun '(var1, t1) t2 =>
                      t1 = t2 /\
-                       exists s, list_assoc vvs var1 = Some (t1, s)
+                       exists s, vvs !var1 = Some (t1, s)
                   ) names (rev lt ++ lt0))
-      /\ List.length names = List.length names0 + List.length args
+      /\ (List.length names = List.length names0 + List.length args)%nat
       /\ wt_sact vvs fail1 (bits_t 1)
       /\ nid <= nid'
       /\ (interp_sact vvs0 fail0 (Bits [true]) -> interp_sact vvs fail1 (Bits [true]))
@@ -3968,7 +3625,7 @@ Section SimpleForm.
     induction 1; simpl; intros; eauto.
     - inv GRIA. repeat refine (conj _ _); eauto.
       apply same_env_refl. apply same_regenv_refl. apply rir_grows_refl. auto.
-      inv WTargs. simpl. eauto.
+      inv WTargs. simpl. eauto. lia.
       intros. split; intros. inv INTERP. repeat refine (conj _ _); eauto.
       inv INTERP.
     - repeat destr_in GRIA. subst. inv WTargs.
@@ -3985,9 +3642,9 @@ Section SimpleForm.
       + eapply rir_grows_weaken_guard. eapply rir_grows_trans.
         2: eauto. 3: eapply rir_grows_trans. 6: eauto.
         eauto. eauto.
-        eapply wf_state_vvs_set; eauto.
+        eapply wf_state_vvs_set with (m:=Pos.succ p1); eauto. lia.
         eapply wt_sact_valid_vars; eauto.
-        apply I12.
+        apply I12. lia.
         eapply rir_grows_set; eauto. unfold valid_name; lia. eauto.
         intros. repeat econstructor; eauto. reflexivity. reflexivity. eauto.
       + simpl. rewrite <- app_assoc. apply NAMES1.
@@ -3998,12 +3655,11 @@ Section SimpleForm.
         exploit wt_sact_interp_bool. 4: apply WTa. 1-3: apply I12. intros (b & INTs).
         econstructor.
         eapply vvs_grows_interp_sact. 2: apply INTs.
-        eapply vvs_grows_set.
-        eapply vvs_range_incr. 2: apply I12. eauto. eauto. auto.
+        eapply vvs_grows_set. apply I12. lia.
         eapply vvs_grows_interp_sact. 2: apply H.
         eapply vvs_grows_trans. eauto using rir_vvs_grows.
-        eapply vvs_grows_set.
-        eapply vvs_range_incr. 2: apply I12. eauto. eauto. simpl. rewrite orb_true_r. auto.
+        eapply vvs_grows_set. apply I12. lia.
+        simpl. rewrite orb_true_r. auto.
 
       + intros.
         specialize (INTERPHYP Gamma sched_log action_log).
@@ -4027,7 +3683,7 @@ Section SimpleForm.
 
         dihyp INTERPHYPOK.
 
-        specialize (INTERPHYP2 l4 sched_log l3).
+        specialize (INTERPHYP2 l3 sched_log l2).
         trim INTERPHYP2. eauto.
         trim INTERPHYP2. eauto.
         trim INTERPHYP2. eauto.
@@ -4035,19 +3691,17 @@ Section SimpleForm.
         trim INTERPHYP2.
         {
           eapply match_Gamma_env_vvs_grows; eauto.
-          eapply vvs_grows_set.
-          eapply vvs_range_incr. 2: apply I12. eauto. eauto.
+          eapply vvs_grows_set. apply I12. lia.
         }
         trim INTERPHYP2.
         {
           eapply match_logs_r2v_vvs_grows; eauto. eapply vvs_grows_set.
           apply I12. lia. apply I12. apply I12. apply I12. apply I12.
           eapply wf_rir_grows. eauto. eauto using rir_vvs_grows.
-          all: try apply WFS.
         }
         trim (INTERPHYP2 (v::lv0)).
         {
-          constructor. econstructor. rewrite list_assoc_gss. eauto.
+          constructor. econstructor. rewrite PTree.gss. eauto.
           eapply vvs_grows_interp_sact; eauto using vvs_grows_set.
           eapply vvs_grows_set. apply I12. lia.
           eapply Forall2_impl. eauto. simpl; intros.
@@ -4060,12 +3714,12 @@ Section SimpleForm.
           eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply I12. lia.
           econstructor; eauto.
           eapply vvs_grows_interp_sact; eauto using rir_vvs_grows. reflexivity.
-        } 
+        }
         trim INTERPHYP2.
         {
           eapply vvs_grows_interp_sact. 2: eauto.
           eapply vvs_grows_trans. 2: eapply vvs_grows_set. eauto using rir_vvs_grows. apply I12. lia.
-        } 
+        }
         destruct INTERPHYP2 as (INTERPHYP2OK & INTERPHYP2KO).
         split; intros.
         dihyp INTERPHYP2OK. eauto.
@@ -4075,48 +3729,45 @@ Section SimpleForm.
         eapply FAILGROWS.
         econstructor.
         eapply vvs_grows_interp_sact. 2: apply INTERHYPKO.
-        eapply vvs_grows_set.
-        eapply vvs_range_incr. 2: apply I12. eauto. eauto. auto.
+        eapply vvs_grows_set. apply I12. eauto. lia. eauto.
         eapply vvs_grows_interp_sact. 2: apply INITFAIL.
         eapply vvs_grows_trans. eauto using rir_vvs_grows.
-        eapply vvs_grows_set.
-        eapply vvs_range_incr. 2: apply I12. eauto. eauto. auto.
+        eapply vvs_grows_set. apply I12. lia. eauto.
       + eapply wt_sact_vvs_grows. 2: eauto.
-        eapply vvs_grows_set. apply I12. eauto.
-      + econstructor. eapply wt_sact_vvs_grows. 2: eauto. eapply vvs_grows_set. apply I12. eauto.
+        eapply vvs_grows_set. apply I12. lia.
+      + econstructor. eapply wt_sact_vvs_grows. 2: eauto. eapply vvs_grows_set. apply I12. lia.
         eapply wt_sact_vvs_grows. 2: eauto.
-        eapply vvs_grows_trans. eapply rir_vvs_grows; eauto. eapply vvs_grows_set. apply I12. eauto.
+        eapply vvs_grows_trans. eapply rir_vvs_grows; eauto. eapply vvs_grows_set. apply I12. lia.
         constructor.
       + eapply wf_rir_grows. eauto.
         eapply vvs_grows_trans. 2: eapply vvs_grows_set. eauto using rir_vvs_grows. apply I12. lia.
         all: apply WFS.
       + simpl. inv I12. constructor; auto.
-        eapply wt_vvs_set; eauto.
-        eapply env_vvs_change_vvs; eauto.
-        eapply reg2var_vvs_grows; eauto. eapply vvs_grows_set; eauto.
-        eapply vvs_range_list_assoc_set. eapply vvs_range_incr. 2: eauto. lia. red; lia.
+        eapply wt_vvs_set; eauto. lia.
+        eapply env_vvs_change_vvs; eauto. lia.
+        eapply reg2var_vvs_grows; eauto. eapply vvs_grows_set; eauto. lia.
+        eapply vvs_range_set. eauto.
         eapply vvs_smaller_variables_set. eauto. eapply wt_sact_valid_vars. eauto. eauto.
         eapply wf_rir_grows; eauto.
         eapply vvs_grows_set. eauto using rir_vvs_grows. lia.
-        eapply nodup_list_assoc_set; eauto.
       + simpl. constructor; eauto. split; auto.
-        rewrite list_assoc_gss; eauto.
+        rewrite PTree.gss; eauto.
         eapply Forall2_impl. apply NAMES. simpl.
-        intros (n0 & t0) t1 IN1 IN2 (EQ & s0 & GET). subst. split; auto.
-        rewrite list_assoc_gso; eauto.
+        intros (n0 & ?) t1 IN1 IN2 (EQ & s0 & GET). subst. split; auto.
+        rewrite PTree.gso; eauto.
         eapply rir_vvs_grows in GET. 2: eauto. eauto.
         eapply wfs_vvs_range in GET. 2: eauto. red in GET. lia.
   Qed.
 
   Lemma vvs_grows_same_r:
-    forall vvs1 vvs2 vvs2' (VG: vvs_grows vvs1 vvs2) (SAME: forall k, list_assoc vvs2' k = list_assoc vvs2 k), vvs_grows vvs1 vvs2'.
+    forall vvs1 vvs2 vvs2' (VG: vvs_grows vvs1 vvs2) (SAME: forall k, vvs2' ! k = vvs2 ! k), vvs_grows vvs1 vvs2'.
   Proof.
     intros. eapply vvs_grows_trans. eauto.
     red. intros; rewrite SAME; eauto.
   Qed.
 
   Lemma wt_sact_same_vvs:
-    forall vvs vvs' (SAME: forall k, list_assoc vvs' k = list_assoc vvs k) a t (WT: wt_sact vvs a t),
+    forall vvs vvs' (SAME: forall k, vvs' ! k = vvs !k) a t (WT: wt_sact vvs a t),
       wt_sact vvs' a t.
   Proof.
     induction 2; simpl; intros; eauto.
@@ -4129,7 +3780,7 @@ Section SimpleForm.
   Qed.
 
   Lemma interp_sact_same_vvs:
-    forall vvs vvs' (SAME: forall k, list_assoc vvs' k = list_assoc vvs k) a t (INTERP: interp_sact vvs a t),
+    forall vvs vvs' (SAME: forall k, vvs' ! k = vvs !k) a t (INTERP: interp_sact vvs a t),
       interp_sact vvs' a t.
   Proof.
     induction 2; simpl; intros; eauto.
@@ -4142,7 +3793,7 @@ Section SimpleForm.
   Qed.
 
   Lemma interp_sact_same_vvs_iff:
-    forall vvs vvs' (SAME: forall k, list_assoc vvs' k = list_assoc vvs k) a t,
+    forall vvs vvs' (SAME: forall k, vvs' ! k = vvs !k) a t,
       interp_sact vvs a t <->
       interp_sact vvs' a t.
   Proof.
@@ -4150,7 +3801,7 @@ Section SimpleForm.
   Qed.
 
   Lemma wf_rir_same_r:
-    forall vvs vvs' rir (SAME: forall k, list_assoc vvs' k = list_assoc vvs k),
+    forall vvs vvs' rir (SAME: forall k, vvs' ! k = vvs !k),
       wf_rir rir vvs ->
       wf_rir rir vvs'.
   Proof.
@@ -4162,8 +3813,7 @@ Section SimpleForm.
   Qed.
 
   Lemma wf_state_same_r:
-    forall tsig env r2v vvs vvs' rir nid (SAME: forall k, list_assoc vvs' k = list_assoc vvs k)
-           (ND: NoDup (map fst vvs')),
+    forall tsig env r2v vvs vvs' rir nid (SAME: forall k, vvs' ! k = vvs !k),
       wf_state tsig env r2v vvs rir nid ->
       wf_state tsig env r2v vvs' rir nid.
   Proof.
@@ -4197,76 +3847,15 @@ Section SimpleForm.
                 ) (combine vm_tb vm_fb) vm'.
   Proof.
     intros.
-    edestruct merge_branches2_ok as (ND1 & vvs2 & MB & ND2 & EQ). eauto. apply H0. apply H0. apply H1.
-    apply H0.
+    exploit merge_branches2_ok. eauto. apply H0. apply H0. apply H1.
+    intros MB.
     edestruct (merge_branches_grows2) as (VG & LE & WFS & F2); eauto.
-    repeat refine (conj _ _); auto.
-    eapply vvs_grows_same_r; eauto.
-    eapply wf_state_same_r; eauto.
-    eapply Forall2_impl. eauto. simpl; intros. destruct x. intros b INT.
-    intros v.
-    eapply interp_sact_same_vvs in INT. eapply H6 in INT. 2: now eauto.
-    split; intro INT2. eapply interp_sact_same_vvs. apply EQ. rewrite <- INT.
-    eapply interp_sact_same_vvs in INT2. apply INT2. auto.
-    eapply interp_sact_same_vvs. apply EQ. rewrite INT.
-    eapply interp_sact_same_vvs in INT2. apply INT2. auto.
-  Qed.
-
-  Lemma wf_state_same_vvs_r:
-    forall tsig env r2v r2v' vvs vvs' rir nid
-           (SAME: forall k, list_assoc vvs' k = list_assoc vvs k)
-           (SAMEr: forall k, list_assoc r2v' k = list_assoc r2v k)
-           (ND: NoDup (map fst vvs'))
-           (NDr: NoDup (map fst r2v')),
-      wf_state tsig env r2v vvs rir nid ->
-      wf_state tsig env r2v' vvs' rir nid.
-  Proof.
-    intros. destruct H.
-    split; auto.
-    red; intros. rewrite SAME in H. eapply wt_sact_same_vvs. 2: eapply wfs_wt_vvs0; eauto. auto.
-    red; intros. eapply Forall2_impl. apply wfs_env_vvs0. simpl; intros.
-    destruct x. destruct y. destruct H1 as (? & ? & GET). rewrite <- SAME in GET; eauto.
-    red; intros. setoid_rewrite SAME. setoid_rewrite SAMEr. eauto.
-    red; intros. rewrite SAME in H; eauto.
-    red; intros. rewrite SAME in H; eauto.
-    eapply wf_rir_same_r; eauto.
-  Qed.
-
-
-  Lemma match_log_vvs_same_vvs_r:
-    forall vvs vvs' (SAME: forall k, list_assoc vvs' k = list_assoc vvs k)
-           rir log,
-      match_log_vvs vvs rir log ->
-      match_log_vvs vvs' rir log.
-  Proof.
-    intros. inv H.
-    split; auto.
-    - intros; rewrite mlv_read2. apply interp_sact_same_vvs_iff. auto.
-    - intros; rewrite mlv_read3. apply interp_sact_same_vvs_iff. auto.
-    - intros; rewrite mlv_write2. apply interp_sact_same_vvs_iff. auto.
-    - intros; rewrite mlv_write3. apply interp_sact_same_vvs_iff. auto.
-  Qed.
-
-  Lemma match_logs_same_vvs_r:
-    forall r2v r2v' vvs vvs'
-           (SAME: forall k, list_assoc vvs' k = list_assoc vvs k)
-           (SAMEr: forall k, list_assoc r2v' k = list_assoc r2v k)
-           sched_rir rir sched_log action_log,
-      match_logs_r2v r2v vvs sched_rir rir sched_log action_log ->
-      match_logs_r2v r2v' vvs' sched_rir rir sched_log action_log.
-  Proof.
-    intros. inv H.
-    split; auto.
-    intros. rewrite SAMEr in H. specialize (mlr_read0 _ _ _ H).
-    eapply interp_sact_same_vvs; eauto.
-    eapply match_log_vvs_same_vvs_r; eauto.
-    eapply match_log_vvs_same_vvs_r; eauto.
   Qed.
 
   Lemma get_rule_information_aux_env_grows:
     forall (ua: uact)
-           tsig (env: list (string * nat)) reg2var (guard: sact)
-           sched_rir (rir: rule_information_raw) (nid: nat)
+           tsig (env: list (string * positive)) reg2var (guard: sact)
+           sched_rir (rir: rule_information_raw) (nid: positive)
            v env' reg2var' vvs fail_cond rir' nid' t vvs0
            (GRIA: get_rule_information_aux ua tsig env reg2var vvs0 guard sched_rir rir nid = (v, env', reg2var', vvs, fail_cond, rir', nid', t))
            tret
@@ -4318,6 +3907,7 @@ Section SimpleForm.
       + simpl; intros. edestruct env_vvs_ex; eauto. inv WFS; eauto.
         econstructor; eauto.
       + repeat constructor.
+      + lia.
       + apply same_env_refl.
       + inv H1.
         eapply assoc_list_assoc in H. congruence.
@@ -4378,7 +3968,7 @@ Section SimpleForm.
       inversion H5; subst. eapply assoc_list_assoc in H0.
       exploit wf_state_set.  3: eauto. 2: eauto. eauto.
       intros WFS2.
-      assert (RG: rir_grows vvs0 rir (list_assoc_set l n (projT1 tm, reduce (projT1 tm) o)) rir' (uor guard const_false)).
+      assert (RG: rir_grows vvs0 rir (PTree.set p1 (projT1 tm, reduce (projT1 tm) o) t1) rir' (uor guard const_false)).
       {
         eapply rir_grows_trans. 4: eapply rir_grows_set; eauto. eauto. 2: eauto. auto.
         unfold valid_name; lia.
@@ -4392,6 +3982,7 @@ Section SimpleForm.
       + eapply wt_sact_reduce; eauto. easy.
       + eapply wt_sact_vvs_grows. 2: eauto.
         eapply vvs_grows_set. inv WFS0; eauto. lia.
+      + lia.
       + eapply same_env_set_in; eauto.
         destruct (list_assoc env v)eqn:?.
         eapply list_assoc_in_keys; eauto.
@@ -4459,7 +4050,7 @@ Section SimpleForm.
         intros.
         unfold opt_bind in INTERP. repeat destr_in INTERP; inv INTERP.
         dihyp INTERPHYPOK.
-        specialize (INTERPHYP0 l1 sched_log l2).
+        specialize (INTERPHYP0 l0 sched_log l1).
         trim INTERPHYP0. eauto.
         trim INTERPHYP0. eauto.
         trim INTERPHYP0. eauto.
@@ -4476,7 +4067,7 @@ Section SimpleForm.
         reflexivity.
         unfold opt_bind in INTERP. repeat destr_in INTERP; inv INTERP.
         dihyp INTERPHYPOK.
-        specialize (INTERPHYP0 l1 sched_log l2).
+        specialize (INTERPHYP0 l0 sched_log l1).
         trim INTERPHYP0. eauto.
         trim INTERPHYP0. eauto.
         trim INTERPHYP0. eauto.
@@ -4496,13 +4087,13 @@ Section SimpleForm.
 
     - inv WT.
       dhyp H. subst.
-      assert (WFS2:   wf_state ((v, t0) :: tsig) ((v, n) :: l0) r1
-                               (list_assoc_set l n (t0, reduce t0 o)) r0 (S n)).
+      assert (WFS2: wf_state ((v, t0) :: tsig) ((v, p1) :: l) r1
+                             (PTree.set p1 (t0, reduce t0 o) t1) r0 (Pos.succ p1)).
       {
         eapply wf_state_cons; eauto. intros.
         eapply wt_sact_below in H1; eauto.
       }
-      assert (VG:   vvs_grows vvs0 (list_assoc_set l n (t0, reduce t0 o))).
+      assert (VG:   vvs_grows vvs0 (PTree.set p1 (t0, reduce t0 o) t1)).
       {
         eapply rir_vvs_grows.
         eapply rir_grows_trans. 2: eauto. eauto.
@@ -4516,7 +4107,7 @@ Section SimpleForm.
         change (skipn 1 (y::l')) with l'.
         assert (WFS3:   wf_state tsig l' reg2var' vvs rir' nid').
         apply wf_state_tl in WFS1. simpl in WFS1. eauto.
-        assert (RG3: rir_grows l r0 (list_assoc_set l n (t0, reduce t0 o)) r0 const_false).
+        assert (RG3: rir_grows t1 r0 (PTree.set p1 (t0, reduce t0 o) t1) r0 const_false).
         {
           eapply rir_grows_set. eauto. unfold valid_name; lia.
         }
@@ -4548,7 +4139,7 @@ Section SimpleForm.
           destruct INTERPHYP as (INTERPHYPOK & INTERPHYPKO).
           destruct (interp_daction r sigma Gamma sched_log action_log ex) eqn:?. destruct p. destruct p. simpl.
           dihyp INTERPHYPOK.
-          specialize (INTERPHYP0 ((fst y, v)::l1) sched_log l2).
+          specialize (INTERPHYP0 ((fst y, v)::l0) sched_log l1).
           trim INTERPHYP0. eauto.
           trim INTERPHYP0.
           eapply wt_env_cons; eauto.
@@ -4558,7 +4149,7 @@ Section SimpleForm.
           trim INTERPHYP0. eauto.
           trim INTERPHYP0. eauto.
           trim INTERPHYP0.
-          constructor. split; auto. simpl. econstructor. rewrite list_assoc_gss. eauto.
+          constructor. split; auto. simpl. econstructor. rewrite PTree.gss. eauto.
           eapply vvs_grows_interp_sact. 2: eauto. eapply vvs_grows_set. eapply wfs_vvs_range; eauto. lia.
           eapply match_Gamma_env_vvs_grows; eauto.
           eapply vvs_grows_set. eapply wfs_vvs_range; eauto. lia.
@@ -4592,23 +4183,23 @@ Section SimpleForm.
 
     - inv WT.
       dhyp H. subst.
-      set (ll1 := (list_assoc_set l n (bits_t 1, reduce (bits_t 1) o))).
-      set (ll2 := (list_assoc_set ll1 (n + 1) (bits_t 1, uand guard (SVar n)))).
-      set (ll3 := (list_assoc_set ll2 (n + 2) (bits_t 1, uand guard (unot (SVar n))))).
-
-      assert (WFSl1: wf_state tsig l0 r1 ll1 r0 (n + 1) /\ vvs_grows l ll1).
+      set (ll1 := PTree.set p1 (bits_t 1, reduce (bits_t 1) o) t1).
+      set (ll2 := PTree.set (Pos.succ p1) (bits_t 1, uand guard (SVar p1)) ll1).
+      set (ll3 := (PTree.set (Pos.succ (Pos.succ p1)) (bits_t 1, uand guard (unot (SVar p1))) ll2)).
+      fold ll1 ll2 ll3 in Heqp1.
+      assert (WFSl1: wf_state tsig l r1 ll1 r0 (Pos.succ p1) /\ vvs_grows t1 ll1).
       {
-        eapply wf_state_vvs_set; eauto. intros.
+        eapply wf_state_vvs_set; eauto. lia. intros.
         eapply wt_sact_below in H2; eauto. lia.
       }
       destruct WFSl1 as (WFSl1 & VG1).
-      assert (WFSl2: wf_state tsig l0 r1 ll2 r0 (n + 2) /\ vvs_grows ll1 ll2).
+      assert (WFSl2: wf_state tsig l r1 ll2 r0 (Pos.succ (Pos.succ p1)) /\ vvs_grows ll1 ll2).
       {
         eapply wf_state_vvs_set; eauto.
         econstructor. eapply wt_sact_vvs_grows. 2: eauto.
         eapply vvs_grows_trans; eauto using rir_vvs_grows.
-        econstructor. unfold ll1. rewrite list_assoc_gss. eauto.
-        constructor. simpl.
+        econstructor. unfold ll1. rewrite PTree.gss. eauto.
+        constructor. lia. simpl.
         intros v VIS. inv VIS.
         eapply wt_sact_below in H7; eauto. eapply wt_sact_vvs_grows. 2: eauto.
         eauto using vvs_grows_trans, rir_vvs_grows.
@@ -4616,16 +4207,16 @@ Section SimpleForm.
         lia.
       }
       destruct WFSl2 as (WFSl2 & VG2).
-      assert (WFSl3: wf_state tsig l0 r1 ll3 r0 (n + 3) /\ vvs_grows ll2 ll3).
+      assert (WFSl3: wf_state tsig l r1 ll3 r0 (Pos.succ (Pos.succ (Pos.succ p1))) /\ vvs_grows ll2 ll3).
       {
         eapply wf_state_vvs_set; eauto.
         econstructor. eapply wt_sact_vvs_grows. 2: eauto.
         eapply vvs_grows_trans; eauto using rir_vvs_grows.
         eapply vvs_grows_trans; eauto using rir_vvs_grows.
         econstructor. econstructor. unfold ll2, ll1.
-        rewrite list_assoc_gso by lia.
-        rewrite list_assoc_gss. eauto.
-        constructor. constructor. simpl.
+        rewrite PTree.gso by lia.
+        rewrite PTree.gss. eauto.
+        constructor. constructor. lia. simpl.
         intros v VIS. inv VIS.
         eapply wt_sact_below in H7; eauto. eapply wt_sact_vvs_grows. 2: eauto.
         eauto using vvs_grows_trans, rir_vvs_grows.
@@ -4637,26 +4228,28 @@ Section SimpleForm.
       eapply wf_rir_grows. eauto.
       eauto using vvs_grows_trans.
       econstructor.
-      rewrite list_assoc_gso by lia; rewrite list_assoc_gss; eauto.
+      unfold ll3. rewrite PTree.gso by lia.
+      unfold ll2. rewrite PTree.gss; eauto.
       subst.
       dhyp H1.
       inv WFS1; eapply wf_state_vvs_grows_incr; eauto.
-      econstructor. eapply rir_vvs_grows. eauto. rewrite list_assoc_gss. eauto.
+      econstructor. eapply rir_vvs_grows. eauto. unfold ll3; rewrite PTree.gss. eauto.
       subst.
-      assert (WTcond: wt_sact l3 (SVar n) (bits_t 1)).
+      assert (WTcond: wt_sact t5 (SVar p1) (bits_t 1)).
       {
         eapply wt_sact_vvs_grows.
         eapply vvs_grows_trans. 2: eapply rir_vvs_grows; eauto.
         eapply rir_vvs_grows; eauto. econstructor.
-        rewrite list_assoc_gso by lia.
-        rewrite list_assoc_gso by lia.
-        rewrite list_assoc_gss. eauto.
+        unfold ll3, ll2, ll1.
+        rewrite PTree.gso by lia.
+        rewrite PTree.gso by lia.
+        rewrite PTree.gss. eauto.
       }
 
       edestruct merge_branches2_grows2 as (VVSGROWS4 & NIDGROWS4 & WFS4 & EVAL4); eauto.
       inv WFS2; eapply wf_state_vvs_grows_incr; eauto.
       red; lia.
-      assert (RG4: rir_grows l1 r2 l6 rir' (SVar (n+2))).
+      assert (RG4: rir_grows t3 r2 t6 rir' (SVar (Pos.succ (Pos.succ p1)))).
       {
         eapply rir_grows_weaken_guard.
         - eapply rir_grows_trans. 2: eauto. all: eauto.
@@ -4667,18 +4260,18 @@ Section SimpleForm.
           eapply vvs_grows_trans. 2: eauto using rir_vvs_grows.
           eapply vvs_grows_trans. 2: eauto using rir_vvs_grows.
           eauto using rir_vvs_grows.
-          econstructor. setoid_rewrite list_assoc_gss. eauto.
+          econstructor. unfold ll3. setoid_rewrite PTree.gss. eauto.
       }
-      edestruct merge_reg2var_grows2 as (VVSGROWS5 & NIDGROWS5 & WFS5 & EVAL5). 2: eauto. all: eauto.
+      edestruct merge_reg2var_grows2 as (VVSGROWS5 & NIDGROWS5 & WFS5 & EVAL5). 2: eauto.
       eapply same_regenv_trans; eauto.
       eapply same_regenv_sym; eauto.
-      eapply wf_state_vvs_grows_incr; eauto. 1-4: inv WFS4; eauto.
+      eapply wf_state_vvs_grows_incr; eauto. 1-4: inv WFS4; eauto. lia.
       apply WFS4.
-      lia.
-      eapply wf_rir_grows. apply WFRsched1. eauto.
+      eauto.
+      eapply wf_rir_grows. apply WFRsched1. auto.
       red; lia.
       eapply wt_sact_vvs_grows; eauto.
-      assert (rir_grows l1 r2 vvs rir' (SVar (n+2))).
+      assert (rir_grows t3 r2 vvs rir' (SVar (Pos.succ (Pos.succ p1)))).
       {
         eapply rir_grows_weaken_guard.
         - eapply rir_grows_trans. 2: eauto. all: eauto.
@@ -4690,23 +4283,20 @@ Section SimpleForm.
           eapply vvs_grows_trans. 2: eauto.
           eapply vvs_grows_trans. 2: eauto using rir_vvs_grows.
           eauto using rir_vvs_grows.
-          econstructor. rewrite list_assoc_gss. eauto.
+          econstructor. unfold ll3. setoid_rewrite PTree.gss. eauto.
       }
-      assert (rir_grows l r0 ll3 r0 const_false).
+      assert (rir_grows t1 r0 ll3 r0 const_false).
       {
         eapply rir_grows_change_vvs. eauto.
         intros; eauto using vvs_grows_trans.
         repeat constructor.
       }
-      assert (rir_grows l r0 vvs rir' guard).
+      assert (rir_grows t1 r0 vvs rir' guard).
       {
         eapply rir_grows_weaken_guard.
         eapply rir_grows_trans. 2: eauto. eauto. eauto.
         eapply rir_grows_trans. 4: eauto. all: eauto.
         intros.
-
-
-
         assert (interp_sact ll3 guard (Bits [false])).
         {
           eapply interp_sact_vvs_grows_inv. 6: eauto. all: inv WFSl3; eauto.
@@ -4714,29 +4304,29 @@ Section SimpleForm.
           eapply wt_sact_vvs_grows. 2: eauto.
           eapply vvs_grows_trans; eauto using rir_vvs_grows.
         }
-        assert (exists b, interp_sact ll3 (SVar n) (Bits [b])).
+        assert (exists b, interp_sact ll3 (SVar p1) (Bits [b])).
         {
           edestruct wt_sact_interp as (vv & IS & WTv).
           4: apply WTRES. 1-3: inv WFS0; eauto.
           eapply wt_val_bool in WTv. destruct WTv; subst.
           exists x; econstructor.
-          unfold ll3; rewrite list_assoc_gso by lia.
-          unfold ll2; rewrite list_assoc_gso by lia.
-          unfold ll1; rewrite list_assoc_gss. eauto.
+          unfold ll3; rewrite PTree.gso by lia.
+          unfold ll2; rewrite PTree.gso by lia.
+          unfold ll1; rewrite PTree.gss. eauto.
           eapply vvs_grows_interp_sact. 2: eauto.
           eauto using rir_vvs_grows.
         } destruct H7.
-        assert (interp_sact ll3 (SVar (n + 1)) (Bits [false])).
+        assert (interp_sact ll3 (SVar (Pos.succ p1)) (Bits [false])).
         {
           econstructor.
-          unfold ll3; rewrite list_assoc_gso by lia.
-          unfold ll2; rewrite list_assoc_gss. eauto.
+          unfold ll3; rewrite PTree.gso by lia.
+          unfold ll2; rewrite PTree.gss. eauto.
           econstructor; eauto.
         }
-        assert (interp_sact ll3 (SVar (n + 2)) (Bits [false])).
+        assert (interp_sact ll3 (SVar (Pos.succ (Pos.succ p1))) (Bits [false])).
         {
           econstructor.
-          unfold ll3; rewrite list_assoc_gss. eauto.
+          unfold ll3; rewrite PTree.gss. eauto.
           econstructor; eauto.
           econstructor; eauto. simpl. eauto. simpl. auto.
         }
@@ -4791,9 +4381,9 @@ Section SimpleForm.
       + 
 
   Lemma merge_vms2_preserve_same_env:
-    forall (l2 l4: list (string*nat))
+    forall (l2 l4: list (string*positive))
            (F: same_env l2 l4) tsig P (F2: Forall2 P l2 tsig)
-           (l3: list (nat*(type*sact))) cname n1 env' vvs n2,
+           (l3: var_value_map) cname n1 env' vvs n2,
       merge_branches2 l2 l4 tsig l3 n1 cname = (env', vvs, n2) ->
       same_env l2 env'.
   Proof.
@@ -4821,7 +4411,7 @@ Section SimpleForm.
         destruct p. destruct p. simpl.
         dihyp INTERPHYPOK.
         exploit interp_sact_wt_bool. 5: apply INTERPVAL. 4: now eauto. 1-3: apply WFS0. intros (?&?); subst. 2: split; [intros; congruence |].
-        specialize (INTERPHYP0 l5 sched_log l7).
+        specialize (INTERPHYP0 l2 sched_log l3).
         trim INTERPHYP0. eauto.
         trim INTERPHYP0. eauto.
         trim INTERPHYP0. eauto.
@@ -4833,7 +4423,7 @@ Section SimpleForm.
         eapply match_logs_r2v_vvs_grows; eauto.
         eauto using vvs_grows_trans.
         1-4:apply WFS0.
-        specialize (INTERPHYP1 l5 sched_log l7).
+        specialize (INTERPHYP1 l2 sched_log l3).
         trim INTERPHYP1. eauto.
         trim INTERPHYP1. eauto.
         trim INTERPHYP1. eauto.
@@ -4867,23 +4457,25 @@ Section SimpleForm.
         4: apply WTGUARD. 1-3: inv WFS; eauto.
         apply wt_val_bool in WTGv. destruct WTGv as (? & WTGv). subst.
         econstructor. constructor. econstructor.
-        rewrite list_assoc_gso by lia.
-        rewrite list_assoc_gss. eauto.
+        unfold ll3. rewrite PTree.gso by lia.
+        unfold ll2; rewrite PTree.gss. eauto.
         econstructor.
         eapply vvs_grows_interp_sact. 2: apply ISG.
         eauto using vvs_grows_trans, rir_vvs_grows.
         econstructor.
-        repeat rewrite list_assoc_gso by lia.
-        rewrite list_assoc_gss. eauto.
+        unfold ll3, ll2, ll1.
+        repeat rewrite PTree.gso by lia.
+        rewrite PTree.gss. eauto.
         eapply vvs_grows_interp_sact. 2: apply INTERPVAL.
         eauto using vvs_grows_trans, rir_vvs_grows.
         simpl; eauto. simpl; eauto. rewrite andb_false_r; auto.
         trim_assert INTERPHYP0 (x=true).
         {
-          intros; subst. econstructor. rewrite list_assoc_gso by lia. rewrite list_assoc_gss. eauto.
+          intros; subst. econstructor. unfold ll3. rewrite PTree.gso by lia. unfold ll2; rewrite PTree.gss. eauto.
           econstructor.
           eapply vvs_grows_interp_sact. 2: eauto. eauto using vvs_grows_trans, rir_vvs_grows.
-          econstructor. repeat rewrite list_assoc_gso by lia. rewrite list_assoc_gss. eauto.
+          econstructor. unfold ll3, ll2, ll1.
+          repeat rewrite PTree.gso by lia. rewrite PTree.gss. eauto.
           eapply vvs_grows_interp_sact. 2: eauto. eauto using vvs_grows_trans, rir_vvs_grows.
           reflexivity.
         }
@@ -4898,11 +4490,12 @@ Section SimpleForm.
         {
           intros; subst.
           eapply vvs_grows_interp_sact.  eauto using rir_vvs_grows.
-          econstructor. repeat rewrite list_assoc_gso by lia. rewrite list_assoc_gss. eauto.
+          econstructor. unfold ll3; repeat rewrite PTree.gso by lia. rewrite PTree.gss. eauto.
           econstructor.
           eapply vvs_grows_interp_sact. 2: eauto. eauto using vvs_grows_trans, rir_vvs_grows.
           econstructor.
-          econstructor. repeat rewrite list_assoc_gso by lia. rewrite list_assoc_gss. eauto.
+          econstructor. unfold ll3, ll2, ll1.
+          repeat rewrite PTree.gso by lia. rewrite PTree.gss. eauto.
           eapply vvs_grows_interp_sact. 2: eauto. eauto using vvs_grows_trans, rir_vvs_grows.
           reflexivity. reflexivity.
         }
@@ -4931,15 +4524,15 @@ Section SimpleForm.
              reflexivity.
              reflexivity.
           --
-            assert (match_Gamma_env Gamma' env' l6).
+            assert (match_Gamma_env Gamma' env' t6).
             {
               eapply mge_merge_branches.
               4: {
                 econstructor. eapply VVSGROWS4. eapply rir_vvs_grows; eauto.
                 eapply rir_vvs_grows; eauto.
-                rewrite list_assoc_gso.
-                rewrite list_assoc_gso.
-                rewrite list_assoc_gss. eauto. lia. lia.
+                unfold ll3, ll2, ll1. rewrite PTree.gso.
+                rewrite PTree.gso.
+                rewrite PTree.gss. eauto. lia. lia.
                 eapply vvs_grows_interp_sact. 2: eauto.
                 eapply vvs_grows_trans. 2: eauto.
                 eapply vvs_grows_trans. apply VG1.
@@ -4966,9 +4559,9 @@ Section SimpleForm.
              eauto using rir_vvs_grows.
              2: intro IS; exploit interp_sact_determ.
              2: apply H7. 2: apply IS.
-             econstructor. rewrite list_assoc_gso by lia.
-             rewrite list_assoc_gso by lia.
-             rewrite list_assoc_gss. eauto.
+             econstructor. unfold ll3, ll2, ll1.
+             repeat rewrite PTree.gso by lia.
+             rewrite PTree.gss. eauto.
              eapply vvs_grows_interp_sact. 2: eauto.
              eauto using vvs_grows_trans. intro A; inv A. auto.
              subst.
@@ -4981,7 +4574,7 @@ Section SimpleForm.
              eauto using vvs_grows_trans, rir_vvs_grows.
              unfold ll3,ll2,ll1.
              econstructor.
-             rewrite list_assoc_gss. eauto.
+             rewrite PTree.gss. eauto.
              edestruct wt_sact_interp as (vg & ISG & WTGv).
              4: apply WTGUARD. 1-3: inv WFS; eauto.
              apply wt_val_bool in WTGv. destruct WTGv as (? & WTGv). subst.
@@ -4993,9 +4586,9 @@ Section SimpleForm.
              apply WFSl3.
              eauto using vvs_grows_trans, rir_vvs_grows.
              apply WFSl3.
-             econstructor. rewrite list_assoc_gso by lia.
-             rewrite list_assoc_gso by lia.
-             rewrite list_assoc_gss. eauto.
+             econstructor. rewrite PTree.gso by lia.
+             rewrite PTree.gso by lia.
+             rewrite PTree.gss. eauto.
              simpl; eauto.
              simpl; eauto. rewrite andb_false_r. auto.
 
@@ -5019,15 +4612,16 @@ Section SimpleForm.
                 eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows. reflexivity.
                 eapply vvs_grows_interp_sact. 2: eauto. eauto using vvs_grows_trans.
                 simpl. eauto. simpl; eauto. reflexivity.
-             ++ assert (match_Gamma_env Gamma' env' l6).
+             ++ assert (match_Gamma_env Gamma' env' t6).
                 {
                   eapply mge_merge_branches.
                   4: {
                     econstructor. eapply VVSGROWS4. eapply rir_vvs_grows; eauto.
                     eapply rir_vvs_grows; eauto.
-                    rewrite list_assoc_gso.
-                    rewrite list_assoc_gso.
-                    rewrite list_assoc_gss. eauto. lia. lia.
+                    unfold ll3, ll2, ll1.
+                    rewrite PTree.gso.
+                    rewrite PTree.gso.
+                    rewrite PTree.gss. eauto. lia. lia.
                     eapply vvs_grows_interp_sact. 2: eauto.
                     eapply vvs_grows_trans. 2: eauto.
                     eapply vvs_grows_trans. apply VG1.
@@ -5053,9 +4647,10 @@ Section SimpleForm.
                 eauto using rir_vvs_grows.
                 2: intro IS; exploit interp_sact_determ.
                 2: apply H7. 2: apply IS.
-                econstructor. rewrite list_assoc_gso by lia.
-                rewrite list_assoc_gso by lia.
-                rewrite list_assoc_gss. eauto.
+                econstructor.
+                unfold ll3, ll2, ll1.
+                repeat rewrite PTree.gso by lia.
+                rewrite PTree.gss; eauto.
                 eapply vvs_grows_interp_sact. 2: eauto.
                 eauto using vvs_grows_trans. intro A; inv A. auto.
                 subst.
@@ -5126,6 +4721,7 @@ Section SimpleForm.
         econstructor; eauto.
       + econstructor. eapply wt_rir_has_write0; eauto.
         eapply wt_rir_has_write1; eauto. constructor.
+      + lia.
       + apply same_env_refl.
       + inv WT. auto.
       + split; intros;
@@ -5176,6 +4772,7 @@ Section SimpleForm.
         setoid_rewrite Heqo in GET. inv GET. eauto.
         econstructor; eauto.
       + eapply wt_rir_has_write1; eauto.
+      + lia.
       + apply same_env_refl.
       + inv WT. auto.
       + split; intros;
@@ -5206,25 +4803,13 @@ Section SimpleForm.
       setoid_rewrite Heqo in GET. inv GET.
     - inv WT.
       dhyp H. subst.
-
-      assert (rir_grows l r0 vvs rir' guard /\ wf_state tsig env' reg2var' vvs rir' nid' /\ wt_sact vvs s0 (bits_t 1)).
-      {
-        destr_in Heqp7; inv Heqp7.
-        - eapply rir_grows_add_write0; eauto.
-          eapply wt_sact_vvs_grows. 2: eauto. eauto using rir_vvs_grows.
-        - replace (n+1) with (S n). eapply rir_grows_add_write1; eauto.
-          eapply wt_sact_vvs_grows. 2: eauto. eauto using rir_vvs_grows. lia.
-      }
-      destruct H0 as (RG1 & WFS1 & WTfail).
-
-      assert (n <= nid').
-      {
-        destr_in Heqp7; inv Heqp7. lia. lia.
-      }
-
+      exploit rir_grows_add_write0. 3: eauto.
+      eapply wt_sact_vvs_grows. 2: eauto. eauto using rir_vvs_grows.
+      all: eauto. simpl. intros (RG1 & WFS1 & WTfail).
       repeat (refine (conj _ _)); eauto.
+      rewrite <- Pos.add_1_r. auto.
       +
-        cut (Forall2 (fun x y => fst x = fst y) r1 reg2var').
+
         eapply same_regenv_trans; eauto.
         Lemma reg2var_vvs_add_write_same_regenv:
           forall (r1: r2vtype) k v,
@@ -5237,7 +4822,6 @@ Section SimpleForm.
           - destr. subst. constructor; auto. apply same_regenv_refl.
             constructor; auto.
         Qed.
-        destr_in Heqp7; inv Heqp7.
         eapply same_regenv_trans.
         2: apply reg2var_vvs_add_write_same_regenv.
         apply reg2var_vvs_add_write_same_regenv.
@@ -5247,9 +4831,6 @@ Section SimpleForm.
         apply in_map with (f:=fst) in GET.
         eapply list_assoc_set_key_stays_in.
         apply GET.
-        apply reg2var_vvs_add_write_same_regenv.
-        edestruct (wfs_r2v_vvs) as (? & GET & _). apply WFS0. apply list_assoc_in in GET.
-        apply in_map with (f:=fst) in GET. apply GET.
 
       + eapply rir_grows_weaken_guard.
         eapply rir_grows_trans. 2: eauto. all: eauto.
@@ -5279,20 +4860,12 @@ Section SimpleForm.
         * repeat constructor.
         * econstructor.
           eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
-          destr_in Heqp7; inv Heqp7.
           -- eapply vvs_grows_interp_sact. eauto using rir_vvs_grows.
              eapply add_write0_fail; eauto.
              eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
-          -- eapply vvs_grows_interp_sact. eauto using rir_vvs_grows.
-             eapply add_write1_fail; eauto.
-             eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
           -- reflexivity.
         * eapply match_Gamma_env_vvs_grows; eauto. eauto using rir_vvs_grows.
-        * destr_in Heqp7; inv Heqp7.
-          eapply match_logs_r2v_add_write0; eauto.
-          eapply wt_sact_vvs_grows; eauto. apply RIRGROWS.
-          eapply vvs_grows_interp_sact; eauto. apply RIRGROWS.
-          eapply match_logs_r2v_add_write1. 3: eauto. all: eauto.
+        * eapply match_logs_r2v_add_write0; eauto.
           eapply wt_sact_vvs_grows; eauto. apply RIRGROWS.
           eapply vvs_grows_interp_sact; eauto. apply RIRGROWS.
         * eapply wt_log_cons; eauto. simpl.
@@ -5302,70 +4875,135 @@ Section SimpleForm.
           dihyp INTERPHYPOK.
           {
             unfold may_write in Heqb.
-            unfold add_write0, add_write1 in Heqp6.
-            destruct port; simpl in *; inv Heqp6; inv Heqp7; simpl in Heqb.
-            - rewrite ! log_existsb_log_app in Heqb.
-              rewrite ! negb_orb in Heqb.
-              rewrite ! andb_false_iff in Heqb.
-              rewrite ! negb_false_iff in Heqb.
-              econstructor. eapply vvs_grows_interp_sact. 2: eauto.
-              eauto using rir_vvs_grows.
-              econstructor.  eapply vvs_grows_interp_sact. 2: eauto.
-              eauto using vvs_grows_trans, rir_vvs_grows.
-              instantiate(1:=Bits [true]).
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write0. 4: apply WFRS. 1-3: apply WFS.
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFRS. 1-3: apply WFS.
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_read1. 4: apply WFRS. 1-3: apply WFS.
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write0. 4: apply WFS0. 1-3: apply WFS0.
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFS0. 1-3: apply WFS0.
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_read1. 4: apply WFS0. 1-3: apply WFS0.
-              intros (?&?) (?&?) (?&?) (?&?) (?&?) (?&?).
-              eapply vvs_grows_interp_sact with (v1:=l).
-              eauto using vvs_grows_trans, rir_vvs_grows.
-              repeat econstructor; eauto.
-              4: eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
-              5: eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
-              6: eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
-              all: simpl; eauto.
-              all: simpl; eauto.
-              inv MLR. inv mlr_mlv_sched0.
-              rewrite <-! not_false_iff_true in Heqb.
-              rewrite (mlv_read3 idx) in Heqb.
-              rewrite (mlv_write2 idx) in Heqb.
-              rewrite (mlv_write3 idx) in Heqb.
-              inv MLR0. inv mlr_mlv_action1.
-              revert Heqb.
-              rewrite mlv_read5, mlv_write4, mlv_write5. intros.
-              destruct x, x0, x1, x2, x3, x4; simpl; auto.
-              intuition.
-            - rewrite ! log_existsb_log_app in Heqb.
-              rewrite ! negb_orb in Heqb.
-              rewrite ! andb_false_iff in Heqb.
-              rewrite ! negb_false_iff in Heqb.
-              econstructor. eapply vvs_grows_interp_sact. 2: eauto.
-              eauto using rir_vvs_grows.
-              econstructor.  eapply vvs_grows_interp_sact. 2: eauto.
-              eauto using vvs_grows_trans, rir_vvs_grows.
-              eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS0. lia.
-              instantiate(1:=Bits [true]).
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFRS. 1-3: apply WFS.
-              exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFS0. 1-3: apply WFS0.
-              intros (?&?) (?&?).
-              repeat econstructor; eauto. simpl. reflexivity.
-              eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
-              simpl.
-              inv MLR. inv mlr_mlv_sched0.
-              rewrite <-! not_false_iff_true in Heqb.
-              rewrite (mlv_write3 idx) in Heqb.
-              inv MLR0. inv mlr_mlv_action1.
-              revert Heqb.
-              rewrite mlv_write5. intros.
-              destruct x, x0; simpl; auto.
-              intuition.
-              reflexivity. reflexivity.
+            unfold add_write0, add_write1 in Heqp1. inv Heqp1.
+            rewrite ! log_existsb_log_app in Heqb.
+            rewrite ! negb_orb in Heqb.
+            rewrite ! andb_false_iff in Heqb.
+            rewrite ! negb_false_iff in Heqb.
+            econstructor. eapply vvs_grows_interp_sact. 2: eauto.
+            eauto using rir_vvs_grows.
+            econstructor.  eapply vvs_grows_interp_sact. 2: eauto.
+            eauto using vvs_grows_trans, rir_vvs_grows.
+            instantiate(1:=Bits [true]).
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write0. 4: apply WFRS. 1-3: apply WFS.
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFRS. 1-3: apply WFS.
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_read1. 4: apply WFRS. 1-3: apply WFS.
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write0. 4: apply WFS0. 1-3: apply WFS0.
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFS0. 1-3: apply WFS0.
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_read1. 4: apply WFS0. 1-3: apply WFS0.
+            intros (?&?) (?&?) (?&?) (?&?) (?&?) (?&?).
+            eapply vvs_grows_interp_sact with (v1:=t1).
+            eauto using vvs_grows_trans, rir_vvs_grows.
+            repeat econstructor; eauto.
+            4: eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
+            5: eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
+            6: eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
+            all: simpl; eauto.
+            all: simpl; eauto.
+            inv MLR. inv mlr_mlv_sched0.
+            rewrite <-! not_false_iff_true in Heqb.
+            rewrite (mlv_read3 idx) in Heqb.
+            rewrite (mlv_write2 idx) in Heqb.
+            rewrite (mlv_write3 idx) in Heqb.
+            inv MLR0. inv mlr_mlv_action1.
+            revert Heqb.
+            rewrite mlv_read5, mlv_write4, mlv_write5. intros.
+            destruct x, x0, x1, x2, x3, x4; simpl; auto.
+            intuition.
           }
           exploit wt_sact_interp_bool. 4: apply WTfail. 1-3: apply WFS1. intros (?&?).
           econstructor; eauto. eapply vvs_grows_interp_sact. 2: eauto. eauto using vvs_grows_trans, rir_vvs_grows. reflexivity.
+    - inv WT.
+      dhyp H. subst.
+      exploit rir_grows_add_write1. 3: eauto.
+      eapply wt_sact_vvs_grows. 2: eauto. eauto using rir_vvs_grows.
+      all: eauto. simpl. intros (RG1 & WFS1 & WTfail).
+      repeat (refine (conj _ _)); eauto.
+      +
+        eapply same_regenv_trans; eauto.
+        apply reg2var_vvs_add_write_same_regenv.
+        edestruct (wfs_r2v_vvs) as (? & GET & _). apply WFS0. apply list_assoc_in in GET.
+        apply in_map with (f:=fst) in GET. apply GET.
+      + eapply rir_grows_weaken_guard.
+        eapply rir_grows_trans. 2: eauto. all: eauto.
+        intros.
+        econstructor; eauto.
+        eapply wt_sact_vvs_grows. 2: eauto.
+        eauto using vvs_grows_trans, rir_vvs_grows.
+      + eapply wf_rir_grows. eauto. apply RG1. all: apply WFS0.
+      + simpl. constructor. constructor. reflexivity.
+      + econstructor; eauto. 2: constructor.
+        eapply wt_sact_vvs_grows. 2: eauto. eauto using rir_vvs_grows.
+      + lia.
+      + intros.
+        trim (INTERPHYP Gamma sched_log action_log). eauto.
+        trim INTERPHYP. eauto.
+        trim INTERPHYP. eauto.
+        trim INTERPHYP. eauto.
+        trim INTERPHYP. eauto.
+        trim INTERPHYP. eauto.
+        trim INTERPHYP. eauto.
+        destruct INTERPHYP as (INTERPHYPOK & INTERPHYPKO).
+        split; intros.
+        unfold opt_bind in INTERP.
+        repeat destr_in INTERP; inv INTERP.
+        dihyp INTERPHYPOK.
+        repeat (refine (conj _ _)); eauto.
+        * repeat constructor.
+        * econstructor.
+          eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
+          -- eapply vvs_grows_interp_sact. eauto using rir_vvs_grows.
+             eapply add_write1_fail; eauto.
+             eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
+          -- reflexivity.
+        * eapply match_Gamma_env_vvs_grows; eauto. eauto using rir_vvs_grows.
+        * eapply match_logs_r2v_add_write1; eauto.
+          eapply wt_sact_vvs_grows; eauto. apply RIRGROWS.
+          eapply vvs_grows_interp_sact; eauto. apply RIRGROWS.
+        * eapply wt_log_cons; eauto. simpl.
+          eapply wt_daction_preserves_wt_env in Heqo0. intros; apply Heqo0. all: eauto.
+        * unfold opt_bind in INTERP.
+          repeat destr_in INTERP; inv INTERP.
+          dihyp INTERPHYPOK.
+          {
+            unfold may_write in Heqb.
+            unfold add_write0, add_write1 in Heqp1. inv Heqp1.
+            rewrite ! log_existsb_log_app in Heqb.
+            rewrite ! negb_orb in Heqb.
+            rewrite ! andb_false_iff in Heqb.
+            rewrite ! negb_false_iff in Heqb.
+            econstructor. eapply vvs_grows_interp_sact. 2: eauto.
+            eauto using rir_vvs_grows.
+            econstructor.  eapply vvs_grows_interp_sact. 2: eauto.
+            eauto using vvs_grows_trans, rir_vvs_grows.
+            instantiate(1:=Bits [true]).
+            (* exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write0. 4: apply WFRS. 1-3: apply WFS. *)
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFRS. 1-3: apply WFS.
+            (* exploit wt_sact_interp_bool. 4: eapply wt_rir_has_read1. 4: apply WFRS. 1-3: apply WFS. *)
+            (* exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write0. 4: apply WFS0. 1-3: apply WFS0. *)
+            exploit wt_sact_interp_bool. 4: eapply wt_rir_has_write1. 4: apply WFS0. 1-3: apply WFS0.
+            (* exploit wt_sact_interp_bool. 4: eapply wt_rir_has_read1. 4: apply WFS0. 1-3: apply WFS0. *)
+            intros (?&?) (?&?).
+            eapply vvs_grows_interp_sact with (v1:=t1).
+            eauto using vvs_grows_trans, rir_vvs_grows.
+            repeat econstructor; eauto.
+            2: eapply vvs_grows_interp_sact;[|now eauto]; eauto using vvs_grows_trans, rir_vvs_grows.
+            all: simpl; eauto.
+            all: simpl; eauto.
+            inv MLR. inv mlr_mlv_sched0.
+            rewrite <-! not_false_iff_true in Heqb.
+            rewrite (mlv_write3 idx) in Heqb.
+            inv MLR0. inv mlr_mlv_action1.
+            revert Heqb.
+            rewrite mlv_write5. intros.
+            move H0 at bottom.
+            move H1 at bottom.
+            destruct x, x0; simpl; auto.
+            intuition.
+          }
+          exploit wt_sact_interp_bool. 4: apply WTfail. 1-3: apply WFS1. intros (?&?).
+          econstructor; eauto. eapply vvs_grows_interp_sact. 2: eauto. eauto using vvs_grows_trans, rir_vvs_grows. reflexivity.
+
     - assert (exists t1,
                  wt_daction (R:=R) (Sigma:=Sigma) pos_t string string tsig arg1 t1 /\
                    wt_unop ufn1 t1 tret
@@ -5437,7 +5075,7 @@ Section SimpleForm.
           destruct (interp_daction r sigma Gamma sched_log action_log arg1) eqn:?; simpl.
           destruct p; destruct p.
           dihyp INTERPHYPOK.
-          trim (INTERPHYP0 l1 sched_log l2). eauto.
+          trim (INTERPHYP0 l0 sched_log l1). eauto.
           trim INTERPHYP0. eauto.
           trim INTERPHYP0. eauto.
           trim INTERPHYP0. eauto.
@@ -5468,18 +5106,18 @@ Section SimpleForm.
              econstructor. eapply vvs_grows_interp_sact. 2: eauto. eauto using rir_vvs_grows.
              eauto. reflexivity.
     - inv WT. dhyp H. subst.
-      assert (rir_grows l rir'
-                        (list_assoc_set l n (retSig (Sigma ufn), SExternalCall ufn (reduce (arg1Sig (Sigma ufn)) o))) rir' guard).
+      assert (rir_grows t1 rir'
+                        (PTree.set p1 (retSig (Sigma ufn), SExternalCall ufn (reduce (arg1Sig (Sigma ufn)) o)) t1) rir' guard).
       {
         eapply rir_grows_change_vvs. eauto.
         intros.
         red in H0.
-        rewrite ! list_assoc_gso by lia. auto.
+        rewrite ! PTree.gso by lia. auto.
         eapply wt_sact_vvs_grows; eauto.
         eapply vvs_grows_trans. eauto using rir_vvs_grows. eapply vvs_grows_set.
         inv WFS0; eauto. lia.
       }
-      edestruct wf_state_vvs_set with (k:= n) (m := S n). apply WFS0.
+      edestruct wf_state_vvs_set with (k:= p1) (m := Pos.succ p1). apply WFS0.
       apply wt_sact_extcall. apply WTRES. lia.
       intros. inv H1. eapply wt_sact_below in H6; eauto.  lia.
       repeat (refine (conj _ _)); eauto.
@@ -5487,10 +5125,11 @@ Section SimpleForm.
         intros; econstructor; eauto.
         eapply wt_sact_vvs_grows. 2: eauto. eauto using vvs_grows_trans, rir_vvs_grows.
       * eapply wf_rir_grows. eauto. auto. all: apply WFS0.
-      * simpl. econstructor. rewrite list_assoc_gss. eauto.
+      * simpl. econstructor. rewrite PTree.gss. eauto.
       * eapply wt_sact_vvs_grows. 2: eauto. auto.
       * intros.
-        specialize (INTERPHYP Gamma sched_log action_log).
+        lia.
+      * intros. specialize (INTERPHYP Gamma sched_log action_log).
         trim INTERPHYP. eauto.
         trim INTERPHYP. eauto.
         trim INTERPHYP. eauto.
@@ -5503,7 +5142,7 @@ Section SimpleForm.
         repeat destr_in INTERP; inv INTERP.
         dihyp INTERPHYPOK.
         repeat (refine (conj _ _)); eauto.
-        -- simpl. econstructor. rewrite list_assoc_gss. eauto.
+        -- simpl. econstructor. rewrite PTree.gss. eauto.
            econstructor.
            eapply vvs_grows_interp_sact. 2: eauto. auto.
         -- simpl. eapply vvs_grows_interp_sact. 2: eauto. auto.
@@ -5528,21 +5167,21 @@ Section SimpleForm.
       clear H0.
       simpl in LENNAMES.
 
-      assert ( env_vvs (combine (fst (split (rev (int_argspec ufn)))) (map fst l0)) l
+      assert ( env_vvs (combine (fst (split (rev (int_argspec ufn)))) (map fst l)) t0
                        (rev (int_argspec ufn))).
       {
         rewrite app_nil_r in NAMES.
         revert NAMES.
         rewrite fst_split_map.
         rewrite <- ! map_rev.
-        generalize l0.
+        generalize l.
         generalize (rev (int_argspec ufn)).
-        induction l1; simpl; intros; eauto. constructor.
+        induction l0; simpl; intros; eauto. constructor.
         inv NAMES. simpl.
         repeat destr_in H3. destruct H3 as (? & ? & GET). subst. simpl.
         constructor; eauto.
         destr. simpl. split; eauto.
-        eapply IHl1. eauto.
+        eapply IHl0. eauto.
       }
 
       dhyp H.
@@ -5584,18 +5223,18 @@ Section SimpleForm.
          (Some (action_log, [], Gamma))) eqn:?; simpl. destruct p. destruct p.
         edestruct INTERP1OK as (EQv & FAIL & MGE' & MLR' & WTL' & WTE'); eauto.
         trim (INTERPHYP (map (fun '(name, _, v0) => (name, v0))
-                             (combine (rev (int_argspec ufn)) l4)) sched_log l2). eauto.
+                             (combine (rev (int_argspec ufn)) l3)) sched_log l2). eauto.
         trim INTERPHYP.
         {
           revert EQv NAMES.
           rewrite app_nil_r. rewrite <- map_rev.
           generalize (rev (int_argspec ufn)).
-          generalize l0 l4.
-          intros l5 l6 l7 F; revert F l7.
+          generalize l l3.
+          intros l4 l5 l6 F; revert F l6.
 
           induction 1; simpl; intros; eauto.
-          destruct l7; simpl in *. constructor. inv NAMES.
-          destruct l7; simpl in *. inv NAMES. inv NAMES.
+          destruct l6; simpl in *. constructor. inv NAMES.
+          destruct l6; simpl in *. inv NAMES. inv NAMES.
           destr.  destr_in H7.  destruct H7 as (? & ? & ?). subst.
           constructor. eauto. simpl in H3.
           inv H1. rewrite H3 in H5; inv H5.
@@ -5610,11 +5249,11 @@ Section SimpleForm.
           rewrite app_nil_r. rewrite <- map_rev.
           rewrite fst_split_map.
           generalize (rev (int_argspec ufn)).
-          generalize l0 l4.
-          intros l5 l6 l7 F; revert F l7.
+          generalize l l3.
+          intros l4 l5 l6 F; revert F l6.
           induction 1; simpl; intros; eauto.
-          destruct l7; simpl in *. constructor. inv NAMES.
-          destruct l7; simpl in *. inv NAMES. inv NAMES.
+          destruct l6; simpl in *. constructor. inv NAMES.
+          destruct l6; simpl in *. inv NAMES. inv NAMES.
           destr.  destr_in H7.  destruct H7 as (? & ? & ?). subst.
           constructor. eauto. apply IHF. eauto.
         }
@@ -5645,11 +5284,11 @@ Section SimpleForm.
       rir_read1s := [];
       rir_write0s := [];
       rir_write1s := [];
-      rir_vars := [];
+      rir_vars := PTree.empty (type*sact);
       rir_failure_cond := const_false |}.
 
-  Definition get_rule_information (ua: uact) (nid: nat) r2v vvs sched_rir
-    : rule_information_raw * r2vtype * nat :=
+  Definition get_rule_information (ua: uact) (nid: positive) r2v vvs sched_rir
+    : rule_information_raw * r2vtype * positive :=
     let '(vret, env, r2v, vvs, failure, rir, nid', t) :=
       get_rule_information_aux
         ua [] [] r2v vvs const_true
@@ -5663,7 +5302,7 @@ Section SimpleForm.
 
   Lemma get_rule_information_ok:
     forall (ua: uact)
-           (nid: nat)
+           (nid: positive)
            rir' nid' sched_rir sched_log r2v vvs r2v'
            (GRI: get_rule_information ua nid r2v vvs sched_rir = (rir', r2v', nid'))
            tret
@@ -5675,7 +5314,7 @@ Section SimpleForm.
         (WFS: wf_state [] [] r2v vvs init_rir nid)
         (MLR: match_logs_r2v r2v vvs sched_rir init_rir sched_log log_empty),
         wf_state [] [] r2v' (rir_vars rir') rir' nid'
-        /\   Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2v r2v'
+        /\   Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2v r2v'
         /\ rir_grows vvs init_rir (rir_vars rir') rir' const_true
         /\ nid <= nid'
         /\ (forall action_log' vret Gamma'
@@ -5824,7 +5463,7 @@ Section SimpleForm.
         let '(rir', r2v', nid) := get_rule_information (rules rl) nid r2v (rir_vars sched_rir) sched_rir in
         let conflict : sact := rir_failure_cond rir' in
         let conflict_name := nid in
-        let vvs := list_assoc_set (rir_vars rir') nid (bits_t 1, conflict) in
+        let vvs := PTree.set conflict_name (bits_t 1, conflict) (rir_vars rir') in
         let nid := nid + 1 in
         let '(r2v2, vvs, nid) := merge_reg2vars2 r2v r2v' conflict_name vvs nid in
         let rir2 := merge_rirs sched_rir rir' conflict_name vvs in
@@ -5867,25 +5506,25 @@ Section SimpleForm.
   Qed.
 
   Lemma wf_state_merge_rirs:
-    forall (nid : nat) (rir : rule_information_raw)
-           (r2v : r2vtype) (n : nat) (r1 : rule_information_raw)
-           (l : r2vtype) (n0 : nat)
-           (l0 : r2vtype) (l1 : list (nat * (type * sact)))
-           (SAMEREGENV:   Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2v l),
+    forall (nid : positive) (rir : rule_information_raw)
+           (r2v : r2vtype) (n : positive) (r1 : rule_information_raw)
+           (l : r2vtype) (n0 : positive)
+           (l0 : r2vtype) (l1 : PTree.t (type * sact))
+           (SAMEREGENV:   Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2v l),
       wf_state [] [] r2v (rir_vars rir) rir nid ->
       wf_state [] [] l (rir_vars r1) r1 n ->
       vvs_grows (rir_vars rir) (rir_vars r1) ->
       wt_sact (rir_vars r1) (rir_failure_cond r1) (bits_t 1) ->
       merge_reg2vars2 r2v l n
-                     (list_assoc_set (rir_vars r1) n
-                                     (bits_t 1, (rir_failure_cond r1)))
+                     (PTree.set n
+                                (bits_t 1, (rir_failure_cond r1)) (rir_vars r1))
                      (n + 1) = (l0, l1, n0) ->
       wf_state [] [] l0 l1 (merge_rirs rir r1 n l1) n0.
   Proof.
     intros nid rir r2v n r1 l n0 l0 l1.
     intros.
     exploit merge_reg2var_grows2. 2: eauto. auto.
-    2: replace (n+1) with (S n) by lia; eapply wf_state_vvs_set; eauto.
+    2: replace (n+1) with (Pos.succ n) by lia; eapply wf_state_vvs_set; eauto.
     eapply wf_state_vvs_grows. eauto.
     eapply vvs_grows_trans. eauto. eapply vvs_grows_set. apply H0. lia.
     eapply wf_state_vvs_grows_incr. apply H0.
@@ -5901,16 +5540,16 @@ Section SimpleForm.
     }
     eapply wf_rir_grows; eauto. apply H0.
     eapply vvs_grows_set; eauto.
-    apply H0.
-    eapply nodup_list_assoc_set; eauto. apply H0.
-    lia.
+    apply H0. lia.
+    lia. lia.
     {
       intros.
       eapply wt_sact_valid_vars in H4. eauto. apply H0. eauto.
-    }
+    } lia.
     eapply wf_rir_grows. apply H0. eapply vvs_grows_set; eauto. apply H0.
+    lia.
     red; lia.
-    econstructor. rewrite list_assoc_gss. eauto.
+    econstructor. rewrite PTree.gss. eauto.
     intros (VG2 & NID2 & WFS2 & INTERP2).
     inv WFS2; split; eauto.
     inv H. inv wfs_rir1; inv wfs_rir0; split; simpl.
@@ -5919,44 +5558,40 @@ Section SimpleForm.
     rewrite Forall_forall; intros (?&?) IN; now eauto.
     rewrite Forall_forall; intros (?&?) IN.
     eapply wt_sact_vvs_grows. 2: now eauto. eapply vvs_grows_trans; eauto.
-    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto.
-    eapply vvs_range_incr. 2: apply H0. lia.
+    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto. apply H0. lia.
     econstructor.
-    eapply VG2. rewrite list_assoc_gss. eauto.
+    eapply VG2. rewrite PTree.gss. eauto.
     red; intros; eapply wt_merge_cond_logs. 4: eauto.
     rewrite Forall_forall; intros (?&?) IN; now eauto.
     rewrite Forall_forall; intros (?&?) IN.
     eapply wt_sact_vvs_grows. 2: now eauto. eapply vvs_grows_trans; eauto.
-    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto.
-    eapply vvs_range_incr. 2: apply H0. lia.
+    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto. apply H0. lia.
     econstructor.
-    eapply VG2. rewrite list_assoc_gss. eauto.
+    eapply VG2. rewrite PTree.gss. eauto.
 
     red; intros; eapply wt_merge_cond_logs. 4: eauto.
     rewrite Forall_forall; intros (?&?) IN. eapply wf_rir_write0s1; eauto.
     rewrite Forall_forall; intros (?&?) IN.
     eapply wt_sact_vvs_grows. 2: eapply wf_rir_write0s0; eauto. eapply vvs_grows_trans; eauto.
-    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto.
-    eapply vvs_range_incr. 2: apply H0. lia.
+    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto. apply H0. lia.
     econstructor.
-    eapply VG2. rewrite list_assoc_gss. eauto.
+    eapply VG2. rewrite PTree.gss. eauto.
 
     red; intros; eapply wt_merge_cond_logs. 4: eauto.
     rewrite Forall_forall; intros (?&?) IN. eapply wf_rir_write1s1; eauto.
     rewrite Forall_forall; intros (?&?) IN.
     eapply wt_sact_vvs_grows. 2: eapply wf_rir_write1s0; eauto. eapply vvs_grows_trans; eauto.
-    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto.
-    eapply vvs_range_incr. 2: apply H0. lia.
+    eapply vvs_grows_trans; eauto. eapply vvs_grows_set; eauto. apply H0. lia.
     econstructor.
-    eapply VG2. rewrite list_assoc_gss. eauto.
+    eapply VG2. rewrite PTree.gss. eauto.
 
     econstructor.
     eapply wt_sact_vvs_grows. 2: eauto. eapply vvs_grows_trans. eauto.
     eapply vvs_grows_trans. 2: eauto. eapply vvs_grows_set; eauto.
-    eapply H0.
+    eapply H0. lia.
     eapply wt_sact_vvs_grows. 2: eauto.
     eapply vvs_grows_trans. 2: eauto. eapply vvs_grows_set; eauto.
-    eapply H0.
+    eapply H0. lia.
     constructor.
     eapply nodup_merge_cond_logs; eauto.
     eapply nodup_merge_cond_logs; eauto.
@@ -5976,171 +5611,6 @@ Section SimpleForm.
     rewrite getenv_map2.
     rewrite getenv_create. reflexivity.
   Qed.
-
-  (* Lemma r2v_vvs_aux: *)
-  (*   forall n m r2v3 vvs3 m2 *)
-  (*          r2v1 r2v2 vvs2 *)
-  (*          (MRA: merge_reg2vars2 r2v1 r2v2 n vvs2 m = (r2v3, vvs3, m2)) *)
-  (*          (F2: Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2v1 r2v2) *)
-  (*          (VR: vvs_range vvs2 m) *)
-  (*          (WT: wt_vvs vvs2) *)
-  (*          (VVS: vvs_smaller_variables vvs2) *)
-  (*          (R2V1: reg2var_vvs r2v1 vvs2) *)
-  (*          (R2V2: reg2var_vvs r2v2 vvs2) *)
-  (*          (WTn: wt_sact vvs2 (SVar n) (bits_t 1)) *)
-  (*          (NDr1: NoDup (map fst r2v1)) *)
-  (*          (NDr2: NoDup (map fst r2v2)) *)
-  (*          (ND: NoDup (map fst vvs2)), *)
-  (*     vvs_grows vvs2 vvs3 /\ vvs_range vvs3 m2 /\ m <= m2 /\ wt_vvs vvs3 /\ vvs_smaller_variables vvs3 /\ NoDup (map fst vvs3). *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   exploit merge_reg2vars_reg2_nd. 13: eauto. all: eauto. *)
-  (*   constructor. *)
-  (*   intros x y IN. apply nodup_in_assoc in IN; auto. *)
-  (*   edestruct (R2V1 x) as (? & GET1 & GET2). rewrite IN in GET1; inv GET1; eauto. *)
-  (*   intros x y IN. apply nodup_in_assoc in IN; auto. *)
-  (*   edestruct (R2V2 x) as (? & GET1 & GET2). rewrite IN in GET1; inv GET1; eauto. *)
-  (*   simpl; easy. *)
-  (*   intros (Vr2 & NDv2 & NDr & INCL & GROWS & LE & WTv2 & VSV2 & R2V3). *)
-  (*   repeat refine (conj _ _); eauto. *)
-  (* Qed. *)
-
-  (* Lemma r2v_vvs_aux_merge: *)
-  (*   forall n m (GT: m > n) r2v0 r2v3 vvs3 m2 *)
-  (*          r2v1 r2v2 vvs *)
-  (*          (MRA: merge_reg2vars_reg2 r2v1 r2v2 n r2v0 vvs m = (r2v3, vvs3, m2)) *)
-  (*          (R2V1: reg2var_vvs r2v1 vvs) *)
-  (*          (R2V2: reg2var_vvs r2v2 vvs) *)
-  (*          (VR: vvs_range vvs m) *)
-  (*          (WTV: wt_vvs vvs) *)
-  (*          (ND: NoDup (map fst vvs)) *)
-  (*          (VVS: vvs_smaller_variables vvs) *)
-  (*          (WTcond: wt_sact vvs (SVar n) (bits_t 1)) *)
-  (*          (IH: forall x y, *)
-  (*              list_assoc r2v0 x = Some y -> *)
-  (*              exists y1 y2, *)
-  (*                list_assoc r2v1 x = Some y1 *)
-  (*                /\ list_assoc r2v2 x = Some y2 *)
-  (*                /\ forall b v, *)
-  (*                  interp_sact vvs3 (SVar n) (Bits [b]) -> *)
-  (*                  interp_sact vvs3 (SVar (if b then y1 else y2)) v <-> *)
-  (*                    interp_sact vvs3 (SVar y) v), *)
-  (*   forall x y, *)
-  (*     list_assoc r2v3 x = Some y -> *)
-  (*     exists y1 y2, *)
-  (*       list_assoc r2v1 x = Some y1 *)
-  (*       /\ list_assoc r2v2 x = Some y2 *)
-  (*       /\ forall b v, *)
-  (*         interp_sact vvs3 (SVar n) (Bits [b]) -> *)
-  (*         interp_sact vvs3 (SVar (if b then y1 else y2)) v <-> *)
-  (*           interp_sact vvs3 (SVar y) v. *)
-  (* Proof. *)
-  (*   induction ks; simpl; intros; eauto. *)
-  (*   - inv MRA. eauto. *)
-  (*   - repeat destr_in MRA. *)
-  (*     unfold merge_reg2vars_reg in Heqp0. *)
-  (*     edestruct (R2V1 (r0,s)) as (? & GET1 & ? & GET2). *)
-  (*     edestruct (R2V2 (r0,s)) as (? & GET3 & ? & GET4). *)
-  (*     setoid_rewrite GET1 in Heqp0. *)
-  (*     setoid_rewrite GET3 in Heqp0. *)
-  (*     rewrite GET2 in Heqp0. *)
-  (*     destr_in Heqp0; inv Heqp0. *)
-  (*     + eapply IHks in MRA; eauto. *)
-  (*       intros x0 y0 GET. *)
-  (*       rewrite list_assoc_spec in GET. destr_in GET. *)
-  (*       * inv GET. do 2 eexists; split.  eauto. split. eauto. *)
-  (*         intros. destr; tauto. *)
-  (*       * eauto. *)
-  (*     + assert (VG2: vvs_grows vvs (list_assoc_set vvs m (R r0, SIf (SVar n) (SVar x0) (SVar x2)))). *)
-  (*       { *)
-  (*         eapply vvs_grows_set. eauto. lia. *)
-  (*       } *)
-  (*       assert (VR2: vvs_range (list_assoc_set vvs m (R r0, SIf (SVar n) (SVar x0) (SVar x2))) (S m)). *)
-  (*       { *)
-  (*         eapply vvs_range_list_assoc_set. *)
-  (*         eapply vvs_range_incr. 2: eauto. lia. red; lia. *)
-  (*       } *)
-  (*       assert (WT2:   wt_vvs (list_assoc_set vvs m (R r0, SIf (SVar n) (SVar x0) (SVar x2)))). *)
-  (*       { *)
-  (*         eapply wt_vvs_set. eauto. eauto. econstructor. eauto. *)
-  (*         econstructor. eauto. econstructor; eauto. lia. *)
-  (*       } *)
-  (*       assert (VSV:  vvs_smaller_variables (list_assoc_set vvs m (R r0, SIf (SVar n) (SVar x0) (SVar x2)))). *)
-  (*       { *)
-  (*         eapply vvs_smaller_variables_set; eauto. *)
-  (*         simpl; intros. *)
-  (*         inv H0. inv H5. inv WTcond. eapply VR in H1. red in H1. lia. *)
-  (*         inv H5. eapply VR in GET2. red in GET2. lia. *)
-  (*         inv H5. eapply VR in GET4. red in GET4. lia. *)
-  (*       } *)
-  (*       assert (WTn2:  wt_sact (list_assoc_set vvs m (R r0, SIf (SVar n) (SVar x0) (SVar x2))) *)
-  (*                              (SVar n) (bits_t 1)). *)
-  (*       { *)
-  (*         eapply wt_sact_vvs_grows. 2: eauto. eauto. *)
-  (*       } *)
-  (*       eapply IHks in MRA; eauto. *)
-  (*       * eapply reg2var_vvs_grows. eauto. eauto. *)
-  (*       * eapply reg2var_vvs_grows. eauto. eauto. *)
-  (*       * eapply nodup_list_assoc_set; eauto. *)
-  (*       * intros x4 y0 GET. *)
-  (*         rewrite list_assoc_spec in GET. destr_in GET. *)
-  (*         -- inv GET. do 2 eexists; split.  eauto. split. eauto. *)
-  (*            intros. *)
-
-  (*            edestruct r2v_vvs_aux as (VG3 & VR3 & LE2 & WTVVS2 & VSV2 & ND2). eauto. *)
-  (*            all: eauto. *)
-  (*            eapply reg2var_vvs_grows; eauto using vvs_grows_trans. *)
-  (*            eapply reg2var_vvs_grows; eauto using vvs_grows_trans. *)
-  (*            eapply nodup_list_assoc_set; eauto. *)
-  (*            rewrite (interp_sact_vvs_grows_iff) with (a:=SVar y0). *)
-  (*            4: apply VG3. all: eauto. *)
-  (*            ++ split; intros. *)
-  (*               ** inv H1. *)
-  (*                  econstructor. rewrite list_assoc_gss. eauto. *)
-  (*                  rewrite <- interp_sact_vvs_grows_iff. econstructor. apply H0. *)
-  (*                  destruct b; econstructor; eauto. *)
-  (*                  all: eauto. *)
-  (*                  eapply wt_sact_vvs_grows. eauto. *)
-  (*                  econstructor; eauto. *)
-  (*                  econstructor; eauto. *)
-  (*                  econstructor; eauto. *)
-  (*               ** inv H1. rewrite list_assoc_gss in H3. inv H3. inv H4. *)
-  (*                  eapply vvs_grows_interp_sact. eauto. *)
-  (*                  exploit interp_sact_determ. apply H0. eapply vvs_grows_interp_sact. eauto. apply H6. intros A; inv A. *)
-  (*                  destruct b0; inv H7; econstructor; eauto. *)
-  (*            ++ econstructor. rewrite list_assoc_gss. eauto. *)
-  (*         -- eauto. *)
-  (* Qed. *)
-
-  (* Lemma r2v_vvs: *)
-  (*   forall r2v1 r2v2 vvs1 vvs2, *)
-  (*     reg2var_vvs r2v1 vvs1 -> *)
-  (*     reg2var_vvs r2v2 vvs2 -> *)
-  (*     vvs_grows vvs1 vvs2 -> *)
-  (*     forall n m (GT: m > n) r2v3 vvs3 m2, *)
-  (*       merge_reg2vars2 r2v1 r2v2 n vvs2 m = (r2v3, vvs3, m2) -> *)
-  (*       vvs_range vvs2 m -> *)
-  (*       wt_vvs vvs2 -> *)
-  (*       vvs_smaller_variables vvs2 -> *)
-  (*       NoDup (map fst vvs2) -> *)
-  (*       wt_sact vvs2 (SVar n) (bits_t 1) -> *)
-  (*       forall x y, *)
-  (*         list_assoc r2v3 x = Some y -> *)
-  (*         exists y1 y2, *)
-  (*           list_assoc r2v1 x = Some y1 *)
-  (*           /\ list_assoc r2v2 x = Some y2 *)
-  (*           /\ forall b v, *)
-  (*             interp_sact vvs3 (SVar n) (Bits [b]) -> *)
-  (*             interp_sact vvs3 (SVar (if b then y1 else y2)) v <-> *)
-  (*               interp_sact vvs3 (SVar y) v. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   eapply merge_reg2vars2_nd. 10: eauto. all: eauto. *)
-  (*   unfold merge_reg2vars. *)
-  (*   intros. *)
-  (*   eapply r2v_vvs_aux_merge. 2: eauto. all: auto. *)
-  (*   eapply reg2var_vvs_grows. eauto. eauto. simpl; easy. *)
-  (* Qed. *)
 
   Definition list_assoc_def {K V: Type} {eqdec: EqDec K}
              (l: (list (K*V)))
@@ -6418,9 +5888,9 @@ Section SimpleForm.
   Lemma match_logs_merge:
     forall r2v l r1 n l0 l1 n0 sched_rir nid l2
            (Heqp1 : merge_reg2vars2 r2v l n
-                                   (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
+                                   (PTree.set n (bits_t 1, rir_failure_cond r1) (rir_vars r1))
                                    (n + 1) = (l0, l1, n0))
-           (SAMEREGENV: Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2v l)
+           (SAMEREGENV: Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2v l)
            (sched_log : Log REnv)
            (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
            (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
@@ -6433,8 +5903,8 @@ Section SimpleForm.
                      (log_app (if b then log_empty else l2) sched_log) log_empty.
   Proof.
     intros.
-    edestruct merge_reg2vars2_nd as (NDv' & NDr' & INCL & VG & LE & WTV & VSV & RNG2 & R2V & EVAL).
-    10: eauto. all: eauto. apply nodup_list_assoc_set. apply WFS1. apply WFS.
+    edestruct merge_reg2vars2_nd as (NDr' & INCL & VG & LE & WTV & VSV & RNG2 & R2V & EVAL).
+    9 : eauto. all: eauto. apply WFS.
     apply vvs_range_list_assoc_set. 2: red; lia.
     eapply vvs_range_incr. 2: apply WFS1. lia.
     eapply wt_vvs_set. apply WFS1. apply WFS1.
@@ -6445,7 +5915,7 @@ Section SimpleForm.
       intros x y IN.
       edestruct wfs_r2v_vvs as (? & GET1 & ? & GET2). apply WFS. apply nodup_in_assoc in IN; auto.
       rewrite IN in GET1; inv GET1.
-      rewrite list_assoc_gso.
+      rewrite PTree.gso.
       erewrite rir_vvs_grows. eauto. eauto. eauto.
       eapply rir_vvs_grows in GET2; eauto.
       eapply wfs_vvs_range in GET2. 2: eauto. red in GET2. lia.
@@ -6455,33 +5925,11 @@ Section SimpleForm.
       intros x y IN.
       edestruct wfs_r2v_vvs as (? & GET1 & ? & GET2). apply WFS1. apply nodup_in_assoc in IN; auto.
       rewrite IN in GET1; inv GET1.
-      rewrite list_assoc_gso. eauto.
+      rewrite PTree.gso. eauto.
       eapply wfs_vvs_range in GET2. 2: eauto. red in GET2. lia.
       apply WFS1.
     }
-    econstructor. rewrite list_assoc_gss. eauto.
-    (* eapply nodup_list_assoc_set. apply WFS1. *)
-    (* generalize (r2v_vvs r2v l (rir_vars sched_rir) *)
-    (*                     (list_assoc_set (rir_vars r1) n *)
-    (*                                     (bits_t 1, (rir_failure_cond r1)))). *)
-    (* intro RV. *)
-    (* trim RV. apply WFS. *)
-    (* trim RV. *)
-    (* eapply reg2var_vvs_grows. apply WFS1. eapply vvs_grows_set. apply WFS1. lia. *)
-    (* trim RV. eapply vvs_grows_trans. eapply rir_vvs_grows; eauto. *)
-    (* eapply vvs_grows_set. apply WFS1. lia. *)
-    (* trim (RV n (n + 1)). lia. *)
-    (* trim (RV _ _ _ Heqp1). *)
-    (* apply vvs_range_list_assoc_set. 2: red; lia. *)
-    (* eapply vvs_range_incr. 2: apply WFS1. lia. *)
-    (* trim RV. eapply wt_vvs_set. apply WFS1. apply WFS1. *)
-    (* apply WFS1. lia. *)
-    (* trim RV. *)
-    (* eapply vvs_smaller_variables_set. apply WFS1. *)
-    (* eapply wt_sact_below. eauto. apply WFS1. *)
-    (* trim RV. *)
-    (* eapply nodup_list_assoc_set. apply WFS1. *)
-    (* trim RV. econstructor. rewrite list_assoc_gss. eauto. *)
+    econstructor. rewrite PTree.gss. eauto.
     assert (RV2:
              forall x y,
                list_assoc l0 x = Some y ->
@@ -6496,7 +5944,7 @@ Section SimpleForm.
       edestruct (EVAL _ _ H) as (y1 & y2 & GET1 & GET2 & INTERP).
       eexists; eexists; split; eauto. split; eauto. intros. apply INTERP.
       eapply vvs_grows_interp_sact. eauto.
-      econstructor. rewrite list_assoc_gss; eauto.
+      econstructor. rewrite PTree.gss; eauto.
       eapply vvs_grows_interp_sact. 2: eauto.
       eapply vvs_grows_set. apply WFS1. lia.
     }
@@ -6538,14 +5986,14 @@ Section SimpleForm.
     assert (INTn: interp_sact l1 (SVar n) (Bits [b])).
     {
       eapply vvs_grows_interp_sact. apply VG.
-      econstructor. rewrite list_assoc_gss. eauto.
+      econstructor. rewrite PTree.gss. eauto.
       eapply vvs_grows_interp_sact. 2: eauto.
       eapply vvs_grows_set. apply WFS1. lia.
     }
     assert (WTn: wt_sact l1 (SVar n) (bits_t 1)).
     {
       eapply wt_sact_vvs_grows. apply VG.
-      econstructor. rewrite list_assoc_gss. eauto.
+      econstructor. rewrite PTree.gss; eauto.
     }
     clear Heqp1 WFS WFS1 RG1 VG LE IF1.
     split.
@@ -6598,9 +6046,9 @@ Section SimpleForm.
   Lemma match_logs_merge_false:
     forall r2v l r1 n l0 l1 n0 sched_rir nid l2
            (Heqp1 : merge_reg2vars2 r2v l n
-                                   (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
+                                   (PTree.set n (bits_t 1, rir_failure_cond r1) (rir_vars r1))
                                    (n + 1) = (l0, l1, n0))
-           (F2: Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2v l)
+           (F2: Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2v l)
            (sched_log : Log REnv)
            (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
            (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
@@ -6619,26 +6067,26 @@ Section SimpleForm.
   Lemma merge_reg2var_nid:
     forall r2v1 r2v2 n vvs m r2v3 vvs2 m2,
       merge_reg2vars2 r2v1 r2v2 n vvs m = (r2v3, vvs2, m2) ->
-      Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2v1 r2v2 ->
+      Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2v1 r2v2 ->
       m <= m2.
   Proof.
     unfold merge_reg2vars2.
     intros r2v1.
-    generalize (@nil (reg_t * (Port+unit) * nat)).
+    generalize (@nil (reg_t * (Port+unit) * positive)).
     induction r2v1; simpl; intros; eauto.
     inv H. lia.
     inv H0.
     repeat (destr_in H; [idtac]).
-    apply IHr2v1 in Heqp2; auto.
+    apply IHr2v1 in Heqp3; auto.
     repeat destr_in H; inv H; lia.
   Qed.
 
   Lemma match_logs_merge_true:
     forall r2v l r1 n l0 l1 n0 sched_rir nid (* l2 *)
            (Heqp1 : merge_reg2vars2 r2v l n
-                                   (list_assoc_set (rir_vars r1) n (bits_t 1, rir_failure_cond r1))
+                                   (PTree.set n (bits_t 1, rir_failure_cond r1) (rir_vars r1))
                                    (n + 1) = (l0, l1, n0))
-           (F2: Forall2 (fun x y : reg_t * (Port + unit) * nat => fst x = fst y) r2v l)
+           (F2: Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y) r2v l)
            (sched_log : Log REnv)
            (WFS : wf_state [] [] r2v (rir_vars sched_rir) sched_rir nid)
            (MLR : match_logs_r2v r2v (rir_vars sched_rir) sched_rir init_rir sched_log
@@ -6658,7 +6106,7 @@ Section SimpleForm.
     forall (rules: rule_name_t -> uact)
            s
            (GS: good_scheduler s)
-           (nid: nat)
+           (nid: positive)
            sched_rir r2v rir' r2v' nid'
            (GRI: get_rir_scheduler' sched_rir r2v rules nid s = (rir', r2v', nid'))
            (WT: forall r,
@@ -6677,7 +6125,7 @@ Section SimpleForm.
   Proof.
     induction 1; simpl; intros; eauto.
     - inv GRI. repeat refine (conj _ _); eauto.
-      intros; subst; eauto.
+      lia. intros; subst; eauto.
     - edestruct (WT r0) as (tret & WTr). repeat destr_in GRI.
       exploit get_rule_information_ok; eauto.
       + inv WFS. auto.
@@ -6691,9 +6139,9 @@ Section SimpleForm.
           edestruct INTERPOK as (IF1 & _ & MLR1). eauto.
           clear INTERPOK INTERPKO.
           edestruct IHGS as (WFS2 & NID2 & INTERP2). eauto. eauto.
-          instantiate (1:=log_app l1 sched_log). eapply wt_log_app.
+          instantiate (1:=log_app l0 sched_log). eapply wt_log_app.
           {
-            generalize (wt_daction_preserves_wt_env pos_t string string R Sigma REnv r sigma wt_sigma (rules r0) [] l2 tret [] sched_log log_empty l1 v). intro WDPWE.
+            generalize (wt_daction_preserves_wt_env pos_t string string R Sigma REnv r sigma wt_sigma (rules r0) [] l1 tret [] sched_log log_empty l0 v). intro WDPWE.
             eapply WDPWE; auto. constructor.
             red. intros idx le. unfold log_empty. rewrite getenv_create. easy.
           }
@@ -6704,7 +6152,7 @@ Section SimpleForm.
           simpl.
           eapply match_logs_merge_false; eauto.
           repeat refine (conj _ _). eauto.
-          eapply merge_reg2var_nid in Heqp1. lia. auto.
+          eapply merge_reg2var_nid in Heqp0. lia. auto.
           intros. eauto.
         * unfold interp_drule in Heqo. repeat destr_in Heqo; inv Heqo.
           edestruct IHGS as (WFS2 & NID2 & INTERP2). eauto. eauto.
@@ -6712,68 +6160,61 @@ Section SimpleForm.
           eapply wf_state_merge_rirs. 6: eauto. eauto. eauto. eauto. apply RG1. apply WFS1.
           eapply match_logs_merge_true; eauto.
           repeat refine (conj _ _). eauto.
-          eapply merge_reg2var_nid in Heqp1. lia.
+          eapply merge_reg2var_nid in Heqp0. lia.
           auto. intros. eauto.
   Qed.
 
-  Definition init_reg r2v vvs (nid: nat) (idx: reg_t)
-    : r2vtype * list (nat * (type * sact)) * nat :=
+  Definition init_reg r2v vvs (nid: positive) (idx: reg_t)
+    : r2vtype * PTree.t (type * sact) * positive :=
     let r2v := list_assoc_set r2v (idx,inl P0) nid in
     let r2v := list_assoc_set r2v (idx,inl P1) nid in
     let r2v := list_assoc_set r2v (idx,inr tt) nid in
-    let vvs := list_assoc_set vvs nid (R idx, SConst (getenv REnv r idx)) in
-    (r2v, vvs, nid + 1).
+    let vvs := PTree.set nid (R idx, SConst (getenv REnv r idx)) vvs in
+    (r2v, vvs, Pos.succ nid).
 
-  Definition init_regs r2v vvs (nid: nat) (l: list reg_t)
-    : r2vtype * list (nat * (type * sact)) * nat :=
+  Definition init_regs r2v vvs (nid: positive) (l: list reg_t)
+    : r2vtype * PTree.t (type * sact) * positive :=
     fold_left (fun '(r2v,vvs,nid) idx => init_reg r2v vvs nid idx)
               l (r2v,vvs,nid).
 
-  Context {finreg_t: FiniteType reg_t}.
 
   Definition init_r2v nid :=
-    init_regs [] [] nid (finite_elements).
+    init_regs [] (PTree.empty (type*sact)) nid (finite_elements).
 
   Lemma init_reg_wt_vvs:
     forall r2v vvs nid idx r2v' vvs' nid' ,
       init_reg r2v vvs nid idx = (r2v', vvs', nid') ->
       wt_renv R REnv r ->
       wt_vvs vvs ->
-      (forall x y, list_assoc r2v x = Some y -> list_assoc vvs y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
+      (forall x y, list_assoc r2v x = Some y -> vvs !y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
       vvs_range vvs nid ->
       vvs_smaller_variables vvs ->
-      NoDup (map fst vvs) ->
       wt_vvs vvs' 
-      /\ (forall x y, list_assoc r2v' x = Some y -> list_assoc vvs' y = Some (R (fst x), SConst (getenv REnv r (fst x))))
+      /\ (forall x y, list_assoc r2v' x = Some y -> vvs' ! y = Some (R (fst x), SConst (getenv REnv r (fst x))))
       /\ vvs_range vvs' nid'
       /\ vvs_smaller_variables vvs'
-      /\ NoDup (map fst vvs')
       /\ nid <= nid' /\
         forall i p, In (i,p) (map fst r2v) \/ i = idx ->
                     In (i,p) (map fst r2v').
   Proof.
-    intros r2v vvs nid idx r2v' vvs' nid' IR WTR WT R2V VR VSV ND.
+    intros r2v vvs nid idx r2v' vvs' nid' IR WTR WT R2V VR VSV.
     unfold init_reg in IR. inv IR.
     repeat refine (conj _ _).
     - eapply wt_vvs_set; eauto.
-      constructor. eapply WTR.
+      constructor. eapply WTR. lia.
     - intros.
       rewrite ! list_assoc_spec in H.
-      rewrite ! list_assoc_spec.
+      rewrite ! PTree.gsspec.
       repeat destr_in H.
-      + inv H. rewrite eq_dec_refl. eauto.
-      + inv H. rewrite eq_dec_refl. simpl. eauto.
-      + inv H. rewrite eq_dec_refl. simpl. eauto.
-      + 
-      destr; eauto. subst.
-      exploit R2V; eauto. intro H0.
-      eapply VR in H0. red in H0; lia.
-    - eapply vvs_range_list_assoc_set.
-      eapply vvs_range_incr. 2: eauto. lia.
-      red; lia.
+      + inv H. destr; try congruence. eauto.
+      + inv H. destr; try congruence. eauto.
+      + inv H. destr; try congruence. eauto.
+      + destr; eauto. subst.
+        exploit R2V; eauto. intro H0.
+        eapply VR in H0. red in H0; lia.
+    - eapply vvs_range_set. auto.
     - eapply vvs_smaller_variables_set; eauto.
       inversion 1.
-    - eapply nodup_list_assoc_set; eauto.
     - lia.
     - intros.
       destruct H.
@@ -6796,16 +6237,14 @@ Section SimpleForm.
       init_regs r2v vvs nid l = (r2v', vvs', nid') ->
       wt_renv R REnv r ->
       wt_vvs vvs ->
-      (forall x y, list_assoc r2v x = Some y -> list_assoc vvs y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
+      (forall x y, list_assoc r2v x = Some y -> vvs !y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
       vvs_range vvs nid ->
       vvs_smaller_variables vvs ->
-      NoDup (map fst vvs) ->
       NoDup (map fst r2v) ->
       wt_vvs vvs' 
-      /\ (forall x y, list_assoc r2v' x = Some y -> list_assoc vvs' y = Some (R (fst x), SConst (getenv REnv r (fst x)))) 
+      /\ (forall x y, list_assoc r2v' x = Some y -> vvs' ! y = Some (R (fst x), SConst (getenv REnv r (fst x)))) 
       /\ vvs_range vvs' nid'
       /\ vvs_smaller_variables vvs'
-      /\ NoDup (map fst vvs')
       /\ NoDup (map fst r2v')
       /\ nid <= nid' /\
         forall i p, In (i,p) (map fst r2v) \/ In i l ->
@@ -6813,18 +6252,19 @@ Section SimpleForm.
   Proof.
     unfold init_regs.
     induction l; simpl; intros; eauto.
-    - inv H. repeat refine (conj _ _); eauto. intuition.
+    - inv H. repeat refine (conj _ _); eauto. lia. intuition.
     - destruct (init_reg r2v vvs nid a) eqn:?.
       destruct p.
-      edestruct init_reg_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & ND' & LE & INCL); eauto.
+      edestruct init_reg_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & LE & INCL); eauto.
       eapply IHl in H; eauto.
       intuition.
+      lia.
       unfold init_reg in Heqp. inv Heqp.
       repeat apply nodup_list_assoc_set. auto.
   Qed.
 
   Definition get_rir_scheduler rules s :=
-    let '(r2v, vvs, n) := init_r2v O in
+    let '(r2v, vvs, n) := init_r2v xH in
     get_rir_scheduler' (init_rir <| rir_vars := vvs|>) r2v rules n s.
 
   Lemma wfs_init_r2v:
@@ -6837,8 +6277,12 @@ Section SimpleForm.
   Proof.
     intros n0 r2v vvs n IR WTR. simpl.
     unfold init_r2v in IR.
-    edestruct init_regs_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & ND & NDr & LE & INCL); eauto.
-    red; easy. simpl; easy. red; easy. red; easy. constructor. constructor.
+    edestruct init_regs_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & NDr & LE & INCL); eauto.
+    red. setoid_rewrite PTree.gempty. easy.
+    simpl; easy.
+    red. setoid_rewrite PTree.gempty. easy.
+    red. setoid_rewrite PTree.gempty. easy.
+    constructor.
     split. split; eauto. constructor.
     red; intros.
     simpl in INCL.
@@ -6954,7 +6398,6 @@ Section SimpleForm.
            (WTR: wt_renv R REnv r),
       wt_vvs (vars sf)
       /\ vvs_smaller_variables (vars sf)
-      /\ NoDup (map fst (vars sf))
       /\ (forall idx, In idx (map fst (final_values sf)))
       /\ forall idx,
         let v := match latest_write (interp_dscheduler rules r sigma s) idx with
@@ -6969,7 +6412,6 @@ Section SimpleForm.
     unfold schedule_to_simple_form in GRI. repeat destr_in GRI. subst. simpl.
     edestruct get_rir_scheduler2_ok as (WFS & MLR); eauto.
     repeat refine (conj _ _).
-    - apply WFS.
     - apply WFS.
     - apply WFS.
     - inv WFS. red in wfs_r2v_vvs0. intro idx.
@@ -6989,4 +6431,4 @@ Section SimpleForm.
 
 End SimpleForm.
 
-Close Scope nat.
+Close Scope positive.
