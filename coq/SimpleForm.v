@@ -33,22 +33,6 @@ Section SimpleForm.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
   Definition uact := @daction pos_t string string reg_t ext_fn_t.
 
-  Inductive sact :=
-  | SVar (var: positive)
-  | SConst (v:val)
-  | SIf (cond: sact) (tbranch: sact) (fbranch: sact)
-  | SUnop (ufn1: PrimUntyped.ufn1) (arg1: sact)
-  | SBinop (ufn2: PrimUntyped.ufn2) (arg1: sact) (arg2: sact)
-  | SExternalCall (ufn: ext_fn_t) (arg: sact).
-
-  Definition const_nil := SConst (Bits []).
-  Definition const_true := SConst (Bits [true]).
-  Definition const_false := SConst (Bits [false]).
-
-  Definition uor (x y: sact) := SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x y.
-  Definition uand (x y: sact) := SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) x y.
-  Definition unot (x: sact) := SUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x.
-
   Variable REnv : Env reg_t.
   Variable r : env_t REnv (fun _ => val).
   Context {sigma : ext_fn_t -> val -> val}.
@@ -58,6 +42,23 @@ Section SimpleForm.
   Context {wt_sigma: forall ufn vc,
       wt_val (arg1Sig (Sigma ufn)) vc ->
       wt_val (retSig (Sigma ufn)) (sigma ufn vc)}.
+
+  Inductive sact :=
+  | SVar (var: positive)
+  | SConst (v:val)
+  | SIf (cond: sact) (tbranch: sact) (fbranch: sact)
+  | SUnop (ufn1: PrimUntyped.ufn1) (arg1: sact)
+  | SBinop (ufn2: PrimUntyped.ufn2) (arg1: sact) (arg2: sact)
+  | SExternalCall (ufn: ext_fn_t) (arg: sact)
+  | SReg (idx: reg_t).
+
+  Definition const_nil := SConst (Bits []).
+  Definition const_true := SConst (Bits [true]).
+  Definition const_false := SConst (Bits [false]).
+
+  Definition uor (x y: sact) := SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) x y.
+  Definition uand (x y: sact) := SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) x y.
+  Definition unot (x: sact) := SUnop (PrimUntyped.UBits1 PrimUntyped.UNot) x.
 
   Definition schedule := scheduler pos_t rule_name_t.
 
@@ -84,7 +85,8 @@ Section SimpleForm.
     wt_sact vt (SBinop ufn a1 a2) t'
   | wt_sact_extcall ufn a:
     wt_sact vt a (arg1Sig (Sigma ufn)) ->
-    wt_sact vt (SExternalCall ufn a) (retSig (Sigma ufn)).
+    wt_sact vt (SExternalCall ufn a) (retSig (Sigma ufn))
+  | wt_sact_reg idx: wt_sact vt (SReg idx) (R idx).
 
   Inductive interp_sact (vvs: PTree.t (type * sact)) : sact -> val -> Prop :=
   | interp_sact_var var t a v:
@@ -107,7 +109,8 @@ Section SimpleForm.
     interp_sact vvs (SBinop ufn a1 a2) v'
   | interp_sact_extcall ufn a v :
     interp_sact vvs a v ->
-    interp_sact vvs (SExternalCall ufn a) (sigma ufn v).
+    interp_sact vvs (SExternalCall ufn a) (sigma ufn v)
+  | interp_sact_reg idx: interp_sact vvs (SReg idx) (getenv REnv r idx).
 
   Lemma interp_sact_determ:
     forall vvs a v1,
@@ -555,6 +558,7 @@ Section SimpleForm.
     - econstructor; eauto.
     - econstructor; eauto.
     - econstructor; eauto.
+    - econstructor.
   Qed.
 
   Lemma wt_vvs_set:
@@ -587,6 +591,7 @@ Section SimpleForm.
     - econstructor; eauto.
     - econstructor; eauto.
     - econstructor; eauto.
+    - econstructor.
   Qed.
 
   Lemma wt_sact_valid_vars:
@@ -604,6 +609,7 @@ Section SimpleForm.
     - inv H0; eauto.
     - inv H0; eauto.
     - inv H; eauto.
+    - inv H.
   Qed.
 
   Lemma nodup_in_assoc:
@@ -628,6 +634,7 @@ Section SimpleForm.
     | SUnop _ a => 1 + size_sact a
     | SBinop _ a b => 1 + size_sact a + size_sact b
     | SExternalCall _ a => 1 + size_sact a
+    | SReg _ => 1
     end.
 
   Definition order_sact :=
@@ -645,6 +652,9 @@ Section SimpleForm.
       intros. rewrite <- Pnat.Pos2Nat.inj_lt. auto.
     - intros. apply wf_inverse_image. apply lt_wf.
   Qed.
+
+  Hypothesis WTRENV: wt_renv R REnv r.
+
   Lemma wt_sact_interp':
     forall vvs,
       wt_vvs vvs ->
@@ -732,6 +742,7 @@ Section SimpleForm.
       simpl. eauto. simpl in *.
       eexists; split. econstructor; eauto.
       eapply wt_sigma; eauto.
+    - eexists; split. econstructor. apply WTRENV.
   Qed.
 
   Lemma wt_sact_interp:
@@ -1539,6 +1550,7 @@ Section SimpleForm.
       + simpl. eauto.
       + simpl in *. eauto.
       + simpl; auto. intros. econstructor; eauto.
+    - constructor.
   Qed.
  
   Lemma interp_sact_list_assoc_set':
@@ -3777,6 +3789,7 @@ Section SimpleForm.
     econstructor; eauto.
     econstructor; eauto.
     econstructor; eauto.
+    constructor.
   Qed.
 
   Lemma interp_sact_same_vvs:
@@ -3790,6 +3803,7 @@ Section SimpleForm.
     econstructor; eauto.
     econstructor; eauto.
     econstructor; eauto.
+    constructor.
   Qed.
 
   Lemma interp_sact_same_vvs_iff:
@@ -6169,7 +6183,7 @@ Section SimpleForm.
     let r2v := list_assoc_set r2v (idx,inl P0) nid in
     let r2v := list_assoc_set r2v (idx,inl P1) nid in
     let r2v := list_assoc_set r2v (idx,inr tt) nid in
-    let vvs := PTree.set nid (R idx, SConst (getenv REnv r idx)) vvs in
+    let vvs := PTree.set nid (R idx, SReg idx) vvs in
     (r2v, vvs, Pos.succ nid).
 
   Definition init_regs r2v vvs (nid: positive) (l: list reg_t)
@@ -6186,11 +6200,11 @@ Section SimpleForm.
       init_reg r2v vvs nid idx = (r2v', vvs', nid') ->
       wt_renv R REnv r ->
       wt_vvs vvs ->
-      (forall x y, list_assoc r2v x = Some y -> vvs !y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
+      (forall x y, list_assoc r2v x = Some y -> vvs !y = Some (R (fst x), SReg (fst x))) ->
       vvs_range vvs nid ->
       vvs_smaller_variables vvs ->
       wt_vvs vvs' 
-      /\ (forall x y, list_assoc r2v' x = Some y -> vvs' ! y = Some (R (fst x), SConst (getenv REnv r (fst x))))
+      /\ (forall x y, list_assoc r2v' x = Some y -> vvs' ! y = Some (R (fst x), SReg (fst x)))
       /\ vvs_range vvs' nid'
       /\ vvs_smaller_variables vvs'
       /\ nid <= nid' /\
@@ -6201,7 +6215,7 @@ Section SimpleForm.
     unfold init_reg in IR. inv IR.
     repeat refine (conj _ _).
     - eapply wt_vvs_set; eauto.
-      constructor. eapply WTR. lia.
+      constructor. lia.
     - intros.
       rewrite ! list_assoc_spec in H.
       rewrite ! PTree.gsspec.
@@ -6237,12 +6251,12 @@ Section SimpleForm.
       init_regs r2v vvs nid l = (r2v', vvs', nid') ->
       wt_renv R REnv r ->
       wt_vvs vvs ->
-      (forall x y, list_assoc r2v x = Some y -> vvs !y = Some (R (fst x), SConst (getenv REnv r (fst x)))) ->
+      (forall x y, list_assoc r2v x = Some y -> vvs !y = Some (R (fst x), SReg ((fst x)))) ->
       vvs_range vvs nid ->
       vvs_smaller_variables vvs ->
       NoDup (map fst r2v) ->
       wt_vvs vvs' 
-      /\ (forall x y, list_assoc r2v' x = Some y -> vvs' ! y = Some (R (fst x), SConst (getenv REnv r (fst x)))) 
+      /\ (forall x y, list_assoc r2v' x = Some y -> vvs' ! y = Some (R (fst x), SReg ((fst x)))) 
       /\ vvs_range vvs' nid'
       /\ vvs_smaller_variables vvs'
       /\ NoDup (map fst r2v')
