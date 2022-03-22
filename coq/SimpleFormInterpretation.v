@@ -2213,6 +2213,91 @@ Lemma remove_vars_correct:
       exploit IHn. apply Heqo. eauto. intro; subst. congruence. congruence.
   Qed.
 
+  Fixpoint simplify_sact (ua: sact) : sact :=
+    match ua with
+    | SIf cond tb fb =>
+      let cond' := simplify_sact  cond in
+      let tb' := simplify_sact tb in
+      let fb' := simplify_sact fb in
+      match eval_sact_no_vars cond' with
+      | Some (Bits [true]) => tb'
+      | Some (Bits [false]) => fb'
+      | _ => SIf cond' tb' fb'
+      end
+    | SBinop ufn a1 a2 =>
+      let a1' := simplify_sact a1 in
+      let a2' := simplify_sact a2 in
+      match ufn with
+      | PrimUntyped.UBits2 PrimUntyped.UAnd =>
+          match eval_sact_no_vars a1', eval_sact_no_vars a2' with
+          | Some (Bits [false]), _ => const_false
+          | Some (Bits [true]), _ => a2'
+          | _, Some (Bits [false]) => const_false
+          | _, Some (Bits [true]) => a1'
+          | _, _ => SBinop ufn a1' a2'
+          end
+        | PrimUntyped.UBits2 PrimUntyped.UOr =>
+          match eval_sact_no_vars a1', eval_sact_no_vars a2' with
+          | Some (Bits [true]), _
+          | _, Some (Bits [true]) => const_true
+          | Some (Bits [false]), _  => a2'
+          | _, Some (Bits [false])  => a1'
+          | _, _ => SBinop ufn a1' a2'
+          end
+        | _ => SBinop ufn a1' a2'
+        end
+    | SUnop ufn a => (* Perhaps not strictly required *)
+        let a := simplify_sact a in
+        match ufn with
+        | PrimUntyped.UBits1 PrimUntyped.UNot =>
+            match eval_sact_no_vars a with
+            | Some (Bits [b]) => SConst (Bits [negb b])
+            | _ => SUnop ufn a
+            end
+        | _ => SUnop ufn a
+        end
+    | SExternalCall ufn a => SExternalCall ufn (simplify_sact a)
+    | SVar _
+    | SReg _
+    | SConst _ => ua
+    end.
+
+  Lemma simplify_unop_cases:
+    forall ufn a a' ,
+      simplify_sact (SUnop ufn a) = a' ->
+      (exists b, ufn = PrimUntyped.UBits1 PrimUntyped.UNot /\ eval_sact_no_vars (simplify_sact a) = Some (Bits [b]) /\ a' = SConst (Bits [negb b]))
+      \/ a' = SUnop ufn (simplify_sact a).
+  Proof.
+    intros. simpl in H. subst. repeat destr; eauto.
+  Qed.
+
+  Lemma simplify_bnop_cases:
+    forall ufn a1 a2 a' ,
+      simplify_sact (SBinop ufn a1 a2) = a' ->
+      a' = SBinop ufn (simplify_sact a1) (simplify_sact a2)
+      \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UAnd
+          /\ ((eval_sact_no_vars (simplify_sact a1) = Some (Bits [true])
+               /\ a' = simplify_sact a2)
+              \/ (eval_sact_no_vars (simplify_sact a1) = Some (Bits [false])
+                  /\ a' = const_false)
+              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits [true])
+                  /\ a' = simplify_sact a1)
+              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits [false])
+                  /\ a' = const_false)))
+      \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UOr
+          /\ ((eval_sact_no_vars (simplify_sact a1) = Some (Bits [true])
+               /\ a' = const_true)
+              \/ (eval_sact_no_vars (simplify_sact a1) = Some (Bits [false])
+                  /\ a' = simplify_sact a2)
+              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits [true])
+                  /\ a' = const_true)
+              \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits [false])
+                  /\ a' = simplify_sact a1))).
+  Proof.
+    intros. simpl in H. subst.
+    repeat destr; intuition eauto.
+  Qed.
+
   Lemma eval_sact_wt:
     forall vvs (WT: wt_vvs (Sigma:=Sigma) R vvs) n a r t (WTa: wt_sact (Sigma:=Sigma) R vvs a t)
            (EVAL: eval_sact vvs a n = Some r),
@@ -2225,6 +2310,105 @@ Lemma remove_vars_correct:
     - eapply Wt.wt_unop_sigma1; eauto.
     - eapply Wt.wt_binop_sigma1; eauto.
   Qed.
+
+  Lemma simplify_sact_correct:
+    forall vvs (WTV: wt_vvs R (Sigma:=Sigma) vvs) n a res t,
+      wt_sact (Sigma:=Sigma) R vvs a t ->
+      eval_sact vvs a n = Some res ->
+      eval_sact vvs (simplify_sact a) n = Some res.
+  Proof.
+    induction n; intros a res t WT EVAL; eauto.
+    simpl in EVAL.
+    unfold opt_bind in EVAL.
+    repeat destr_in EVAL; inv EVAL; auto.
+    - simpl. rewrite Heqo; eauto.
+    - inv WT.
+      simpl.
+      destruct (eval_sact_no_vars (simplify_sact s1)) eqn:?.
+      eapply eval_sact_eval_sact_no_vars in Heqo0; eauto. subst.
+      transitivity (eval_sact vvs (simplify_sact s2) (S n)). reflexivity.
+      exploit IHn. 2: apply H0. eauto. intro ES. exploit eval_sact_more_fuel. apply ES.
+      2: intro ES'; rewrite ES'. lia. eauto.
+      erewrite IHn. 2-3: eauto. simpl.
+      erewrite IHn; eauto.
+    - inv WT.
+      simpl.
+      destruct (eval_sact_no_vars (simplify_sact s1)) eqn:?.
+      eapply eval_sact_eval_sact_no_vars in Heqo0; eauto. subst.
+      transitivity (eval_sact vvs (simplify_sact s3) (S n)). reflexivity.
+      exploit IHn. 2: apply H0. eauto. intro ES. exploit eval_sact_more_fuel. apply ES.
+      2: intro ES'; rewrite ES'. lia. eauto.
+      erewrite IHn. 2-3: eauto. simpl.
+      erewrite IHn; eauto.
+    - destruct (simplify_unop_cases ufn1 s _ eq_refl) as [(b & EQ & ESNV & EQ')|EQ].
+      + inv WT.
+        rewrite EQ'. simpl.
+        exploit eval_sact_eval_sact_no_vars. 2: eauto. eapply IHn. eauto. eauto. intros ->.
+        simpl. auto.
+      + inv WT; rewrite EQ. simpl. erewrite IHn; simpl; eauto.
+    - inv WT.
+      exploit eval_sact_wt. 3: apply Heqo. all: eauto.
+      exploit eval_sact_wt. 3: apply Heqo0. all: eauto.
+      intros WTv2 WTv1.
+      exploit Wt.wt_binop_sigma1. eauto. eauto. eauto. eauto. intro WTres.
+      eapply IHn in Heqo; eauto.
+      eapply IHn in Heqo0; eauto.
+
+      destruct (simplify_bnop_cases ufn2 s1 s2 _ eq_refl) as
+        [EQ|[(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])
+            |(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])]]; rewrite EQ; clear EQ.
+      + simpl. rewrite Heqo, Heqo0.  reflexivity.
+      + exploit eval_sact_eval_sact_no_vars. apply Heqo. apply ESNV. intros ->.
+        inv WTv1. inv H6.
+        apply wt_val_bool in WTv2.
+        apply wt_val_bool in WTres.
+        destruct WTv2, WTres. subst.
+        erewrite eval_sact_more_fuel. 2: eauto. simpl. auto. lia.
+      + exploit eval_sact_eval_sact_no_vars. apply Heqo. apply ESNV. intros ->.
+        inv WTv1. inv H6.
+        apply wt_val_bool in WTv2.
+        apply wt_val_bool in WTres.
+        destruct WTv2, WTres. subst.
+        simpl. auto.
+      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
+        inv WTv2. inv H6.
+        apply wt_val_bool in WTv1.
+        apply wt_val_bool in WTres.
+        destruct WTv1, WTres. subst.
+        erewrite eval_sact_more_fuel. 2: eauto. simpl. rewrite andb_true_r; auto. lia.
+      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
+        inv WTv2. inv H6.
+        apply wt_val_bool in WTv1.
+        apply wt_val_bool in WTres.
+        destruct WTv1, WTres. subst.
+        simpl. rewrite andb_false_r; auto.
+      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
+        inv WTv1. inv H6.
+        apply wt_val_bool in WTv2.
+        apply wt_val_bool in WTres.
+        destruct WTv2, WTres. subst. simpl; auto.
+      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
+        inv WTv1. inv H6.
+        apply wt_val_bool in WTv2.
+        apply wt_val_bool in WTres.
+        destruct WTv2, WTres. subst.
+        erewrite eval_sact_more_fuel. 2: eauto. simpl. auto. lia.
+      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
+        inv WTv2. inv H6.
+        apply wt_val_bool in WTv1.
+        apply wt_val_bool in WTres.
+        destruct WTv1, WTres. subst. simpl. rewrite orb_true_r; auto.
+      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV. eauto. intros ->.
+        inv WTv2. inv H6.
+        apply wt_val_bool in WTv1.
+        apply wt_val_bool in WTres.
+        destruct WTv1, WTres. subst.
+        erewrite eval_sact_more_fuel. 2: eauto. simpl. rewrite orb_false_r; auto. lia.
+    - simpl. inv WT;  erewrite IHn; simpl; eauto.
+  Qed.
+
+
+
 
   Definition interp_cycle (sf: simple_form) : UREnv :=
     let sf := remove_vars sf in
