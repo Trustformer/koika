@@ -8,6 +8,7 @@ Require Import Sact.
 Require Import Coq.Sorting.Sorted.
 Require Import Coq.Sorting.Mergesort.
 Require Import Maps.
+Require Import SimpleVal.
 
 Module PosOrder <: Orders.TotalLeBool.
   Definition t := positive.
@@ -39,8 +40,8 @@ Section SimpleFormInterpretation.
   Definition uact := @daction pos_t string string reg_t ext_fn_t.
   Definition schedule := scheduler pos_t rule_name_t.
   Definition ext_funs_defs :=
-    forall f: ext_fn_t, BitsToLists.val -> BitsToLists.val.
-  Definition UREnv := REnv.(env_t) (fun _ => BitsToLists.val).
+    forall f: ext_fn_t, val -> val.
+  Definition UREnv := REnv.(env_t) (fun _ => val).
 
   Context (r: UREnv).
   Context (sigma: ext_funs_defs).
@@ -1647,6 +1648,40 @@ Lemma remove_vars_correct:
     | _ => (sf, [])
     end.
 
+  (* Fixpoint simplify_vars (l: list (positive * (type * sact))) t := *)
+  (*   match l with *)
+  (*     [] => t *)
+  (*   | (p,(ty,a))::l => *)
+  (*       PTree.set p *)
+
+  (*       let a := fold_left (fun a '(var,v) => replace_all_occurrences_in_sact a var v) lv a in *)
+  (*       match eval_sact_no_vars a with *)
+  (*         Some v => simplify_vars l ((p,v)::lv) *)
+  (*       | None => simplify_vars l lv *)
+  (*       end *)
+  (*   end. *)
+
+  (* Lemma simplify_vars_ok: *)
+  (*   forall l lv n *)
+  (*          (F: Forall (fun '(p,(t,a)) => forall v, var_in_sact a v -> n <= v < p)%positive l) *)
+  (*          (SORTED: Sorted Pos.lt (map fst l)) lv' , *)
+  (*     simplify_vars l lv = lv' -> *)
+  (*     forall vvs (EXT: forall p t a, In (p,(t,a)) l -> vvs ! p = Some (t,a)), *)
+  (*       Forall (fun '(var,v) => interp_sact (sigma:=sigma) REnv r vvs (SVar var) v) lv -> *)
+  (*       Forall (fun '(var,v) => interp_sact (sigma:=sigma) REnv r vvs (SVar var) v) lv'. *)
+  (* Proof. *)
+  (*   induction l; simpl; intros; eauto. *)
+  (*   - inv H. auto. *)
+  (*   - inv F. inv SORTED. destruct a. destruct p0. *)
+  (*     edestruct eval_sact_no_vars_succeeds as (rr & ESNV). 3: rewrite ESNV. *)
+  (*     + intros v VIS. *)
+  (*       assert (var_in_sact s v /\ ~ In v (map fst lv)). admit. *)
+  (*       destruct H as (VIS' & NIN). *)
+  (*       simpl in H5. *)
+  (*       exploit Sorted_extends. 2: constructor; eauto. red. lia. *)
+  (* Qed. *)
+
+  
   Lemma var_not_in_sact_replace:
     forall s0 v0 v,
       ~ var_in_sact (replace_all_occurrences_in_sact s0 v0 v) v0.
@@ -2407,7 +2442,41 @@ Lemma remove_vars_correct:
     - simpl. inv WT;  erewrite IHn; simpl; eauto.
   Qed.
 
+  Fixpoint regs_in_sact_aux (s: sact) (regs: list reg_t) :=
+    match s with
+    | SReg idx => if in_dec eq_dec idx regs then regs else idx::regs
+    | SVar _
+    | SConst _ => regs
+    | SUnop _ a
+    | SExternalCall _ a => regs_in_sact_aux a regs
+    | SBinop _ a1 a2 => regs_in_sact_aux a1 (regs_in_sact_aux a2 regs)
+    | SIf a0 a1 a2 => regs_in_sact_aux a0 (regs_in_sact_aux a1 (regs_in_sact_aux a2 regs))
+    end.
 
+  Definition useful_vars_for_var (sf: simple_form)
+             (v: positive) : list positive :=
+    reachable_vars_aux (vars sf) v [] (S (Pos.to_nat v)).
+
+  Definition useful_regs_for_var sf v :=
+    fold_left (fun regs v =>
+                 match (vars sf) ! v with
+                   Some (_, s) => regs_in_sact_aux s regs
+                 | None => regs
+                 end
+              ) (useful_vars_for_var sf v) [].
+
+  Definition remove_vars_for_var (sf: simple_form) idx :=
+    match list_assoc (final_values sf) idx with
+      | Some v =>
+          let t := filter_ptree (vars sf) (PTree.empty _) (useful_vars_for_var sf v) in
+          Some
+            {|
+              final_values := [(idx,v)];
+              vars := t
+            |}
+    | None =>
+        None
+    end.
 
 
   Definition interp_cycle (sf: simple_form) : UREnv :=

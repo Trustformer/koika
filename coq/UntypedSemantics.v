@@ -3,6 +3,7 @@ Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
 Require Import BitsToLists Desugaring SyntaxMacros.
 Require TypeInference TypedSemantics.
 Import PrimTyped PrimUntyped.
+Require Import SimpleVal.
 
 Fixpoint size_uaction
   {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
@@ -1004,7 +1005,7 @@ Section Interp.
     | DFail _ => None
     | DVar var =>
       let/opt v := list_assoc Gamma var in Some (action_log, v, Gamma)
-    | @DConst _ _ _ _ _ tau cst => Some (action_log, val_of_value cst, Gamma)
+    | DConst tau cst => Some (action_log, cst, Gamma)
     | DAssign k a =>
       let/opt3 action_log, v, Gamma :=
         interp_daction r sigma Gamma sched_log action_log a in

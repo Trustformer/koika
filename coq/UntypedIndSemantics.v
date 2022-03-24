@@ -2,7 +2,7 @@
 Require Import Coq.Program.Equality.
 Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
 Require Import Desugaring SyntaxMacros UntypedSemantics.
-Require Import BitsToLists.
+Require Import BitsToLists SimpleVal.
 
 Section Interp.
   Context {pos_t var_t fn_name_t: Type}.
@@ -747,9 +747,9 @@ Section Interp.
   Lemma invert_var:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) var v,
     interp_action r sigma Gamma sched_log action_log (UVar var) action_log' v
       Gamma'
@@ -765,9 +765,9 @@ Section Interp.
   Lemma invert_const:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) tau (cst: type_denote tau) v,
     interp_action r sigma Gamma sched_log action_log (UConst cst) action_log' v
       Gamma'
@@ -781,9 +781,9 @@ Section Interp.
   Lemma invert_assign:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) k a v,
     interp_action r sigma Gamma sched_log action_log (UAssign k a) action_log'
       v Gamma'
@@ -802,9 +802,9 @@ Section Interp.
   Lemma invert_seq:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) a1 a2 v,
     interp_action r sigma Gamma sched_log action_log (USeq a1 a2) action_log' v
       Gamma'
@@ -824,9 +824,9 @@ Section Interp.
   Lemma invert_bind:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) k a1 a2 v,
     interp_action r sigma Gamma sched_log action_log (UBind k a1 a2) action_log'
       v Gamma'
@@ -846,9 +846,9 @@ Section Interp.
   Lemma invert_if:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) cond athen aelse v,
     interp_action r sigma Gamma sched_log action_log (UIf cond athen aelse)
       action_log' v Gamma'
@@ -869,11 +869,11 @@ Section Interp.
   Lemma invert_read:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma: list (var_t * BitsToLists.val)) (sched_log action_log: Log REnv)
-      (prt: Port) (idx: reg_t) (v: BitsToLists.val) (action_log': Log REnv)
-      (Gamma': list (var_t * BitsToLists.val)),
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma: list (var_t * val)) (sched_log action_log: Log REnv)
+      (prt: Port) (idx: reg_t) (v: val) (action_log': Log REnv)
+      (Gamma': list (var_t * val)),
     interp_action r sigma Gamma sched_log action_log (URead prt idx) action_log'
       v Gamma'
     -> may_read sched_log prt idx = true /\ Gamma' = Gamma
@@ -882,7 +882,7 @@ Section Interp.
       | P0 => REnv.(getenv) r idx
       | P1 =>
         match
-          latest_write0 (V := BitsToLists.val) (log_app action_log sched_log)
+          latest_write0 (V := val) (log_app action_log sched_log)
             idx
         with
         | Some v => v
@@ -899,13 +899,13 @@ Section Interp.
   Lemma invert_write:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma: list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma: list (var_t * val))
       (sched_log action_log: Log REnv) (prt: Port)
       (idx: reg_t) (a: uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-      (v_after: BitsToLists.val) (action_log': Log REnv)
-      (Gamma': list (var_t * BitsToLists.val)),
+      (v_after: val) (action_log': Log REnv)
+      (Gamma': list (var_t * val)),
     interp_action r sigma Gamma sched_log action_log (UWrite prt idx a)
       action_log' v_after Gamma'
     -> exists v_init action_log_init,
@@ -924,9 +924,9 @@ Section Interp.
   Lemma invert_unop:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) fn a v,
     interp_action r sigma Gamma sched_log action_log (UUnop fn a) action_log' v
       Gamma'
@@ -944,9 +944,9 @@ Section Interp.
   Lemma invert_binop:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) fn a1 a2 v,
     interp_action r sigma Gamma sched_log action_log (UBinop fn a1 a2)
       action_log' v Gamma'
@@ -966,9 +966,9 @@ Section Interp.
   Lemma invert_extcall:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) fn a v,
     interp_action r sigma Gamma sched_log action_log (UExternalCall fn a)
       action_log' v Gamma'
@@ -986,9 +986,9 @@ Section Interp.
   Lemma invert_intcall:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) f args v,
     interp_action r sigma Gamma sched_log action_log (UInternalCall f args)
       action_log' v Gamma'
@@ -1008,9 +1008,9 @@ Section Interp.
   Lemma invert_pos:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) p a v,
     interp_action r sigma Gamma sched_log action_log (UAPos p a) action_log' v
       Gamma'
@@ -1024,9 +1024,9 @@ Section Interp.
   Lemma invert_skip:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) v,
     interp_action r sigma Gamma sched_log action_log (USugar USkip) action_log'
       v Gamma'
@@ -1040,9 +1040,9 @@ Section Interp.
   Lemma invert_constbits:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) {n} (b: bits n) v,
     interp_action r sigma Gamma sched_log action_log (USugar (UConstBits b))
       action_log' v Gamma'
@@ -1057,9 +1057,9 @@ Section Interp.
   Lemma invert_conststring:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) s v,
       interp_action r sigma Gamma sched_log action_log (USugar (UConstString s))
         action_log' v Gamma'
@@ -1080,9 +1080,9 @@ Section Interp.
   Lemma invert_constenum:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) sig name v,
       interp_action r sigma Gamma sched_log action_log
         (USugar (UConstEnum sig name)) action_log' v Gamma'
@@ -1101,9 +1101,9 @@ Section Interp.
   Lemma invert_progn:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) aa v,
     interp_action r sigma Gamma sched_log action_log (USugar (UProgn aa))
       action_log' v Gamma'
@@ -1122,9 +1122,9 @@ Section Interp.
   Lemma invert_let:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) bindings body v,
     interp_action r sigma Gamma sched_log action_log
       (USugar (ULet bindings body)) action_log' v Gamma'
@@ -1144,9 +1144,9 @@ Section Interp.
   Lemma invert_when:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) cond athen v,
     interp_action r sigma Gamma sched_log action_log (USugar (UWhen cond athen))
       action_log' v Gamma'
@@ -1165,9 +1165,9 @@ Section Interp.
   Lemma invert_switch_nil:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) var default v,
     interp_action r sigma Gamma sched_log action_log
       (USugar (USwitch var default [])) action_log' v Gamma'
@@ -1183,9 +1183,9 @@ Section Interp.
   Lemma invert_switch:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) var default cond body
       branches v,
     interp_action r sigma Gamma sched_log action_log
@@ -1218,9 +1218,9 @@ Section Interp.
   Lemma invert_structinit:
   forall
     {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-    (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-    (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-    (Gamma Gamma': list (var_t * BitsToLists.val))
+    (r: env_t REnv (fun _: reg_t => val))
+    (sigma: ext_fn_t -> val -> val)
+    (Gamma Gamma': list (var_t * val))
     (sched_log action_log action_log': Log REnv) sig fields v,
   interp_action r sigma Gamma sched_log action_log
     (USugar (UStructInit sig fields)) action_log' v Gamma'
@@ -1248,9 +1248,9 @@ Section Interp.
   Lemma invert_arrayinit:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) tau elements v,
     interp_action r sigma Gamma sched_log action_log
       (USugar (UArrayInit tau elements)) action_log' v Gamma'
@@ -1281,9 +1281,9 @@ Section Interp.
   Lemma invert_callmodule:
     forall
       {reg_t ext_fn_t: Type} {REnv: Env reg_t}
-      (r: env_t REnv (fun _: reg_t => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (Gamma Gamma': list (var_t * BitsToLists.val))
+      (r: env_t REnv (fun _: reg_t => val))
+      (sigma: ext_fn_t -> val -> val)
+      (Gamma Gamma': list (var_t * val))
       (sched_log action_log action_log': Log REnv) v
       module_reg_t module_ext_fn_t `{finite: FiniteType module_reg_t}
       (fR: module_reg_t -> reg_t) (fSigma: module_ext_fn_t -> ext_fn_t) fn

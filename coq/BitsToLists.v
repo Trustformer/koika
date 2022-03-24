@@ -1,4 +1,5 @@
 Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
+Require Import SimpleVal.
 
 Ltac destr_in H :=
   match type of H with
@@ -12,35 +13,6 @@ Ltac destr :=
 
 Ltac inv H := inversion H; try subst; clear H.
 
-Inductive val :=
-| Bits (v: list bool)
-| Enum (sig: enum_sig) (v: list bool)
-| Struct (sig: struct_sig) (v: list val)
-| Array (sig: array_sig) (v: list val).
-
-Fixpoint val_of_value {tau: type} (x: type_denote tau) {struct tau} : val :=
-  let val_of_struct_value := (
-    fix val_of_struct_value {fields} (x: struct_denote fields) : list val :=
-      match fields return struct_denote fields -> list val with
-      | [] => fun _ => []
-      | (nm, tau) :: fields => fun '(x, xs) =>
-        val_of_value x :: (val_of_struct_value xs)
-      end x
-  ) in
-  match tau return type_denote tau -> val with
-  | bits_t   sz  => fun bs  => Bits       (vect_to_list bs)
-  | enum_t   sig => fun bs  => Enum   sig (vect_to_list bs)
-  | struct_t sig => fun str => Struct sig (val_of_struct_value str)
-  | array_t  sig => fun v   => Array  sig (map val_of_value (vect_to_list v))
-  end x.
-
-Fixpoint ubits_of_value (v: val) : list bool :=
-  match v with
-  | Bits     bs => bs
-  | Enum   _ bs => bs
-  | Struct _ lv => List.concat (rev (map ubits_of_value lv))
-  | Array  _ lv => List.concat (rev (map ubits_of_value lv))
-  end.
 
 Lemma ubits_of_value_len:
   forall {tau} (v: type_denote tau) bs,
@@ -1587,8 +1559,9 @@ Section WT.
   | wt_daction_fail: forall sig t, wt_daction sig (DFail t) t
   | wt_daction_var: forall sig var t,
     wt_var sig var t -> wt_daction sig (DVar var) t
-  | wt_daction_const: forall sig tau cst,
-    wt_daction sig (@DConst _ _ _ _ _ tau cst) tau
+| wt_daction_const: forall sig v tau,
+    wt_val tau v ->
+    wt_daction sig (DConst tau v) tau
   | wt_daction_assign: forall sig k a t,
     wt_daction sig a t -> wt_var sig k t ->
     wt_daction sig (DAssign k a) (bits_t 0)

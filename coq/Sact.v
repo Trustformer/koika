@@ -5,6 +5,7 @@ Import RecordSetNotations.
 Require Import UntypedSemantics Koika.BitsToLists.
 Require Import Wt.
 Require Import Wellfounded.
+Require Import SimpleVal.
 
 Lemma modusponens: forall (P Q: Prop), P -> (P -> Q) -> Q.
 Proof. auto. Qed.

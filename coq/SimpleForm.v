@@ -8,6 +8,7 @@ Require Import Wt.
 Require Import Wellfounded.
 Require Import Sact.
 Require Import Maps.
+Require Import SimpleVal.
 
 (* When reasoning about a Koîka schedule, a lot of tedious implicit mechanisms
    have to be considered explicitly (rules merging, cancellation, ...).
@@ -1221,8 +1222,8 @@ Section SimpleForm.
           Pos.succ nid, retSig (Sigma ufn))
     | DError _ => (None, env, reg2var, vvs, const_true, rir, nid, bits_t 0)
     | DFail tau => (None, env, reg2var, vvs, const_true, rir, nid, tau)
-    | @DConst _ _ _ _ _ tau c =>
-        (Some (SConst (BitsToLists.val_of_value c)), env, reg2var, vvs, const_false, rir, nid, tau)
+    | DConst tau c =>
+        (Some (SConst c), env, reg2var, vvs, const_false, rir, nid, tau)
     end.
 
   Definition same_env env1 env2 :=
@@ -3953,8 +3954,7 @@ Section SimpleForm.
       apply assoc_list_assoc in H.
       edestruct env_vvs_none_some. inv WFS; eauto. eauto. eauto.
     - intuition try congruence. eapply same_regenv_refl. eapply rir_grows_refl. auto.
-      simpl. econstructor. inv WT.
-      apply wt_val_of_value.
+      simpl. econstructor. inv WT. auto.
       repeat constructor. lia.
       apply same_env_refl.
       inv WT. auto.

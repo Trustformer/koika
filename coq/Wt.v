@@ -3,6 +3,7 @@ Require Import TypeInference.
 Require Import Desugaring.
 Require Import UntypedIndSemantics.
 Require Import Coq.Program.Equality.
+Require Import SimpleVal.
 
 Fixpoint size_uaction
          {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
@@ -970,9 +971,9 @@ Section WT.
     forall idx le,
       In le (getenv REnv l idx) ->
       kind le = Logs.LogWrite ->
-      wt_val (R idx) (val le).
+      wt_val (R idx) (UntypedLogs.val le).
 
-  Inductive wt_env : tsig var_t -> list (var_t * BitsToLists.val) -> Prop :=
+  Inductive wt_env : tsig var_t -> list (var_t * val) -> Prop :=
   | wt_env_nil: wt_env [] []
   | wt_env_cons:
       forall sig ctx t x v,
@@ -980,12 +981,12 @@ Section WT.
         wt_val t x ->
         wt_env ((v,t)::sig) ((v,x)::ctx).
 
-  (* Variable sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val. *)
+  (* Variable sigma: ext_fn_t -> val -> val. *)
   (* Hypothesis sigma_wt: forall fn v, wt_val (arg1Sig (Sigma fn)) v -> *)
   (*                                   wt_val (retSig (Sigma fn)) (sigma fn v). *)
 
   (* Variable REnv: Env reg_t. *)
-  (* Variable r: env_t REnv (fun _ => BitsToLists.val). *)
+  (* Variable r: env_t REnv (fun _ => val). *)
 
 
 
@@ -1064,7 +1065,7 @@ Section WT.
         wt_log R REnv l ->
         exists x,
           f x = Some v /\
-          wt_val (R idx) (val x).
+          wt_val (R idx) (UntypedLogs.val x).
   Proof.
     intros.
     red in H0.
@@ -1102,7 +1103,7 @@ Section WT.
   Lemma wt_log_cons:
     forall {reg_t} (R: reg_t -> type) REnv l1 le idx,
       wt_log R REnv l1 ->
-      (kind le = Logs.LogWrite -> wt_val (R idx) (val le)) ->
+      (kind le = Logs.LogWrite -> wt_val (R idx) (UntypedLogs.val le)) ->
       wt_log R REnv (log_cons idx le l1).
   Proof.
     unfold wt_log. intros.
@@ -1157,7 +1158,7 @@ Section WT.
   Lemma uvalue_of_struct_bits_rew :
     forall fields l,
       (fix uvalue_of_struct_bits (fields : list (string * type)) (bs : list bool) {struct fields} :
-         option (list BitsToLists.val) :=
+         option (list val) :=
          match fields with
          | [] => Some []
          | (_, tau) :: fields0 =>
@@ -1191,9 +1192,9 @@ Section WT.
   Qed.
   Lemma uvalue_of_list_bits_inv:
     forall (tau : type) (l : list (list bool))
-           (l0 : list BitsToLists.val)
+           (l0 : list val)
            (F: Forall (fun x => List.length x = type_sz tau) l)
-           ( IH : forall (v1 : list bool) (v : BitsToLists.val),
+           ( IH : forall (v1 : list bool) (v : val),
                Datatypes.length v1 = type_sz tau ->
                uvalue_of_bits (tau:=tau) v1 = Some v -> wt_val tau v
            ),
@@ -1238,7 +1239,7 @@ Section WT.
     forall fields l v
            (IH : forall (v : string) (t : type),
                In (v, t) fields ->
-               forall (v1 : list bool) (v0 : BitsToLists.val),
+               forall (v1 : list bool) (v0 : val),
                  Datatypes.length v1 = type_sz t -> uvalue_of_bits (tau:=t) v1 = Some v0 -> wt_val t v0
            )
            (LEN: List.length l = struct_fields_sz fields),
@@ -1548,11 +1549,11 @@ Section WT.
     forall
       {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
       (REnv: Env reg_t)
-      (r: env_t REnv (fun _ => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (ctx ctx' : list (var_t * BitsToLists.val)) (sig : tsig var_t)
+      (r: env_t REnv (fun _ => val))
+      (sigma: ext_fn_t -> val -> val)
+      (ctx ctx' : list (var_t * val)) (sig : tsig var_t)
       (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
-      (v : BitsToLists.val) u a ta tr,
+      (v : val) u a ta tr,
       wt_renv R REnv r ->
       wt_env sig ctx ->
       wt_log R REnv action_log ->
@@ -1560,9 +1561,9 @@ Section WT.
       wt_unop u ta tr ->
       wt_action pos_t fn_name_t var_t (R:=R) (Sigma:=Sigma) sig a ta ->
       interp_action r sigma ctx action_log sched_log (UUnop u a) action_log' v ctx' ->
-      (forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+      (forall (ctx ctx' : list (var_t * val)) (t : type) (sig : tsig var_t)
               (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
-              (v : BitsToLists.val),
+              (v : val),
           wt_renv R REnv r ->
           wt_env sig ctx ->
           wt_log R REnv action_log ->
@@ -1586,11 +1587,11 @@ Section WT.
     forall
       {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
       (REnv: Env reg_t)
-      (r: env_t REnv (fun _ => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
-      (ctx ctx' : list (var_t * BitsToLists.val)) (sig : tsig var_t)
+      (r: env_t REnv (fun _ => val))
+      (sigma: ext_fn_t -> val -> val)
+      (ctx ctx' : list (var_t * val)) (sig : tsig var_t)
       (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
-      (v : BitsToLists.val) u a b ta tb tr,
+      (v : val) u a b ta tb tr,
       wt_renv R REnv r ->
       wt_env sig ctx ->
       wt_log R REnv action_log ->
@@ -1599,9 +1600,9 @@ Section WT.
       wt_action pos_t fn_name_t var_t (R:=R) (Sigma:=Sigma) sig a ta ->
       wt_action pos_t fn_name_t var_t (R:=R) (Sigma:=Sigma) sig b tb ->
       interp_action r sigma ctx action_log sched_log (UBinop u a b) action_log' v ctx' ->
-      (forall ua, ua = a \/ ua = b -> forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+      (forall ua, ua = a \/ ua = b -> forall (ctx ctx' : list (var_t * val)) (t : type) (sig : tsig var_t)
                                              (action_log sched_log action_log' : UntypedSemantics.Log REnv) 
-                                             (v : BitsToLists.val),
+                                             (v : val),
             wt_renv R REnv r ->
             wt_env sig ctx ->
             wt_log R REnv action_log ->
@@ -1627,13 +1628,13 @@ Section WT.
     forall
       {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
       (REnv: Env reg_t)
-      (r: env_t REnv (fun _ => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val),
-    forall (i: list (var_t * BitsToLists.val) ->
+      (r: env_t REnv (fun _ => val))
+      (sigma: ext_fn_t -> val -> val),
+    forall (i: list (var_t * val) ->
                UntypedSemantics.Log REnv ->
                UntypedSemantics.Log REnv ->
                uaction pos_t var_t fn_name_t reg_t ext_fn_t ->
-               UntypedSemantics.Log REnv -> BitsToLists.val -> list (var_t * BitsToLists.val) ->
+               UntypedSemantics.Log REnv -> val -> list (var_t * val) ->
                Prop) args argtypes
            (WTR: wt_renv R REnv r)
            (ARGS: Forall2 (fun '(_, a) t =>
@@ -1673,13 +1674,13 @@ Section WT.
     forall
       {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
       (REnv: Env reg_t)
-      (r: env_t REnv (fun _ => BitsToLists.val))
-      (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val),
-    forall (i: list (var_t * BitsToLists.val) ->
+      (r: env_t REnv (fun _ => val))
+      (sigma: ext_fn_t -> val -> val),
+    forall (i: list (var_t * val) ->
                UntypedSemantics.Log REnv ->
                UntypedSemantics.Log REnv ->
                uaction pos_t var_t fn_name_t reg_t ext_fn_t ->
-               UntypedSemantics.Log REnv -> BitsToLists.val -> list (var_t * BitsToLists.val) -> Prop) args argtypes
+               UntypedSemantics.Log REnv -> val -> list (var_t * val) -> Prop) args argtypes
            sig
            (WTR: wt_renv R REnv r)
            (ARGS: Forall2 (fun a t =>
@@ -1764,7 +1765,7 @@ Section WT.
 
   Lemma wt_env_iter_tl n: forall sig ctx,
       wt_env sig ctx ->
-      wt_env (Nat.iter n (@tl (var_t * type)) sig) (Nat.iter n (@tl (var_t * BitsToLists.val)) ctx).
+      wt_env (Nat.iter n (@tl (var_t * type)) sig) (Nat.iter n (@tl (var_t * val)) ctx).
   Proof.
     induction n; simpl; intros; eauto.
     apply wt_env_tl. eauto.
@@ -1824,11 +1825,11 @@ Section WT.
     generalize (struct_fields sg).
 
     assert (
-        forall (l : list (string * type)) (name : string) (v : BitsToLists.val),
+        forall (l : list (string * type)) (name : string) (v : val),
           (exists idx : index (Datatypes.length l),
               List_assoc name l = Some idx /\
               wt_val (snd (List_nth l idx)) v) ->
-          forall si sf : list BitsToLists.val,
+          forall si sf : list val,
             Forall2 wt_val (map snd l) si ->
             subst_field_name l name v si = Some sf -> Forall2 wt_val (map snd l) sf
       ).
@@ -1892,7 +1893,7 @@ Section WT.
 
 
   Lemma fold_subst_none:
-    forall (vals: list BitsToLists.val),
+    forall (vals: list val),
       fold_left
         (fun acc v =>
            let/opt2 pos, vs := acc in
@@ -1960,8 +1961,8 @@ Section WT.
   Lemma wt_action_preserves_wt_env:
     forall {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
            (REnv: Env reg_t)
-           (r: env_t REnv (fun _ => BitsToLists.val))
-           (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
+           (r: env_t REnv (fun _ => val))
+           (sigma: ext_fn_t -> val -> val)
            (sigma_wt: forall fn v, wt_val (arg1Sig (Sigma fn)) v ->
                                    wt_val (retSig (Sigma fn)) (sigma fn v))
            a ctx ctx' t sig action_log sched_log action_log' v,
@@ -1985,14 +1986,14 @@ Section WT.
               forall
                 {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
                 (REnv: Env reg_t)
-                (r: env_t REnv (fun _ => BitsToLists.val))
-                (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
+                (r: env_t REnv (fun _ => val))
+                (sigma: ext_fn_t -> val -> val)
                 (sigma_wt: forall fn v, wt_val (arg1Sig (Sigma fn)) v ->
                                         wt_val (retSig (Sigma fn)) (sigma fn v))
                 (ua': Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t),
                 size_uaction ua' < size_uaction ua ->
-                forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
-                       (action_log sched_log action_log' : UntypedSemantics.Log REnv) (v : BitsToLists.val),
+                forall (ctx ctx' : list (var_t * val)) (t : type) (sig : tsig var_t)
+                       (action_log sched_log action_log' : UntypedSemantics.Log REnv) (v : val),
                   wt_renv R REnv r ->
                   wt_env sig ctx ->
                   wt_log R REnv action_log ->
@@ -2125,9 +2126,9 @@ Section WT.
 
       assert (IHua': forall ua' : uaction pos_t var_t fn_name_t reg_t ext_fn_t,
                  In ua' (map snd bindings) ->
-                 forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
+                 forall (ctx ctx' : list (var_t * val)) (t : type) (sig : tsig var_t)
                         (action_log sched_log action_log' : UntypedSemantics.Log REnv)
-                        (v : BitsToLists.val),
+                        (v : val),
                    wt_renv R REnv r ->
                    wt_env sig ctx ->
                    wt_log R REnv action_log ->
@@ -2323,6 +2324,8 @@ Section WT.
     rename Plt' into IHua. clear n.
     intros WTA da UA.
     inv WTA; simpl in UA; unfold opt_bind in UA; repeat destr_in UA; inv UA; try now (econstructor; eauto; try (eapply IHua; eauto; simpl; try lia)).
+    - econstructor.
+      eapply wt_val_of_value.
     - econstructor; eauto.
       eapply IHua. 3: eauto. simpl; lia. eauto.
       eapply IHua. 3: eauto. simpl; lia. eauto.
@@ -2365,7 +2368,7 @@ Fixpoint size_daction
   | DError err => 0
   | DFail tau => 0
   | DVar var => 0
-  | DConst cst => 0
+  | DConst _ cst => 0
   | DAssign v ex => 1 + size_daction ex
   | DSeq a1 a2 => 1 + size_daction a1 + size_daction a2
   | DBind v ex body => 1 + size_daction ex + size_daction body
@@ -2384,11 +2387,11 @@ Fixpoint size_daction
     forall
       {reg_t ext_fn_t} (R: reg_t -> type)
       (REnv: Env reg_t),
-    forall (i: list (var_t * BitsToLists.val) ->
+    forall (i: list (var_t * val) ->
                UntypedSemantics.Log REnv ->
                UntypedSemantics.Log REnv ->
                @daction pos_t var_t fn_name_t reg_t ext_fn_t ->
-               option (UntypedSemantics.Log REnv * BitsToLists.val * list (var_t * BitsToLists.val)) ) args argtypes
+               option (UntypedSemantics.Log REnv * val * list (var_t * val)) ) args argtypes
            sig
            (* (WTR: wt_renv R REnv r) *)
            (ARGS: Forall2 (fun a t =>
@@ -2437,8 +2440,8 @@ Fixpoint size_daction
   Lemma wt_daction_preserves_wt_env:
     forall {reg_t ext_fn_t} (R: reg_t -> type) (Sigma: ext_fn_t -> ExternalSignature)
            (REnv: Env reg_t)
-           (r: env_t REnv (fun _ => BitsToLists.val))
-           (sigma: ext_fn_t -> BitsToLists.val -> BitsToLists.val)
+           (r: env_t REnv (fun _ => val))
+           (sigma: ext_fn_t -> val -> val)
            (sigma_wt: forall fn v, wt_val (arg1Sig (Sigma fn)) v ->
                                    wt_val (retSig (Sigma fn)) (sigma fn v))
            a ctx ctx' t sig action_log sched_log action_log' v,
@@ -2461,8 +2464,8 @@ Fixpoint size_daction
              forall
                (ua': @daction pos_t var_t fn_name_t reg_t ext_fn_t),
                size_daction ua' < size_daction ua ->
-               forall (ctx ctx' : list (var_t * BitsToLists.val)) (t : type) (sig : tsig var_t)
-                      (action_log sched_log action_log' : UntypedSemantics.Log REnv) (v : BitsToLists.val),
+               forall (ctx ctx' : list (var_t * val)) (t : type) (sig : tsig var_t)
+                      (action_log sched_log action_log' : UntypedSemantics.Log REnv) (v : val),
                  wt_renv R REnv r ->
                  wt_env sig ctx ->
                  wt_log R REnv action_log ->
@@ -2475,7 +2478,7 @@ Fixpoint size_daction
     inv WTA; simpl in INT; unfold opt_bind in INT; repeat destr_in INT; inv INT.
     - repeat split; auto.
       eapply wt_env_list_assoc; eauto.
-    - repeat split; auto. apply wt_val_of_value.
+    - repeat split; auto.
     - eapply IHua in Heqo; eauto.
       destruct Heqo as (? & ? & ?).
       repeat split; eauto.
@@ -2526,10 +2529,7 @@ Fixpoint size_daction
       simpl; lia. simpl; lia.
     - eapply IHua in Heqo; eauto. destruct Heqo as (?&?&?).
       repeat split; eauto.
-    -
-
-
-      edestruct @interp_dlist_wt as (WTE' & WTLV & WTLA'). 6: now eauto.
+    - edestruct @interp_dlist_wt as (WTE' & WTLV & WTLA'). 6: now eauto.
       + eapply Forall2_impl. eauto.
         intros; eauto.
         eapply IHua. 7: now eauto.

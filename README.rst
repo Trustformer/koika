@@ -1034,6 +1034,8 @@ The following list shows the current state of the repo:
 .. _coq/LoweredSyntaxFunctions.v: coq/LoweredSyntaxFunctions.v
 .. |coq/Lowering.v| replace:: ``Lowering.v``
 .. _coq/Lowering.v: coq/Lowering.v
+.. |coq/Maps.v| replace:: ``Maps.v``
+.. _coq/Maps.v: coq/Maps.v
 .. |coq/Member.v| replace:: ``Member.v``
 .. _coq/Member.v: coq/Member.v
 .. |coq/OneRuleAtATime.v| replace:: ``OneRuleAtATime.v``
@@ -1056,8 +1058,12 @@ The following list shows the current state of the repo:
 .. _coq/SimpleForm.v: coq/SimpleForm.v
 .. |coq/SimpleFormInterpretation.v| replace:: ``SimpleFormInterpretation.v``
 .. _coq/SimpleFormInterpretation.v: coq/SimpleFormInterpretation.v
+.. |coq/SimpleFormInterpretationb.v| replace:: ``SimpleFormInterpretationb.v``
+.. _coq/SimpleFormInterpretationb.v: coq/SimpleFormInterpretationb.v
 .. |coq/SimpleFormTacticsWrites.v| replace:: ``SimpleFormTacticsWrites.v``
 .. _coq/SimpleFormTacticsWrites.v: coq/SimpleFormTacticsWrites.v
+.. |coq/SimpleFormb.v| replace:: ``SimpleFormb.v``
+.. _coq/SimpleFormb.v: coq/SimpleFormb.v
 .. |coq/SimpleLogs.v| replace:: ``SimpleLogs.v``
 .. _coq/SimpleLogs.v: coq/SimpleLogs.v
 .. |coq/SimpleTypedSemantics.v| replace:: ``SimpleTypedSemantics.v``

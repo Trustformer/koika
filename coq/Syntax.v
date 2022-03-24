@@ -1,5 +1,6 @@
 (*! Frontend | Untyped syntax !*)
 Require Export Koika.Common Koika.Primitives Koika.Types Koika.ErrorReporting.
+Require Import SimpleVal.
 
 Section Syntax.
   Context {pos_t var_t rule_name_t fn_name_t: Type}.
@@ -122,7 +123,7 @@ Section Syntax.
   | DError (err: error pos_t var_t fn_name_t)
   | DFail (tau: type)
   | DVar (var: var_t)
-  | DConst {tau: type} (cst: type_denote tau)
+  | DConst (tau:type) (v: val)
   | DAssign (v: var_t) (ex: daction)
   | DSeq (a1 a2: daction)
   | DBind (v: var_t) (ex: daction) (body: daction)
@@ -153,7 +154,7 @@ Section Syntax.
     | UError err => Some (DError err)
     | UFail t => Some (DFail t)
     | UVar v => Some (DVar v)
-    | UConst cst => Some (DConst cst)
+    | @UConst _ _ t cst => Some (DConst t (val_of_value cst))
     | UAssign v e =>
         let/opt de := uaction_to_daction e in
         Some (DAssign v de)
@@ -205,7 +206,7 @@ Section Syntax.
     Hypothesis DError_case: forall err, P (DError err).
     Hypothesis DFail_case: forall tau, P (DFail tau).
     Hypothesis DVar_case: forall var, P (DVar var).
-    Hypothesis DConst_case: forall tau cst, P (DConst (tau := tau) cst).
+    Hypothesis DConst_case: forall t v, P (DConst t v).
     Hypothesis DAssign_case: forall v ex, P ex -> P (DAssign v ex).
     Hypothesis DSeq_case: forall a1 a2, P a1 -> P a2 -> P (DSeq a1 a2).
     Hypothesis DBind_case:
@@ -231,7 +232,7 @@ Section Syntax.
       | DError err => DError_case err
       | DFail tau => DFail_case tau
       | DVar var => DVar_case var
-      | @DConst _ _ tau cst => DConst_case tau cst
+      | DConst t cst => DConst_case t cst
       | DAssign v ex => DAssign_case v ex (daction_ind' ex)
       | DSeq a1 a2 => DSeq_case a1 a2 (daction_ind' a1) (daction_ind' a2)
       | DBind v ex body =>
