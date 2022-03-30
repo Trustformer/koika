@@ -734,7 +734,6 @@ Proof.
     left; subst. reflexivity.
 Defined.
 
-
 Definition enum_sig_eqb (s1 s2: enum_sig) :=
   (enum_name s1 =? enum_name s2) &&
     (Nat.eqb (enum_size s1) (enum_size s2)) &&
@@ -806,6 +805,17 @@ Proof.
     apply Nat.eqb_refl.
     apply list_eqb_refl. apply eqb_refl.
     apply list_eqb_refl. apply list_eqb_refl. apply eqb_reflx.
+Qed.
+
+Lemma val_eq_dec_bits:
+  forall {T: Type} (A1 A2: T) b1 b2,
+    (if val_eq_dec (Bits b1) (Bits b2) then A1 else A2) =
+      (if list_eqb b1 b2 Bool.eqb then A1 else A2).
+Proof.
+  intros.
+  destr. clear Heqs. inv e. rewrite list_eqb_refl. auto. apply eqb_reflx.
+  destr; auto. apply list_eqb_correct in Heqb. subst. congruence.
+  apply eqb_true_iff.
 Qed.
 
 Fixpoint bitwise (f: bool -> bool -> bool) (l1 l2: list bool) {struct l1}

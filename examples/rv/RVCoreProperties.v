@@ -6,6 +6,7 @@ Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm Koika.SimpleFormInterpretation.
 (* Require Import Koika.SimpleFormInterpretationb Koika.SimpleFormb. *)
+Require Import SimpleVal.
 
 Ltac destr_in H :=
   match type of H with
@@ -20,7 +21,7 @@ Ltac destr :=
 Ltac inv H := inversion H; try subst; clear H.
 
 Module RVProofs.
-  Context (ext_sigma : RV32I.ext_fn_t -> BitsToLists.val -> BitsToLists.val).
+  Context (ext_sigma : RV32I.ext_fn_t -> val -> val).
   Context (ext_Sigma : RV32I.ext_fn_t -> ExternalSignature).
   Context {REnv : Env RV32I.reg_t}.
 
@@ -35,59 +36,257 @@ Module RVProofs.
   Instance eq_dec_reg: EqDec RV32I.reg_t := EqDec_FiniteType.
   Existing Instance etaRuleInformationRaw.
 
-  Fixpoint simplify_sact (r: env_t ContextEnv (fun _ => BitsToLists.val) ) (ua: sact) : sact :=
-    match ua with
-    | SIf cond tb fb =>
-      let cond' := simplify_sact r cond in
-      let tb' := simplify_sact r tb in
-      let fb' := simplify_sact r fb in
-      match eval_sact_no_vars r ext_sigma cond' with
-      | Some (Bits [true]) => tb'
-      | Some (Bits [false]) => fb'
-      | _ => SIf cond' tb' fb'
-      end
-    | SBinop ufn a1 a2 =>
-      let a1' := simplify_sact r a1 in
-      let a2' := simplify_sact r a2 in
-      match ufn with
-      | PrimUntyped.UBits2 PrimUntyped.UAnd =>
-          match eval_sact_no_vars r ext_sigma a1', eval_sact_no_vars r ext_sigma a2' with
-          | Some (Bits [false]), _ => const_false
-          | Some (Bits [true]), _ => a2'
-          | _, Some (Bits [false]) => const_false
-          | _, Some (Bits [true]) => a1'
-          | _, _ => SBinop ufn a1' a2'
-          end
-        | PrimUntyped.UBits2 PrimUntyped.UOr =>
-          match eval_sact_no_vars r ext_sigma a1', eval_sact_no_vars r ext_sigma a2' with
-          | Some (Bits [true]), _
-          | _, Some (Bits [true]) => const_true
-          | Some (Bits [false]), _  => a2'
-          | _, Some (Bits [false])  => a1'
-          | _, _ => SBinop ufn a1' a2'
-          end
-        | _ => SBinop ufn a1' a2'
-        end
-    | SUnop ufn a => (* Perhaps not strictly required *)
-        let a := simplify_sact r a in
-        match ufn with
-        | PrimUntyped.UBits1 PrimUntyped.UNot =>
-            match eval_sact_no_vars r ext_sigma a with
-            | Some (Bits [b]) => SConst (Bits [negb b])
-            | _ => SUnop ufn a
-            end
-        | _ => SUnop ufn a
-        end
-    | SExternalCall ufn a => SExternalCall ufn (simplify_sact r a)
-    | SVar _
-    | SReg _
-    | SConst _ => ua
-    end.
 
   Section test1.
-    Let REnv: Env RV32I.reg_t := ContextEnv.
-    Variable ctx : env_t REnv (fun _ => BitsToLists.val).
+    Variable REnv: Env RV32I.reg_t.
+    Variable ctx : env_t REnv (fun _ => val).
     Hypothesis WTRENV: Wt.wt_renv RV32I.R REnv ctx.
+
+    Hypothesis wt_sigma: forall (ufn : RV32I.ext_fn_t) (vc : val),
+        wt_val (arg1Sig (ext_Sigma ufn)) vc ->
+        wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc).
+
+    Hypothesis rules_wt:
+      forall rule : rv_rules_t,
+      exists t : type, wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string [] (drules rule) t.
+
+    (* Lemma update_on_off_failure: *)
+    (*   forall nid r2v vss sched_rir rir r2v' nid' , *)
+    (*     get_rule_information RV32I.R (Sigma:=ext_Sigma) (drules UpdateOnOff) nid r2v vss sched_rir = *)
+    (*       (rir, r2v', nid') -> *)
+    (*     wf_state  (Sigma:=ext_Sigma) RV32I.R [] [] r2v vss init_rir nid -> *)
+    (*     forall r2v0 nid0, *)
+    (*     wf_state RV32I.R (Sigma:=ext_Sigma) [] [] r2v0 (rir_vars sched_rir) sched_rir nid0 -> *)
+    (*     vvs_grows (rir_vars sched_rir) vss -> *)
+    (*     interp_sact REnv (sigma:=ext_sigma) ctx (rir_vars sched_rir) *)
+    (*                   (uor *)
+    (*                      (rir_has_write0 sched_rir RV32I.on_off) *)
+    (*                      (rir_has_write1 sched_rir RV32I.on_off)) (Bits [false]) -> *)
+    (*       interp_sact REnv (sigma:=ext_sigma) ctx (rir_vars rir) *)
+    (*                   (rir_failure_cond rir) (Bits [false]). *)
+    (* Proof. *)
+    (*   intros nid r2v vss sched_rir rir r2v' nid' GRI WFS r2v0 nid0 WFR VG ONOFFNoWrite. *)
+    (*   unfold get_rule_information in GRI. *)
+    (*   repeat destr_in GRI. inv GRI. simpl. *)
+    (*   cbn in Heqp. *)
+    (*   edestruct (@wfs_r2v_vvs) as (y & GET1 & z & GET2). apply WFS. *)
+    (*   rewrite GET1 in Heqp. *)
+    (*   inv Heqp. *)
+    (*   apply interp_uor_false2. *)
+    (*   apply interp_uor_false2. *)
+    (*   eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS. lia. *)
+    (*   eapply vvs_grows_interp_sact. 2: apply ONOFFNoWrite. auto. *)
+    (*   repeat constructor. *)
+    (*   econstructor. constructor. unfold or_conds. simpl. *)
+    (*   instantiate (1:=Bits [false]). 2: reflexivity. *)
+    (*   change (rir_has_write1 (add_read0 init_rir const_true RV32I.on_off) RV32I.on_off) *)
+    (*     with (rir_has_write1 (ext_fn_t:=RV32I.ext_fn_t) init_rir RV32I.on_off). *)
+    (*   econstructor. *)
+    (*   instantiate (1:=Bits [false]). *)
+    (*   2: instantiate (1:=Bits [false]). *)
+    (*   3: reflexivity. *)
+    (*   econstructor. econstructor. *)
+    (*   unfold rir_has_write1, init_rir. simpl. econstructor. reflexivity. *)
+    (*   Sact.exploit @wt_rir_has_write0. apply WFR. *)
+    (*   Sact.exploit @wt_rir_has_write1. apply WFR. *)
+    (*   inv ONOFFNoWrite. *)
+    (*   intros WT1 WT2. *)
+    (*   Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT1. 1-3: apply WFR. *)
+    (*   apply H4. intro WTv1. *)
+    (*   Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT2. 1-3: apply WFR. *)
+    (*   apply H2. intro WTv2. *)
+    (*   apply Sact.wt_val_bool in WTv1. *)
+    (*   apply Sact.wt_val_bool in WTv2. *)
+    (*   destruct WTv1, WTv2. subst. simpl in H5. inv H5. *)
+    (*   apply orb_false_iff in H0. destruct H0; subst. *)
+    (*   eapply vvs_grows_interp_sact. 2: apply H4. *)
+    (*   eapply vvs_grows_trans. eauto. eapply vvs_grows_set. apply WFS. lia. *)
+    (* Qed. *)
+
+    Definition simplify_sf  sf ctx :=
+      {|
+        final_values := final_values sf;
+        vars := Maps.PTree.map (fun _ '(t,a) => (t, simplify_sact (REnv:=REnv) (reg_t:=RV32I.reg_t) ctx ext_sigma a)) (vars sf)
+
+      |}.
+    
+    Lemma fail_schedule:
+      forall ss1,
+        (remove_vars_for_var (schedule_to_simple_form
+                                  RV32I.R (Sigma:=ext_Sigma) drules
+                                  (UpdateOnOff |> Writeback |> Execute (* |> Decode |> WaitImem *)
+                                               (* |> Fetch |> Imem |> Dmem |> Tick *)
+                                               (* |> EndExecution  *)|> done)) RV32I.halt) = Some ss1 ->
+        let ss := simplify_sf ss1 ctx in
+        forall n t s,
+        list_assoc (final_values ss) RV32I.halt = Some n ->
+        Maps.PTree.get n (vars ss) = Some (t,s) ->
+        do_eval_sact ctx ext_sigma (vars ss) s = Some (Bits [true])
+    .
+    Proof.
+      intros.
+      Set Printing Depth 20.
+      Time native_compute in H. injection H. clear H.
+      intro A.
+      subst ss1.
+      Time native_compute in ss.
+      Eval native_compute in List.length (Maps.PTree.elements (vars ss)).
+      native_compute in H0.
+      apply Some_inj in H0. subst n.
+      native_compute in H1.
+      apply Some_inj in H1.
+      apply pair_inj in H1. destruct H1 as (_ & EQs). subst s.
+      cut (eval_sact ctx ext_sigma (vars ss) (SIf (SVar 1788) (SVar 96) (SVar 1758)) 4100 = Some (Bits [true])).
+      intro B; unfold do_eval_sact; rewrite <- B; f_equal. 
+      Eval native_compute in
+        Maps.PTree.fold (fun acc k a =>
+                           (k, regs_in_sact_aux (snd a) [])::acc
+                        ) (vars ss) [].
+      Eval native_compute in useful_regs_for_var ss 1789.
+
+      set (ss2 := simplify_sf {| final_values := final_values ss; vars := replace_reg_in_vars (vars ss) RV32I.halt (Bits [true]) |} ctx).
+      native_compute in ss2.
+      replace ss with ss2 by admit. clear ss. rename ss2 into ss.
+      
+      
+
+      native_compute in ss2.
+      replace ss with ss2 by admit. clear ss. rename ss2 into ss.
+      
+
+      Lemma eval_sact_if:
+        forall ext_fn_t P sigma vvs c t f fuel,
+          (* wt_sact R (Sigma:=Sigma) vvs c (bits_t 1) -> *)
+          P (eval_sact ctx sigma vvs t fuel) ->
+          P (eval_sact ctx sigma vvs f fuel) ->
+          P (eval_sact ctx sigma vvs (SIf (ext_fn_t:=ext_fn_t) c t f) (S fuel)).
+      Proof.
+      Admitted.
+      change 10186 with (S 10185).
+      apply eval_sact_if.
+      change 10185 with (S 10184).
+      simpl. auto.
+      admit.
+      change 10185 with (S 10184).
+      unfold eval_sact. fold (eval_sact ctx ext_sigma (vars ss2)).
+      native_compute Maps.PTree.get. unfold opt_bind.
+      Time Eval native_compute in Maps.PTree.get 992 (vars ss2).
+      Time Eval native_compute in Maps.PTree.get 93 (vars ss2).      
+      Time Eval native_compute in Maps.PTree.get 991 (vars ss2).      
+      Time Eval native_compute in Maps.PTree.get 49 (vars ss2).
+      Eval native_compute in List.length (Maps.PTree.elements (vars ss2)).
+      set (ip:= inlining_pass ctx ext_sigma ss2).
+      Time native_compute in ip.
+      assert (eval_sact ctx ext_sigma (vars ss) (SIf (SVar 1788) (SVar 96) (SVar 1758)) 20 = Some (Bits [false])).
+      rewrite <- A; native_compute.
+      destr.
+      native_compute in H1. inv H1.
+      simpl.
+      
+
+      set (regs:= useful_regs_for_var ss 1789).
+      Time native_compute in regs.
+
+      assert (Forall (fun x => wt_val (RV32I.R x) (getenv REnv ctx x)) regs).
+      rewrite Forall_forall; intros. apply WTRENV. unfold regs in H.
+      repeat match goal with
+             | H: Forall _ [] |- _ => clear H
+             | H: Forall _ (_::_) |- _ =>
+                 let a := fresh "a" in
+                 let b := fresh "b" in
+                 let c := fresh "c" in
+                 let d := fresh "d" in
+                 let e := fresh "e" in
+                 inversion H as [|a b c d e]; subst a b; simpl in c; clear H
+             | H: wt_val (bits_t 1) _ |- _ => apply Sact.wt_val_bool in H; destruct H; subst
+             end.
+
+      assert (do_eval_sact ctx ext_sigma (vars ss)
+                           (match Maps.PTree.get 1789 (vars ss) with
+                            | Some (_,s) => s
+                            | None => const_false
+                            end) = Some (Bits [false])
+             ).
+      unfold do_eval_sact.
+      Eval native_compute in (Pos.to_nat (Pos.succ (max_var (vars ss))) +
+     vvs_size (vars ss) (Pos.succ (max_var (vars ss))) +
+     size_sact
+       match Maps.PTree.get 1789 (vars ss) with
+       | Some (_, s0) => s0
+       | None => const_false
+       end) .
+      change (eval_sact ctx ext_sigma (vars ss)
+                        match Maps.PTree.get 1789 (vars ss) with
+                        | Some (_, s0) => s0
+                        | None => const_false
+                        end
+                        4100 = Some (Bits [false])).
+      rewrite (interp_sact_replace_reg_sact_vars _ _ _ _ _ H4).
+      rewrite (interp_sact_replace_reg_sact_vars _ _ _ _ _ H3).
+      rewrite (interp_sact_replace_reg_sact_vars _ _ _ _ _ H2).
+      rewrite (interp_sact_replace_reg_sact_vars _ _ _ _ _ H1).
+      Time native_compute.
+
+      assert (WT := WTRENV RV32I.halt). simpl in WTHALT.
+
+
+      set (ks := PosSort.sort (map fst (Maps.PTree.elements (vars ss)))).
+      Time native_compute in ks.
+      set (ss2 :=
+             fst (fold_left
+                    (fun '(sf0, l) (var : positive) =>
+                       let '(sf1, l1) := simplify_var ctx ext_sigma sf0 var in (sf1, l1 ++ l)) ks
+                    (ss, []) )).
+      Time native_compute in ss2.
+      Eval native_compute in list_assoc (final_values ss) RV32I.halt.
+      Eval native_compute in Maps.PTree.get 1789 (vars ss).
+      Eval native_compute in
+        (option_map (fun '(_,a) => InstructionsProperties.remove_dups (vars_in_sact a) Pos.eqb) (Maps.PTree.get 1788 (vars ss))
+        ).
+      
+
+      set (ip:= inlining_pass ctx ext_sigma ss).
+      Time native_compute in ip.
+
+        schedule_to_simple_form RV32I.R (Sigma:=ext_Sigma) drules (Writeback |> done).
+      
+      cbn in Heqp.
+      edestruct (@wfs_r2v_vvs) as (y & GET1 & z & GET2). apply WFS.
+      rewrite GET1 in Heqp.
+      inv Heqp.
+      apply interp_uor_false2.
+      apply interp_uor_false2.
+      eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS. lia.
+      eapply vvs_grows_interp_sact. 2: apply ONOFFNoWrite. auto.
+      repeat constructor.
+      econstructor. constructor. unfold or_conds. simpl.
+      instantiate (1:=Bits [false]). 2: reflexivity.
+      change (rir_has_write1 (add_read0 init_rir const_true RV32I.on_off) RV32I.on_off)
+        with (rir_has_write1 (ext_fn_t:=RV32I.ext_fn_t) init_rir RV32I.on_off).
+      econstructor.
+      instantiate (1:=Bits [false]).
+      2: instantiate (1:=Bits [false]).
+      3: reflexivity.
+      econstructor. econstructor.
+      unfold rir_has_write1, init_rir. simpl. econstructor. reflexivity.
+      Sact.exploit @wt_rir_has_write0. apply WFR.
+      Sact.exploit @wt_rir_has_write1. apply WFR.
+      inv ONOFFNoWrite.
+      intros WT1 WT2.
+      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT1. 1-3: apply WFR.
+      apply H4. intro WTv1.
+      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT2. 1-3: apply WFR.
+      apply H2. intro WTv2.
+      apply Sact.wt_val_bool in WTv1.
+      apply Sact.wt_val_bool in WTv2.
+      destruct WTv1, WTv2. subst. simpl in H5. inv H5.
+      apply orb_false_iff in H0. destruct H0; subst.
+      eapply vvs_grows_interp_sact. 2: apply H4.
+      eapply vvs_grows_trans. eauto. eapply vvs_grows_set. apply WFS. lia.
+    Qed.
+
+        
+
     Goal
       let s := schedule_to_simple_form (Sigma:=ext_Sigma) RV32I.R drules (Tick |> done) in
       (Maps.PTree.get 278%positive (vars s)) = None.
@@ -801,7 +1000,7 @@ Module RVProofs.
 
   Section test2.
     Variable REnv: Env mreg.
-    Variable ctx : env_t REnv (fun _ => BitsToLists.val).
+    Variable ctx : env_t REnv (fun _ => val).
 
     Goal False.
 
@@ -824,7 +1023,7 @@ Module RVProofs.
   End test2.
 
 
-  Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => BitsToLists.val)) :=
+  Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
     UntypedSemantics.interp_dcycle drules r ext_sigma rv_schedule.
 
   Definition env_type := env_t REnv RV32I.R.
@@ -839,7 +1038,7 @@ Module RVProofs.
   Proof. trivial. Qed.
 
   Definition initial_context_env_val := ContextEnv.(create) (f_init).
-  Theorem osef2 : initial_context_env_val.[RV32I.on_off] = @BitsToLists.val_of_value (bits_t 1) Ob~0.
+  Theorem osef2 : initial_context_env_val.[RV32I.on_off] = @val_of_value (bits_t 1) Ob~0.
   Proof. trivial. Qed.
 
   (* TODO *)
@@ -855,15 +1054,6 @@ Module RVProofs.
     apply create_funext. intros. unfold log_empty.
     rewrite getenv_create. rewrite app_nil_r. auto.
   Qed.
-
-  Hypothesis wt_sigma: forall (ufn : RV32I.ext_fn_t) (vc : BitsToLists.val),
-      wt_val (arg1Sig (ext_Sigma ufn)) vc ->
-      wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc).
-
-
-Hypothesis rules_wt:
-  forall rule : rv_rules_t,
-  exists t : type, wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string [] (drules rule) t.
 
 
   Theorem tick_preserves_on_off :
@@ -1079,7 +1269,7 @@ Hypothesis rules_wt:
     revert EVAL.
     generalize (getenv REnv ctx RV32I.cycle_count).
     intro v.
-    fold (@R BitsToLists.val RV32I.reg_t). simpl. destr; try congruence. clear. intro A; inv A.
+    fold (@R val RV32I.reg_t). simpl. destr; try congruence. clear. intro A; inv A.
     clear.
     intro A; inv A.
   Admitted.
@@ -1087,16 +1277,16 @@ Hypothesis rules_wt:
   Variable decode_opcode : list bool -> instruction.
   Variable decode_rd : list bool -> RV32I.Rf.reg_t.
   Variable decode_rs1 : list bool -> RV32I.Rf.reg_t.
-  Variable decode_imm : list bool -> BitsToLists.val.
+  Variable decode_imm : list bool -> val.
 
-  Definition val_add (v1 v2: BitsToLists.val) :=
+  Definition val_add (v1 v2: val) :=
     match v1, v2 with
     | Bits l1, Bits l2 => Some (Bits l1)
     | _, _ => None
     end.
 
   Goal
-  forall (ctx : env_t REnv (fun _ : RV32I.reg_t => BitsToLists.val)),
+  forall (ctx : env_t REnv (fun _ : RV32I.reg_t => val)),
     getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true].
   Proof.
     intros.

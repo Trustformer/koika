@@ -1243,6 +1243,7 @@ Lemma remove_vars_correct:
     intros; rewrite <- interp_sact_replace_reg_vars, <- interp_sact_replace_reg; eauto.
   Qed.
 
+
   Lemma interp_sact_replace_inv:
     forall vvs (VSV: vvs_smaller_variables vvs) var v' ,
       interp_sact (sigma:=sigma) REnv r vvs (SVar var) v' ->
@@ -1453,6 +1454,67 @@ Lemma remove_vars_correct:
       exists m; intros; eauto. rewrite EQ; auto.
   Qed.
 
+  Lemma var_in_replace_reg:
+    forall i v s v',
+      var_in_sact (replace_reg_in_sact s i v) v' ->
+      var_in_sact s v'.
+  Proof.
+    induction s; simpl; intros; eauto.
+  Admitted.
+
+  Lemma wt_sact_replace_reg:
+    forall vvs a i v t,
+      wt_sact (Sigma:=Sigma) R vvs a t ->
+      wt_val (R i) v ->
+      wt_sact (Sigma:=Sigma) R vvs (replace_reg_in_sact a i v) t.
+  Proof.
+    induction a; simpl; intros; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+    inv H. destr; eauto. subst. constructor; auto.
+    constructor.
+  Qed.
+
+  Lemma wt_sact_replace_reg_in_vars:
+    forall vvs a i v t,
+      wt_sact (Sigma:=Sigma) R vvs a t ->
+      wt_val (R i) v ->
+      wt_sact (Sigma:=Sigma) R (replace_reg_in_vars vvs i v) a t.
+  Proof.
+    induction a; simpl; intros; eauto.
+    inv H. econstructor; eauto. setoid_rewrite PTree.gmap. setoid_rewrite H2. simpl; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+    inv H; econstructor; eauto.
+  Qed.
+  Hypothesis WTRENV: Wt.wt_renv R REnv r.
+  Lemma interp_sact_replace_reg' :
+    forall sf idx v a t res,
+      vvs_smaller_variables (vars sf) ->
+      wt_sact (Sigma:=Sigma) R (vars sf) a t ->
+      getenv REnv r idx = v ->
+      interp_sact (sigma:=sigma) REnv r (vars sf) a res <->
+        interp_sact (sigma:=sigma) REnv r (vars (replace_reg sf idx v)) a res.
+  Proof.
+    intros.
+    eapply interp_eval_iff; eauto.
+    {
+      simpl. red; intros. unfold replace_reg_in_vars in H2.
+      rewrite PTree.gmap in H2. unfold option_map in H2; destr_in H2; inv H2.
+      destr_in H5. inv H5.
+      apply H in Heqo. apply Heqo.
+      apply var_in_replace_reg in H3; auto.
+    }
+    simpl. eapply wt_sact_replace_reg_in_vars; eauto. subst. apply WTRENV.
+    exists 0; intros.
+    apply interp_sact_replace_reg_vars. auto.
+  Qed.
+
   Lemma eval_sact_no_vars_interp:
     forall vvs s v
            (EVAL: eval_sact_no_vars s = Some v),
@@ -1570,7 +1632,7 @@ Lemma remove_vars_correct:
     eapply wt_sact_replace_vars; eauto.
   Qed.
 
-  Hypothesis WTRENV: Wt.wt_renv R REnv r.
+
 
   Lemma eval_sact_no_vars_wt:
     forall vvs s t
