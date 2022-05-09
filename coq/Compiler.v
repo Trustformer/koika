@@ -1,7 +1,7 @@
 (*! Interop | Top-level compilation function and helpers !*)
 Require Import
-        Koika.Common Koika.Environments Koika.Types
-        Koika.Syntax Koika.TypedSyntax Koika.Lowering Koika.CircuitGeneration.
+  Koika.Common Koika.Environments Koika.Types
+  Koika.Syntax Koika.TypedSyntax Koika.Lowering Koika.CircuitGeneration.
 Require Export Koika.Primitives.
 
 Section EndToEnd.
@@ -18,17 +18,17 @@ Section EndToEnd.
   Notation CSigma := (lower_Sigma Sigma).
 
   Notation circuit :=
-    (circuit (rule_name_t := rule_name_t)
-             (rwdata := rwdata (rule_name_t := rule_name_t) CR CSigma)
-             CR CSigma).
+    (circuit
+      (rule_name_t := rule_name_t)
+      (rwdata := rwdata (rule_name_t := rule_name_t) CR CSigma)
+      CR CSigma).
 
   Context (opt: forall {sz}, circuit sz -> circuit sz).
 
   Definition compile_scheduler
-             (rules: rule_name_t -> rule pos_t var_t fn_name_t R Sigma)
-             (external: rule_name_t -> bool)
-             (s: scheduler pos_t rule_name_t)
-    : register_update_circuitry rule_name_t CR CSigma _ :=
+    (rules: rule_name_t -> rule pos_t var_t fn_name_t R Sigma)
+    (external: rule_name_t -> bool) (s: scheduler pos_t rule_name_t)
+  : register_update_circuitry rule_name_t CR CSigma _ :=
     let cr := ContextEnv.(create) (readRegisters CR CSigma) in
     compile_scheduler' opt cr (fun rl => lower_action (rules rl)) external s.
 
@@ -36,8 +36,9 @@ Section EndToEnd.
   Context (sigma: forall f, Sig_denote (Sigma f)).
 
   Definition interp_circuits
-             (circuits: register_update_circuitry rule_name_t CR CSigma REnv)
-             (cr: REnv.(env_t) (fun r => bits (CR r))) :=
+    (circuits: register_update_circuitry rule_name_t CR CSigma REnv)
+    (cr: REnv.(env_t) (fun r => bits (CR r)))
+  :=
     let csigma := lower_sigma sigma in
     Environments.map REnv (fun _ c => interp_circuit cr csigma c) circuits.
 End EndToEnd.

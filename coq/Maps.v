@@ -1,3 +1,4 @@
+(* Imported from CompCert, some functions removed. *)
 (* *********************************************************************)
 (*                                                                     *)
 (*              The Compcert verified compiler                         *)
@@ -81,8 +82,8 @@ Definition list_disjoint (A: Type) (l1 l2: list A) : Prop :=
   forall (x y: A), In x l1 -> In y l2 -> x <> y.
 Lemma NoDup_app:
   forall (A: Type) (l1 l2: list A),
-  NoDup (l1 ++ l2) <->
-  NoDup l1 /\ NoDup l2 /\ list_disjoint _ l1 l2.
+  NoDup (l1 ++ l2)
+  <-> NoDup l1 /\ NoDup l2 /\ list_disjoint _ l1 l2.
 Proof.
   induction l1; simpl; intros; split; intros.
   intuition. constructor. red;simpl;auto.
@@ -97,15 +98,14 @@ Qed.
 
 Lemma NoDup_append:
   forall (A: Type) (l1 l2: list A),
-  NoDup l1 -> NoDup l2 -> list_disjoint _ l1 l2 ->
-  NoDup (l1 ++ l2).
-Proof.
-  generalize NoDup_app; firstorder.
-Qed.
+  NoDup l1 -> NoDup l2 -> list_disjoint _ l1 l2
+  -> NoDup (l1 ++ l2).
+Proof. generalize NoDup_app; firstorder. Qed.
 
-Inductive option_rel {A B: Type} (R: A -> B -> Prop) : option A -> option B -> Prop :=
-  | option_rel_none: option_rel R None None
-  | option_rel_some: forall x y, R x y -> option_rel R (Some x) (Some y).
+Inductive option_rel {A B: Type} (R: A -> B -> Prop)
+: option A -> option B -> Prop :=
+| option_rel_none: option_rel R None None
+| option_rel_some: forall x y, R x y -> option_rel R (Some x) (Some y).
 
 (* To avoid useless definitions of inductors in extracted code. *)
 Local Unset Elimination Schemes.
@@ -114,7 +114,6 @@ Local Unset Case Analysis Schemes.
 Set Implicit Arguments.
 
 (** * The abstract signatures of trees *)
-
 Module Type TREE.
   Parameter elt: Type.
   Parameter elt_eq: forall (a b: elt), {a = b} + {a <> b}.
@@ -126,8 +125,7 @@ Module Type TREE.
 
   (** The ``good variables'' properties for trees, expressing
     commutations between [get], [set] and [remove]. *)
-  Axiom gempty:
-    forall (A: Type) (i: elt), get i (empty A) = None.
+  Axiom gempty: forall (A: Type) (i: elt), get i (empty A) = None.
   Axiom gss:
     forall (A: Type) (i: elt) (x: A) (m: t A), get i (set i x m) = Some x.
   Axiom gso:
@@ -144,8 +142,7 @@ Module Type TREE.
     forall (A: Type) (i: elt) (m: t A) (v: A),
     get i m = None -> remove i m = m.
   *)
-  Axiom grs:
-    forall (A: Type) (i: elt) (m: t A), get i (remove i m) = None.
+  Axiom grs: forall (A: Type) (i: elt) (m: t A), get i (remove i m) = None.
   Axiom gro:
     forall (A: Type) (i j: elt) (m: t A),
     i <> j -> get i (remove j m) = get i m.
@@ -157,8 +154,8 @@ Module Type TREE.
   Parameter beq: forall (A: Type), (A -> A -> bool) -> t A -> t A -> bool.
   Axiom beq_correct:
     forall (A: Type) (eqA: A -> A -> bool) (t1 t2: t A),
-    beq eqA t1 t2 = true <->
-    (forall (x: elt),
+    beq eqA t1 t2 = true
+    <-> (forall (x: elt),
      match get x t1, get x t2 with
      | None, None => True
      | Some y1, Some y2 => eqA y1 y2 = true
@@ -166,15 +163,13 @@ Module Type TREE.
     end).
 
   (** Applying a function to all data of a tree. *)
-  Parameter map:
-    forall (A B: Type), (elt -> A -> B) -> t A -> t B.
+  Parameter map: forall (A B: Type), (elt -> A -> B) -> t A -> t B.
   Axiom gmap:
     forall (A B: Type) (f: elt -> A -> B) (i: elt) (m: t A),
     get i (map f m) = option_map (f i) (get i m).
 
   (** Same as [map], but the function does not receive the [elt] argument. *)
-  Parameter map1:
-    forall (A B: Type), (A -> B) -> t A -> t B.
+  Parameter map1: forall (A B: Type), (A -> B) -> t A -> t B.
   Axiom gmap1:
     forall (A B: Type) (f: A -> B) (i: elt) (m: t A),
     get i (map1 f m) = option_map f (get i m).
@@ -184,13 +179,12 @@ Module Type TREE.
     forall (A B C: Type), (elt -> option A -> option B -> option C) -> t A -> t B -> t C.
   Axiom gcombine:
     forall (A B C: Type) (f: elt -> option A -> option B -> option C),
-    (forall i, f i None None = None) ->
-    forall (m1: t A) (m2: t B) (i: elt),
+    (forall i, f i None None = None)
+    -> forall (m1: t A) (m2: t B) (i: elt),
     get i (combine f m1 m2) = f i (get i m1) (get i m2).
 
   (** Enumerating the bindings of a tree. *)
-  Parameter elements:
-    forall (A: Type), t A -> list (elt * A).
+  Parameter elements: forall (A: Type), t A -> list (elt * A).
   Axiom elements_correct:
     forall (A: Type) (m: t A) (i: elt) (v: A),
     get i m = Some v -> In (i, v) (elements m).
@@ -202,16 +196,15 @@ Module Type TREE.
     NoDup (List.map (@fst elt A) (elements m)).
   Axiom elements_extensional:
     forall (A: Type) (m n: t A),
-    (forall i, get i m = get i n) ->
-    elements m = elements n.
+    (forall i, get i m = get i n)
+    -> elements m = elements n.
   Axiom elements_remove:
     forall (A: Type) i v (m: t A),
-    get i m = Some v ->
-    exists l1 l2, elements m = l1 ++ (i,v) :: l2 /\ elements (remove i m) = l1 ++ l2.
+    get i m = Some v
+    -> exists l1 l2, elements m = l1 ++ (i,v) :: l2 /\ elements (remove i m) = l1 ++ l2.
 
   (** Folding a function over all bindings of a tree. *)
-  Parameter fold:
-    forall (A B: Type), (B -> elt -> A -> B) -> t A -> B -> B.
+  Parameter fold: forall (A B: Type), (B -> elt -> A -> B) -> t A -> B -> B.
   Axiom fold_spec:
     forall (A B: Type) (f: B -> elt -> A -> B) (v: B) (m: t A),
     fold f m v =
@@ -234,10 +227,8 @@ Module Type MAP.
   Parameter init: forall (A: Type), A -> t A.
   Parameter get: forall (A: Type), elt -> t A -> A.
   Parameter set: forall (A: Type), elt -> A -> t A -> t A.
-  Axiom gi:
-    forall (A: Type) (i: elt) (x: A), get i (init x) = x.
-  Axiom gss:
-    forall (A: Type) (i: elt) (x: A) (m: t A), get i (set i x m) = x.
+  Axiom gi: forall (A: Type) (i: elt) (x: A), get i (init x) = x.
+  Axiom gss: forall (A: Type) (i: elt) (x: A) (m: t A), get i (set i x m) = x.
   Axiom gso:
     forall (A: Type) (i j: elt) (x: A) (m: t A),
     i <> j -> get i (set j x m) = get i m.
@@ -259,8 +250,8 @@ Module PTree <: TREE.
   Definition elt_eq := Pos.eq_dec.
 
   Inductive tree (A : Type) : Type :=
-    | Leaf : tree A
-    | Node : tree A -> option A -> tree A -> tree A.
+  | Leaf : tree A
+  | Node : tree A -> option A -> tree A -> tree A.
 
   Arguments Leaf {A}.
   Arguments Node [A].
@@ -274,27 +265,27 @@ Module PTree <: TREE.
     match m with
     | Leaf => None
     | Node l o r =>
-        match i with
-        | xH => o
-        | xO ii => get ii l
-        | xI ii => get ii r
-        end
+      match i with
+      | xH => o
+      | xO ii => get ii l
+      | xI ii => get ii r
+      end
     end.
 
   Fixpoint set (A : Type) (i : positive) (v : A) (m : t A) {struct i} : t A :=
     match m with
     | Leaf =>
-        match i with
-        | xH => Node Leaf (Some v) Leaf
-        | xO ii => Node (set ii v Leaf) None Leaf
-        | xI ii => Node Leaf None (set ii v Leaf)
-        end
+      match i with
+      | xH => Node Leaf (Some v) Leaf
+      | xO ii => Node (set ii v Leaf) None Leaf
+      | xI ii => Node Leaf None (set ii v Leaf)
+      end
     | Node l o r =>
-        match i with
-        | xH => Node l (Some v) r
-        | xO ii => Node (set ii v l) o r
-        | xI ii => Node l o (set ii v r)
-        end
+      match i with
+      | xH => Node l (Some v) r
+      | xO ii => Node (set ii v l) o r
+      | xI ii => Node l o (set ii v r)
+      end
     end.
 
   Fixpoint remove (A : Type) (i : positive) (m : t A) {struct i} : t A :=
@@ -329,15 +320,11 @@ Module PTree <: TREE.
 
   Theorem gempty:
     forall (A: Type) (i: positive), get i (empty A) = None.
-  Proof.
-    induction i; simpl; auto.
-  Qed.
+  Proof. induction i; simpl; auto. Qed.
 
   Theorem gss:
     forall (A: Type) (i: positive) (x: A) (m: t A), get i (set i x m) = Some x.
-  Proof.
-    induction i; destruct m; simpl; auto.
-  Qed.
+  Proof. induction i; destruct m; simpl; auto. Qed.
 
     Lemma gleaf : forall (A : Type) (i : positive), get i (Leaf : t A) = None.
     Proof. exact gempty. Qed.
@@ -370,9 +357,7 @@ Module PTree <: TREE.
   Theorem set2:
     forall (A: Type) (i: elt) (m: t A) (v1 v2: A),
     set i v2 (set i v1 m) = set i v2 m.
-  Proof.
-    induction i; intros; destruct m; simpl; try (rewrite IHi); auto.
-  Qed.
+  Proof. induction i; intros; destruct m; simpl; try (rewrite IHi); auto. Qed.
 
   Lemma rleaf : forall (A : Type) (i : positive), remove i (Leaf : t A) = Leaf.
   Proof. destruct i; simpl; auto. Qed.
@@ -475,8 +460,8 @@ Module PTree <: TREE.
 
     Lemma beq_correct:
       forall m1 m2,
-      beq m1 m2 = true <->
-      (forall (x: elt),
+      beq m1 m2 = true
+      <-> (forall (x: elt),
        match get x m1, get x m2 with
        | None, None => True
        | Some y1, Some y2 => beqA y1 y2 = true
@@ -511,11 +496,9 @@ Module PTree <: TREE.
       | xO i' => prev_append i' (xO j)
     end.
 
-  Definition prev (i: positive) : positive :=
-    prev_append i xH.
+  Definition prev (i: positive) : positive := prev_append i xH.
 
-  Lemma prev_append_prev i j:
-    prev (prev_append i j) = prev_append j i.
+  Lemma prev_append_prev i j: prev (prev_append i j) = prev_append j i.
   Proof.
     revert j. unfold prev.
     induction i as [i IH|i IH|]. 3: reflexivity.
@@ -523,11 +506,10 @@ Module PTree <: TREE.
     intros j. simpl. rewrite IH. reflexivity.
   Qed.
 
-  Lemma prev_involutive i :
-    prev (prev i) = i.
+  Lemma prev_involutive i: prev (prev i) = i.
   Proof (prev_append_prev i xH).
 
-  Lemma prev_append_inj i j j' :
+  Lemma prev_append_inj i j j':
     prev_append i j = prev_append i j' -> j = j'.
   Proof.
     revert j j'.
@@ -571,9 +553,7 @@ Module PTree <: TREE.
   Theorem gmap1:
     forall (A B: Type) (f: A -> B) (i: elt) (m: t A),
     get i (map1 f m) = option_map f (get i m).
-  Proof.
-    induction i; intros; destruct m; simpl; auto.
-  Qed.
+  Proof. induction i; intros; destruct m; simpl; auto. Qed.
 
   Definition Node' (A: Type) (l: t A) (x: option A) (r: t A): t A :=
     match l, x, r with
@@ -621,28 +601,28 @@ Module PTree <: TREE.
       end.
 
   Lemma xgcombine_l :
-          forall (m: t A) (i : positive) j,
-          get i (xcombine_l j m) = f (prev (prev_append i j)) (get i m) None.
-    Proof.
-      induction m; intros; simpl.
-      repeat rewrite gleaf. auto.
-      rewrite gnode'. destruct i; simpl; auto.
-    Qed.
+    forall (m: t A) (i : positive) j,
+    get i (xcombine_l j m) = f (prev (prev_append i j)) (get i m) None.
+  Proof.
+    induction m; intros; simpl.
+    repeat rewrite gleaf. auto.
+    rewrite gnode'. destruct i; simpl; auto.
+  Qed.
 
   Fixpoint xcombine_r i (m : t B) {struct m} : t C :=
-      match m with
-      | Leaf => Leaf
-      | Node l o r => Node' (xcombine_r (xO i) l) (f (prev i) None o) (xcombine_r (xI i) r)
-      end.
+    match m with
+    | Leaf => Leaf
+    | Node l o r => Node' (xcombine_r (xO i) l) (f (prev i) None o) (xcombine_r (xI i) r)
+    end.
 
   Lemma xgcombine_r :
-          forall (m: t B) (i : positive) j,
-          get i (xcombine_r j m) = f (prev (prev_append i j)) None (get i m).
-    Proof.
-      induction m; intros; simpl.
-      repeat rewrite gleaf. auto.
-      rewrite gnode'. destruct i; simpl; auto.
-    Qed.
+    forall (m: t B) (i : positive) j,
+    get i (xcombine_r j m) = f (prev (prev_append i j)) None (get i m).
+  Proof.
+    induction m; intros; simpl.
+    repeat rewrite gleaf. auto.
+    rewrite gnode'. destruct i; simpl; auto.
+  Qed.
 
   Fixpoint combine' i (m1: t A) (m2: t B) {struct m1} : t C :=
     match m1 with
@@ -655,8 +635,8 @@ Module PTree <: TREE.
     end.
 
   Theorem gcombine':
-      forall (m1: t A) (m2: t B) (i: positive) j,
-      get i (combine' j m1 m2) = f (prev (prev_append i j)) (get i m1) (get i m2).
+    forall (m1: t A) (m2: t B) (i: positive) j,
+    get i (combine' j m1 m2) = f (prev (prev_append i j)) (get i m1) (get i m2).
   Proof.
     induction m1; intros; simpl.
     rewrite gleaf. apply xgcombine_r.
@@ -665,12 +645,11 @@ Module PTree <: TREE.
     repeat rewrite gnode'. destruct i; simpl; auto.
   Qed.
 
-  Definition combine (m1: t A) (m2: t B) : t C :=
-    combine' xH m1 m2.
+  Definition combine (m1: t A) (m2: t B) : t C := combine' xH m1 m2.
 
   Theorem gcombine:
-      forall (m1: t A) (m2: t B) (i: positive),
-      get i (combine m1 m2) = f i (get i m1) (get i m2).
+    forall (m1: t A) (m2: t B) (i: positive),
+    get i (combine m1 m2) = f i (get i m1) (get i m2).
   Proof.
     intros.
     unfold combine. rewrite gcombine'.
@@ -681,8 +660,8 @@ Module PTree <: TREE.
 
   Lemma xcombine_lr :
     forall (A B: Type) (f g : elt -> option A -> option A -> option B) (m : t A),
-      (forall (i j : option A) p, f p i j = g p j i) ->
-      forall i,
+      (forall (i j : option A) p, f p i j = g p j i)
+      -> forall i,
     xcombine_l f i m = xcombine_r g i m.
     Proof.
       induction m; intros; simpl; auto.
@@ -693,8 +672,8 @@ Module PTree <: TREE.
 
   Theorem combine'_commut:
     forall (A B: Type) (f g: elt -> option A -> option A -> option B),
-    (forall (i j: option A) p, f p i j = g p j i) ->
-    forall (m1 m2: t A) i,
+    (forall (i j: option A) p, f p i j = g p j i)
+    -> forall (m1 m2: t A) i,
     combine' f i m1 m2 = combine' g i m2 m1.
   Proof.
     intros A B f g EQ1.
@@ -712,8 +691,8 @@ Module PTree <: TREE.
 
   Theorem combine_commut:
     forall (A B: Type) (f g: elt -> option A -> option A -> option B),
-    (forall (i j: option A) p, f p i j = g p j i) ->
-    forall (m1 m2: t A),
+    (forall (i j: option A) p, f p i j = g p j i)
+    -> forall (m1 m2: t A),
     combine f m1 m2 = combine g m2 m1.
   Proof.
     intros; unfold combine.
@@ -743,11 +722,8 @@ Module PTree <: TREE.
   - destruct o; rewrite IHm2; rewrite <- IHm1; auto.
   Qed.
 
-  Remark xelements_leaf:
-    forall A i, xelements (@Leaf A) i nil = nil.
-  Proof.
-    intros; reflexivity.
-  Qed.
+  Remark xelements_leaf: forall A i, xelements (@Leaf A) i nil = nil.
+  Proof. intros; reflexivity. Qed.
 
   Remark xelements_node:
     forall A (m1: t A) o (m2: t A) i,
@@ -795,8 +771,8 @@ Module PTree <: TREE.
 
   Lemma in_xelements:
     forall (A: Type) (m: t A) (i k: positive) (v: A) ,
-    In (k, v) (xelements m i nil) ->
-    exists j, k = prev (prev_append j i) /\ get j m = Some v.
+    In (k, v) (xelements m i nil)
+    -> exists j, k = prev (prev_append j i) /\ get j m = Some v.
   Proof.
     induction m; intros.
   - rewrite xelements_leaf in H. contradiction.
@@ -836,8 +812,8 @@ Module PTree <: TREE.
 
   Lemma in_xkeys:
     forall (A: Type) (m: t A) (i k: positive),
-    In k (xkeys m i) ->
-    (exists j, k = prev (prev_append j i)).
+    In k (xkeys m i)
+    -> (exists j, k = prev (prev_append j i)).
   Proof.
     unfold xkeys; intros.
     rewrite in_map_iff in H. destruct H as ((j & v) & EQ & H). simpl in EQ. subst.
@@ -886,8 +862,8 @@ Module PTree <: TREE.
 
   Theorem elements_canonical_order':
     forall (A B: Type) (R: A -> B -> Prop) (m: t A) (n: t B),
-    (forall i, option_rel R (get i m) (get i n)) ->
-    Forall2
+    (forall i, option_rel R (get i m) (get i n))
+    -> Forall2
       (fun i_x i_y => fst i_x = fst i_y /\ R (snd i_x) (snd i_y))
       (elements m) (elements n).
   Proof.
@@ -908,9 +884,9 @@ Module PTree <: TREE.
 
   Theorem elements_canonical_order:
     forall (A B: Type) (R: A -> B -> Prop) (m: t A) (n: t B),
-    (forall i x, get i m = Some x -> exists y, get i n = Some y /\ R x y) ->
-    (forall i y, get i n = Some y -> exists x, get i m = Some x /\ R x y) ->
-    Forall2
+    (forall i x, get i m = Some x -> exists y, get i n = Some y /\ R x y)
+    -> (forall i y, get i n = Some y -> exists x, get i m = Some x /\ R x y)
+    -> Forall2
       (fun i_x i_y => fst i_x = fst i_y /\ R (snd i_x) (snd i_y))
       (elements m) (elements n).
   Proof.
@@ -924,8 +900,8 @@ Module PTree <: TREE.
 
   Theorem elements_extensional:
     forall (A: Type) (m n: t A),
-    (forall i, get i m = get i n) ->
-    elements m = elements n.
+    (forall i, get i m = get i n)
+    -> elements m = elements n.
   Proof.
     intros.
     exploit (@elements_canonical_order' _ _ (fun (x y: A) => x = y) m n).
@@ -935,8 +911,8 @@ Module PTree <: TREE.
 
   Lemma xelements_remove:
     forall (A: Type) v (m: t A) i j,
-    get i m = Some v ->
-    exists l1 l2,
+    get i m = Some v
+    -> exists l1 l2,
     xelements m j nil = l1 ++ (prev (prev_append i j), v) :: l2
     /\ xelements (remove i m) j nil = l1 ++ l2.
   Proof.
@@ -977,8 +953,8 @@ Module PTree <: TREE.
 
   Theorem elements_remove:
     forall (A: Type) i v (m: t A),
-    get i m = Some v ->
-    exists l1 l2, elements m = l1 ++ (i,v) :: l2 /\ elements (remove i m) = l1 ++ l2.
+    get i m = Some v
+    -> exists l1 l2, elements m = l1 ++ (i,v) :: l2 /\ elements (remove i m) = l1 ++ l2.
   Proof.
     intros. exploit xelements_remove. eauto. instantiate (1 := xH).
     rewrite prev_append_prev. auto.
@@ -1293,534 +1269,6 @@ Module EMap(X: EQUALITY_TYPE) <: MAP.
     intros. unfold get, map. reflexivity.
   Qed.
 End EMap.
-
-(** * A partial implementation of trees over any type that injects into type [positive] *)
-
-(* Module ITree(X: INDEXED_TYPE). *)
-
-(*   Definition elt := X.t. *)
-(*   Definition elt_eq := X.eq. *)
-(*   Definition t : Type -> Type := PTree.t. *)
-
-(*   Definition empty (A: Type): t A := PTree.empty A. *)
-(*   Definition get (A: Type) (k: elt) (m: t A): option A := PTree.get (X.index k) m. *)
-(*   Definition set (A: Type) (k: elt) (v: A) (m: t A): t A := PTree.set (X.index k) v m. *)
-(*   Definition remove (A: Type) (k: elt) (m: t A): t A := PTree.remove (X.index k) m. *)
-
-(*   Theorem gempty: *)
-(*     forall (A: Type) (i: elt), get i (empty A) = None. *)
-(*   Proof. *)
-(*     intros. apply PTree.gempty. *)
-(*   Qed. *)
-(*   Theorem gss: *)
-(*     forall (A: Type) (i: elt) (x: A) (m: t A), get i (set i x m) = Some x. *)
-(*   Proof. *)
-(*     intros. apply PTree.gss. *)
-(*   Qed. *)
-(*   Theorem gso: *)
-(*     forall (A: Type) (i j: elt) (x: A) (m: t A), *)
-(*     i <> j -> get i (set j x m) = get i m. *)
-(*   Proof. *)
-(*     intros. apply PTree.gso. red; intros; elim H; apply X.index_inj; auto. *)
-(*   Qed. *)
-(*   Theorem gsspec: *)
-(*     forall (A: Type) (i j: elt) (x: A) (m: t A), *)
-(*     get i (set j x m) = if elt_eq i j then Some x else get i m. *)
-(*   Proof. *)
-(*     intros. destruct (elt_eq i j). subst j; apply gss. apply gso; auto. *)
-(*   Qed. *)
-(*   Theorem grs: *)
-(*     forall (A: Type) (i: elt) (m: t A), get i (remove i m) = None. *)
-(*   Proof. *)
-(*     intros. apply PTree.grs. *)
-(*   Qed. *)
-(*   Theorem gro: *)
-(*     forall (A: Type) (i j: elt) (m: t A), *)
-(*     i <> j -> get i (remove j m) = get i m. *)
-(*   Proof. *)
-(*     intros. apply PTree.gro. red; intros; elim H; apply X.index_inj; auto. *)
-(*   Qed. *)
-(*   Theorem grspec: *)
-(*     forall (A: Type) (i j: elt) (m: t A), *)
-(*     get i (remove j m) = if elt_eq i j then None else get i m. *)
-(*   Proof. *)
-(*     intros. destruct (elt_eq i j). subst j; apply grs. apply gro; auto. *)
-(*   Qed. *)
-
-(*   Definition beq: forall (A: Type), (A -> A -> bool) -> t A -> t A -> bool := PTree.beq. *)
-(*   Theorem beq_sound: *)
-(*     forall (A: Type) (eqA: A -> A -> bool) (t1 t2: t A), *)
-(*     beq eqA t1 t2 = true -> *)
-(*     forall (x: elt), *)
-(*      match get x t1, get x t2 with *)
-(*      | None, None => True *)
-(*      | Some y1, Some y2 => eqA y1 y2 = true *)
-(*      | _, _ => False *)
-(*     end. *)
-(*   Proof. *)
-(*     unfold beq, get. intros. rewrite PTree.beq_correct in H. apply H. *)
-(*   Qed. *)
-
-(*   Definition combine: forall (A B C: Type), (option A -> option B -> option C) -> t A -> t B -> t C := PTree.combine. *)
-(*   Theorem gcombine: *)
-(*     forall (A B C: Type) (f: option A -> option B -> option C), *)
-(*     f None None = None -> *)
-(*     forall (m1: t A) (m2: t B) (i: elt), *)
-(*     get i (combine f m1 m2) = f (get i m1) (get i m2). *)
-(*   Proof. *)
-(*     intros. apply PTree.gcombine. auto. *)
-(*   Qed. *)
-(* End ITree. *)
-
-(* Module ZTree := ITree(ZIndexed). *)
-
-(* (** * Additional properties over trees *) *)
-
-(* Definition list_equiv {A: Type} (l1 l2: list A) : Prop := *)
-(*   forall x, In x l1 <-> In x l2. *)
-
-(* Module Tree_Properties(T: TREE). *)
-
-(* (** An induction principle over [fold]. *) *)
-
-(* Section TREE_FOLD_IND. *)
-
-(* Variables V A: Type. *)
-(* Variable f: A -> T.elt -> V -> A. *)
-(* Variable P: T.t V -> A -> Prop. *)
-(* Variable init: A. *)
-(* Variable m_final: T.t V. *)
-
-(* Hypothesis P_compat: *)
-(*   forall m m' a, *)
-(*   (forall x, T.get x m = T.get x m') -> *)
-(*   P m a -> P m' a. *)
-
-(* Hypothesis H_base: *)
-(*   P (T.empty _) init. *)
-
-(* Hypothesis H_rec: *)
-(*   forall m a k v, *)
-(*   T.get k m = None -> T.get k m_final = Some v -> P m a -> P (T.set k v m) (f a k v). *)
-
-(* Let f' (a: A) (p : T.elt * V) := f a (fst p) (snd p). *)
-
-(* Let P' (l: list (T.elt * V)) (a: A) : Prop := *)
-(*   forall m, list_equiv l (T.elements m) -> P m a. *)
-
-(* Remark H_base': *)
-(*   P' nil init. *)
-(* Proof. *)
-(*   red; intros. apply P_compat with (T.empty _); auto. *)
-(*   intros. rewrite T.gempty. symmetry. case_eq (T.get x m); intros; auto. *)
-(*   assert (In (x, v) nil). rewrite (H (x, v)). apply T.elements_correct. auto. *)
-(*   contradiction. *)
-(* Qed. *)
-
-(* Remark H_rec': *)
-(*   forall k v l a, *)
-(*   ~In k (List.map (@fst T.elt V) l) -> *)
-(*   In (k, v) (T.elements m_final) -> *)
-(*   P' l a -> *)
-(*   P' (l ++ (k, v) :: nil) (f a k v). *)
-(* Proof. *)
-(*   unfold P'; intros. *)
-(*   set (m0 := T.remove k m). *)
-(*   apply P_compat with (T.set k v m0). *)
-(*     intros. unfold m0. rewrite T.gsspec. destruct (T.elt_eq x k). *)
-(*     symmetry. apply T.elements_complete. rewrite <- (H2 (x, v)). *)
-(*     apply in_or_app. simpl. intuition congruence. *)
-(*     apply T.gro. auto. *)
-(*   apply H_rec. unfold m0. apply T.grs. apply T.elements_complete. auto. *)
-(*   apply H1. red. intros [k' v']. *)
-(*   split; intros. *)
-(*   apply T.elements_correct. unfold m0. rewrite T.gro. apply T.elements_complete. *)
-(*   rewrite <- (H2 (k', v')). apply in_or_app. auto. *)
-(*   red; intro; subst k'. elim H. change k with (fst (k, v')). apply in_map. auto. *)
-(*   assert (T.get k' m0 = Some v'). apply T.elements_complete. auto. *)
-(*   unfold m0 in H4. rewrite T.grspec in H4. destruct (T.elt_eq k' k). congruence. *)
-(*   assert (In (k', v') (T.elements m)). apply T.elements_correct; auto. *)
-(*   rewrite <- (H2 (k', v')) in H5. destruct (in_app_or _ _ _ H5). auto. *)
-(*   simpl in H6. intuition congruence. *)
-(* Qed. *)
-
-(* Lemma fold_rec_aux: *)
-(*   forall l1 l2 a, *)
-(*   list_equiv (l2 ++ l1) (T.elements m_final) -> *)
-(*   list_disjoint _ (List.map (@fst T.elt V) l1) (List.map (@fst T.elt V) l2) -> *)
-(*   NoDup (List.map (@fst T.elt V) l1) -> *)
-(*   P' l2 a -> P' (l2 ++ l1) (List.fold_left f' l1 a). *)
-(* Proof. *)
-(*   induction l1; intros; simpl. *)
-(*   rewrite <- List.app_nil_end. auto. *)
-(*   destruct a as [k v]; simpl in *. inv H1. *)
-(*   change ((k, v) :: l1) with (((k, v) :: nil) ++ l1). rewrite <- List.app_ass. apply IHl1. *)
-(*   rewrite app_ass. auto. *)
-(*   red; intros. rewrite map_app in H3. destruct (in_app_or _ _ _ H3). apply H0; auto. simpl; auto. *)
-(*   simpl in H4. intuition congruence. *)
-(*   auto. *)
-(*   unfold f'. simpl. apply H_rec'; auto. *)
-(*   intros IN. eapply (H0 k). left; auto. eauto. auto. *)
-(*   rewrite <- (H (k, v)). apply in_or_app. simpl. auto. *)
-(* Qed. *)
-
-(* Theorem fold_rec: *)
-(*   P m_final (T.fold f m_final init). *)
-(* Proof. *)
-(*   intros. rewrite T.fold_spec. fold f'. *)
-(*   assert (P' (nil ++ T.elements m_final) (List.fold_left f' (T.elements m_final) init)). *)
-(*     apply fold_rec_aux. *)
-(*     simpl. red; intros; tauto. *)
-(*     simpl. red; intros. elim H0. *)
-(*     apply T.elements_keys_norepet. *)
-(*     apply H_base'. *)
-(*   simpl in H. red in H. apply H. red; intros. tauto. *)
-(* Qed. *)
-
-(* End TREE_FOLD_IND. *)
-
-(* (** A nonnegative measure over trees *) *)
-
-(* Section MEASURE. *)
-
-(* Variable V: Type. *)
-
-(* Definition cardinal (x: T.t V) : nat := List.length (T.elements x). *)
-
-(* Theorem cardinal_remove: *)
-(*   forall x m y, T.get x m = Some y -> (cardinal (T.remove x m) < cardinal m)%nat. *)
-(* Proof. *)
-(*   unfold cardinal; intros. *)
-(*   exploit T.elements_remove; eauto. intros (l1 & l2 & P & Q). *)
-(*   rewrite P, Q. rewrite ! app_length. simpl. omega. *)
-(* Qed. *)
-
-(* Theorem cardinal_set: *)
-(*   forall x m y, T.get x m = None -> (cardinal m < cardinal (T.set x y m))%nat. *)
-(* Proof. *)
-(*   intros. set (m' := T.set x y m). *)
-(*   replace (cardinal m) with (cardinal (T.remove x m')). *)
-(*   apply cardinal_remove with y. unfold m'; apply T.gss. *)
-(*   unfold cardinal. f_equal. apply T.elements_extensional. *)
-(*   intros. unfold m'. rewrite T.grspec, T.gsspec. *)
-(*   destruct (T.elt_eq i x); auto. congruence. *)
-(* Qed. *)
-
-(* End MEASURE. *)
-
-(* (** Forall and exists *) *)
-(* Require Import Bool. *)
-(* Section FORALL_EXISTS. *)
-
-(* Variable A: Type. *)
-
-(* Definition for_all (m: T.t A) (f: T.elt -> A -> bool) : bool := *)
-(*   T.fold (fun b x a => b && f x a) m true. *)
-
-(* Lemma for_all_correct: *)
-(*   forall m f, *)
-(*   for_all m f = true <-> (forall x a, T.get x m = Some a -> f x a = true). *)
-(* Proof. *)
-(*   intros m0 f. *)
-(*   unfold for_all. apply fold_rec; intros. *)
-(* - (* Extensionality *) *)
-(*   rewrite H0. split; intros. rewrite <- H in H2; auto. rewrite H in H2; auto. *)
-(* - (* Base case *) *)
-(*   split; intros. rewrite T.gempty in H0; congruence. auto. *)
-(* - (* Inductive case *) *)
-(*   split; intros. *)
-(*   destruct (andb_prop _ _ H2). rewrite T.gsspec in H3. destruct (T.elt_eq x k). *)
-(*   inv H3. auto. *)
-(*   apply H1; auto. *)
-(*   apply andb_true_intro. split. *)
-(*   rewrite H1. intros. apply H2. rewrite T.gso; auto. congruence. *)
-(*   apply H2. apply T.gss. *)
-(* Qed. *)
-
-(* Definition exists_ (m: T.t A) (f: T.elt -> A -> bool) : bool := *)
-(*   T.fold (fun b x a => b || f x a) m false. *)
-
-(* Lemma exists_correct: *)
-(*   forall m f, *)
-(*   exists_ m f = true <-> (exists x a, T.get x m = Some a /\ f x a = true). *)
-(* Proof. *)
-(*   intros m0 f. *)
-(*   unfold exists_. apply fold_rec; intros. *)
-(* - (* Extensionality *) *)
-(*   rewrite H0. split; intros (x0 & a0 & P & Q); exists x0; exists a0; split; auto; congruence. *)
-(* - (* Base case *) *)
-(*   split; intros. congruence. destruct H as (x & a & P & Q). rewrite T.gempty in P; congruence. *)
-(* - (* Inductive case *) *)
-(*   split; intros. *)
-(*   destruct (orb_true_elim _ _ H2). *)
-(*   rewrite H1 in e. destruct e as (x1 & a1 & P & Q). *)
-(*   exists x1; exists a1; split; auto. rewrite T.gso; auto. congruence. *)
-(*   exists k; exists v; split; auto. apply T.gss. *)
-(*   destruct H2 as (x1 & a1 & P & Q). apply orb_true_intro. *)
-(*   rewrite T.gsspec in P. destruct (T.elt_eq x1 k). *)
-(*   inv P. right; auto. *)
-(*   left. apply H1. exists x1; exists a1; auto. *)
-(* Qed. *)
-
-(* Remark exists_for_all: *)
-(*   forall m f, *)
-(*   exists_ m f = negb (for_all m (fun x a => negb (f x a))). *)
-(* Proof. *)
-(*   intros. unfold exists_, for_all. rewrite ! T.fold_spec. *)
-(*   change false with (negb true). generalize (T.elements m) true. *)
-(*   induction l; simpl; intros. *)
-(*   auto. *)
-(*   rewrite <- IHl. f_equal. *)
-(*   destruct b; destruct (f (fst a) (snd a)); reflexivity. *)
-(* Qed. *)
-
-(* Remark for_all_exists: *)
-(*   forall m f, *)
-(*   for_all m f = negb (exists_ m (fun x a => negb (f x a))). *)
-(* Proof. *)
-(*   intros. unfold exists_, for_all. rewrite ! T.fold_spec. *)
-(*   change true with (negb false). generalize (T.elements m) false. *)
-(*   induction l; simpl; intros. *)
-(*   auto. *)
-(*   rewrite <- IHl. f_equal. *)
-(*   destruct b; destruct (f (fst a) (snd a)); reflexivity. *)
-(* Qed. *)
-
-(* Lemma for_all_false: *)
-(*   forall m f, *)
-(*   for_all m f = false <-> (exists x a, T.get x m = Some a /\ f x a = false). *)
-(* Proof. *)
-(*   intros. rewrite for_all_exists. *)
-(*   rewrite negb_false_iff. rewrite exists_correct. *)
-(*   split; intros (x & a & P & Q); exists x; exists a; split; auto. *)
-(*   rewrite negb_true_iff in Q. auto. *)
-(*   rewrite Q; auto. *)
-(* Qed. *)
-
-(* Lemma exists_false: *)
-(*   forall m f, *)
-(*   exists_ m f = false <-> (forall x a, T.get x m = Some a -> f x a = false). *)
-(* Proof. *)
-(*   intros. rewrite exists_for_all. *)
-(*   rewrite negb_false_iff. rewrite for_all_correct. *)
-(*   split; intros. apply H in H0. rewrite negb_true_iff in H0. auto. rewrite H; auto. *)
-(* Qed. *)
-
-(* End FORALL_EXISTS. *)
-
-(* (** More about [beq] *) *)
-
-(* Section BOOLEAN_EQUALITY. *)
-
-(* Variable A: Type. *)
-(* Variable beqA: A -> A -> bool. *)
-
-(* Theorem beq_false: *)
-(*   forall m1 m2, *)
-(*   T.beq beqA m1 m2 = false <-> *)
-(*   exists x, match T.get x m1, T.get x m2 with *)
-(*             | None, None => False *)
-(*             | Some a1, Some a2 => beqA a1 a2 = false *)
-(*             | _, _ => True *)
-(*             end. *)
-(* Proof. *)
-(*   intros; split; intros. *)
-(* - (* beq = false -> existence *) *)
-(*   set (p1 := fun x a1 => match T.get x m2 with None => false | Some a2 => beqA a1 a2 end). *)
-(*   set (p2 := fun x a2 => match T.get x m1 with None => false | Some a1 => beqA a1 a2 end). *)
-(*   destruct (for_all m1 p1) eqn:F1; [destruct (for_all m2 p2) eqn:F2 | idtac]. *)
-(*   + cut (T.beq beqA m1 m2 = true). congruence. *)
-(*     rewrite for_all_correct in *. rewrite T.beq_correct; intros. *)
-(*     destruct (T.get x m1) as [a1|] eqn:X1. *)
-(*     generalize (F1 _ _ X1). unfold p1. destruct (T.get x m2); congruence. *)
-(*     destruct (T.get x m2) as [a2|] eqn:X2; auto. *)
-(*     generalize (F2 _ _ X2). unfold p2. rewrite X1. congruence. *)
-(*   + rewrite for_all_false in F2. destruct F2 as (x & a & P & Q). *)
-(*     exists x. rewrite P. unfold p2 in Q. destruct (T.get x m1); auto. *)
-(*   + rewrite for_all_false in F1. destruct F1 as (x & a & P & Q). *)
-(*     exists x. rewrite P. unfold p1 in Q. destruct (T.get x m2); auto. *)
-(* - (* existence -> beq = false *) *)
-(*   destruct H as [x P]. *)
-(*   destruct (T.beq beqA m1 m2) eqn:E; auto. *)
-(*   rewrite T.beq_correct in E. *)
-(*   generalize (E x). destruct (T.get x m1); destruct (T.get x m2); tauto || congruence. *)
-(* Qed. *)
-
-(* End BOOLEAN_EQUALITY. *)
-
-(* (** Extensional equality between trees *) *)
-
-(* Section EXTENSIONAL_EQUALITY. *)
-
-(* Variable A: Type. *)
-(* Variable eqA: A -> A -> Prop. *)
-(* Hypothesis eqAeq: Equivalence eqA. *)
-
-(* Definition Equal (m1 m2: T.t A) : Prop := *)
-(*   forall x, match T.get x m1, T.get x m2 with *)
-(*                 | None, None => True *)
-(*                 | Some a1, Some a2 => a1 === a2 *)
-(*                 | _, _ => False *)
-(*             end. *)
-
-(* Lemma Equal_refl: forall m, Equal m m. *)
-(* Proof. *)
-(*   intros; red; intros. destruct (T.get x m); auto. reflexivity. *)
-(* Qed. *)
-
-(* Lemma Equal_sym: forall m1 m2, Equal m1 m2 -> Equal m2 m1. *)
-(* Proof. *)
-(*   intros; red; intros. generalize (H x). destruct (T.get x m1); destruct (T.get x m2); auto. intros; symmetry; auto. *)
-(* Qed. *)
-
-(* Lemma Equal_trans: forall m1 m2 m3, Equal m1 m2 -> Equal m2 m3 -> Equal m1 m3. *)
-(* Proof. *)
-(*   intros; red; intros. generalize (H x) (H0 x). *)
-(*   destruct (T.get x m1); destruct (T.get x m2); try tauto; *)
-(*   destruct (T.get x m3); try tauto. *)
-(*   intros. transitivity a0; auto. *)
-(* Qed. *)
-
-(* Instance Equal_Equivalence : Equivalence Equal := { *)
-(*   Equivalence_Reflexive := Equal_refl; *)
-(*   Equivalence_Symmetric := Equal_sym; *)
-(*   Equivalence_Transitive := Equal_trans *)
-(* }. *)
-
-(* Hypothesis eqAdec: EqDec A eqA. *)
-
-(* Program Definition Equal_dec (m1 m2: T.t A) : { m1 === m2 } + { m1 =/= m2 } := *)
-(*   match T.beq (fun a1 a2 => if (a1 == a2) then true else false) m1 m2 with *)
-(*   | true => left _ *)
-(*   | false => right _ *)
-(*   end. *)
-(* Next Obligation. *)
-(*   rename Heq_anonymous into B. *)
-(*   symmetry in B. rewrite T.beq_correct in B. *)
-(*   red; intros. generalize (B x). *)
-(*   destruct (T.get x m1); destruct (T.get x m2); auto. *)
-(*   intros. destruct (equiv_dec a a0).  auto. congruence. *)
-(* Qed. *)
-(* Next Obligation. *)
-(*   assert (T.beq (fun a1 a2 => if (a1 == a2) then true else false) m1 m2 = true). *)
-(*   apply T.beq_correct; intros. *)
-(*   generalize (H x). *)
-(*   destruct (T.get x m1); destruct (T.get x m2); try tauto. *)
-(*   intros. destruct equiv_dec; try congruence. *)
-(*   unfold equiv, complement in H0. congruence. *)
-(* Qed. *)
-
-(* Instance Equal_EqDec : EqDec (T.t A) Equal := Equal_dec. *)
-
-(* End EXTENSIONAL_EQUALITY. *)
-
-(* (** Creating a tree from a list of (key, value) pairs. *) *)
-
-(* Section OF_LIST. *)
-
-(* Variable A: Type. *)
-
-(* Let f := fun (m: T.t A) (k_v: T.elt * A) => T.set (fst k_v) (snd k_v) m. *)
-
-(* Definition of_list (l: list (T.elt * A)) : T.t A := *)
-(*   List.fold_left f l (T.empty _). *)
-
-(* Lemma in_of_list: *)
-(*   forall l k v, T.get k (of_list l) = Some v -> In (k, v) l. *)
-(* Proof. *)
-(*   assert (REC: forall k v l m, *)
-(*            T.get k (fold_left f l m) = Some v -> In (k, v) l \/ T.get k m = Some v). *)
-(*   { induction l as [ | [k1 v1] l]; simpl; intros. *)
-(*   - tauto. *)
-(*   - apply IHl in H. unfold f in H. simpl in H. rewrite T.gsspec in H. *)
-(*     destruct H; auto. *)
-(*     destruct (T.elt_eq k k1). inv H. auto. auto. *)
-(*   } *)
-(*   intros. apply REC in H. rewrite T.gempty in H. intuition congruence. *)
-(* Qed. *)
-
-(* Lemma of_list_dom: *)
-(*   forall l k, In k (map fst l) -> exists v, T.get k (of_list l) = Some v. *)
-(* Proof. *)
-(*   assert (REC: forall k l m, *)
-(*             In k (map fst l) \/ (exists v, T.get k m = Some v) -> *)
-(*             exists v, T.get k (fold_left f l m) = Some v). *)
-(*   { induction l as [ | [k1 v1] l]; simpl; intros. *)
-(*   - tauto. *)
-(*   - apply IHl. unfold f; rewrite T.gsspec. simpl. destruct (T.elt_eq k k1). *)
-(*     right; econstructor; eauto. *)
-(*     intuition congruence. *)
-(*   } *)
-(*   intros. apply REC. auto. *)
-(* Qed. *)
-
-(* Remark of_list_unchanged: *)
-(*   forall k l m, ~In k (map fst l) -> T.get k (List.fold_left f l m) = T.get k m. *)
-(* Proof. *)
-(*   induction l as [ | [k1 v1] l]; simpl; intros. *)
-(* - auto. *)
-(* - rewrite IHl by tauto. unfold f; apply T.gso; intuition auto. *)
-(* Qed. *)
-
-(* Lemma of_list_unique: *)
-(*   forall k v l1 l2, *)
-(*   ~In k (map fst l2) -> T.get k (of_list (l1 ++ (k, v) :: l2)) = Some v. *)
-(* Proof. *)
-(*   intros. unfold of_list. rewrite fold_left_app. simpl. *)
-(*   rewrite of_list_unchanged by auto. unfold f; apply T.gss. *)
-(* Qed. *)
-
-(* Lemma of_list_norepet: *)
-(*   forall l k v, NoDup (map fst l) -> In (k, v) l -> T.get k (of_list l) = Some v. *)
-(* Proof. *)
-(*   assert (REC: forall k v l m, *)
-(*             NoDup (map fst l) -> *)
-(*             In (k, v) l -> *)
-(*             T.get k (fold_left f l m) = Some v). *)
-(*   { induction l as [ | [k1 v1] l]; simpl; intros. *)
-(*     contradiction. *)
-(*     inv H. destruct H0. *)
-(*     inv H. rewrite of_list_unchanged by auto. apply T.gss. *)
-(*     apply IHl; auto. *)
-(*   } *)
-(*   intros; apply REC; auto. *)
-(* Qed. *)
-
-(* Lemma of_list_elements: *)
-(*   forall m k, T.get k (of_list (T.elements m)) = T.get k m. *)
-(* Proof. *)
-(*   intros. destruct (T.get k m) as [v|] eqn:M. *)
-(* - apply of_list_norepet. apply T.elements_keys_norepet. apply T.elements_correct; auto. *)
-(* - destruct (T.get k (of_list (T.elements m))) as [v|] eqn:M'; auto. *)
-(*   apply in_of_list in M'. apply T.elements_complete in M'. congruence. *)
-(* Qed. *)
-
-(* End OF_LIST. *)
-
-(* Lemma of_list_related: *)
-(*   forall (A B: Type) (R: A -> B -> Prop) k l1 l2, *)
-(*   Forall2 (fun ka kb => fst ka = fst kb /\ R (snd ka) (snd kb)) l1 l2 -> *)
-(*   option_rel R (T.get k (of_list l1)) (T.get k (of_list l2)). *)
-(* Proof. *)
-(*   intros until k. unfold of_list. *)
-(*   set (R' := fun ka kb => fst ka = fst kb /\ R (snd ka) (snd kb)). *)
-(*   set (fa := fun (m : T.t A) (k_v : T.elt * A) => T.set (fst k_v) (snd k_v) m). *)
-(*   set (fb := fun (m : T.t B) (k_v : T.elt * B) => T.set (fst k_v) (snd k_v) m). *)
-(*   assert (REC: forall l1 l2, Forall2 R' l1 l2 -> *)
-(*                forall m1 m2, option_rel R (T.get k m1) (T.get k m2) -> *)
-(*                option_rel R (T.get k (fold_left fa l1 m1)) (T.get k (fold_left fb l2 m2))). *)
-(*   { induction 1; intros; simpl. *)
-(*   - auto. *)
-(*   - apply IHForall2. unfold fa, fb. rewrite ! T.gsspec. *)
-(*     destruct H as [E F]. rewrite E. destruct (T.elt_eq k (fst y)). *)
-(*     constructor; auto. *)
-(*     auto. } *)
-(*   intros. apply REC; auto. rewrite ! T.gempty. constructor. *)
-(* Qed. *)
-
-(* End Tree_Properties. *)
-
-(* Module PTree_Properties := Tree_Properties(PTree). *)
 
 (** * Useful notations *)
 

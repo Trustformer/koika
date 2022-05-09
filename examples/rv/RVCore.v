@@ -757,6 +757,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     write1(on_off, read0(on_off)+Ob~1)
   }}.
 
+  (* TODO Check *)
   Definition end_execution : uaction reg_t ext_fn_t := {{
     let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
       valid := read0(halt); data := |8`d1|

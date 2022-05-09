@@ -1,6 +1,6 @@
 (*! Language | Untyped semantics of typed Kôika programs !*)
 Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
-Require Import BitsToLists Desugaring SyntaxMacros.
+Require Import BitsToLists DesugaredSyntax Desugaring SyntaxMacros.
 Require TypeInference TypedSemantics.
 Import PrimTyped PrimUntyped.
 Require Import SimpleVal.
@@ -322,19 +322,15 @@ Definition ubits2_sigma (ub: ubits2) (v1 v2: list bool) : list bool :=
   | UPlus =>
     vect_to_list (
       Bits.of_N (List.length v1) (
-        Bits.to_N (vect_of_list v1) + Bits.to_N (vect_of_list v2)
-      )
-    )
+        Bits.to_N (vect_of_list v1) + Bits.to_N (vect_of_list v2)))
   | UMinus =>
     vect_to_list (Bits.of_N (List.length v1) (Bits.to_N (
       Bits.of_N (List.length v1) (
-        Bits.to_N (vect_of_list v1) + Bits.to_N (Bits.neg (vect_of_list v2))
-      )
-    ) + Bits.to_N (sz:=List.length v1) Bits.one))
+        Bits.to_N (vect_of_list v1) + Bits.to_N (Bits.neg (vect_of_list v2))))
+      + Bits.to_N (sz:=List.length v1) Bits.one))
   | UMul =>
     vect_to_list (Bits.of_N (List.length v1 + List.length v2) (
-      Bits.to_N (vect_of_list v1) * Bits.to_N (vect_of_list v2)
-    ))
+      Bits.to_N (vect_of_list v1) * Bits.to_N (vect_of_list v2)))
   | UCompare signed c =>
     let sz1 := List.length v1 in
     let sz2 := List.length v2 in
@@ -344,17 +340,17 @@ Definition ubits2_sigma (ub: ubits2) (v1 v2: list bool) : list bool :=
       let v2 := rew [Bits.bits] pf in vect_of_list v2 in [((
         if signed then
           match c with
-          | cLt =>  Bits.signed_lt
-          | cGt =>  Bits.signed_gt
-          | cLe =>  Bits.signed_le
-          | cGe =>  Bits.signed_ge
+          | cLt => Bits.signed_lt
+          | cGt => Bits.signed_gt
+          | cLe => Bits.signed_le
+          | cGe => Bits.signed_ge
           end
         else
           match c with
-          | cLt =>  Bits.unsigned_lt
-          | cGt =>  Bits.unsigned_gt
-          | cLe =>  Bits.unsigned_le
-          | cGe =>  Bits.unsigned_ge
+          | cLt => Bits.unsigned_lt
+          | cGt => Bits.unsigned_gt
+          | cLe => Bits.unsigned_le
+          | cGe => Bits.unsigned_ge
           end
       ) v1 v2)]
     | _ => []
@@ -365,23 +361,22 @@ Lemma ubits2_correct:
   forall
     ub b sz1 sz2
     (UB:
-       match ub with
-       | USel => Sel sz1
-       | USliceSubst offset width => SliceSubst sz1 offset width
-       | UIndexedSlice width => IndexedSlice sz1 width
-       | UAnd => And sz1
-       | UOr => Or sz1
-       | UXor => Xor sz1
-       | ULsl => Lsl sz1 sz2
-       | ULsr => Lsr sz1 sz2
-       | UAsr => Asr sz1 sz2
-       | UConcat => Concat sz1 sz2
-       | UPlus => Plus sz1
-       | UMinus => Minus sz1
-       | UMul => Mul sz1 sz2
-       | UCompare signed c => Compare signed c sz1
-       end = b
-    )
+      match ub with
+      | USel => Sel sz1
+      | USliceSubst offset width => SliceSubst sz1 offset width
+      | UIndexedSlice width => IndexedSlice sz1 width
+      | UAnd => And sz1
+      | UOr => Or sz1
+      | UXor => Xor sz1
+      | ULsl => Lsl sz1 sz2
+      | ULsr => Lsr sz1 sz2
+      | UAsr => Asr sz1 sz2
+      | UConcat => Concat sz1 sz2
+      | UPlus => Plus sz1
+      | UMinus => Minus sz1
+      | UMul => Mul sz1 sz2
+      | UCompare signed c => Compare signed c sz1
+      end = b)
     (arg1: arg1Sig (PrimSignatures.Sigma2 (PrimTyped.Bits2 b)))
     (arg2: arg2Sig (PrimSignatures.Sigma2 (PrimTyped.Bits2 b))) ret,
   CircuitPrimSpecs.sigma2 b arg1 arg2 = ret ->
@@ -424,8 +419,7 @@ Proof.
     rewrite ! Bits.to_N_rew.
     eapply vect_to_list_eq.
     erewrite (
-      f_equal_dep _ (fun x => Bits.of_N x (Bits.to_N arg1 + Bits.to_N arg2))
-    ).
+      f_equal_dep _ (fun x => Bits.of_N x (Bits.to_N arg1 + Bits.to_N arg2))).
     Unshelve. 2: apply vect_to_list_length. auto.
   - unfold Bits.minus.
     rewrite ! vect_of_list_to_list.
@@ -460,17 +454,17 @@ Proof.
         vect_to_list (BitFuns.bitfun_of_predicate (
           if signed then
             match c with
-            | cLt =>  Bits.signed_lt
-            | cGt =>  Bits.signed_gt
-            | cLe =>  Bits.signed_le
-            | cGe =>  Bits.signed_ge
+            | cLt => Bits.signed_lt
+            | cGt => Bits.signed_gt
+            | cLe => Bits.signed_le
+            | cGe => Bits.signed_ge
             end
           else
             match c with
-            | cLt =>  Bits.unsigned_lt
-            | cGt =>  Bits.unsigned_gt
-            | cLe =>  Bits.unsigned_le
-            | cGe =>  Bits.unsigned_ge
+            | cLt => Bits.unsigned_lt
+            | cGt => Bits.unsigned_gt
+            | cLe => Bits.unsigned_le
+            | cGe => Bits.unsigned_ge
           end) arg1 arg2
         )
       ).
@@ -482,12 +476,11 @@ Qed.
 
 Definition sigma2 (fn: ufn2) (v1 v2: val) : option val :=
   match fn with
-  | UEq false  => Some (Bits [if val_eq_dec v1 v2 then true else false])
-  | UEq true  =>  Some (Bits [if val_eq_dec v1 v2 then false else true])
+  | UEq false => Some (Bits [if val_eq_dec v1 v2 then true else false])
+  | UEq true  => Some (Bits [if val_eq_dec v1 v2 then false else true])
   | UBits2 fn =>
     match v1, v2 with
-    | Bits v1, Bits v2 =>
-      let res := ubits2_sigma fn v1 v2 in Some (Bits res)
+    | Bits v1, Bits v2 => let res := ubits2_sigma fn v1 v2 in Some (Bits res)
     | _, _ => None
     end
   | UStruct2 (USubstField fname) =>
@@ -518,9 +511,10 @@ Definition sigma2 (fn: ufn2) (v1 v2: val) : option val :=
     match v1, v2 with
     | Bits v1, Bits v2 =>
       let res :=
-        ubits2_sigma (
-          USliceSubst ((array_len sig - S n) * element_sz sig) (element_sz sig)
-        ) v1 v2
+        ubits2_sigma
+          (USliceSubst
+            ((array_len sig - S n) * element_sz sig) (element_sz sig))
+          v1 v2
       in Some (Bits res)
     | _, _ => None
     end
@@ -532,7 +526,7 @@ Lemma sigma2_correct:
   forall
     (arg1: arg1Sig (PrimSignatures.Sigma2 fn))
     (arg2: arg2Sig (PrimSignatures.Sigma2 fn)),
-    sigma2 ufn (val_of_value arg1) (val_of_value arg2)
+  sigma2 ufn (val_of_value arg1) (val_of_value arg2)
   = Some (val_of_value (PrimSpecs.sigma2 fn arg1 arg2)).
 Proof.
   destruct ufn; simpl; intros.
@@ -667,9 +661,9 @@ Section Interp.
   Qed.
 
   Lemma length_nodup_le_1:
-    forall {A} (l: list A),
-    NoDup l ->
-      (forall x1 x2, In x1 l -> In x2 l -> x1 = x2) -> List.length l <= 1.
+    forall {A} (l: list A), NoDup l
+    -> (forall x1 x2, In x1 l -> In x2 l -> x1 = x2)
+    -> List.length l <= 1.
   Proof.
     induction 1; simpl; intros; eauto.
     destruct l; simpl in *; auto.
@@ -995,10 +989,11 @@ Section Interp.
     end.
 
   Fixpoint interp_daction
-           {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
-           (sigma: forall f: ext_fn_t, val -> val) (Gamma: list (var_t * val))
-           (sched_log: Log REnv) (action_log: Log REnv)
-           (a: @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t) {struct a}
+    {reg_t ext_fn_t: Type} {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
+    (sigma: forall f: ext_fn_t, val -> val) (Gamma: list (var_t * val))
+    (sched_log: Log REnv) (action_log: Log REnv)
+    (a: @DesugaredSyntax.daction pos_t var_t fn_name_t reg_t ext_fn_t)
+    {struct a}
   : option (Log REnv * val * list (var_t * val)) :=
     match a with
     | DError e => None
@@ -1084,43 +1079,40 @@ Section Interp.
     end.
 
   Lemma uaction_to_daction_list:
-    forall reg_t ext_fn_t F
-           args
-           (l : list daction)
-           (Heqo : Forall2 (fun a d => F a = Some d) args l)
-           (H0 : Forall
-                   (fun u : Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t =>
-                      forall (REnv : Env reg_t) (r : env_t REnv (fun _ : reg_t => val))
-                             (sigma : ext_fn_t -> val -> val) (Gamma : list (var_t * val))
-                             (sched_log action_log : Log REnv) (d : daction),
-                        F u = Some d ->
-                        interp_action r sigma Gamma sched_log action_log u =
-                          interp_daction r sigma Gamma sched_log action_log d) args)
-           (REnv : Env reg_t)
-           (r : env_t REnv (fun _ : reg_t => val))
-           (sigma : ext_fn_t -> val -> val)
-           sched_log
-           acc,
-fold_left
-      (fun (acc : option (Log REnv * list val * list (var_t * val)))
-         (a0 : Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t) =>
+    forall reg_t ext_fn_t F args (l: list daction)
+      (Heqo: Forall2 (fun a d => F a = Some d) args l)
+      (H0: Forall
+         (fun u: Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t =>
+            forall (REnv : Env reg_t) (r : env_t REnv (fun _ : reg_t => val))
+              (sigma : ext_fn_t -> val -> val) (Gamma : list (var_t * val))
+              (sched_log action_log : Log REnv) (d : daction),
+            F u = Some d
+            -> interp_action r sigma Gamma sched_log action_log u
+            = interp_daction r sigma Gamma sched_log action_log d)
+         args)
+      (REnv: Env reg_t) (r: env_t REnv (fun _ : reg_t => val))
+      (sigma: ext_fn_t -> val -> val) sched_log acc,
+    fold_left
+      (fun
+        (acc : option (Log REnv * list val * list (var_t * val)))
+        (a0 : Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      =>
        match acc with
        | Some (action_log0, l0, Gamma0) =>
-           match interp_action r sigma Gamma0 sched_log action_log0 a0 with
-           | Some (action_log1, v, Gamma1) =>
-               Some (action_log1, v :: l0, Gamma1)
-           | None => None
-           end
+         match interp_action r sigma Gamma0 sched_log action_log0 a0 with
+         | Some (action_log1, v, Gamma1) => Some (action_log1, v :: l0, Gamma1)
+         | None => None
+         end
        | None => None
        end) args acc =
-fold_left
+    fold_left
       (fun (acc : option (Log REnv * list val * list (var_t * val)))
-         (a0 : @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t) =>
+         (a0 : @DesugaredSyntax.daction pos_t var_t fn_name_t reg_t ext_fn_t) =>
        match acc with
        | Some (action_log0, l0, Gamma0) =>
            match interp_daction r sigma Gamma0 sched_log action_log0 a0 with
            | Some (action_log1, v, Gamma1) =>
-               Some (action_log1, v :: l0, Gamma1)
+             Some (action_log1, v :: l0, Gamma1)
            | None => None
            end
        | None => None
@@ -1130,21 +1122,20 @@ fold_left
     destr. destr. destr.
     inv H0. erewrite H3; eauto.
     clear.
-    assert(forall {A B: Type} (f: option A -> B -> option A)
-                  (Fnone: forall x, f None x = None) l,
-              fold_left f l None = None
-          ).
-    {
-      clear. induction l; simpl; intros; eauto. rewrite Fnone; auto.
-    }
+    assert (
+      forall {A B: Type} (f: option A -> B -> option A)
+        (Fnone: forall x, f None x = None) l,
+      fold_left f l None = None
+    ).
+    { clear. induction l; simpl; intros; eauto. rewrite Fnone; auto. }
     rewrite H; auto.
     rewrite H; auto.
   Qed.
 
   Lemma map_error_forall2:
     forall {A B: Type} (f: A -> option B) (l1: list A) (l2: list B),
-      map_error f l1 = Some l2 ->
-      Forall2 (fun a b => f a = Some b) l1 l2.
+    map_error f l1 = Some l2
+    -> Forall2 (fun a b => f a = Some b) l1 l2.
   Proof.
     induction l1; simpl; intros; eauto. inv H; auto.
     unfold opt_bind in H; repeat destr_in H; inv H.
@@ -1158,36 +1149,16 @@ fold_left
     fold_left f l None = None.
   Proof. induction l; simpl; intros; eauto. rewrite Fnone. auto. Qed.
 
-  (* Lemma map_error_fold: *)
-  (*   forall {A B} (f: A -> option B) l1 acc, *)
-  (*     fold_left (fun acc elt => *)
-  (*                  let/opt acc := acc in *)
-  (*                  let/opt fa := f elt in *)
-  (*                  Some (fa::acc) *)
-  (*               ) l1 (Some acc) = option_map (fun l => rev l ++ acc) (map_error f l1). *)
-  (* Proof. *)
-  (*   induction l1; simpl; intros; eauto. *)
-  (*   destruct (f a) eqn:?; simpl; eauto. *)
-  (*   - rewrite IHl1. *)
-  (*     destruct (map_error f l1) eqn:?; simpl; intros; eauto. *)
-  (*     rewrite <- app_assoc. reflexivity. *)
-  (*   - rewrite fold_left_none. *)
-  (*     destruct (map_error f l1) eqn:?; simpl; intros; eauto. *)
-  (*     unfold opt_bind; simpl; intros. auto. *)
-  (* Qed. *)
-
   Lemma uaction_to_daction_interp:
     forall
       {reg_t ext_fn_t: Type}
       (a: @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
       {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
-      (sigma: forall f: ext_fn_t, val -> val)
-      (Gamma: list (var_t * val))
-      (sched_log: Log REnv) (action_log: Log REnv)
-      d
+      (sigma: forall f: ext_fn_t, val -> val) (Gamma: list (var_t * val))
+      (sched_log: Log REnv) (action_log: Log REnv) d
       (U2D: uaction_to_daction a = Some d),
-      interp_action r sigma Gamma sched_log action_log a =
-        interp_daction r sigma Gamma sched_log action_log d.
+    interp_action r sigma Gamma sched_log action_log a
+    = interp_daction r sigma Gamma sched_log action_log d.
   Proof.
     intros reg_t ext_fn_t a.
     pattern a.
@@ -1228,7 +1199,6 @@ fold_left
       erewrite H; eauto.
   Qed.
 
-
   Fixpoint uprogn2 {reg_t ext_fn_t} (aa: list (uaction reg_t ext_fn_t)) dft :=
     match aa with
     | [] => dft
@@ -1237,8 +1207,8 @@ fold_left
     end.
 
   Lemma repeat_take_drop:
-    forall {A} n m (a: A),
-    n <= m -> take_drop n (repeat a m) = Some (repeat a n, repeat a (m - n)).
+    forall {A} n m (a: A), n <= m
+    -> take_drop n (repeat a m) = Some (repeat a n, repeat a (m - n)).
   Proof.
     induction n; simpl; intros; eauto. rewrite Nat.sub_0_r. auto.
     destruct m. lia. simpl.
@@ -1254,10 +1224,8 @@ fold_left
   Qed.
 
   Lemma bits_splitn_succeeds:
-    forall n sz l,
-    List.length l = n * sz
-    -> exists l',
-    bits_splitn n sz l = Some l'
+    forall n sz l, List.length l = n * sz
+    -> exists l', bits_splitn n sz l = Some l'
     /\ Forall (fun l => List.length l = sz) l' /\ List.length l' = n.
   Proof.
     induction n; simpl; intros; eauto.
@@ -1270,8 +1238,8 @@ fold_left
   Qed.
 
   Lemma uvalue_of_bits_succeeds:
-    forall t l,
-    List.length l = type_sz t -> exists x, uvalue_of_bits (tau:=t) l = Some x.
+    forall t l, List.length l = type_sz t
+    -> exists x, uvalue_of_bits (tau:=t) l = Some x.
   Proof.
     intros t.
     pattern t.
@@ -1359,8 +1327,7 @@ fold_left
     forall Gamma sched_log action_log sig,
     exists vs,
     uvalue_of_struct_bits
-      (struct_fields sig)
-      (repeat false (struct_fields_sz (struct_fields sig)))
+      (struct_fields sig) (repeat false (struct_fields_sz (struct_fields sig)))
     = Some vs
     /\ interp_action r sigma Gamma sched_log action_log (uinit (struct_t sig))
       = Some (action_log, Struct sig vs, Gamma).
@@ -1400,15 +1367,16 @@ fold_left
 
   Lemma uprogn_eq {reg_t ext_fn_t: Type}:
     forall aa,
-    uprogn aa =
-      uprogn2 (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) aa (UConst (tau:=bits_t 0) Ob)
-    .
+    uprogn aa
+    = uprogn2
+      (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) aa (UConst (tau:=bits_t 0) Ob).
   Proof. induction aa; simpl; intros; eauto. rewrite IHaa. reflexivity. Qed.
 
   Lemma Forall2_length:
     forall {A B: Type} (P : A -> B -> Prop) la lb,
     Forall2 P la lb -> List.length la = List.length lb.
   Proof. induction 1; simpl; intros; eauto. Qed.
+
   Lemma same_lists:
     forall {A: Type} (l1 l2: list A) y,
     Forall (fun x => Some x = y) l1
@@ -1598,7 +1566,8 @@ fold_left
   End Scheduler.
   Section DScheduler.
     Context {reg_t ext_fn_t: Type}.
-    Context (rules: rule_name_t -> @daction pos_t var_t fn_name_t reg_t ext_fn_t).
+    Context (rules:
+      rule_name_t -> @daction pos_t var_t fn_name_t reg_t ext_fn_t).
 
     Fixpoint interp_dscheduler'
       {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
@@ -1649,8 +1618,9 @@ fold_left
   Lemma uscheduler'_to_dscheduler'_interp:
     forall
       {reg_t ext_fn_t: Type}
-      (rules: rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-      (drules: rule_name_t -> @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (rules:
+        rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (drules: rule_name_t -> @daction pos_t var_t fn_name_t reg_t ext_fn_t)
       (U2A: forall rl, uaction_to_daction (rules rl) = Some (drules rl))
       {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
       (sigma: forall f: ext_fn_t, val -> val)
@@ -1669,8 +1639,9 @@ fold_left
   Lemma uscheduler_to_dscheduler_interp:
     forall
       {reg_t ext_fn_t: Type}
-      (rules: rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-      (drules: rule_name_t -> @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (rules:
+        rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (drules: rule_name_t -> @daction pos_t var_t fn_name_t reg_t ext_fn_t)
       (U2A: forall rl, uaction_to_daction (rules rl) = Some (drules rl))
       {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
       (sigma: forall f: ext_fn_t, val -> val)
@@ -1685,8 +1656,9 @@ fold_left
   Lemma ucycle_to_dcycle_interp:
     forall
       {reg_t ext_fn_t: Type}
-      (rules: rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
-      (drules: rule_name_t -> @Syntax.daction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (rules:
+        rule_name_t -> @Syntax.uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+      (drules: rule_name_t -> @daction pos_t var_t fn_name_t reg_t ext_fn_t)
       (U2A: forall rl, uaction_to_daction (rules rl) = Some (drules rl))
       {REnv: Env reg_t} (r: REnv.(env_t) (fun _ => val))
       (sigma: forall f: ext_fn_t, val -> val)
@@ -1704,8 +1676,7 @@ Section Desugar.
   Context {var_t pos_t fn_name_t: Type}.
   Context {var_t_eq_dec: EqDec var_t}.
 
-  Inductive match_states
-    reg_t reg_t' REnv REnv' (fR: reg_t' -> reg_t)
+  Inductive match_states reg_t reg_t' REnv REnv' (fR: reg_t' -> reg_t)
   : option (Log REnv' * val * list (var_t * val))
     -> option (Log REnv * val * list (var_t * val)) -> Prop
   :=

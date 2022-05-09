@@ -16,14 +16,14 @@ Module Internals.
 
   Ltac2 eval_simpl c :=
     Std.eval_simpl {
-        Std.rBeta := true;
-        Std.rMatch := true;
-        Std.rFix := true;
-        Std.rCofix := true;
-        Std.rZeta := true;
-        Std.rDelta := true;
-        Std.rConst := []
-      } None c.
+      Std.rBeta := true;
+      Std.rMatch := true;
+      Std.rFix := true;
+      Std.rCofix := true;
+      Std.rZeta := true;
+      Std.rDelta := true;
+      Std.rConst := []
+    } None c.
 
   Ltac2 rec list_map fn l :=
     match l with
@@ -50,10 +50,10 @@ Module Internals.
 
   Ltac2 unpack_app c :=
     let rec loop acc c :=
-        match! c with
-        | ?f ?x => loop (x :: acc) f
-        | ?x => x, acc
-        end in
+      match! c with
+      | ?f ?x => loop (x :: acc) f
+      | ?x => x, acc
+      end in
     loop [] c.
 
   Definition blocked (A: Type) := A.
@@ -76,12 +76,13 @@ Module Internals.
     end.
 
   Ltac2 derive_show_begin () :=
-    ltac1:(match goal with
-           | [  |- Show ?type ] =>
-             econstructor;
-               let term := fresh in
-               intro term; pose proof (@Track type term); destruct term
-           end).
+    ltac1:(
+      match goal with
+      | [  |- Show ?type ] =>
+        econstructor;
+        let term := fresh in intro term;
+        pose proof (@Track type term); destruct term
+      end).
 
   Ltac2 derive_show_recurse arg :=
     (* let instance := constr:(ltac:(typeclasses eauto) : Show (type_of $arg)) in *)
@@ -91,12 +92,14 @@ Module Internals.
     lazy_match! goal with
     | [ _: Tracked ?app |- _ ] =>
       match unpack_app app with
-      | (hd, args) => let hd_path := path_of_constructor hd in
-                     let hd_str := constr:(String.concat "_" (butlast $hd_path)) in
-                     let arg_strs := coq_list_of_list constr:(String.string) derive_show_recurse args in
-                     let str := constr:(String.concat "_" ($hd_str :: $arg_strs)) in
-                     let str := eval_simpl str in
-                     exact $str
+      | (hd, args) =>
+        let hd_path := path_of_constructor hd in
+        let hd_str := constr:(String.concat "_" (butlast $hd_path)) in
+        let arg_strs :=
+          coq_list_of_list constr:(String.string) derive_show_recurse args in
+        let str := constr:(String.concat "_" ($hd_str :: $arg_strs)) in
+        let str := eval_simpl str in
+        exact $str
       end
     end.
 

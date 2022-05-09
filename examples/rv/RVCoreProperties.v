@@ -2,10 +2,9 @@
 Require Import Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
   Koika.ProgramTactics Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs
-  UntypedIndSemantics Koika.UntypedSemantics.
+  UntypedIndSemantics Koika.UntypedSemantics Koika.DesugaredSyntax.
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm Koika.SimpleFormInterpretation.
-(* Require Import Koika.SimpleFormInterpretationb Koika.SimpleFormb. *)
 Require Import SimpleVal.
 
 Ltac destr_in H :=
@@ -32,97 +31,227 @@ Module RVProofs.
     | None => DFail unit_t
     end.
 
-  Set Typeclasses Debug.
+  (* Set Typeclasses Debug. *)
   Instance eq_dec_reg: EqDec RV32I.reg_t := EqDec_FiniteType.
   Existing Instance etaRuleInformationRaw.
 
-
   Section test1.
-    Variable REnv: Env RV32I.reg_t.
-    Variable ctx : env_t REnv (fun _ => val).
-    Hypothesis WTRENV: Wt.wt_renv RV32I.R REnv ctx.
+  Variable REnv: Env RV32I.reg_t.
+  Variable ctx : env_t REnv (fun _ => val).
+  Hypothesis WTRENV: Wt.wt_renv RV32I.R REnv ctx.
 
     Hypothesis wt_sigma: forall (ufn : RV32I.ext_fn_t) (vc : val),
-        wt_val (arg1Sig (ext_Sigma ufn)) vc ->
-        wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc).
+      wt_val (arg1Sig (ext_Sigma ufn)) vc
+      -> wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc).
 
     Hypothesis rules_wt:
-      forall rule : rv_rules_t,
-      exists t : type, wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string [] (drules rule) t.
+      forall rule : rv_rules_t, exists t : type,
+      wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string []
+        (drules rule) t.
 
-    (* Lemma update_on_off_failure: *)
-    (*   forall nid r2v vss sched_rir rir r2v' nid' , *)
-    (*     get_rule_information RV32I.R (Sigma:=ext_Sigma) (drules UpdateOnOff) nid r2v vss sched_rir = *)
-    (*       (rir, r2v', nid') -> *)
-    (*     wf_state  (Sigma:=ext_Sigma) RV32I.R [] [] r2v vss init_rir nid -> *)
-    (*     forall r2v0 nid0, *)
-    (*     wf_state RV32I.R (Sigma:=ext_Sigma) [] [] r2v0 (rir_vars sched_rir) sched_rir nid0 -> *)
-    (*     vvs_grows (rir_vars sched_rir) vss -> *)
-    (*     interp_sact REnv (sigma:=ext_sigma) ctx (rir_vars sched_rir) *)
-    (*                   (uor *)
-    (*                      (rir_has_write0 sched_rir RV32I.on_off) *)
-    (*                      (rir_has_write1 sched_rir RV32I.on_off)) (Bits [false]) -> *)
-    (*       interp_sact REnv (sigma:=ext_sigma) ctx (rir_vars rir) *)
-    (*                   (rir_failure_cond rir) (Bits [false]). *)
-    (* Proof. *)
-    (*   intros nid r2v vss sched_rir rir r2v' nid' GRI WFS r2v0 nid0 WFR VG ONOFFNoWrite. *)
-    (*   unfold get_rule_information in GRI. *)
-    (*   repeat destr_in GRI. inv GRI. simpl. *)
-    (*   cbn in Heqp. *)
-    (*   edestruct (@wfs_r2v_vvs) as (y & GET1 & z & GET2). apply WFS. *)
-    (*   rewrite GET1 in Heqp. *)
-    (*   inv Heqp. *)
-    (*   apply interp_uor_false2. *)
-    (*   apply interp_uor_false2. *)
-    (*   eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS. lia. *)
-    (*   eapply vvs_grows_interp_sact. 2: apply ONOFFNoWrite. auto. *)
-    (*   repeat constructor. *)
-    (*   econstructor. constructor. unfold or_conds. simpl. *)
-    (*   instantiate (1:=Bits [false]). 2: reflexivity. *)
-    (*   change (rir_has_write1 (add_read0 init_rir const_true RV32I.on_off) RV32I.on_off) *)
-    (*     with (rir_has_write1 (ext_fn_t:=RV32I.ext_fn_t) init_rir RV32I.on_off). *)
-    (*   econstructor. *)
-    (*   instantiate (1:=Bits [false]). *)
-    (*   2: instantiate (1:=Bits [false]). *)
-    (*   3: reflexivity. *)
-    (*   econstructor. econstructor. *)
-    (*   unfold rir_has_write1, init_rir. simpl. econstructor. reflexivity. *)
-    (*   Sact.exploit @wt_rir_has_write0. apply WFR. *)
-    (*   Sact.exploit @wt_rir_has_write1. apply WFR. *)
-    (*   inv ONOFFNoWrite. *)
-    (*   intros WT1 WT2. *)
-    (*   Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT1. 1-3: apply WFR. *)
-    (*   apply H4. intro WTv1. *)
-    (*   Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT2. 1-3: apply WFR. *)
-    (*   apply H2. intro WTv2. *)
-    (*   apply Sact.wt_val_bool in WTv1. *)
-    (*   apply Sact.wt_val_bool in WTv2. *)
-    (*   destruct WTv1, WTv2. subst. simpl in H5. inv H5. *)
-    (*   apply orb_false_iff in H0. destruct H0; subst. *)
-    (*   eapply vvs_grows_interp_sact. 2: apply H4. *)
-    (*   eapply vvs_grows_trans. eauto. eapply vvs_grows_set. apply WFS. lia. *)
-    (* Qed. *)
+    (* Set Printing Depth 20. *)
+
+    Lemma fail_schedule:
+      forall (HALT_TRUE: getenv REnv ctx RV32I.halt = Bits [true])
+        (sf :=
+          (schedule_to_simple_form
+            RV32I.R (Sigma := ext_Sigma) drules
+            (UpdateOnOff |> Writeback |> Execute |> done))),
+      getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
+    Proof.
+      intros.
+      erewrite <- replace_reg_interp_cycle_ok; eauto.
+      rewrite HALT_TRUE.
+      erewrite <- simplify_sf_interp_cycle_ok; eauto.
+      set (
+        sf' :=
+          simplify_sf
+            ctx ext_sigma
+            (replace_reg sf RV32I.halt (Bits [true]))).
+      assert (
+        prune_irrelevant sf' RV32I.halt
+        = Some (prune_irrelevant_aux sf' RV32I.halt 1789)).
+      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
+      eapply prune_irrelevant_interp_cycle_ok in H.
+      2: eauto. 2: eauto.
+      rewrite <- H. clear H.
+      subst sf'.
+      set (sf' :=
+        (prune_irrelevant_aux
+          (simplify_sf ctx ext_sigma
+             (replace_reg sf RV32I.halt (Bits [true])))
+          RV32I.halt 1789)
+      ).
+      assert (
+        prune_irrelevant (collapse_sf sf') RV32I.halt
+        = Some (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
+      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
+      eapply collapse_prune_ok in H.
+      2: eauto. 2: eauto.
+      rewrite <- H. clear H.
+      set (sf'' := prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789).
+      assert (
+        prune_irrelevant (collapse_sf sf'') RV32I.halt
+        = Some (prune_irrelevant_aux (collapse_sf sf'') RV32I.halt 1789)).
+      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
+      eapply collapse_prune_ok in H.
+      2: eauto. 2: eauto.
+      rewrite <- H. clear H.
+      set (sf''' := prune_irrelevant_aux (collapse_sf sf'') RV32I.halt 1789).
+      vm_compute in sf'.
+      Compute (List.length (Maps.PTree.elements (vars sf))).
+      Compute (List.length (Maps.PTree.elements (vars sf'))).
+      subst sf'.
+      vm_compute in sf''.
+      Compute (List.length (Maps.PTree.elements (vars sf''))).
+      subst sf''.
+      vm_compute in sf'''.
+      Compute (List.length (Maps.PTree.elements (vars sf'''))).
+      clear sf.
+      rename sf''' into sf.
+      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf).
+      erewrite <- simplify_sifs_sf_interp_cycle_ok; eauto.
+      set (sf' := simplify_sifs_sf ctx ext_sigma sf).
+      subst sf.
+      vm_compute simplify_sifs_sf in sf'.
+      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
+      Compute (
+        eval_sact_no_vars ctx ext_sigma
+          (SBinop (UEq false) (SConst (Bits [true])) (SConst (Bits [true])))).
+      Compute (eval_sact_no_vars ctx ext_sigma (SConst (Bits [true]))).
+      Require Import Coq.Lists.List.
+      Scheme Equality for list.
+      Compute (list_beq bool (Bool.eqb) [] [true]).
+      Compute (val_eq_dec (Bits [true]) (Bits [true])).
+
+       (SBinop (UEq false) (SConst (Bits [true])) (SConst (Bits [true])))
+
+      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf').
+      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
+      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
+
+      erewrite <- simplify_sf_interp_cycle_ok; eauto.
+      unfold simplify_sf.
+      vm_compute final_values.
+      unfold simplify_vars.
+      subst sf.
+      vm_compute.
+      set (sf' := simplify_sf ctx ext_sigma sf).
+      subst sf.
+
+      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
+      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
+      Time Eval vm_compute in Maps.PTree.get 96 (vars sf).
+      Time Eval vm_compute in Maps.PTree.get 1482 (vars sf).
+      Time Eval vm_compute in Maps.PTree.get 49 (vars sf).
+      subst sf'.
+      vm_compute simplify_sf.
+
+      erewrite <- replace_reg_interp_cycle_ok; eauto.
+      set (sf' := simplify_sf ctx ext_sigma
+        (replace_reg
+           {|
+             final_values := [(RV32I.halt, 1789%positive)];
+             vars :=
+               filter_ptree (vars sf)
+                 (Maps.PTree.empty (type * SimpleForm.sact))
+                 (useful_vars_for_var sf 1789)
+           |} RV32I.halt (getenv REnv ctx RV32I.halt))).
+      Compute (List.length (Maps.PTree.elements (vars sf))).
+      vm_compute in sf'.
+      Compute (List.length (Maps.PTree.elements (vars sf'))).
+
+      Eval native_compute in
+        Maps.PTree.fold
+          (fun acc k a => (k, regs_in_sact_aux (snd a) [])::acc) (vars ss) [].
+      Eval native_compute in useful_regs_for_var ss 1789.
+
+    Lemma update_on_off_failure:
+      forall nid r2v vss sched_rir rir r2v' nid',
+      get_rule_information RV32I.R (Sigma:=ext_Sigma) (drules UpdateOnOff) nid
+        r2v vss sched_rir
+      = (rir, r2v', nid')
+      -> wf_state (Sigma:=ext_Sigma) RV32I.R [] [] r2v vss init_rir nid
+      -> forall r2v0 nid0,
+         wf_state RV32I.R (Sigma:=ext_Sigma) [] [] r2v0 (rir_vars sched_rir)
+           sched_rir nid0
+      -> vvs_grows (rir_vars sched_rir) vss
+      -> interp_sact REnv (sigma:=ext_sigma) ctx (rir_vars sched_rir)
+           (uor
+             (rir_has_write0 sched_rir RV32I.on_off)
+             (rir_has_write1 sched_rir RV32I.on_off))
+           (Bits [false])
+      -> interp_sact REnv (sigma:=ext_sigma) ctx (rir_vars rir)
+           (rir_failure_cond rir) (Bits [false]).
+    Proof.
+      intros nid r2v vss sched_rir rir r2v' nid' GRI WFS r2v0 nid0 WFR VG
+        ONOFFNoWrite.
+      unfold get_rule_information in GRI.
+      repeat destr_in GRI. inv GRI. simpl.
+      cbn in Heqp.
+      edestruct (@wfs_r2v_vvs) as (y & GET1 & z & GET2). apply WFS.
+      rewrite GET1 in Heqp.
+      inv Heqp.
+      apply interp_uor_false2.
+      apply interp_uor_false2.
+      eapply vvs_grows_interp_sact. eapply vvs_grows_set. apply WFS. lia.
+      eapply vvs_grows_interp_sact. 2: apply ONOFFNoWrite. auto.
+      repeat constructor.
+      econstructor. constructor. unfold or_conds. simpl.
+      instantiate (1:=Bits [false]). 2: reflexivity.
+      change (
+        rir_has_write1 (add_read0 init_rir const_true RV32I.on_off) RV32I.on_off
+      ) with (rir_has_write1 (ext_fn_t:=RV32I.ext_fn_t) init_rir RV32I.on_off).
+      econstructor.
+      instantiate (1:=Bits [false]).
+      2: instantiate (1:=Bits [false]).
+      3: reflexivity.
+      econstructor. econstructor.
+      unfold rir_has_write1, init_rir. simpl. econstructor. reflexivity.
+      Sact.exploit @wt_rir_has_write0. apply WFR.
+      Sact.exploit @wt_rir_has_write1. apply WFR.
+      inv ONOFFNoWrite.
+      intros WT1 WT2.
+      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV.
+      4: apply WT1. 1-3: apply WFR.
+      apply H4. intro WTv1.
+      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV.
+      4: apply WT2. 1-3: apply WFR.
+      apply H2. intro WTv2.
+      apply Sact.wt_val_bool in WTv1.
+      apply Sact.wt_val_bool in WTv2.
+      destruct WTv1, WTv2. subst. simpl in H5. inv H5.
+      apply orb_false_iff in H0. destruct H0; subst.
+      eapply vvs_grows_interp_sact. 2: apply H4.
+      eapply vvs_grows_trans. eauto. eapply vvs_grows_set. apply WFS. lia.
+    Qed.
 
     Definition simplify_sf  sf ctx :=
       {|
         final_values := final_values sf;
-        vars := Maps.PTree.map (fun _ '(t,a) => (t, simplify_sact (REnv:=REnv) (reg_t:=RV32I.reg_t) ctx ext_sigma a)) (vars sf)
-
+        vars :=
+          Maps.PTree.map
+            (fun _ '(t,a) =>
+              (t,
+               simplify_sact (REnv:=REnv) (reg_t:=RV32I.reg_t) ctx ext_sigma a)
+            )
+            (vars sf)
       |}.
-    
+
     Lemma fail_schedule:
       forall ss1,
-        (remove_vars_for_var (schedule_to_simple_form
-                                  RV32I.R (Sigma:=ext_Sigma) drules
-                                  (UpdateOnOff |> Writeback |> Execute (* |> Decode |> WaitImem *)
-                                               (* |> Fetch |> Imem |> Dmem |> Tick *)
-                                               (* |> EndExecution  *)|> done)) RV32I.halt) = Some ss1 ->
-        let ss := simplify_sf ss1 ctx in
-        forall n t s,
-        list_assoc (final_values ss) RV32I.halt = Some n ->
-        Maps.PTree.get n (vars ss) = Some (t,s) ->
-        do_eval_sact ctx ext_sigma (vars ss) s = Some (Bits [true])
-    .
+      (remove_vars_for_var
+        (schedule_to_simple_form
+          RV32I.R (Sigma:=ext_Sigma) drules
+          (UpdateOnOff |> Writeback |> Execute
+          (* |> Decode |> WaitImem |> Fetch |> Imem |> Dmem |> Tick *)
+          (* |> EndExecution  *)|> done)
+        ) RV32I.halt
+      ) = Some ss1
+      -> let ss := simplify_sf ss1 ctx in
+      forall n t s, list_assoc (final_values ss) RV32I.halt = Some n
+      -> Maps.PTree.get n (vars ss) = Some (t,s)
+      -> do_eval_sact ctx ext_sigma (vars ss) s = Some (Bits [true]).
     Proof.
       intros.
       Set Printing Depth 20.
@@ -136,23 +265,26 @@ Module RVProofs.
       native_compute in H1.
       apply Some_inj in H1.
       apply pair_inj in H1. destruct H1 as (_ & EQs). subst s.
-      cut (eval_sact ctx ext_sigma (vars ss) (SIf (SVar 1788) (SVar 96) (SVar 1758)) 4100 = Some (Bits [true])).
-      intro B; unfold do_eval_sact; rewrite <- B; f_equal. 
+      cut (
+        eval_sact ctx ext_sigma (vars ss)
+          (SIf (SVar 1788) (SVar 96) (SVar 1758)) 4100
+        = Some (Bits [true])
+      ).
+      intro B; unfold do_eval_sact; rewrite <- B; f_equal.
       Eval native_compute in
-        Maps.PTree.fold (fun acc k a =>
-                           (k, regs_in_sact_aux (snd a) [])::acc
-                        ) (vars ss) [].
+        Maps.PTree.fold
+        (fun acc k a => (k, regs_in_sact_aux (snd a) [])::acc) (vars ss) [].
       Eval native_compute in useful_regs_for_var ss 1789.
-
-      set (ss2 := simplify_sf {| final_values := final_values ss; vars := replace_reg_in_vars (vars ss) RV32I.halt (Bits [true]) |} ctx).
+      set (
+        ss2 := simplify_sf {|
+          final_values := final_values ss;
+          vars := replace_reg_in_vars (vars ss) RV32I.halt (Bits [true])
+        |} ctx
+      ).
       native_compute in ss2.
       replace ss with ss2 by admit. clear ss. rename ss2 into ss.
-      
-      
-
       native_compute in ss2.
       replace ss with ss2 by admit. clear ss. rename ss2 into ss.
-      
 
       Lemma eval_sact_if:
         forall ext_fn_t P sigma vvs c t f fuel,
@@ -162,6 +294,7 @@ Module RVProofs.
           P (eval_sact ctx sigma vvs (SIf (ext_fn_t:=ext_fn_t) c t f) (S fuel)).
       Proof.
       Admitted.
+
       change 10186 with (S 10185).
       apply eval_sact_if.
       change 10185 with (S 10184).
@@ -171,56 +304,68 @@ Module RVProofs.
       unfold eval_sact. fold (eval_sact ctx ext_sigma (vars ss2)).
       native_compute Maps.PTree.get. unfold opt_bind.
       Time Eval native_compute in Maps.PTree.get 992 (vars ss2).
-      Time Eval native_compute in Maps.PTree.get 93 (vars ss2).      
-      Time Eval native_compute in Maps.PTree.get 991 (vars ss2).      
+      Time Eval native_compute in Maps.PTree.get 93 (vars ss2).
+      Time Eval native_compute in Maps.PTree.get 991 (vars ss2).
       Time Eval native_compute in Maps.PTree.get 49 (vars ss2).
       Eval native_compute in List.length (Maps.PTree.elements (vars ss2)).
       set (ip:= inlining_pass ctx ext_sigma ss2).
       Time native_compute in ip.
-      assert (eval_sact ctx ext_sigma (vars ss) (SIf (SVar 1788) (SVar 96) (SVar 1758)) 20 = Some (Bits [false])).
+      assert (
+        eval_sact
+          ctx ext_sigma (vars ss) (SIf (SVar 1788) (SVar 96) (SVar 1758)) 20
+         = Some (Bits [false])
+      ).
       rewrite <- A; native_compute.
       destr.
       native_compute in H1. inv H1.
       simpl.
-      
 
       set (regs:= useful_regs_for_var ss 1789).
       Time native_compute in regs.
 
       assert (Forall (fun x => wt_val (RV32I.R x) (getenv REnv ctx x)) regs).
       rewrite Forall_forall; intros. apply WTRENV. unfold regs in H.
-      repeat match goal with
-             | H: Forall _ [] |- _ => clear H
-             | H: Forall _ (_::_) |- _ =>
-                 let a := fresh "a" in
-                 let b := fresh "b" in
-                 let c := fresh "c" in
-                 let d := fresh "d" in
-                 let e := fresh "e" in
-                 inversion H as [|a b c d e]; subst a b; simpl in c; clear H
-             | H: wt_val (bits_t 1) _ |- _ => apply Sact.wt_val_bool in H; destruct H; subst
-             end.
+      repeat
+        match goal with
+        | H: Forall _ [] |- _ => clear H
+        | H: Forall _ (_::_) |- _ =>
+          let a := fresh "a" in
+          let b := fresh "b" in
+          let c := fresh "c" in
+          let d := fresh "d" in
+          let e := fresh "e" in
+          inversion H as [|a b c d e]; subst a b; simpl in c; clear H
+        | H: wt_val (bits_t 1) _ |- _ =>
+          apply Sact.wt_val_bool in H; destruct H; subst
+        end.
 
-      assert (do_eval_sact ctx ext_sigma (vars ss)
-                           (match Maps.PTree.get 1789 (vars ss) with
-                            | Some (_,s) => s
-                            | None => const_false
-                            end) = Some (Bits [false])
-             ).
+      assert (
+        do_eval_sact
+          ctx ext_sigma (vars ss)
+          (match Maps.PTree.get 1789 (vars ss) with
+           | Some (_,s) => s
+           | None => const_false
+           end
+          )
+        = Some (Bits [false])).
+
       unfold do_eval_sact.
-      Eval native_compute in (Pos.to_nat (Pos.succ (max_var (vars ss))) +
-     vvs_size (vars ss) (Pos.succ (max_var (vars ss))) +
-     size_sact
-       match Maps.PTree.get 1789 (vars ss) with
-       | Some (_, s0) => s0
-       | None => const_false
-       end) .
-      change (eval_sact ctx ext_sigma (vars ss)
-                        match Maps.PTree.get 1789 (vars ss) with
-                        | Some (_, s0) => s0
-                        | None => const_false
-                        end
-                        4100 = Some (Bits [false])).
+      Eval native_compute in (
+        Pos.to_nat (Pos.succ (max_var (vars ss)))
+        + vvs_size (vars ss) (Pos.succ (max_var (vars ss)))
+        + size_sact
+            match Maps.PTree.get 1789 (vars ss) with
+            | Some (_, s0) => s0
+            | None => const_false
+            end).
+      change (
+        eval_sact
+         ctx ext_sigma (vars ss)
+         match Maps.PTree.get 1789 (vars ss) with
+         | Some (_, s0) => s0
+         | None => const_false
+         end
+         4100 = Some (Bits [false])).
       rewrite (interp_sact_replace_reg_sact_vars _ _ _ _ _ H4).
       rewrite (interp_sact_replace_reg_sact_vars _ _ _ _ _ H3).
       rewrite (interp_sact_replace_reg_sact_vars _ _ _ _ _ H2).
@@ -229,27 +374,29 @@ Module RVProofs.
 
       assert (WT := WTRENV RV32I.halt). simpl in WTHALT.
 
-
       set (ks := PosSort.sort (map fst (Maps.PTree.elements (vars ss)))).
       Time native_compute in ks.
-      set (ss2 :=
-             fst (fold_left
-                    (fun '(sf0, l) (var : positive) =>
-                       let '(sf1, l1) := simplify_var ctx ext_sigma sf0 var in (sf1, l1 ++ l)) ks
-                    (ss, []) )).
+      set (
+        ss2 :=
+          fst
+            (fold_left (fun '(sf0, l) (var : positive) =>
+              let '(sf1, l1) :=
+                simplify_var ctx ext_sigma sf0 var in
+              (sf1, l1 ++ l)) ks (ss, []))).
       Time native_compute in ss2.
       Eval native_compute in list_assoc (final_values ss) RV32I.halt.
       Eval native_compute in Maps.PTree.get 1789 (vars ss).
-      Eval native_compute in
-        (option_map (fun '(_,a) => InstructionsProperties.remove_dups (vars_in_sact a) Pos.eqb) (Maps.PTree.get 1788 (vars ss))
-        ).
-      
+      Eval native_compute in (
+        option_map
+          (fun '(_,a) =>
+            InstructionsProperties.remove_dups
+              (vars_in_sact a) Pos.eqb) (Maps.PTree.get 1788 (vars ss))).
 
       set (ip:= inlining_pass ctx ext_sigma ss).
       Time native_compute in ip.
 
-        schedule_to_simple_form RV32I.R (Sigma:=ext_Sigma) drules (Writeback |> done).
-      
+      schedule_to_simple_form
+        RV32I.R (Sigma:=ext_Sigma) drules (Writeback |> done).
       cbn in Heqp.
       edestruct (@wfs_r2v_vvs) as (y & GET1 & z & GET2). apply WFS.
       rewrite GET1 in Heqp.
@@ -261,8 +408,9 @@ Module RVProofs.
       repeat constructor.
       econstructor. constructor. unfold or_conds. simpl.
       instantiate (1:=Bits [false]). 2: reflexivity.
-      change (rir_has_write1 (add_read0 init_rir const_true RV32I.on_off) RV32I.on_off)
-        with (rir_has_write1 (ext_fn_t:=RV32I.ext_fn_t) init_rir RV32I.on_off).
+      change (
+        rir_has_write1 (add_read0 init_rir const_true RV32I.on_off) RV32I.on_off
+      ) with (rir_has_write1 (ext_fn_t:=RV32I.ext_fn_t) init_rir RV32I.on_off).
       econstructor.
       instantiate (1:=Bits [false]).
       2: instantiate (1:=Bits [false]).
@@ -273,9 +421,11 @@ Module RVProofs.
       Sact.exploit @wt_rir_has_write1. apply WFR.
       inv ONOFFNoWrite.
       intros WT1 WT2.
-      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT1. 1-3: apply WFR.
+      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV.
+      4: apply WT1. 1-3: apply WFR.
       apply H4. intro WTv1.
-      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV. 4: apply WT2. 1-3: apply WFR.
+      Sact.exploit @interp_sact_wt. apply wt_sigma. apply WTRENV.
+      4: apply WT2. 1-3: apply WFR.
       apply H2. intro WTv2.
       apply Sact.wt_val_bool in WTv1.
       apply Sact.wt_val_bool in WTv2.
@@ -285,10 +435,10 @@ Module RVProofs.
       eapply vvs_grows_trans. eauto. eapply vvs_grows_set. apply WFS. lia.
     Qed.
 
-        
-
     Goal
-      let s := schedule_to_simple_form (Sigma:=ext_Sigma) RV32I.R drules (Tick |> done) in
+      let s :=
+        schedule_to_simple_form (Sigma:=ext_Sigma) RV32I.R drules (Tick |> done)
+      in
       (Maps.PTree.get 278%positive (vars s)) = None.
       intros.
       Time native_compute in s.
@@ -300,509 +450,60 @@ Module RVProofs.
       Eval native_compute in Maps.PTree.get 102 (vars r).
       Eval native_compute in Maps.PTree.get 101 (vars r).
       (*      = Some (bits_t 1, SIf (SVar 901) (SVar 96) (SVar 871)) *)
-      Eval native_compute in option_map (fun '(_,a) => simplify_sact ctx a) (Maps.PTree.get 101 (vars r)).
+      Eval native_compute in
+        option_map
+          (fun '(_,a) => simplify_sact ctx a) (Maps.PTree.get 101 (vars r)).
       Eval native_compute in Maps.PTree.get 90 (vars r).
       Eval native_compute in Maps.PTree.get 100 (vars r).
 
-      Eval native_compute in option_map (fun '(_,a) => simplify_sact ctx a) (Maps.PTree.get 96 (vars r)).
+      Eval native_compute in
+        option_map
+          (fun '(_,a) => simplify_sact ctx a) (Maps.PTree.get 96 (vars r)).
 
       Eval native_compute in
-        option_map (fun s =>do_eval_sact ctx ext_sigma (vars r) s)
-                   (option_map (fun '(_,a) => simplify_sact ctx a) (Maps.PTree.get 13 (vars r))).
-      Eval native_compute in option_map (fun '(_,a) => simplify_sact ctx a) (Maps.PTree.get 114 (vars r)).
+        option_map
+          (fun s =>do_eval_sact ctx ext_sigma (vars r) s)
+          (option_map
+            (fun '(_,a) => simplify_sact ctx a)
+            (Maps.PTree.get 13 (vars r))).
+      Eval native_compute in
+        option_map
+          (fun '(_,a) => simplify_sact ctx a) (Maps.PTree.get 114 (vars r)).
       assert (WTHALT := WTRENV RV32I.halt). simpl in WTHALT.
-      assert (WTVALID0 := WTRENV (RV32I.d2e RV32I.fromDecode.valid0)). simpl in WTVALID0.
-      assert (WTDATA0 := WTRENV (RV32I.d2e RV32I.fromDecode.data0)). simpl in WTDATA0.
-      Ltac minv := repeat match goal with
-             | H: Forall2 _ (_::_) _ |- _ => inv H
-             | H: Forall2 _ [] _ |- _ => inv H
-             | H: wt_val (bits_t 1) _ |- _ => apply Sact.wt_val_bool in H; destruct H as (? & H); subst
-             | H: wt_val _ _ |- _ => inv H;[idtac]
-                          end.
+      assert (WTVALID0 := WTRENV (RV32I.d2e RV32I.fromDecode.valid0)).
+      simpl in WTVALID0.
+      assert (WTDATA0 := WTRENV (RV32I.d2e RV32I.fromDecode.data0)).
+      simpl in WTDATA0.
+      Ltac minv :=
+        repeat match goal with
+        | H: Forall2 _ (_::_) _ |- _ => inv H
+        | H: Forall2 _ [] _ |- _ => inv H
+        | H: wt_val (bits_t 1) _ |- _ =>
+          apply Sact.wt_val_bool in H; destruct H as (? & H); subst
+        | H: wt_val _ _ |- _ => inv H;[idtac]
+        end.
       minv. inv H1. minv.
-      
       set (vv := replace_all_occurrences_in_vars (vars r) 96 (Bits [x0])).
       Time native_compute in vv.
       replace (vars r) with (vv) by admit. clear r.
-      Eval native_compute in option_map (fun '(_,a) => a) (Maps.PTree.get 901 vv).
+      Eval native_compute in
+        option_map (fun '(_,a) => a) (Maps.PTree.get 901 vv).
 
-      Eval native_compute in simplify_sact ctx
-                                           (SBinop (UBits2 UAnd)
-                                                   (SBinop (UEq false) (SConst (Bits [x0])) (SConst (Bits [true])))
-                                                   (SVar 12)).
+      Eval native_compute in simplify_sact ctx (
+        SBinop
+          (UBits2 UAnd)
+          (SBinop
+            (UEq false) (SConst (Bits [x0])) (SConst (Bits [true]))) (SVar 12)).
       Eval native_compute in val_eq_dec (Bits [x0]) (Bits [true]).
-      Eval native_compute in eval_sact_no_vars ctx ext_sigma (SBinop (UEq false) (SConst (Bits [x0])) (SConst (Bits [true]))).
-      (*      = Some
-         (SBinop (UBits2 UOr)
-            (SBinop (UEq false) (SVar 96) (SConst (Bits [true])))
-            (SBinop (UBits2 UOr) (SUnop (UBits1 UNot) (SVar 14))
-               (SBinop (UBits2 UAnd)
-                  (SBinop (UEq false)
-                     (SUnop (UStruct1 (UGetField "epoch")) (SVar 104))
-                     (SVar 93))
-                  (SBinop (UBits2 UAnd)
-                     (SUnop (UBits1 UNot)
-                        (SBinop (UEq false)
-                           (SUnop (UStruct1 (UGetField "legal")) (SVar 108))
-                           (SConst (Bits [false]))))
-                     (SBinop (UBits2 UOr)
-                        (SBinop (UBits2 UOr)
-                           (SBinop (UBits2 UAnd)
-                              (SBinop (UBits2 UAnd)
-                                 (SBinop (UEq false)
-                                    (SBinop (UBits2 USel)
-                                       (SUnop (UStruct1 (UGetField "inst"))
-                                          (SVar 243))
-                                       (SConst
-                                          (Bits
-                                             [false; true; true; false;
-                                             false])))
-                                    (SConst (Bits [false])))
-                                 (SBinop (UEq false)
-                                    (SBinop (UBits2 (UIndexedSlice 2))
-                                       (SUnop (UStruct1 (UGetField "inst"))
-                                          (SVar 243))
-                                       (SConst
-                                          (Bits
-                                             [true; true; false; false;
-                                             false])))
-                                    (SConst (Bits [false; false]))))
-                              (SBinop (UBits2 UOr)
-                                 (SBinop (UBits2 UAnd) 
-                                    (SVar 248)
-                                    (SBinop (UBits2 UAnd)
-                                       (SUnop (UBits1 UNot)
-                                          (SBinop 
-                                             (UEq false) 
-                                             (SVar 252)
-                                             (SConst (Bits [false; false]))))
-                                       (SBinop (UBits2 UAnd)
-                                          (SUnop (UBits1 UNot)
-                                             (SBinop 
-                                                (UEq false) 
-                                                (SVar 252)
-                                                (SConst (Bits [true; false]))))
-                                          (SUnop (UBits1 UNot)
-                                             (SBinop 
-                                                (UEq false) 
-                                                (SVar 252)
-                                                (SConst (Bits [false; true])))))))
-                                 (SUnop (UBits1 UNot)
-                                    (SUnop (UBits1 UNot) (SVar 6)))))
-                           (SBinop (UBits2 UAnd)
-                              (SUnop (UBits1 UNot)
-                                 (SBinop (UBits2 UAnd)
-                                    (SBinop (UEq false)
-                                       (SBinop (UBits2 USel)
-                                          (SUnop
-                                             (UStruct1 (UGetField "inst"))
-                                             (SVar 243))
-                                          (SConst
-                                             (Bits
-                                                [false; true; true; false;
-                                                false])))
-                                       (SConst (Bits [false])))
-                                    (SBinop (UEq false)
-                                       (SBinop (UBits2 (UIndexedSlice 2))
-                                          (SUnop
-                                             (UStruct1 (UGetField "inst"))
-                                             (SVar 243))
-                                          (SConst
-                                             (Bits
-                                                [true; true; false; false;
-                                                false])))
-                                       (SConst (Bits [false; false])))))
-                              (SBinop (UBits2 UAnd)
-                                 (SBinop (UEq false)
-                                    (SBinop (UBits2 (UIndexedSlice 3))
-                                       (SUnop (UStruct1 (UGetField "inst"))
-                                          (SVar 272))
-                                       (SConst
-                                          (Bits
-                                             [false; false; true; false;
-                                             false])))
-                                    (SConst (Bits [false; true; true])))
-                                 (SBinop (UBits2 UAnd)
-                                    (SUnop (UBits1 UNot)
-                                       (SBinop (UBits2 UAnd)
-                                          (SBinop 
-                                             (UEq false)
-                                             (SBinop
-                                                (UBits2 (UIndexedSlice 7))
-                                                (SUnop
-                                                 (UStruct1 (UGetField "inst"))
-                                                 (SVar 108))
-                                                (SConst
-                                                 (Bits
-                                                 [false; false; false; false;
-                                                 false])))
-                                             (SConst
-                                                (Bits
-                                                 [true; true; true; true;
-                                                 false; true; true])))
-                                          (SBinop 
-                                             (UBits2 UOr)
-                                             (SBinop 
-                                                (UEq false) 
-                                                (SVar 121)
-                                                (SConst
-                                                 (Bits
-                                                 [true; false; false; false;
-                                                 false])))
-                                             (SBinop 
-                                                (UEq false) 
-                                                (SVar 121)
-                                                (SConst
-                                                 (Bits
-                                                 [true; false; true; false;
-                                                 false]))))))
-                                    (SBinop (UBits2 UAnd)
-                                       (SBinop (UEq false)
-                                          (SBinop 
-                                             (UBits2 (UIndexedSlice 7))
-                                             (SUnop
-                                                (UStruct1 (UGetField "inst"))
-                                                (SVar 108))
-                                             (SConst
-                                                (Bits
-                                                 [false; false; false; false;
-                                                 false])))
-                                          (SConst
-                                             (Bits
-                                                [true; true; true; false;
-                                                false; true; true])))
-                                       (SBinop (UBits2 UOr)
-                                          (SBinop 
-                                             (UBits2 UAnd)
-                                             (SBinop 
-                                                (UBits2 UOr)
-                                                (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 121)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; false; false;
-                                                 false])))
-                                                (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 121)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; true; false;
-                                                 false]))))
-                                             (SBinop 
-                                                (UBits2 UOr)
-                                                (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 121) 
-                                                 (SVar 278))
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq true) 
-                                                 (SVar 278)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; false; false;
-                                                 false])))
-                                                 (SBinop 
-                                                 (UEq true) 
-                                                 (SVar 278)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; true; false;
-                                                 false])))))
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SUnop 
-                                                 (UBits1 UNot)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 367)
-                                                 (SConst
-                                                 (Bits [false; false; true]))))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 371)
-                                                 (SConst
-                                                 (Bits [false; false; false])))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 374) 
-                                                 (SVar 290)))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 371)
-                                                 (SConst
-                                                 (Bits [true; false; false])))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 380) 
-                                                 (SVar 296)))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 371)
-                                                 (SConst (Bits ...)))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 386) 
-                                                 (SVar 302)))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 371) 
-                                                 (SConst ...))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 392) 
-                                                 (SVar 308)))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop ... ... ...)
-                                                 (SBinop ... ... ...))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop ... ... ...)
-                                                 (SBinop ... ... ...)))))))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 370) 
-                                                 (SVar 286)))))
-                                                (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SUnop 
-                                                 (UBits1 UNot)
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 121) 
-                                                 (SVar 278))
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq true) 
-                                                 (SVar 278)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; false; false;
-                                                 false])))
-                                                 (SBinop 
-                                                 (UEq true) 
-                                                 (SVar 278)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; true; false;
-                                                 false]))))))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SUnop 
-                                                 (UBits1 UNot)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 442)
-                                                 (SConst
-                                                 (Bits [false; false; false]))))
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SUnop 
-                                                 (UBits1 UNot)
-                                                 (SBinop 
-                                                 (UEq true) 
-                                                 (SVar 487) 
-                                                 (SVar 441)))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 490)
-                                                 (SBinop 
-                                                 (UBits2 UOr) 
-                                                 (SVar 286) 
-                                                 (SVar 370)))))
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SUnop 
-                                                 (UBits1 UNot)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 498)
-                                                 (SConst
-                                                 (Bits [false; false; true]))))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 502)
-                                                 (SConst
-                                                 (Bits [false; false; false])))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 505)
-                                                 (SBinop 
-                                                 (UBits2 UOr) 
-                                                 (SVar 290) 
-                                                 (SVar 374))))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 502)
-                                                 (SConst (Bits ...)))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 511)
-                                                 (SBinop 
-                                                 (UBits2 UOr) 
-                                                 (SVar 296) 
-                                                 (SVar 380))))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 502) 
-                                                 (SConst ...))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 517)
-                                                 (SBinop ... ... ...)))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SBinop ... ... ...)
-                                                 (SBinop ... ... ...))
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop ... ... ...)
-                                                 (SBinop ... ... ...))))))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 501)
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UOr) 
-                                                 (SVar 286) 
-                                                 (SVar 370)) 
-                                                 (SVar 490)))))))))
-                                          (SBinop 
-                                             (UBits2 UAnd)
-                                             (SUnop 
-                                                (UBits1 UNot)
-                                                (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 121)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; false; false;
-                                                 false])))
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 121)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; true; false;
-                                                 false])))))
-                                             (SBinop 
-                                                (UBits2 UAnd)
-                                                (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 278)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; false; false;
-                                                 false])))
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 278)
-                                                 (SConst
-                                                 (Bits
-                                                 [true; false; true; false;
-                                                 false]))))
-                                                (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SUnop 
-                                                 (UBits1 UNot)
-                                                 (SBinop 
-                                                 (UEq false) 
-                                                 (SVar 595)
-                                                 (SConst
-                                                 (Bits [false; false; false]))))
-                                                 (SBinop 
-                                                 (UBits2 UAnd)
-                                                 (SUnop 
-                                                 (UBits1 UNot)
-                                                 (SBinop 
-                                                 (UEq true) 
-                                                 (SVar 640) 
-                                                 (SVar 594)))
-                                                 (SBinop 
-                                                 (UBits2 UAnd) 
-                                                 (SVar 643)
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UOr)
-                                                 (SBinop 
-                                                 (UBits2 UOr) 
-                                                 (SVar 286) 
-                                                 (SVar 370)) 
-                                                 (SVar 490)) 
-                                                 (SVar 501)))))))))))))
-                        (SBinop (UBits2 UOr)
-                           (SBinop (UBits2 UAnd)
-                              (SBinop (UEq true) (SVar 824)
-                                 (SUnop (UStruct1 (UGetField "ppc"))
-                                    (SVar 104)))
-                              (SBinop (UBits2 UOr)
-                                 (SBinop (UBits2 UAnd) (SVar 826) (SVar 110))
-                                 (SBinop (UBits2 UAnd) (SVar 826) (SVar 110))))
-                           (SUnop (UBits1 UNot)
-                              (SUnop (UBits1 UNot) (SVar 16)))))))))
-     : option sact
- *)
+      Eval native_compute in eval_sact_no_vars
+        ctx ext_sigma
+        (SBinop (UEq false) (SConst (Bits [x0])) (SConst (Bits [true]))).
 
       Time native_compute in r2.
-      
+
       intros. cbn in H.
-          simplify_sact ctx (rir_failure_cond rir) = const_false.
-    
+      simplify_sact ctx (rir_failure_cond rir) = const_false.
+
       intros.
       Time native_compute in ir2v.
       Time native_compute in H. clear ir2v.
@@ -811,7 +512,8 @@ Module RVProofs.
       rewrite <- H1.
       Time native_compute.
 
-      Time Eval (rewrite <- H1; native_compute) in (Maps.PTree.get 278%positive (rir_vars rir)).
+      Time Eval (rewrite <- H1; native_compute) in
+        (Maps.PTree.get 278%positive (rir_vars rir)).
       (* set (ir2v := (init_r2v (ext_fn_t:=RV32I.ext_fn_t) REnv ctx RV32I.R xH)). *)
       (* native_compute in ir2v. *)
       (* set (r2v := fst (fst ir2v)). *)
@@ -828,18 +530,23 @@ Module RVProofs.
       Opaque getenv.
       assert (WTHALT := WTRENV RV32I.halt). simpl in WTHALT.
       edestruct (Sact.wt_val_bool _ WTHALT) as (? & HALT).
-      assert (WTVALID0 := WTRENV (RV32I.d2e RV32I.fromDecode.valid0)). simpl in WTVALID0.
+      assert (WTVALID0 := WTRENV (RV32I.d2e RV32I.fromDecode.valid0)).
+      simpl in WTVALID0.
       edestruct (Sact.wt_val_bool _ WTVALID0) as (? & VALID0).
-      assert (WTDATA0 := WTRENV (RV32I.d2e RV32I.fromDecode.data0)). simpl in WTDATA0.
+      assert (WTDATA0 := WTRENV (RV32I.d2e RV32I.fromDecode.data0)).
+      simpl in WTDATA0.
       inv WTDATA0. simpl in H2. inv H2. inv H6. inv H7. inv H8. inv H9. inv H10.
       inv H11. inv H6. simpl in H2. inv H2.
-      repeat match goal with
-             | H: Forall2 _ (_::_) _ |- _ => inv H
-             | H: Forall2 _ [] _ |- _ => inv H
-             | H: wt_val (bits_t 1) _ |- _ => apply Sact.wt_val_bool in H; destruct H as (? & H); subst
-             end.
+      repeat
+        match goal with
+        | H: Forall2 _ (_::_) _ |- _ => inv H
+        | H: Forall2 _ [] _ |- _ => inv H
+        | H: wt_val (bits_t 1) _ |- _ =>
+          apply Sact.wt_val_bool in H; destruct H as (? & H); subst
+        end.
 
-      replace ctx with (create ContextEnv (fun r => Sact.val_of_type (RV32I.R r))) in *.
+      replace ctx with
+        (create ContextEnv (fun r => Sact.val_of_type (RV32I.R r))) in *.
       Transparent getenv.
       Time native_compute in WTHALT.
       Time native_compute in ir2v.
@@ -850,47 +557,62 @@ Module RVProofs.
       Time cbv in H. inv H.
       cbv.
 
-      
-
-      Lemma
-        eval_sact ctx ext_sigma vvs s fuel =
+      Lemma eval_sact ctx ext_sigma vvs s fuel =
           eval_sact ctx ext_sigma (vvs) s fuel =
 
       dependent rewrite WTVALID0; dependent rewrite <- H1.
       cbv.
       assert (HALT: exists b, getenv REnv ctx RV32I.halt = Bits [b]) by admit.
       destruct HALT as (b & HALT).
-      assert (VALID: exists b, getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [b]) by admit.
+      assert (VALID:
+        exists b,
+        getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [b]
+      ) by admit.
       destruct VALID as (?b & VALID).
-      assert (DATA: exists pc ppc epoch dinst rv1 rv2,
-                 getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) =
-                   Struct RV32I.decode_bookkeeping [Bits pc; Bits ppc; Bits epoch; dinst; rv1; rv2]) by admit.
+      assert (DATA:
+        exists pc ppc epoch dinst rv1 rv2,
+        getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
+        = Struct
+          RV32I.decode_bookkeeping
+          [Bits pc; Bits ppc; Bits epoch; dinst; rv1; rv2]
+      ) by admit.
       destruct DATA as (? & ? & ? & ? & ? & ? & DATA).
       rewrite HALT, VALID, DATA in *.
       cbv.
       dependent rewrite DATA.
 
-      set (r := get_rule_information (Sigma:=ext_Sigma) RV32I.R
-                                     (drules Execute)
-                                     (snd ir2v) (fst (fst ir2v)) (snd (fst ir2v))
-                                     (RecordSet.set rir_vars (fun _ => (snd (fst ir2v))) init_rir)).
+      set (
+        r :=
+          get_rule_information
+            (Sigma:=ext_Sigma) RV32I.R (drules Execute) (snd ir2v)
+            (fst (fst ir2v)) (snd (fst ir2v))
+            (RecordSet.set rir_vars (fun _ => (snd (fst ir2v))) init_rir)
+      ).
       Time cbv in r.
-      set (f := let '(rir, _, _) := r in eval_sact ext_sigma (rir_vars rir) (rir_failure_cond rir) 20).
+      set (
+        f := let '(rir, _, _) := r in
+        eval_sact ext_sigma (rir_vars rir) (rir_failure_cond rir) 20).
       Time cbv in f.
       assert (HALT: exists b, getenv REnv ctx RV32I.halt = Bits [b]) by admit.
       destruct HALT as (b & HALT).
       revert f. dependent rewrite HALT.
-      assert (VALID: exists b, getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [b]) by admit.
+      assert (VALID:
+        exists b,
+        getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [b]
+      ) by admit.
       destruct VALID as (?b & VALID).
       dependent rewrite VALID.
-      assert (DATA: exists pc ppc epoch dinst rv1 rv2,
-                 getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) =
-                   Struct RV32I.decode_bookkeeping [Bits pc; Bits ppc; Bits epoch; dinst; rv1; rv2]) by admit.
+      assert (DATA:
+        exists pc ppc epoch dinst rv1 rv2,
+        getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) =
+          Struct
+            RV32I.decode_bookkeeping
+            [Bits pc; Bits ppc; Bits epoch; dinst; rv1; rv2]
+      ) by admit.
       destruct DATA as (? & ? & ? & ? & ? & ? & DATA).
       dependent rewrite DATA.
       simpl. cbv.
-      
-        in f.
+
       set (r := get_rule_information (Sigma:=ext_Sigma) RV32I.R (drules Execute)
                                      (snd ir2v) (fst (fst ir2v)) (snd (fst ir2v))
                                      (RecordSet.set rir_vars (fun _ => (snd (fst ir2v))) init_rir)).
@@ -1117,7 +839,7 @@ Module RVProofs.
 
     (*   | None => [] *)
     (*   end. *)
-    
+
 
 
     (* Opaque getenv. *)
@@ -1127,7 +849,7 @@ Module RVProofs.
 
     (*     )). *)
     (* Time Eval native_compute in rir. *)
-    
+
     (* set (sfb := schedule_to_simple_form (Sigma:=ext_Sigma) beq_dec REnv ctx RV32I.R drules (Tick |> done)). *)
     (* (* Time Eval vm_compute in sfb. *) *)
     (* (* Finished transaction in 7.048 secs (7.043u,0.003s) (successful) *) *)
@@ -1290,7 +1012,7 @@ Module RVProofs.
     getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true].
   Proof.
     intros.
-    
+
 
 
   Goal

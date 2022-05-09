@@ -16,20 +16,24 @@ Section CircuitOptimizer.
 
   Context (csigma: forall f, CSig_denote (CSigma f)).
 
-  Record local_circuit_optimizer :=
-    { lco_fn :> forall {sz}, circuit sz -> circuit sz;
-      lco_proof: forall {REnv: Env reg_t} (cr: REnv.(env_t) (fun idx => bits (CR idx))) {sz} (c: circuit sz),
-          interp_circuit cr csigma (lco_fn c) =
-          interp_circuit cr csigma c }.
+  Record local_circuit_optimizer := {
+    lco_fn :> forall {sz}, circuit sz -> circuit sz;
+    lco_proof:
+      forall
+        {REnv: Env reg_t} (cr: REnv.(env_t) (fun idx => bits (CR idx))) {sz}
+        (c: circuit sz),
+      interp_circuit cr csigma (lco_fn c) = interp_circuit cr csigma c }.
 
   Definition lco_opt_compose
-             (o1 o2: forall {sz}, circuit sz -> circuit sz) sz (c: circuit sz) :=
-    o2 (o1 c).
+    (o1 o2: forall {sz}, circuit sz -> circuit sz) sz (c: circuit sz)
+  := o2 (o1 c).
 
-  Definition lco_compose (l1 l2: local_circuit_optimizer) :=
-    {| lco_fn := @lco_opt_compose (l1.(@lco_fn)) (l2.(@lco_fn));
-       lco_proof := ltac:(abstract (intros; unfold lco_opt_compose;
-                                     cbn; rewrite !lco_proof; reflexivity)) |}.
+  Definition lco_compose (l1 l2: local_circuit_optimizer) := {|
+    lco_fn := @lco_opt_compose (l1.(@lco_fn)) (l2.(@lco_fn));
+    lco_proof :=
+      ltac:(abstract (
+        intros; unfold lco_opt_compose; cbn; rewrite !lco_proof; reflexivity))
+  |}.
 
   Section Utils.
     Context {REnv: Env reg_t}.
@@ -37,7 +41,8 @@ Section CircuitOptimizer.
 
     Lemma interp_circuit_cast {sz sz'}:
       forall (h: sz = sz') (c: circuit sz),
-        interp_circuit cr csigma (rew h in c) = rew h in (interp_circuit cr csigma c).
+      interp_circuit cr csigma (rew h in c)
+      = rew h in (interp_circuit cr csigma c).
     Proof. destruct h; reflexivity. Defined.
 
     Fixpoint unannot {sz} (c: circuit sz) : circuit sz :=
@@ -48,8 +53,8 @@ Section CircuitOptimizer.
 
     Lemma unannot_sound {sz} :
       forall (c: circuit sz),
-        interp_circuit (REnv := REnv) cr csigma (unannot c) =
-        interp_circuit (REnv := REnv) cr csigma c.
+      interp_circuit (REnv := REnv) cr csigma (unannot c)
+      = interp_circuit (REnv := REnv) cr csigma c.
     Proof. induction c; eauto. Qed.
 
     Definition asconst {sz} (c: circuit sz) : option (bits sz) :=
@@ -66,24 +71,23 @@ Section CircuitOptimizer.
 
     Lemma asconst_Some :
       forall {sz} (c: circuit sz) bs,
-        asconst c = Some bs ->
-        interp_circuit cr csigma c = bs.
+      asconst c = Some bs -> interp_circuit cr csigma c = bs.
     Proof.
       induction c; intros b Heq;
-        repeat match goal with
-               | _ => progress cbn in *
-               | _ => discriminate
-               | _ => reflexivity
-               | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
-               | [ sz: nat |- _ ] => destruct sz; try (tauto || discriminate); []
-               end.
+        repeat
+          match goal with
+          | _ => progress cbn in *
+          | _ => discriminate
+          | _ => reflexivity
+          | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
+          | [ sz: nat |- _ ] => destruct sz; try (tauto || discriminate); []
+          end.
       apply IHc; eassumption.
     Qed.
 
     Lemma isconst_correct {sz} :
       forall (c: circuit sz) cst,
-        isconst c cst = true ->
-        interp_circuit cr csigma c = cst.
+      isconst c cst = true -> interp_circuit cr csigma c = cst.
     Proof.
       unfold isconst; intros * Htrue; destruct (asconst c) eqn:Heq.
       - apply asconst_Some in Heq; rewrite beq_dec_iff in Htrue; congruence.
@@ -92,10 +96,11 @@ Section CircuitOptimizer.
   End Utils.
 
   Ltac unannot_rew :=
-    repeat match goal with
-           | [ Heq: unannot ?c = _ |- context[interp_circuit _ _ ?c] ] =>
-             rewrite <- (unannot_sound c), Heq; cbn
-           end.
+    repeat
+      match goal with
+      | [ Heq: unannot ?c = _ |- context[interp_circuit _ _ ?c] ] =>
+        rewrite <- (unannot_sound c), Heq; cbn
+      end.
 
   Ltac asconst_t :=
     match goal with
@@ -145,8 +150,8 @@ Section CircuitOptimizer.
 
     Context (equivb_sound: forall {REnv: Env reg_t} (cr: REnv.(env_t) (fun idx => bits (CR idx)))
                           {sz} (c1 c2: circuit sz),
-                equivb _ c1 c2 = true ->
-                interp_circuit cr csigma c1 = interp_circuit cr csigma c2).
+                equivb _ c1 c2 = true
+                -> interp_circuit cr csigma c1 = interp_circuit cr csigma c2).
 
     Context {REnv: Env reg_t}.
     Context (cr: REnv.(env_t) (fun idx => bits (CR idx))).
@@ -155,8 +160,8 @@ Section CircuitOptimizer.
 
     Lemma equivb_unannot_sound :
       forall {sz} (c1 c2: circuit sz),
-        equivb_unannot c1 c2 = true ->
-        interp_circuit cr csigma c1 = interp_circuit cr csigma c2.
+        equivb_unannot c1 c2 = true
+        -> interp_circuit cr csigma c1 = interp_circuit cr csigma c2.
     Proof.
       intros * H%(equivb_sound _ cr).
       rewrite <- (unannot_sound c1), <- (unannot_sound c2); assumption.
@@ -510,43 +515,48 @@ Section CircuitOptimizer.
         end
       | CBinop (Concat sz1 sz2) c1 c2 =>
         match eq_dec sz1 0, eq_dec sz2 0 with
-        | left pr, _ => fun _ => rew <- [fun sz => circuit (sz2 + sz)] pr in rew <- plus_0_r sz2 in c2
-        | _, left pr => fun _ => rew <- [fun sz => circuit (sz + sz1)] pr in (c1: circuit (0 + sz1))
+        | left pr, _ => fun _ =>
+          rew <- [fun sz => circuit (sz2 + sz)] pr in rew <- plus_0_r sz2 in c2
+        | _, left pr => fun _ =>
+          rew <- [fun sz => circuit (sz + sz1)] pr in (c1: circuit (0 + sz1))
         | _, _ => fun c0 => c0
         end
       | CBinop (EqBits 1 false) c1 c2 =>
         if c1 ~~ Ob~1 then fun _ => c2
         else if c1 ~~ Ob~0 then fun _ => CNot c2
-             else if c2 ~~ Ob~1 then fun _ => c1
-                  else if c2 ~~ Ob~0 then fun _ => CNot c1
-                       else fun c0 => c0
+        else if c2 ~~ Ob~1 then fun _ => c1
+        else if c2 ~~ Ob~0 then fun _ => CNot c1
+        else fun c0 => c0
       | CBinop (EqBits 1 true) c1 c2 =>
         if c1 ~~ Ob~0 then fun _ => c2
         else if c1 ~~ Ob~1 then fun _ => CNot c2
-             else if c2 ~~ Ob~0 then fun _ => c1
-                  else if c2 ~~ Ob~1 then fun _ => CNot c1
-                       else fun c0 => c0
+        else if c2 ~~ Ob~0 then fun _ => c1
+        else if c2 ~~ Ob~1 then fun _ => CNot c1
+        else fun c0 => c0
       | _ => fun c0 => c0
       end c.
 
     Lemma opt_simplify_sound :
       forall {sz} (c: circuit sz),
-        interp_circuit cr csigma (opt_simplify c) = interp_circuit cr csigma c.
+      interp_circuit cr csigma (opt_simplify c) = interp_circuit cr csigma c.
     Proof.
       Ltac simpl_t :=
         match goal with
         | _ => reflexivity
-        | _ => progress (cbn in * || subst || unannot_rew || asconst_t || unfold eq_rect_r)
+        | _ => progress (
+          cbn in * || subst || unannot_rew || asconst_t || unfold eq_rect_r)
         | [  |- context[match ?x with _ => _ end] ] => destruct x eqn:?
         | [ H: _ = _ |- _ ] => rewrite H
-        | [  |- context[rew ?h in _] ] => rewrite interp_circuit_cast || destruct h
+        | [  |- context[rew ?h in _] ] =>
+          rewrite interp_circuit_cast || destruct h
         | [  |- context[interp_circuit ?cr ?csigma (n := 1) ?c] ] =>
           destruct (interp_circuit cr csigma c) as [ [ | ] [] ]
         | _ => rewrite vect_app_nil
         | _ => apply eq_rect_eqdec_irrel
-        | _ => eauto using slice_full, slice_concat_l, slice_concat_r, Bits.neg_involutive
+        | _ => eauto using slice_full, slice_concat_l, slice_concat_r,
+          Bits.neg_involutive
         end.
-      unfold opt_simplify; intros; destruct (unannot c) eqn:? ;
+      unfold opt_simplify; intros; destruct (unannot c) eqn:?;
         try destruct fn; repeat simpl_t.
     Qed.
   End Simplify.
@@ -572,40 +582,56 @@ Section CircuitOptimizer.
 
     Lemma opt_partialeval_sound :
       forall {sz} (c: circuit sz),
-        interp_circuit cr csigma (opt_partialeval c) = interp_circuit cr csigma c.
+      interp_circuit cr csigma (opt_partialeval c) = interp_circuit cr csigma c.
     Proof.
-      unfold opt_partialeval; intros; destruct (unannot c) eqn:? ;
-        try destruct fn;
-        repeat match goal with
-               | _ => reflexivity
-               | _ => progress (cbn || subst || unannot_rew || asconst_t)
-               end.
+      unfold opt_partialeval; intros; destruct (unannot c) eqn:?;
+      try destruct fn;
+      repeat
+        match goal with
+        | _ => reflexivity
+        | _ => progress (cbn || subst || unannot_rew || asconst_t)
+        end.
     Qed.
   End PartialEval.
 End CircuitOptimizer.
 
 Arguments unannot {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c : assert.
-Arguments unannot_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma [REnv] cr [sz] c : assert.
+Arguments unannot_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma
+  [REnv] cr [sz] c : assert.
 
-Arguments opt_constprop {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c : assert.
-Arguments opt_constprop_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma [REnv] cr [sz] c : assert.
+Arguments opt_constprop {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c
+  : assert.
+Arguments opt_constprop_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata}
+  csigma [REnv] cr [sz] c : assert.
 
-Arguments opt_identical {rule_name_t reg_t ext_fn_t CR CSigma rwdata} equivb [sz] c : assert.
-Arguments opt_identical_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma {equivb} equivb_sound [REnv] cr [sz] c : assert.
+Arguments opt_identical {rule_name_t reg_t ext_fn_t CR CSigma rwdata} equivb
+  [sz] c : assert.
+Arguments opt_identical_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata}
+  csigma {equivb} equivb_sound [REnv] cr [sz] c : assert.
 
-Arguments opt_muxelim {rule_name_t reg_t ext_fn_t CR CSigma rwdata} equivb [sz] c : assert.
-Arguments opt_muxelim_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma {equivb} equivb_sound [REnv] cr [sz] c : assert.
+Arguments opt_muxelim {rule_name_t reg_t ext_fn_t CR CSigma rwdata} equivb [sz]
+  c : assert.
+Arguments opt_muxelim_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma
+  {equivb} equivb_sound [REnv] cr [sz] c : assert.
 
-Arguments opt_simplify {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c : assert.
-Arguments opt_simplify_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma [REnv] cr [sz] c : assert.
+Arguments opt_simplify {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c
+  : assert.
+Arguments opt_simplify_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata}
+  csigma [REnv] cr [sz] c : assert.
 
-Arguments opt_partialeval {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c : assert.
-Arguments opt_partialeval_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma [REnv] cr [sz] c : assert.
+Arguments opt_partialeval {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c
+  : assert.
+Arguments opt_partialeval_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata}
+  csigma [REnv] cr [sz] c : assert.
 
-Arguments lco_fn {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} l [sz] c : assert.
-Arguments lco_proof {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} l {REnv} cr [sz] c : assert.
-Arguments lco_compose {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} l1 l2 : assert.
-Arguments lco_iter {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} equivb l fuel : assert.
+Arguments lco_fn {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} l [sz] c
+  : assert.
+Arguments lco_proof {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} l
+  {REnv} cr [sz] c : assert.
+Arguments lco_compose {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} l1 l2
+  : assert.
+Arguments lco_iter {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} equivb l
+  fuel : assert.
 
 Section LCO.
   Context {rule_name_t reg_t ext_fn_t: Type}.
@@ -619,44 +645,50 @@ Section LCO.
   Notation lco := (@local_circuit_optimizer rule_name_t _ _ CR _ rwdata csigma).
 
   Definition lco_unannot : lco :=
-    {| lco_fn := unannot;
-       lco_proof := unannot_sound csigma |}.
+    {| lco_fn := unannot; lco_proof := unannot_sound csigma |}.
 
   Definition lco_constprop : lco :=
-    {| lco_fn := opt_constprop;
-       lco_proof := opt_constprop_sound csigma |}.
+    {| lco_fn := opt_constprop; lco_proof := opt_constprop_sound csigma |}.
 
-  Definition lco_identical equivb equivb_sound : lco :=
-    {| lco_fn := opt_identical equivb;
-       lco_proof := opt_identical_sound csigma equivb_sound |}.
+  Definition lco_identical equivb equivb_sound : lco := {|
+    lco_fn := opt_identical equivb;
+    lco_proof := opt_identical_sound csigma equivb_sound |}.
 
-  Definition lco_muxelim equivb equivb_sound : lco :=
-    {| lco_fn := opt_muxelim equivb;
-       lco_proof := opt_muxelim_sound csigma equivb_sound |}.
+  Definition lco_muxelim equivb equivb_sound : lco := {|
+    lco_fn := opt_muxelim equivb;
+    lco_proof := opt_muxelim_sound csigma equivb_sound |}.
 
   Definition lco_simplify : lco :=
-    {| lco_fn := opt_simplify;
-       lco_proof := opt_simplify_sound csigma |}.
+    {| lco_fn := opt_simplify; lco_proof := opt_simplify_sound csigma |}.
 
   Definition lco_partialeval : lco :=
-    {| lco_fn := opt_partialeval;
-       lco_proof := opt_partialeval_sound csigma |}.
+    {| lco_fn := opt_partialeval; lco_proof := opt_partialeval_sound csigma |}.
 
   Definition lco_all equivb equivb_sound : lco :=
     lco_compose lco_constprop
-                (lco_compose (lco_identical equivb equivb_sound)
-                             (lco_compose (lco_muxelim equivb equivb_sound)
-                                          (lco_compose lco_simplify lco_partialeval))).
+      (lco_compose
+        (lco_identical equivb equivb_sound)
+        (lco_compose
+          (lco_muxelim equivb equivb_sound)
+          (lco_compose lco_simplify lco_partialeval))).
 
   Definition lco_all_iterated equivb equivb_sound fuel : lco :=
     lco_iter equivb (lco_all equivb equivb_sound) fuel.
 End LCO.
 
-Arguments lco_unannot {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} : assert.
-Arguments lco_constprop {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} : assert.
-Arguments lco_identical {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} {equivb} equivb_sound : assert.
-Arguments lco_muxelim {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} {equivb} equivb_sound : assert.
-Arguments lco_simplify {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} : assert.
-Arguments lco_partialeval {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} : assert.
-Arguments lco_all {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} {equivb} equivb_sound : assert.
-Arguments lco_all_iterated {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} {equivb} equivb_sound fuel : assert.
+Arguments lco_unannot {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma}
+  : assert.
+Arguments lco_constprop {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma}
+  : assert.
+Arguments lco_identical {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma}
+  {equivb} equivb_sound : assert.
+Arguments lco_muxelim {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma}
+  {equivb} equivb_sound : assert.
+Arguments lco_simplify {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma}
+  : assert.
+Arguments lco_partialeval {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma}
+  : assert.
+Arguments lco_all {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma} {equivb}
+  equivb_sound : assert.
+Arguments lco_all_iterated {rule_name_t reg_t ext_fn_t CR CSigma rwdata csigma}
+  {equivb} equivb_sound fuel : assert.

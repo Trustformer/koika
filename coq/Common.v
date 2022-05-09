@@ -20,53 +20,48 @@ Ltac bool_step :=
   | [ H: forallb _ (_ ++ _) = _ |- _ ] => rewrite forallb_app in H
   end.
 
-Lemma Some_inj : forall {T} (x y: T), Some x = Some y -> x = y.
-Proof.
-  congruence.
-Qed.
+Lemma Some_inj: forall {T} (x y: T), Some x = Some y -> x = y.
+Proof. congruence. Qed.
 
-Lemma pair_inj : forall {T U} (t1: T) (u1: U) (t2: T) (u2: U),
-    (t1, u1) = (t2, u2) -> t1 = t2 /\ u1 = u2.
-Proof.
-  inversion 1. auto.
-Qed.
+Lemma pair_inj:
+  forall {T U} (t1: T) (u1: U) (t2: T) (u2: U),
+  (t1, u1) = (t2, u2) -> t1 = t2 /\ u1 = u2.
+Proof. inversion 1. auto. Qed.
 
 Ltac cleanup_step :=
   match goal with
   | _ => discriminate
   | _ => progress (subst; cbn)
-  | [ H: Some _ = Some _ |- _ ] =>
-    apply Some_inj in H
-  | [ H: (_, _) = (_, _) |- _ ] =>
-    apply pair_inj in H
-  | [ H: _ /\ _ |- _ ] =>
-    destruct H
+  | [ H: Some _ = Some _ |- _ ] => apply Some_inj in H
+  | [ H: (_, _) = (_, _) |- _ ] => apply pair_inj in H
+  | [ H: _ /\ _ |- _ ] => destruct H
   end.
 
 Ltac destruct_match :=
   match goal with
-  | [ |- context[match ?x with _ => _ end] ] =>
-    destruct x eqn:?
+  | [ |- context[match ?x with _ => _ end] ] => destruct x eqn:?
   end.
 
 (** find the head of the given expression **)
 Ltac head expr :=
   match expr with
-    | ?f _ => head f
-    | _ => expr
+  | ?f _ => head f
+  | _ => expr
   end.
 
 Ltac head_hnf expr := let expr' := eval hnf in expr in head expr'.
 
 Ltac rewrite_all_hypotheses :=
-  repeat match goal with
-         | [ H: ?x = ?y |- _ ] => rewrite H
-         end.
+  repeat
+    match goal with
+    | [ H: ?x = ?y |- _ ] => rewrite H
+    end.
 
 Ltac setoid_rewrite_all_hypotheses :=
-  repeat match goal with
-         | [ H: ?x = ?y |- _ ] => setoid_rewrite H
-         end.
+  repeat
+    match goal with
+    | [ H: ?x = ?y |- _ ] => setoid_rewrite H
+    end.
 
 (** Fails if x is equal to v. Can work for hypotheses **)
 Ltac assert_neq x v :=
@@ -75,13 +70,11 @@ Ltac assert_neq x v :=
 (** Rewrite using setoid_rewrite the hypothesis in all
     other hypotheses, as well as in the goal. **)
 Tactic Notation "setoid_rewrite_in_all" constr(Hx) :=
-  repeat match goal with
-         | _ =>
-           progress (setoid_rewrite Hx)
-         | [ H: _ |- _ ] =>
-           assert_neq Hx H;
-           progress (setoid_rewrite Hx in H)
-         end.
+  repeat
+    match goal with
+    | _ => progress (setoid_rewrite Hx)
+    | [ H: _ |- _ ] => assert_neq Hx H; progress (setoid_rewrite Hx in H)
+    end.
 
 Tactic Notation "setoid_rewrite_in_all" "<-" constr(Hx) :=
   repeat match goal with
@@ -93,58 +86,62 @@ Tactic Notation "setoid_rewrite_in_all" "<-" constr(Hx) :=
          end.
 
 Ltac set_fixes :=
-  repeat match goal with
-         | [  |- context[?x] ] => is_fix x; set x in *
-         end.
+  repeat
+    match goal with
+    | [  |- context[?x] ] => is_fix x; set x in *
+    end.
 
 Inductive DP {A: Type} (a: A) : Prop :=.
 
 Inductive Posed : list Prop -> Prop :=
-| AlreadyPosed1 : forall {A} a, Posed [@DP A a]
-| AlreadyPosed2 : forall {A1 A2} a1 a2, Posed [@DP A1 a1; @DP A2 a2]
-| AlreadyPosed3 : forall {A1 A2 A3} a1 a2 a3, Posed [@DP A1 a1; @DP A2 a2; @DP A3 a3]
-| AlreadyPosed4 : forall {A1 A2 A3 A4} a1 a2 a3 a4, Posed [@DP A1 a1; @DP A2 a2; @DP A3 a3; @DP A4 a4].
+| AlreadyPosed1: forall {A} a, Posed [@DP A a]
+| AlreadyPosed2: forall {A1 A2} a1 a2, Posed [@DP A1 a1; @DP A2 a2]
+| AlreadyPosed3:
+  forall {A1 A2 A3} a1 a2 a3, Posed [@DP A1 a1; @DP A2 a2; @DP A3 a3]
+| AlreadyPosed4:
+  forall {A1 A2 A3 A4} a1 a2 a3 a4,
+  Posed [@DP A1 a1; @DP A2 a2; @DP A3 a3; @DP A4 a4].
 
 Tactic Notation "_pose_once" constr(witness) constr(thm) :=
   let tw := (type of witness) in
   match goal with
-  | [ H: Posed ?tw' |- _ ] =>
-    unify tw (Posed tw')
-  | _ => pose proof thm;
-        pose proof witness
+  | [ H: Posed ?tw' |- _ ] => unify tw (Posed tw')
+  | _ => pose proof thm; pose proof witness
   end.
 
 Tactic Notation "pose_once" constr(thm) :=
-  progress (let witness := constr:(AlreadyPosed1 thm) in
-            _pose_once witness thm).
+  progress (
+    let witness := constr:(AlreadyPosed1 thm) in
+    _pose_once witness thm).
 
 Tactic Notation "pose_once" constr(thm) constr(arg) :=
-  progress (let witness := constr:(AlreadyPosed2 thm arg) in
-            _pose_once witness (thm arg)).
+  progress (
+    let witness := constr:(AlreadyPosed2 thm arg) in
+    _pose_once witness (thm arg)).
 
 Tactic Notation "pose_once" constr(thm) constr(arg) constr(arg') :=
-  progress (let witness := constr:(AlreadyPosed3 thm arg arg') in
-            _pose_once witness (thm arg arg')).
+  progress (
+    let witness := constr:(AlreadyPosed3 thm arg arg') in
+    _pose_once witness (thm arg arg')).
 
 Tactic Notation "pose_once" constr(thm) constr(arg) constr(arg') constr(arg'') :=
-  progress (let witness := constr:(AlreadyPosed4 thm arg arg' arg'') in
-            _pose_once witness (thm arg arg' arg'')).
+  progress (
+    let witness := constr:(AlreadyPosed4 thm arg arg' arg'') in
+    _pose_once witness (thm arg arg' arg'')).
 
 Ltac remember_once x :=
   match goal with
-  | [ H: ?v = x |- _ ] =>
-    is_var v
+  | [ H: ?v = x |- _ ] => is_var v
   | _ =>
     let Hx := fresh "H" in
-    remember x eqn:Hx;
-    setoid_rewrite_in_all <- Hx
+    remember x eqn:Hx; setoid_rewrite_in_all <- Hx
   end.
 
 Ltac constr_hd c :=
-      match c with
-      | ?f ?x => constr_hd f
-      | ?g => g
-      end.
+  match c with
+  | ?f ?x => constr_hd f
+  | ?g => g
+  end.
 
 Definition and_fst {A B} := fun '(conj a _: and A B) => a.
 Definition and_snd {A B} := fun '(conj _ b: and A B) => b.
@@ -160,7 +157,8 @@ Notation log2 := Nat.log2_up.
 Instance EqDec_FiniteType {T} {FT: FiniteType T} : EqDec T | 3.
 Proof.
   econstructor; intros.
-  destruct (PeanoNat.Nat.eq_dec (finite_index t1) (finite_index t2)) as [ ? | Hneq ].
+  destruct (PeanoNat.Nat.eq_dec (finite_index t1) (finite_index t2))
+    as [ ? | Hneq ].
   - eauto using finite_index_injective.
   - right; intro Habs; apply (f_equal finite_index) in Habs.
     contradiction.
@@ -173,12 +171,8 @@ Definition opt_bind {A B} (o: option A) (f: A -> option B) :=
   end.
 
 Lemma opt_bind_f_equal {A B} o o' f f':
-  o = o' ->
-  (forall a, f a = f' a) ->
-  @opt_bind A B o f = opt_bind o' f'.
-Proof.
-  intros * -> **; destruct o'; eauto.
-Qed.
+  o = o' -> (forall a, f a = f' a) -> @opt_bind A B o f = opt_bind o' f'.
+Proof. intros * -> **; destruct o'; eauto. Qed.
 
 Notation "'let/opt' var ':=' expr 'in' body" :=
   (opt_bind expr (fun var => body)) (at level 200).
@@ -207,14 +201,10 @@ Section Lists.
       end
     end.
 
-  Definition list_sum' n l :=
-    List.fold_right (fun x acc => acc + x) n l.
+  Definition list_sum' n l := List.fold_right (fun x acc => acc + x) n l.
+  Definition list_sum l := list_sum' 0 l.
 
-  Definition list_sum l :=
-    list_sum' 0 l.
-
-  Lemma list_sum'_0 :
-    forall l n, list_sum' n l = list_sum' 0 l + n.
+  Lemma list_sum'_0: forall l n, list_sum' n l = list_sum' 0 l + n.
   Proof.
     induction l; cbn; intros.
     - reflexivity.
@@ -223,7 +213,7 @@ Section Lists.
       rewrite (Plus.plus_comm n a); reflexivity.
   Qed.
 
-  Lemma list_sum_app :
+  Lemma list_sum_app:
     forall l1 l2, list_sum (l1 ++ l2) = list_sum l1 + list_sum l2.
   Proof.
     unfold list_sum, list_sum'; intros.
@@ -231,17 +221,11 @@ Section Lists.
     reflexivity.
   Qed.
 
-  Lemma list_sum_firstn_le :
-    forall n l, list_sum (firstn n l) <= list_sum l.
-  Proof.
-    induction n; destruct l; cbn; auto with arith.
-  Qed.
+  Lemma list_sum_firstn_le: forall n l, list_sum (firstn n l) <= list_sum l.
+  Proof. induction n; destruct l; cbn; auto with arith. Qed.
 
-  Lemma list_sum_skipn_le :
-    forall n l, list_sum (skipn n l) <= list_sum l.
-  Proof.
-    induction n; destruct l; cbn; auto with arith.
-  Qed.
+  Lemma list_sum_skipn_le: forall n l, list_sum (skipn n l) <= list_sum l.
+  Proof. induction n; destruct l; cbn; auto with arith. Qed.
 
   Fixpoint skipn_firstn {A} n n' (l: list A):
     List.skipn n (List.firstn n' l) =
@@ -263,30 +247,24 @@ Section Lists.
   Fixpoint firstn_firstn {A} n n' (l: list A):
     List.firstn n (List.firstn n' l) =
     List.firstn (Nat.min n n') l.
-  Proof.
-    destruct n, n', l; cbn; auto using f_equal.
-  Qed.
+  Proof. destruct n, n', l; cbn; auto using f_equal. Qed.
 
-  Lemma firstn_map {A B} (f : A -> B) :
+  Lemma firstn_map {A B} (f : A -> B):
     forall n (l: list A),
-      List.firstn n (List.map f l) =
-      List.map f (List.firstn n l).
-  Proof.
-    induction n; destruct l; subst; cbn; auto using f_equal.
-  Qed.
+    List.firstn n (List.map f l) = List.map f (List.firstn n l).
+  Proof. induction n; destruct l; subst; cbn; auto using f_equal. Qed.
 
-  Lemma skipn_map {A B} (f : A -> B) :
+  Lemma skipn_map {A B} (f : A -> B):
     forall n (l: list A),
-      List.skipn n (List.map f l) =
-      List.map f (List.skipn n l).
+    List.skipn n (List.map f l) = List.map f (List.skipn n l).
   Proof.
     induction n; destruct l; subst; cbn; auto using f_equal.
   Qed.
 
   Lemma skipn_app {A}:
     forall (l1 l2: list A) n,
-      n <= List.length l1 ->
-      skipn n (List.app l1 l2) = List.app (skipn n l1) l2.
+    n <= List.length l1
+    -> skipn n (List.app l1 l2) = List.app (skipn n l1) l2.
   Proof.
     induction l1; destruct n; cbn; try (inversion 1; reflexivity).
     - intros; apply IHl1; lia.
@@ -294,8 +272,8 @@ Section Lists.
 
   Lemma forallb_pointwise {A} :
     forall f1 f2 (ls: list A),
-      (forall x, List.In x ls -> f1 x = f2 x) ->
-      forallb f1 ls = forallb f2 ls.
+    (forall x, List.In x ls -> f1 x = f2 x)
+    -> forallb f1 ls = forallb f2 ls.
   Proof.
     induction ls; cbn.
     - reflexivity.
@@ -325,19 +303,17 @@ Section Lists.
 
   Lemma iterate_assoc:
     forall (n: nat) {A} (f: A -> A) (init: A),
-      iterate n f (f init) = f (iterate n f init).
-  Proof.
-    induction n; simpl; intros; try rewrite IHn; reflexivity.
-  Qed.
+    iterate n f (f init) = f (iterate n f init).
+  Proof. induction n; simpl; intros; try rewrite IHn; reflexivity. Qed.
 
-  Lemma iterate_S_acc :
+  Lemma iterate_S_acc:
     forall (n: nat) {A} (f: A -> A) (init: A),
-      iterate (S n) f init = iterate n f (f init).
+    iterate (S n) f init = iterate n f (f init).
   Proof. intros; symmetry; apply iterate_assoc. Qed.
 
-  Lemma iterate_tr_correct :
+  Lemma iterate_tr_correct:
     forall (n: nat) {A} (f: A -> A) (init: A),
-      iterate_tr n f init = iterate n f init.
+    iterate_tr n f init = iterate n f init.
   Proof.
     induction n; simpl; intros.
     - reflexivity.
@@ -346,12 +322,11 @@ Section Lists.
 
   Lemma iterate_pointwise_inv {A} (f g: A -> A) (inv: A -> Prop):
     (* Use g because that's usually the simpler one *)
-    (forall x, inv x -> inv (g x)) ->
-    (forall x, inv x -> f x = g x) ->
-    forall n,
-    forall init: A,
-      inv (init) ->
-      iterate n f init = iterate n g init.
+    (forall x, inv x -> inv (g x))
+    -> (forall x, inv x -> f x = g x)
+    -> forall n, forall init: A,
+    inv (init)
+    -> iterate n f init = iterate n g init.
   Proof.
     intros Hinv Heq; induction n; intros init Hinvi.
     - reflexivity.
@@ -390,8 +365,7 @@ Module Streams.
     rewrite (Streams.unfold_Stream (Streams.map f s)) at 1; reflexivity.
   Qed.
 
-  Lemma Str_nth_0 {A} (hd: A) tl:
-    Streams.Str_nth 0 (hd ::: tl) = hd.
+  Lemma Str_nth_0 {A} (hd: A) tl: Streams.Str_nth 0 (hd ::: tl) = hd.
   Proof. reflexivity. Qed.
 
   Lemma Str_nth_S {A} (hd: A) tl n:
@@ -399,9 +373,7 @@ Module Streams.
   Proof. reflexivity. Qed.
 
   Lemma Str_nth_coiterate {A} (f: A -> A) :
-    forall n (init: A),
-      Streams.Str_nth n (coiterate f init) =
-      iterate n f init.
+    forall n (init: A), Streams.Str_nth n (coiterate f init) = iterate n f init.
   Proof.
     setoid_rewrite <- iterate_tr_correct.
     induction n; cbn; intros.
@@ -411,9 +383,9 @@ Module Streams.
   Qed.
 
   Lemma coiterate_pointwise {A} (f g: A -> A):
-    (forall x, f x = g x) ->
-    forall init: A,
-      Streams.EqSt (coiterate f init) (coiterate g init).
+    (forall x, f x = g x)
+    -> forall init: A,
+    Streams.EqSt (coiterate f init) (coiterate g init).
   Proof.
     intros Heq; cofix IH; intros init.
     constructor; simpl.
@@ -422,11 +394,11 @@ Module Streams.
   Qed.
 
   Lemma coiterate_pointwise_inv {A} (f g: A -> A) (inv: A -> Prop):
-    (forall x, inv x -> inv (g x)) -> (* Use g because that's usually the simpler one *)
-    (forall x, inv x -> f x = g x) ->
-    forall init: A,
-      inv (init) ->
-      Streams.EqSt (coiterate f init) (coiterate g init).
+    (forall x, inv x -> inv (g x))
+    (* Use g because that's usually the simpler one *)
+    -> (forall x, inv x -> f x = g x)
+    -> forall init: A,
+    inv (init) -> Streams.EqSt (coiterate f init) (coiterate g init).
   Proof.
     intros Hinv Heq; cofix IH; intros init Hinvi.
     constructor; simpl.
@@ -437,9 +409,10 @@ Module Streams.
   Fixpoint firstn {A} (n: nat) (s: Stream A) : list A :=
     match n with
     | 0 => []
-    | S n => match s with
-            | Cons hd tl => hd :: firstn n tl
-            end
+    | S n =>
+      match s with
+      | Cons hd tl => hd :: firstn n tl
+      end
     end.
 End Streams.
 
@@ -466,7 +439,7 @@ Notation "'let/res' var ':=' expr 'in' body" :=
    | Success var => body
    | Failure f => Failure f
    end)
-    (at level 200).
+   (at level 200).
 
 Section result_list_map.
   Context {A B F: Type}.
@@ -476,9 +449,10 @@ Section result_list_map.
   Fixpoint result_list_map (la: list A): result (list B) F :=
     match la with
     | [] => Success []
-    | a :: la => let/res b := f a in
-               let/res la := result_list_map la in
-               Success (b :: la)
+    | a :: la =>
+      let/res b := f a in
+      let/res la := result_list_map la in
+      Success (b :: la)
     end.
 End result_list_map.
 

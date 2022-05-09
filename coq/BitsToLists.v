@@ -1,5 +1,5 @@
 Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
-Require Import SimpleVal.
+Require Import Koika.DesugaredSyntax Koika.SimpleVal.
 
 Ltac destr_in H :=
   match type of H with
@@ -12,7 +12,6 @@ Ltac destr :=
   end.
 
 Ltac inv H := inversion H; try subst; clear H.
-
 
 Lemma ubits_of_value_len:
   forall {tau} (v: type_denote tau) bs,
@@ -62,9 +61,8 @@ Proof.
     rewrite app_nil_r. eapply IHt. eauto.
 Qed.
 
-
 Definition bits_split (n: nat) {sz} (v: bits sz)
-  : option (bits n * bits (sz - n)).
+: option (bits n * bits (sz - n)).
 Proof.
   destruct (lt_dec n sz). 2: exact None.
   replace sz with (n + (sz - n)) in v. 2: lia.
@@ -89,8 +87,7 @@ Definition take_drop' {A: Type} n (l: list A) :=
   end.
 
 Fixpoint bits_splitn (nb sz_elt: nat) (bs: list bool)
-  : option (list (list bool))
-:=
+: option (list (list bool)) :=
     match nb with
     | O => Some []
     | S nb =>
@@ -112,8 +109,8 @@ Qed.
 
 Lemma take_drop_spec:
   forall {A:Type} (n: nat) (l la lb: list A),
-  take_drop n l = Some (la, lb) ->
-  l = la ++ lb /\ List.length la = n /\ List.length lb = List.length l - n.
+  take_drop n l = Some (la, lb)
+  -> l = la ++ lb /\ List.length la = n /\ List.length lb = List.length l - n.
 Proof.
   induction n; simpl; intros; eauto.
   inversion H; clear H; subst. repeat split; try reflexivity. lia.
@@ -150,7 +147,6 @@ Proof.
   repeat split; auto. lia.
 Qed.
 
-
 Lemma app_eq_inv:
   forall {A:Type} (a b c d: list A),
   a ++ b = c ++ d -> List.length a = List.length c -> a = c /\ b = d.
@@ -181,34 +177,31 @@ Fixpoint size_type (t: type) :=
   | enum_t sig => 1
   | struct_t sig =>
     1 + list_sum (List.map (fun '(_, t) => size_type t) (struct_fields sig))
-  | array_t sig =>
-    1 + size_type (array_type sig)
+  | array_t sig => 1 + size_type (array_type sig)
   end.
 
 Lemma wt_val_ind':
   forall
     (P : type -> val -> Prop)
     (Hbits: forall (n : nat) (bs : list bool),
-      Datatypes.length bs = n -> P (bits_t n) (Bits bs)
-    )
+      Datatypes.length bs = n -> P (bits_t n) (Bits bs))
     (Henum: forall (sig : enum_sig) (bs : list bool),
-      Datatypes.length bs = enum_bitsize sig -> P (enum_t sig) (Enum sig bs)
-    )
+      Datatypes.length bs = enum_bitsize sig -> P (enum_t sig) (Enum sig bs))
     (Hstruct: forall (sig : struct_sig) (lv : list val),
       Forall2 (fun (nt : type) (v : val) => wt_val nt v)
-        (map snd (struct_fields sig)) lv ->
-      Forall2 (fun (nt : type) (v : val) => wt_val nt v -> P nt v)
-        (map snd (struct_fields sig)) lv ->
-      P (struct_t sig) (Struct sig lv)
-    )
-    (Harray: forall (sig : array_sig) (lv : list val),
+        (map snd (struct_fields sig)) lv
+        -> Forall2 (fun (nt : type) (v : val) => wt_val nt v -> P nt v)
+        (map snd (struct_fields sig)) lv
+        -> P (struct_t sig) (Struct sig lv))
+    (Harray:
+      forall (sig : array_sig) (lv : list val),
       Forall (fun v : val => wt_val (array_type sig) v) lv
       -> Forall (fun v : val => wt_val (array_type sig) v
       -> P (array_type sig) v) lv
       -> Datatypes.length lv = array_len sig
-      -> P (array_t sig) (Array sig lv)
-    ),
-  forall (t : type) (v : val), wt_val t v -> P t v.
+      -> P (array_t sig) (Array sig lv)) (t: type) (v: val),
+    wt_val t v
+    -> P t v.
 Proof.
   intros P Hbits Henum Hstruct Harray t v.
   remember (size_type t).
@@ -266,8 +259,8 @@ Proof.
 Qed.
 
 Lemma take_drop_head:
-  forall {A} n (l1 l2: list A),
-  n = List.length l1 -> take_drop n (l1 ++ l2) = Some (l1, l2).
+  forall {A} n (l1 l2: list A), n = List.length l1
+  -> take_drop n (l1 ++ l2) = Some (l1, l2).
 Proof.
   intros. subst. revert l2.
   induction l1; simpl; intros; subst; eauto.
@@ -275,8 +268,7 @@ Proof.
 Qed.
 
 Lemma length_concat_same:
-  forall {A} (l: list (list A)) sz,
-  Forall (fun x => List.length x = sz) l
+  forall {A} (l: list (list A)) sz, Forall (fun x => List.length x = sz) l
   -> Datatypes.length (List.concat l) = List.length l * sz.
 Proof.
   induction 1; simpl; intros; eauto.
@@ -284,8 +276,8 @@ Proof.
 Qed.
 
 Lemma ubits_of_value_len':
-  forall tau v,
-  wt_val tau v -> List.length (ubits_of_value v) = type_sz tau.
+  forall tau v, wt_val tau v
+  -> List.length (ubits_of_value v) = type_sz tau.
 Proof.
   intros tau v WT.
   pattern tau, v.
@@ -357,8 +349,8 @@ Fixpoint uvalue_of_bits {tau: type} (bs: list bool) {struct tau}: option val :=
   end.
 
 Lemma uvalue_of_bits_val:
-  forall tau v,
-  wt_val tau v -> uvalue_of_bits (tau:=tau) (ubits_of_value v) = Some v.
+  forall tau v, wt_val tau v
+  -> uvalue_of_bits (tau:=tau) (ubits_of_value v) = Some v.
 Proof.
   intros tau v WT.
   pattern tau, v.
@@ -440,16 +432,14 @@ Proof.
 Qed.
 
 Fixpoint get_field_struct (s: list (string * type)) (lv: list val) f
-  : option val
-:=
+: option val :=
   match s, lv with
   | (n, _)::s, a::lv => if eq_dec n f then Some a else get_field_struct s lv f
   | _, _ => None
   end.
 
 Fixpoint find_field_offset_right (s: list (string * type)) f
-  : option (nat * nat)
-:=
+: option (nat * nat) :=
   match s with
   | (n, t)::s =>
     if eq_dec f n then Some (struct_fields_sz s, type_sz t)
@@ -556,8 +546,7 @@ Proof.
 Qed.
 
 Lemma take_drop'_spec2:
-  forall {A:Type} (n: nat) (l la lb: list A),
-  take_drop' n l = (la, lb)
+  forall {A:Type} (n: nat) (l la lb: list A), take_drop' n l = (la, lb)
   -> l = la ++ lb /\ List.length la = Nat.min n (List.length l).
 Proof.
   induction n; simpl; intros; eauto.
@@ -577,6 +566,7 @@ Proof.
   induction n; simpl; intros; eauto. destr. auto.
   etransitivity. apply IHn. unfold struct_fields_sz. simpl. lia.
 Qed.
+
 Lemma field_offset_right_le:
   forall sig s, field_offset_right sig s <= struct_sz sig.
 Proof.
@@ -589,7 +579,7 @@ Lemma find_field_offset_right_spec:
   forall f sig (i: index (List.length (struct_fields sig))),
   PrimTypeInference.find_field sig f = Success i
   -> find_field_offset_right (struct_fields sig) f
-    = Some (field_offset_right sig i, field_sz sig i).
+  = Some (field_offset_right sig i, field_sz sig i).
 Proof.
   intros f sig i FF.
   unfold PrimTypeInference.find_field in FF. unfold opt_result in FF.
@@ -650,12 +640,12 @@ Lemma val_ind':
     (P : val -> Type) (Hbits: forall (bs : list bool), P (Bits bs))
     (Henum: forall (sig : enum_sig) (bs : list bool), P (Enum sig bs))
     (Hstruct: forall (sig : struct_sig) (lv : list val),
-      (forall x, In x lv -> P x) -> P (Struct sig lv)
-    )
-    (Harray: forall (sig : array_sig) (lv : list val),
-      (forall x, In x lv -> P x) -> P (Array sig lv)
-    ),
-  forall (v : val), P v.
+      (forall x, In x lv -> P x) -> P (Struct sig lv))
+    (Harray:
+      forall (sig : array_sig) (lv : list val),
+      (forall x, In x lv -> P x)-> P (Array sig lv))
+    (v: val),
+  P v.
 Proof.
   intros P Hbits Henum Hstruct Harray v.
   remember (size_val v).
@@ -685,7 +675,7 @@ Proof.
 Defined.
 
 Definition list_eq_dec'
-           {A: Type} (l1 l2: list A) (Aeq: forall x y, In x l1 -> {x = y} + {x <> y})
+  {A: Type} (l1 l2: list A) (Aeq: forall x y, In x l1 -> {x = y} + {x <> y})
 : {l1 = l2} + {l1 <> l2}.
 Proof.
   revert l1 Aeq l2; induction l1; simpl; intros.
@@ -699,23 +689,115 @@ Proof.
 Defined.
 
 Fixpoint list_eqb
-         {A: Type} (l1 l2: list A) (Aeq: forall x y:A, bool)
-  : bool :=
+  {A: Type} (l1 l2: list A) (Aeq: forall x y:A, bool)
+: bool :=
   match l1, l2 with
-    [], [] => true
+  | [], [] => true
   | [], _ | _, [] => false
-  | a1::l1, a2::l2 =>
-      Aeq a1 a2 && list_eqb l1 l2 Aeq
+  | a1::l1, a2::l2 => Aeq a1 a2 && list_eqb l1 l2 Aeq
   end.
+
+(* Require Import Coq.Lists.List. *)
+(* Scheme Equality for list. *)
+(* Scheme Equality for vect. *)
+
+(* Definition val_beq_bits (v1 v2: val) : bool := *)
+(*   match v1, v2 with *)
+(*   | Bits b1, Bits b2 => list_beq bool Bool.eqb b1 b2 *)
+(*   | _, _ => false *)
+(*   end. *)
+
+(* Lemma val_beq_bits_implies_eq : forall v1 v2, val_beq_bits v1 v2 = true -> v1 = v2. *)
+(* Proof. *)
+(*   intros. *)
+(*   induction v1; induction v2; inv H. *)
+(*   assert (v = v0). *)
+(*   { *)
+(*     generalize dependent v0. *)
+(*     induction v; intros. *)
+(*     - inv H1. destruct v0; eauto. discriminate. *)
+(*     - destruct v0. *)
+(*       + simpl in H1. discriminate. *)
+(*       + simpl in H1. eapply andb_true_iff in H1. destruct H1. *)
+(*         eapply Bool.eqb_prop in H. eapply IHv in H0. subst. reflexivity. *)
+(*   } *)
+(*   subst. reflexivity. *)
+(* Qed. *)
+
+(* Fixpoint val_beq (v1 v2: val) : bool := *)
+(*   match v1, v2 with *)
+(*   | Bits b1, Bits b2 => list_beq bool Bool.eqb b1 b2 *)
+(*   | Enum sig1 b1, Enum sig2 b2 => *)
+(*     list_beq bool Bool.eqb b1 b2 && enum_sig_beq sig1 sig2 *)
+(*   | Struct sig1 v1, Struct sig2 v2 => *)
+(*     list_beq val (val_beq) v1 v2 && struct_sig_beq sig1 sig2 *)
+(*   | Array sig1 v1, Array sig2 v2 => *)
+(*     list_beq val (val_beq) v1 v2 && array_sig_beq sig1 sig2 *)
+(*   | _, _ => false *)
+(*   end *)
+(* with enum_sig_beq (s1 s2: enum_sig) : bool := *)
+(*   eqb (enum_name s1) (enum_name s2) *)
+(*   && Nat.eqb (enum_size s1) (enum_size s2) *)
+(*   && Nat.eqb (enum_bitsize s1) (enum_bitsize s2) *)
+(*   && vect *)
+(*   && vect *)
+(* with struct_sig_beq (s1 s2: struct_sig) : bool := *)
+(*   eqb (struct_name s1) (struct_name s2) *)
+(*   && list_beq () *)
+(* with array_sig_beq (s1 s2: array_sig) : bool := *)
+
+(* . *)
+
+Lemma bits_dec (b1 b2: list bool) : {Bits b1 = Bits b2} + {Bits b1 <> Bits b2}.
+Proof.
+  destruct (eq_dec b1 b2).
+  - left. rewrite e. reflexivity.
+  - right. intro H. inv H. easy.
+Qed.
 
 Definition val_eq_dec (v1 v2: val) : {v1 = v2} + {v1 <> v2}.
 Proof.
+  (* refine ( *)
+  (*   match v1, v2 with *)
+  (*   | Bits b1, Bits b2 => _ *)
+  (*   | Enum s1 b1, Enum s2 b2 => _ *)
+  (*   | Struct s1 b1, Struct s2 b2 => _ *)
+  (*   | Array s1 b1, Array s2 b2 => _ *)
+  (*   | _, _ => _ *)
+  (*   end *)
+  (* ). *)
+
+  (* induction v1; induction v2; try (right; discriminate). *)
+  (* - destruct (eq_dec v v0). *)
+  (*   + subst. left. reflexivity. *)
+  (*   + right. intro H. inv H. destruct n. reflexivity. *)
+  (* - destruct (enum_sig_eq_dec sig sig0). *)
+  (*   + destruct (eq_dec v v0). *)
+  (*     * subst. left. reflexivity. *)
+  (*     * right. intro H. inv H. destruct n. reflexivity. *)
+  (*   + right. intro H. inv H. destruct n. reflexivity. *)
+  (* - induction (struct_sig_eq_dec sig sig0). *)
+  (*   + subst. destruct (list_eq_dec' v v0). *)
+  (*     * intros. eapply (eq_dec x y). *)
+  (*     * subst. left. reflexivity. *)
+  (*     * right. intro H. inv H. destruct n. reflexivity. *)
+  (*   + right. intro H. inv H. destruct b. reflexivity. *)
+  (* - induction (array_sig_eq_dec sig sig0). *)
+  (*   + subst. destruct (list_eq_dec' v v0). *)
+  (*     * intros. eapply (eq_dec x y). *)
+  (*     * subst. left. reflexivity. *)
+  (*     * right. intro H. inv H. destruct n. reflexivity. *)
+    (* + right. intro H. inv H. destruct b. reflexivity. *)
+
+  (* Restart. *)
   revert v2.
   pattern v1. revert v1.
   eapply val_ind'; simpl; intros.
   - destruct v2; try (right; intro A; inv A; congruence).
-    destruct (eq_dec bs v); try (right; intro A; inv A; congruence).
-    subst; left; reflexivity.
+    eapply bits_dec.
+    (* destruct (list_eq_dec' bool (Bool.eqb) bs v). *)
+    (* destruct (eq_dec bs v); try (right; intro A; inv A; congruence). *)
+    (* subst; left; reflexivity. *)
   - destruct v2; try (right; intro A; inv A; congruence).
     destruct (enum_sig_eq_dec sig sig0);
       try (right; intro A; inv A; congruence).
@@ -734,18 +816,26 @@ Proof.
     left; subst. reflexivity.
 Defined.
 
+Time Compute (eq_dec [true] [true]).
+Time Compute (val_eq_dec (Bits [true]) (Bits [true])).
+Time Compute (bits_dec [true] [true]).
+
 Definition enum_sig_eqb (s1 s2: enum_sig) :=
-  (enum_name s1 =? enum_name s2) &&
-    (Nat.eqb (enum_size s1) (enum_size s2)) &&
-    (Nat.eqb (enum_bitsize s1) (enum_bitsize s2)) &&
-    list_eqb (vect_to_list (enum_members s1)) (vect_to_list (enum_members s2)) eqb &&
-    list_eqb (map vect_to_list (vect_to_list (enum_bitpatterns s1))) (map vect_to_list (vect_to_list (enum_bitpatterns s2))) (fun l1 l2 => list_eqb l1 l2 Bool.eqb).
+  (enum_name s1 =? enum_name s2)
+  && (Nat.eqb (enum_size s1) (enum_size s2))
+  && (Nat.eqb (enum_bitsize s1) (enum_bitsize s2))
+  && list_eqb
+     (vect_to_list (enum_members s1)) (vect_to_list (enum_members s2)) eqb
+  && list_eqb
+     (map vect_to_list (vect_to_list (enum_bitpatterns s1)))
+     (map vect_to_list (vect_to_list (enum_bitpatterns s2)))
+     (fun l1 l2 => list_eqb l1 l2 Bool.eqb).
 
 Lemma list_eqb_correct:
-  forall {A: Type} (eqb: A -> A -> bool)
-         (eqb_correct: forall a1 a2, eqb a1 a2 = true <-> a1 = a2)
-         l1 l2,
-    list_eqb l1 l2 eqb = true <-> l1 = l2.
+  forall
+    {A: Type} (eqb: A -> A -> bool)
+    (eqb_correct: forall a1 a2, eqb a1 a2 = true <-> a1 = a2) l1 l2,
+  list_eqb l1 l2 eqb = true <-> l1 = l2.
 Proof.
   induction l1; simpl; intros; eauto.
   - destruct l2. tauto. intuition congruence.
@@ -755,11 +845,10 @@ Proof.
 Qed.
 
 Lemma map_inj:
-  forall {A B: Type} (f: A -> B)
-         (finj: forall a b, f a = f b -> a = b)
-         l1 l2
-         (EQ: map f l1 = map f l2),
-    l1 = l2.
+  forall
+    {A B: Type} (f: A -> B) (finj: forall a b, f a = f b -> a = b) l1 l2
+    (EQ: map f l1 = map f l2),
+  l1 = l2.
 Proof.
   induction l1; simpl; intros; eauto.
   destruct l2; simpl in *; congruence.
@@ -770,17 +859,16 @@ Qed.
 
 Require Import Coq.Program.Equality.
 
-Lemma list_eqb_refl: forall {A: Type} (eqb: A -> A -> bool)
-                            (eqb_refl: forall a, eqb a a = true) l,
-    list_eqb l l eqb = true.
+Lemma list_eqb_refl:
+  forall {A: Type} (eqb: A -> A -> bool) (eqb_refl: forall a, eqb a a = true) l,
+  list_eqb l l eqb = true.
 Proof.
   induction l; simpl; intros; eauto.
   rewrite eqb_refl, IHl; auto.
 Qed.
 
 Lemma enum_sig_eqb_correct:
-  forall s1 s2,
-    enum_sig_eqb s1 s2 = true <-> s1 = s2.
+  forall s1 s2, enum_sig_eqb s1 s2 = true <-> s1 = s2.
 Proof.
   intros.
   unfold enum_sig_eqb. destruct s1, s2; simpl.
@@ -809,8 +897,8 @@ Qed.
 
 Lemma val_eq_dec_bits:
   forall {T: Type} (A1 A2: T) b1 b2,
-    (if val_eq_dec (Bits b1) (Bits b2) then A1 else A2) =
-      (if list_eqb b1 b2 Bool.eqb then A1 else A2).
+  (if val_eq_dec (Bits b1) (Bits b2) then A1 else A2)
+  = (if list_eqb b1 b2 Bool.eqb then A1 else A2).
 Proof.
   intros.
   destr. clear Heqs. inv e. rewrite list_eqb_refl. auto. apply eqb_reflx.
@@ -819,8 +907,7 @@ Proof.
 Qed.
 
 Fixpoint bitwise (f: bool -> bool -> bool) (l1 l2: list bool) {struct l1}
-  : list bool
-:=
+: list bool :=
   match l1, l2 with
   | [], [] => []
   | [], l2 => map (fun x => f false x) l2
@@ -834,10 +921,9 @@ Lemma and_correct:
     (arg1: arg1Sig (PrimSignatures.Sigma2 (PrimTyped.Bits2 (PrimTyped.And sz))))
     (arg2: arg2Sig (PrimSignatures.Sigma2 (PrimTyped.Bits2 (PrimTyped.And sz))))
     ret,
-  PrimSpecs.sigma2 (PrimTyped.Bits2 (PrimTyped.And sz)) arg1 arg2 = ret ->
-  match val_of_value arg1, val_of_value arg2 with
-  | Bits arg1, Bits arg2 =>
-      Bits (bitwise andb arg1 arg2) = (val_of_value ret)
+  PrimSpecs.sigma2 (PrimTyped.Bits2 (PrimTyped.And sz)) arg1 arg2 = ret
+  -> match val_of_value arg1, val_of_value arg2 with
+  | Bits arg1, Bits arg2 => Bits (bitwise andb arg1 arg2) = (val_of_value ret)
   | _, _ => False
   end.
 Proof.
@@ -882,8 +968,8 @@ Proof.
 Qed.
 
 Lemma lsl1:
-  forall sz (v: bits sz),
-  sz <> 0 -> vect_to_list (Bits.lsl1 v) = false :: removelast (vect_to_list v).
+  forall sz (v: bits sz), sz <> 0
+  -> vect_to_list (Bits.lsl1 v) = false :: removelast (vect_to_list v).
 Proof.
   unfold Bits.lsl1. destruct sz. congruence. intros.
   rewrite vect_to_list_cons. f_equal.
@@ -893,8 +979,8 @@ Qed.
 
 Lemma lsl1':
   forall sz (v: bits sz),
-  vect_to_list (Bits.lsl1 v) =
-    if eq_dec sz O then [] else false :: removelast (vect_to_list v).
+  vect_to_list (Bits.lsl1 v)
+  = if eq_dec sz O then [] else false :: removelast (vect_to_list v).
 Proof.
   intros. destr.
   subst. destruct v; reflexivity.
@@ -903,8 +989,8 @@ Qed.
 
 Lemma and_correct':
   forall sz (arg1: bits_t sz) (arg2: bits_t sz),
-  bitwise andb (vect_to_list arg1) (vect_to_list arg2) =
-    vect_to_list (Bits.and arg1 arg2).
+  bitwise andb (vect_to_list arg1) (vect_to_list arg2)
+  = vect_to_list (Bits.and arg1 arg2).
 Proof.
   induction sz; simpl. reflexivity.
   destruct arg1, arg2. simpl.
@@ -915,8 +1001,8 @@ Qed.
 
 Lemma or_correct':
   forall sz (arg1: bits_t sz) (arg2: bits_t sz),
-  bitwise orb (vect_to_list arg1) (vect_to_list arg2) =
-    vect_to_list (Bits.or arg1 arg2).
+  bitwise orb (vect_to_list arg1) (vect_to_list arg2)
+  = vect_to_list (Bits.or arg1 arg2).
 Proof.
   induction sz; simpl. reflexivity.
   destruct arg1, arg2. simpl.
@@ -927,8 +1013,8 @@ Qed.
 
 Lemma xor_correct':
   forall sz (arg1: bits_t sz) (arg2: bits_t sz),
-  bitwise xorb (vect_to_list arg1) (vect_to_list arg2) =
-    vect_to_list (Bits.xor arg1 arg2).
+  bitwise xorb (vect_to_list arg1) (vect_to_list arg2)
+  = vect_to_list (Bits.xor arg1 arg2).
 Proof.
   induction sz; simpl. reflexivity.
   destruct arg1, arg2. simpl.
@@ -961,8 +1047,8 @@ Proof.
 Qed.
 
 Lemma lsr1:
-  forall sz (v: bits sz),
-  sz <> 0 -> vect_to_list (Bits.lsr1 v) = tl (vect_to_list v) ++ [false].
+  forall sz (v: bits sz), sz <> 0
+  -> vect_to_list (Bits.lsr1 v) = tl (vect_to_list v) ++ [false].
 Proof.
   unfold Bits.lsr1. intros. destr.
   rewrite vect_to_list_snoc.
@@ -971,8 +1057,7 @@ Proof.
 Qed.
 
 Lemma asr1:
-  forall sz (v: bits sz),
-  sz <> 0
+  forall sz (v: bits sz), sz <> 0
   -> vect_to_list
     (Bits.asr1 v) = tl (vect_to_list v) ++ [last (vect_to_list v) false].
 Proof.
@@ -985,7 +1070,7 @@ Lemma iter_list_vect:
   forall sz (v: bits sz) (f: list bool -> list bool) (g: bits sz -> bits sz),
   (forall x, f (vect_to_list x) = vect_to_list (g x))
   -> forall n,
-    Nat.iter n f (vect_to_list v) = vect_to_list (vect_dotimes g n v).
+  Nat.iter n f (vect_to_list v) = vect_to_list (vect_dotimes g n v).
 Proof.
   intros. rewrite vect_dotimes_spec. induction n; simpl; intros; eauto.
   rewrite IHn. apply H.
@@ -994,7 +1079,7 @@ Qed.
 Lemma sel:
   forall sz (bs: bits sz) idx,
   vect_to_list (BitFuns.sel bs idx)
-    = [List.nth (Bits.to_nat idx) (vect_to_list bs) false].
+  = [List.nth (Bits.to_nat idx) (vect_to_list bs) false].
 Proof.
   unfold BitFuns.sel. intros.
   destr.
@@ -1207,8 +1292,8 @@ Qed.
 
 Lemma take_drop_map:
   forall {A B: Type} (f: A -> B) n l l1 l2,
-  take_drop n (map f l) = Some (l1, l2) ->
-  exists l1' l2',
+  take_drop n (map f l) = Some (l1, l2)
+  -> exists l1' l2',
   take_drop n l = Some (l1', l2') /\ l1 = List.map f l1' /\ l2 = List.map f l2'.
 Proof.
   induction n; simpl; intros; eauto.
@@ -1260,136 +1345,161 @@ Fixpoint uvalue_of_list_bits {tau} (bs: list (list bool)) : option (list val) :=
 
   Inductive wt_unop : PrimUntyped.ufn1 -> type -> type -> Prop :=
   | wt_unop_display_utf8 sg:
-      array_type sg = bits_t 8 ->
-      wt_unop (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) (array_t sg) unit_t
+    array_type sg = bits_t 8
+    -> wt_unop
+       (PrimUntyped.UDisplay PrimUntyped.UDisplayUtf8) (array_t sg) unit_t
   | wt_unop_display_value opts tau:
-      wt_unop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) tau unit_t
+    wt_unop (PrimUntyped.UDisplay (PrimUntyped.UDisplayValue opts)) tau unit_t
   | wt_unop_upack tau:
-      wt_unop (PrimUntyped.UConv PrimUntyped.UPack) tau (bits_t (type_sz tau))
+    wt_unop (PrimUntyped.UConv PrimUntyped.UPack) tau (bits_t (type_sz tau))
   | wt_unop_uunpack tau:
-      wt_unop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) (bits_t (type_sz tau)) tau
+    wt_unop (PrimUntyped.UConv (PrimUntyped.UUnpack tau)) (bits_t (type_sz tau))
+      tau
   | wt_unop_uignore tau:
-      wt_unop (PrimUntyped.UConv PrimUntyped.UIgnore) tau unit_t
+    wt_unop (PrimUntyped.UConv PrimUntyped.UIgnore) tau unit_t
   | wt_unop_unot sz:
-      wt_unop (PrimUntyped.UBits1 PrimUntyped.UNot) (bits_t sz) (bits_t sz)
+    wt_unop (PrimUntyped.UBits1 PrimUntyped.UNot) (bits_t sz) (bits_t sz)
   | wt_unop_usext sz width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) (bits_t sz) (bits_t (Nat.max sz width))
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.USExt width)) (bits_t sz)
+      (bits_t (Nat.max sz width))
   | wt_unop_uzextl sz width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) (bits_t sz) (bits_t (Nat.max sz width))
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtL width)) (bits_t sz)
+      (bits_t (Nat.max sz width))
   | wt_unop_uzextr sz width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) (bits_t sz) (bits_t (Nat.max sz width))
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.UZExtR width)) (bits_t sz)
+      (bits_t (Nat.max sz width))
   | wt_unop_urepeat sz times:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) (bits_t sz) (bits_t (times * sz))
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.URepeat times)) (bits_t sz)
+      (bits_t (times * sz))
   | wt_unop_uslice sz ofs width:
-      wt_unop (PrimUntyped.UBits1 (PrimUntyped.USlice ofs width)) (bits_t sz) (bits_t width)
+    wt_unop (PrimUntyped.UBits1 (PrimUntyped.USlice ofs width)) (bits_t sz)
+      (bits_t width)
   | wt_unop_ugetfield sg name idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) (struct_t sg) (field_type sg idx)
+    PrimTypeInference.find_field sg name = Success idx
+    -> wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetField name)) (struct_t sg)
+       (field_type sg idx)
   | wt_unop_ugetfieldbits sg name idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx)
+    PrimTypeInference.find_field sg name = Success idx
+    -> wt_unop (PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name))
+       (struct_bits_t sg) (field_bits_t sg idx)
   | wt_unop_ugetelement sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) (array_t sg) (array_type sg)
+    PrimTypeInference.check_index sg idx = Success idx0
+    -> wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElement idx)) (array_t sg)
+       (array_type sg)
   | wt_unop_ugetelementbits sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg))
-  .
+    PrimTypeInference.check_index sg idx = Success idx0
+    -> wt_unop (PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg idx))
+       (bits_t (array_sz sg)) (bits_t (element_sz sg)).
 
   Inductive wt_binop : PrimUntyped.ufn2 -> type -> type -> type -> Prop :=
-  | wt_binop_eq neg tau:
-      wt_binop (PrimUntyped.UEq neg) tau tau (bits_t 1)
+  | wt_binop_eq neg tau: wt_binop (PrimUntyped.UEq neg) tau tau (bits_t 1)
   | wt_binop_and sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAnd) (bits_t sz) (bits_t sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UAnd) (bits_t sz) (bits_t sz)
+      (bits_t sz)
   | wt_binop_or sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UOr) (bits_t sz) (bits_t sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UOr) (bits_t sz) (bits_t sz)
+      (bits_t sz)
   | wt_binop_xor sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UXor) (bits_t sz) (bits_t sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UXor) (bits_t sz) (bits_t sz)
+      (bits_t sz)
   | wt_binop_lsl sz sh_sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsl) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsl) (bits_t sz) (bits_t sh_sz)
+      (bits_t sz)
   | wt_binop_lsr sz sh_sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.ULsr) (bits_t sz) (bits_t sh_sz)
+      (bits_t sz)
   | wt_binop_asr sz sh_sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UAsr) (bits_t sz) (bits_t sh_sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UAsr) (bits_t sz) (bits_t sh_sz)
+      (bits_t sz)
   | wt_binop_concat sz1 sz2:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UConcat) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UConcat) (bits_t sz1) (bits_t sz2)
+      (bits_t (sz1 + sz2))
   | wt_binop_sel sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.USel) (bits_t sz) (bits_t (log2 sz)) (bits_t 1)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.USel) (bits_t sz)
+      (bits_t (log2 sz)) (bits_t 1)
   | wt_binop_slice_subst sz ofs w:
-      wt_binop (PrimUntyped.UBits2 (PrimUntyped.USliceSubst ofs w)) (bits_t sz) (bits_t w) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 (PrimUntyped.USliceSubst ofs w)) (bits_t sz)
+      (bits_t w) (bits_t sz)
   | wt_binop_indexedslice sz w:
-      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) (bits_t sz) (bits_t (log2 sz)) (bits_t w)
+    wt_binop (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) (bits_t sz)
+      (bits_t (log2 sz)) (bits_t w)
   | wt_binop_plus sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UPlus) (bits_t sz) (bits_t sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UPlus) (bits_t sz) (bits_t sz)
+      (bits_t sz)
   | wt_binop_minus sz:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMinus) (bits_t sz) (bits_t sz) (bits_t sz)
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UMinus) (bits_t sz) (bits_t sz)
+      (bits_t sz)
   | wt_binop_mul sz1 sz2:
-      wt_binop (PrimUntyped.UBits2 PrimUntyped.UMul) (bits_t sz1) (bits_t sz2) (bits_t (sz1 + sz2))
+    wt_binop (PrimUntyped.UBits2 PrimUntyped.UMul) (bits_t sz1) (bits_t sz2)
+      (bits_t (sz1 + sz2))
   | wt_binop_compare signed bc sz:
-      wt_binop (PrimUntyped.UBits2 (PrimUntyped.UCompare signed bc)) (bits_t sz) (bits_t sz) (bits_t 1)
+    wt_binop (PrimUntyped.UBits2 (PrimUntyped.UCompare signed bc)) (bits_t sz)
+      (bits_t sz) (bits_t 1)
   | wt_binop_substfield name sg idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) (struct_t sg) (field_type sg idx) (struct_t sg)
+    PrimTypeInference.find_field sg name = Success idx
+    -> wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstField name))
+       (struct_t sg) (field_type sg idx) (struct_t sg)
   | wt_binop_substfieldbits name sg idx:
-      PrimTypeInference.find_field sg name = Success idx ->
-      wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) (struct_bits_t sg) (field_bits_t sg idx) (struct_bits_t sg)
+    PrimTypeInference.find_field sg name = Success idx
+    -> wt_binop (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name))
+       (struct_bits_t sg) (field_bits_t sg idx) (struct_bits_t sg)
   | wt_binop_substelement sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) (array_t sg) (array_type sg) (array_t sg)
+    PrimTypeInference.check_index sg idx = Success idx0
+    -> wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx))
+       (array_t sg) (array_type sg) (array_t sg)
   | wt_binop_substelementbits sg idx idx0:
-      PrimTypeInference.check_index sg idx = Success idx0 ->
-      wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx)) (bits_t (array_sz sg)) (bits_t (element_sz sg)) (bits_t (array_sz sg))
-  .
-
+    PrimTypeInference.check_index sg idx = Success idx0
+    -> wt_binop (PrimUntyped.UArray2 (PrimUntyped.USubstElementBits sg idx))
+       (bits_t (array_sz sg)) (bits_t (element_sz sg)) (bits_t (array_sz sg)).
 
   Definition ret_type_unop (ufn: PrimUntyped.ufn1) (tau: type) :=
     match ufn with
     | PrimUntyped.UConv PrimUntyped.UPack => bits_t (type_sz tau)
     | PrimUntyped.UConv (PrimUntyped.UUnpack tau0) => tau0
     | PrimUntyped.UBits1 PrimUntyped.UNot => tau
-    | PrimUntyped.UBits1 (PrimUntyped.USExt width) |
-      PrimUntyped.UBits1 (PrimUntyped.UZExtL width) |
-      PrimUntyped.UBits1 (PrimUntyped.UZExtR width) =>
-        match tau with
-        | bits_t sz => bits_t (Nat.max sz width)
-        | _ => unit_t
-        end
+    | PrimUntyped.UBits1 (PrimUntyped.USExt width)
+    | PrimUntyped.UBits1 (PrimUntyped.UZExtL width)
+    | PrimUntyped.UBits1 (PrimUntyped.UZExtR width) =>
+      match tau with
+      | bits_t sz => bits_t (Nat.max sz width)
+      | _ => unit_t
+      end
     | PrimUntyped.UBits1 (PrimUntyped.URepeat times) =>
-        match tau with
-        | bits_t sz => bits_t (times * sz)
-        | _ => unit_t
-        end
+      match tau with
+      | bits_t sz => bits_t (times * sz)
+      | _ => unit_t
+      end
     | PrimUntyped.UBits1 (PrimUntyped.USlice _ width) => bits_t width
     | PrimUntyped.UStruct1 (PrimUntyped.UGetField name) =>
-        match tau with
-        | struct_t sg =>
-            match PrimTypeInference.find_field sg name with
-            | Success idx => field_type sg idx
-            | Failure _ => unit_t
-            end
-        | _ => unit_t
-        end
-    | PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name) =>
+      match tau with
+      | struct_t sg =>
         match PrimTypeInference.find_field sg name with
-        | Success idx => field_bits_t sg idx
+        | Success idx => field_type sg idx
         | Failure _ => unit_t
         end
+      | _ => unit_t
+      end
+    | PrimUntyped.UStruct1 (PrimUntyped.UGetFieldBits sg name) =>
+      match PrimTypeInference.find_field sg name with
+      | Success idx => field_bits_t sg idx
+      | Failure _ => unit_t
+      end
     | PrimUntyped.UArray1 (PrimUntyped.UGetElement _) =>
-        match tau with
-        | array_t sg => array_type sg
-        | _ => unit_t
-        end
+      match tau with
+      | array_t sg => array_type sg
+      | _ => unit_t
+      end
     | PrimUntyped.UArray1 (PrimUntyped.UGetElementBits sg _) =>
-        bits_t (element_sz sg)
+      bits_t (element_sz sg)
     | _ => unit_t
     end.
 
   Definition ret_type_binop (ufn: PrimUntyped.ufn2) (tau1 tau2: type) : type :=
     match ufn with
-      (PrimUntyped.UEq _)
+    | (PrimUntyped.UEq _)
     | (PrimUntyped.UBits2 PrimUntyped.USel)
     | (PrimUntyped.UBits2 (PrimUntyped.UCompare _ _))
-      => bits_t 1
+    => bits_t 1
     | (PrimUntyped.UBits2 PrimUntyped.UAnd)
     | (PrimUntyped.UBits2 PrimUntyped.UOr)
     | (PrimUntyped.UBits2 PrimUntyped.UXor)
@@ -1399,14 +1509,16 @@ Fixpoint uvalue_of_list_bits {tau} (bs: list (list bool)) : option (list val) :=
     | (PrimUntyped.UBits2 (PrimUntyped.USliceSubst _ _))
     | (PrimUntyped.UBits2 PrimUntyped.UPlus)
     | (PrimUntyped.UBits2 PrimUntyped.UMinus)
-      => tau1
-    | (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w)) => bits_t w
+    => tau1
+    | (PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice w))
+    => bits_t w
     | (PrimUntyped.UBits2 PrimUntyped.UConcat)
-    | (PrimUntyped.UBits2 PrimUntyped.UMul)=>
-        match tau1, tau2 with
-          bits_t s1, bits_t s2 => bits_t (s1 + s2)
-        | _, _ => bits_t 0
-        end
+    | (PrimUntyped.UBits2 PrimUntyped.UMul)
+    =>
+      match tau1, tau2 with
+      | bits_t s1, bits_t s2 => bits_t (s1 + s2)
+      | _, _ => bits_t 0
+      end
     | (PrimUntyped.UStruct2 (PrimUntyped.USubstField name)) => tau1
     | (PrimUntyped.UStruct2 (PrimUntyped.USubstFieldBits sg name)) => tau1
     | (PrimUntyped.UArray2 (PrimUntyped.USubstElement idx)) => tau1
@@ -1414,52 +1526,46 @@ Fixpoint uvalue_of_list_bits {tau} (bs: list (list bool)) : option (list val) :=
     end.
 
   Lemma wt_unop_type_unop_ret:
-    forall u t1 t2,
-      wt_unop u t1 t2 ->
-      t2 = ret_type_unop u t1.
+    forall u t1 t2, wt_unop u t1 t2 -> t2 = ret_type_unop u t1.
   Proof.
     induction 1; simpl; intros; eauto.
     rewrite H; auto.
     rewrite H; auto.
   Qed.
-
 
   Lemma wt_binop_type_binop_ret:
-    forall u t1 t2 t3,
-      wt_binop u t1 t2 t3 ->
-      t3 = ret_type_binop u t1 t2.
-  Proof.
-    induction 1; simpl; intros; eauto.
-  Qed.
-
+    forall u t1 t2 t3, wt_binop u t1 t2 t3 -> t3 = ret_type_binop u t1 t2.
+  Proof. induction 1; simpl; intros; eauto. Qed.
 
 Section WT.
   Variables pos_t fn_name_t: Type.
   Variable var_t: Type.
   Context {eq_dec_var_t: EqDec var_t}.
 
-  Inductive wt_var
-  : tsig var_t -> var_t -> type -> Prop :=
+  Inductive wt_var : tsig var_t -> var_t -> type -> Prop :=
   | wt_var_intro: forall sig v t tm,
     assoc v sig = Some tm -> projT1 tm = t -> wt_var sig v t.
 
-
   Inductive wt_list
-            {ext_fn_t: Type} {reg_t: Type}
-            (P: tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop)
-    : tsig var_t -> list (var_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t) -> list type -> Prop :=
-  | wt_list_nil sig : wt_list P sig [] []
+    {ext_fn_t: Type} {reg_t: Type}
+    (P:
+      tsig var_t -> uaction pos_t var_t fn_name_t reg_t ext_fn_t -> type -> Prop
+    )
+  : tsig var_t -> list (var_t * uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+    -> list type -> Prop
+  :=
+  | wt_list_nil sig: wt_list P sig [] []
   | wt_list_cons sig v a l t lt:
-      P sig a t ->
-      wt_list P ((v,t)::sig) l lt ->
-      wt_list P sig ((v,a)::l) (t::lt).
+    P sig a t
+    -> wt_list P ((v,t)::sig) l lt
+    -> wt_list P sig ((v,a)::l) (t::lt).
 
-  Inductive sig_of_bindings {A:Type} : list (var_t * A) -> list type -> tsig var_t -> Prop :=
+  Inductive sig_of_bindings {A:Type}
+  : list (var_t * A) -> list type -> tsig var_t -> Prop :=
   | sig_of_bindings_nil: sig_of_bindings [] [] []
-  | sig_of_bindings_cons:
-      forall bindings bind_taus sig v x t,
-        sig_of_bindings bindings bind_taus sig ->
-        sig_of_bindings ((x,v)::bindings) (t::bind_taus) ((x,t)::sig).
+  | sig_of_bindings_cons: forall bindings bind_taus sig v x t,
+    sig_of_bindings bindings bind_taus sig
+    -> sig_of_bindings ((x,v)::bindings) (t::bind_taus) ((x,t)::sig).
 
   Inductive wt_action
     {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
@@ -1468,83 +1574,91 @@ Section WT.
   :=
   | wt_action_fail: forall sig t, wt_action sig (UFail t) t
   | wt_action_var: forall sig var t,
-    wt_var sig var t -> wt_action sig (UVar var) t
+    wt_var sig var t
+    -> wt_action sig (UVar var) t
   | wt_action_const: forall sig tau cst,
     wt_action sig (@UConst _ _ _ _ _ tau cst) tau
   | wt_action_assign: forall sig k a t,
-    wt_action sig a t -> wt_var sig k t ->
-    wt_action sig (UAssign k a) (bits_t 0)
+    wt_action sig a t
+    -> wt_var sig k t
+    -> wt_action sig (UAssign k a) (bits_t 0)
   | wt_action_seq: forall sig a1 a2 t2,
-    wt_action sig a1 unit_t -> wt_action sig a2 t2 -> wt_action sig (USeq a1 a2) t2
+    wt_action sig a1 unit_t
+    -> wt_action sig a2 t2
+    -> wt_action sig (USeq a1 a2) t2
   | wt_action_bind: forall sig k a1 a2 t1 t2,
-    wt_action sig a1 t1 -> wt_action ((k,t1)::sig) a2 t2 ->
-    wt_action sig (UBind k a1 a2) t2
+    wt_action sig a1 t1
+    -> wt_action ((k,t1)::sig) a2 t2
+    -> wt_action sig (UBind k a1 a2) t2
   | wt_action_if: forall sig cond athen aelse t,
-    wt_action sig cond (bits_t 1) -> wt_action sig athen t ->
-    wt_action sig aelse t -> wt_action sig (UIf cond athen aelse) t
+    wt_action sig cond (bits_t 1)
+    -> wt_action sig athen t
+    -> wt_action sig aelse t
+    -> wt_action sig (UIf cond athen aelse) t
   | wt_action_read: forall sig prt idx, wt_action sig (URead prt idx) (R idx)
   | wt_action_write: forall sig prt idx v,
-    wt_action sig v (R idx) -> wt_action sig (UWrite prt idx v) unit_t
+    wt_action sig v (R idx)
+    -> wt_action sig (UWrite prt idx v) unit_t
   | wt_action_unop: forall sig ufn arg targ tret,
-    wt_unop ufn targ tret ->
-    wt_action sig arg targ ->
-    wt_action sig (UUnop ufn arg) tret
+    wt_unop ufn targ tret
+    -> wt_action sig arg targ
+    -> wt_action sig (UUnop ufn arg) tret
   | wt_action_binop: forall sig ufn arg1 arg2 targ1 targ2 tret,
-    wt_binop ufn targ1 targ2 tret ->
-    wt_action sig arg1 targ1 ->
-    wt_action sig arg2 targ2 ->
-    wt_action sig (UBinop ufn arg1 arg2) tret
+    wt_binop ufn targ1 targ2 tret
+    -> wt_action sig arg1 targ1
+    -> wt_action sig arg2 targ2
+    -> wt_action sig (UBinop ufn arg1 arg2) tret
   | wt_action_uexternalcall: forall sig fn a,
-    wt_action sig a (arg1Sig (Sigma fn)) ->
-    wt_action sig (UExternalCall fn a) (retSig (Sigma fn))
+    wt_action sig a (arg1Sig (Sigma fn))
+    -> wt_action sig (UExternalCall fn a) (retSig (Sigma fn))
   | wt_action_internal_call: forall sig fn args,
-    Forall2 (wt_action sig) args (map snd (int_argspec fn)) ->
-    wt_action (List.rev fn.(int_argspec)) (int_body fn) (int_retSig fn)->
-    wt_action sig (UInternalCall fn args) (fn.(int_retSig))
+    Forall2 (wt_action sig) args (map snd (int_argspec fn))
+    -> wt_action (List.rev fn.(int_argspec)) (int_body fn) (int_retSig fn)
+    -> wt_action sig (UInternalCall fn args) (fn.(int_retSig))
   | wt_action_uapos: forall sig tau pos e,
-    wt_action sig e tau -> wt_action sig (UAPos pos e) tau
+    wt_action sig e tau
+    -> wt_action sig (UAPos pos e) tau
   | wt_action_uskip: forall sig, wt_action sig (USugar USkip) (bits_t 0)
   | wt_action_uconstbits: forall sig {sz} (arg : bits_t sz),
     wt_action sig (USugar (UConstBits arg)) (bits_t sz)
   | wt_action_uconststring: forall sig (s : string),
     wt_action sig (USugar (UConstString s))
-      (array_t {| array_type := bits_t 8; array_len := length s; |})
+      (array_t {| array_type := bits_t 8; array_len := String.length s; |})
   | wt_action_uconstenum: forall sig sg name r,
-    vect_index name sg.(enum_members) = Some r ->
-    wt_action sig (USugar (UConstEnum sg name)) (enum_t sg)
+    vect_index name sg.(enum_members) = Some r
+    -> wt_action sig (USugar (UConstEnum sg name)) (enum_t sg)
   | wt_action_uprogn: forall sig aa,
-    (forall a, In a aa -> wt_action sig a unit_t) ->
-    wt_action sig (USugar (UProgn aa)) (bits_t 0)
-  | wt_action_ulet: forall sig sig' bindings body (bind_taus : list type) body_tau,
-    wt_list wt_action sig bindings bind_taus ->
-    (* Forall2 (fun v tau => wt_action sig (snd v) tau) bindings bind_taus -> *)
-    sig_of_bindings bindings bind_taus sig' ->
-    wt_action (rev sig' ++ sig) body body_tau ->
-    wt_action sig (USugar (ULet bindings body)) body_tau
+    (forall a, In a aa -> wt_action sig a unit_t)
+    -> wt_action sig (USugar (UProgn aa)) (bits_t 0)
+  | wt_action_ulet:
+    forall sig sig' bindings body (bind_taus: list type) body_tau,
+    wt_list wt_action sig bindings bind_taus
+    -> sig_of_bindings bindings bind_taus sig'
+    -> wt_action (rev sig' ++ sig) body body_tau
+    -> wt_action sig (USugar (ULet bindings body)) body_tau
   | wt_action_uwhen: forall sig cond body,
-    wt_action sig cond (bits_t 1) ->
-    wt_action sig body unit_t ->
-    (* XXX See related FIXME comment in Desugaring.v *)
+    wt_action sig cond (bits_t 1)
+    -> wt_action sig body unit_t
+    -> (* XXX See related FIXME comment in Desugaring.v *)
     wt_action sig (USugar (UWhen cond body)) unit_t
   | wt_action_uswitch: forall sig var default branches tau tau',
-    wt_action sig var tau ->
-    wt_action sig default tau' ->
-    Forall (
+    wt_action sig var tau
+    -> wt_action sig default tau'
+    -> Forall (
       fun b => wt_action sig (fst b) tau /\ wt_action sig (snd b) tau'
-    ) branches ->
-    wt_action sig (USugar (USwitch var default branches)) tau'
+    ) branches
+    -> wt_action sig (USugar (USwitch var default branches)) tau'
   | wt_action_ustructinit: forall sig (sg: struct_sig) fields,
     Forall (
       fun f => exists idx,
-        PrimTypeInference.find_field sg (fst f) = Success idx /\
-        wt_action sig (snd f) (snd (List_nth (struct_fields sg) idx))
-    ) fields ->
-    wt_action sig (USugar (UStructInit sg fields)) (struct_t sg)
+        PrimTypeInference.find_field sg (fst f) = Success idx
+        /\ wt_action sig (snd f) (snd (List_nth (struct_fields sg) idx))
+    ) fields
+    -> wt_action sig (USugar (UStructInit sg fields)) (struct_t sg)
   | wt_action_uarrayinit: forall sig tau elements,
-    Forall (fun e => wt_action sig e tau) elements ->
-    wt_action sig (USugar (UArrayInit tau elements)) (
-      array_t {| array_type := tau; array_len := List.length elements |}
-    )
+    Forall (fun e => wt_action sig e tau) elements
+    -> wt_action sig (USugar (UArrayInit tau elements)) (
+         array_t {| array_type := tau; array_len := List.length elements |})
   | wt_action_ucallmodule:
     forall
       sig {module_reg_t module_ext_fn_t : Type}
@@ -1554,12 +1668,12 @@ Section WT.
         @uaction pos_t var_t fn_name_t module_reg_t module_ext_fn_t
       ))
       (args: list (uaction pos_t var_t fn_name_t reg_t ext_fn_t)),
-    Forall2 (wt_action sig) args (map snd (int_argspec fn)) ->
-    @wt_action
+    Forall2 (wt_action sig) args (map snd (int_argspec fn))
+    -> @wt_action
       module_ext_fn_t module_reg_t (fun x => R (fR x))
       (fun x => Sigma (fSigma x)) (List.rev fn.(int_argspec)) (int_body fn)
-      (int_retSig fn) ->
-    wt_action sig (USugar (UCallModule fR fSigma fn args)) (fn.(int_retSig)).
+      (int_retSig fn)
+    -> wt_action sig (USugar (UCallModule fR fSigma fn args)) (fn.(int_retSig)).
 
   Inductive wt_daction
     {ext_fn_t: Type} {reg_t: Type} {R: reg_t -> type}
@@ -1569,40 +1683,47 @@ Section WT.
   | wt_daction_fail: forall sig t, wt_daction sig (DFail t) t
   | wt_daction_var: forall sig var t,
     wt_var sig var t -> wt_daction sig (DVar var) t
-| wt_daction_const: forall sig v tau,
-    wt_val tau v ->
-    wt_daction sig (DConst tau v) tau
+  | wt_daction_const: forall sig v tau,
+    wt_val tau v
+    -> wt_daction sig (DConst tau v) tau
   | wt_daction_assign: forall sig k a t,
-    wt_daction sig a t -> wt_var sig k t ->
-    wt_daction sig (DAssign k a) (bits_t 0)
+    wt_daction sig a t
+    -> wt_var sig k t
+    -> wt_daction sig (DAssign k a) (bits_t 0)
   | wt_daction_seq: forall sig a1 a2 t2,
-    wt_daction sig a1 unit_t -> wt_daction sig a2 t2 -> wt_daction sig (DSeq a1 a2) t2
+    wt_daction sig a1 unit_t
+    -> wt_daction sig a2 t2
+    -> wt_daction sig (DSeq a1 a2) t2
   | wt_daction_bind: forall sig k a1 a2 t1 t2,
-    wt_daction sig a1 t1 -> wt_daction ((k,t1)::sig) a2 t2 ->
-    wt_daction sig (DBind k a1 a2) t2
+    wt_daction sig a1 t1
+    -> wt_daction ((k,t1)::sig) a2 t2
+    -> wt_daction sig (DBind k a1 a2) t2
   | wt_daction_if: forall sig cond athen aelse t,
-    wt_daction sig cond (bits_t 1) -> wt_daction sig athen t ->
-    wt_daction sig aelse t -> wt_daction sig (DIf cond athen aelse) t
+    wt_daction sig cond (bits_t 1)
+    -> wt_daction sig athen t
+    -> wt_daction sig aelse t
+    -> wt_daction sig (DIf cond athen aelse) t
   | wt_daction_read: forall sig prt idx, wt_daction sig (DRead prt idx) (R idx)
   | wt_daction_write: forall sig prt idx v,
-    wt_daction sig v (R idx) -> wt_daction sig (DWrite prt idx v) unit_t
+    wt_daction sig v (R idx)
+    -> wt_daction sig (DWrite prt idx v) unit_t
   | wt_daction_unop: forall sig ufn arg targ tret,
-    wt_unop ufn targ tret ->
-    wt_daction sig arg targ ->
-    wt_daction sig (DUnop ufn arg) tret
+    wt_unop ufn targ tret
+    -> wt_daction sig arg targ
+    -> wt_daction sig (DUnop ufn arg) tret
   | wt_daction_binop: forall sig ufn arg1 arg2 targ1 targ2 tret,
-    wt_binop ufn targ1 targ2 tret ->
-    wt_daction sig arg1 targ1 ->
-    wt_daction sig arg2 targ2 ->
-    wt_daction sig (DBinop ufn arg1 arg2) tret
+    wt_binop ufn targ1 targ2 tret
+    -> wt_daction sig arg1 targ1
+    -> wt_daction sig arg2 targ2
+    -> wt_daction sig (DBinop ufn arg1 arg2) tret
   | wt_daction_uexternalcall: forall sig fn a,
-    wt_daction sig a (arg1Sig (Sigma fn)) ->
-    wt_daction sig (DExternalCall fn a) (retSig (Sigma fn))
+    wt_daction sig a (arg1Sig (Sigma fn))
+    -> wt_daction sig (DExternalCall fn a) (retSig (Sigma fn))
   | wt_daction_internal_call: forall sig fn args,
-    Forall2 (wt_daction sig) args (map snd (int_argspec fn)) ->
-    wt_daction (List.rev fn.(int_argspec)) (int_body fn) (int_retSig fn)->
-    wt_daction sig (DInternalCall fn args) (fn.(int_retSig))
+    Forall2 (wt_daction sig) args (map snd (int_argspec fn))
+    -> wt_daction (List.rev fn.(int_argspec)) (int_body fn) (int_retSig fn)
+    -> wt_daction sig (DInternalCall fn args) (fn.(int_retSig))
   | wt_daction_uapos: forall sig tau pos e,
-    wt_daction sig e tau -> wt_daction sig (DAPos pos e) tau.
-
+    wt_daction sig e tau
+    -> wt_daction sig (DAPos pos e) tau.
 End WT.

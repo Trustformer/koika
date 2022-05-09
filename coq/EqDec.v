@@ -39,9 +39,7 @@ Import EqNotations.
 
 Lemma eq_dec_rew_type_family {T} {EQ: EqDec T} (family: T -> Type):
   forall (t: T) (Heq: t = t) (a: family t), rew Heq in a = a.
-Proof.
-  intros. apply eq_sym, Eqdep_dec.eq_rect_eq_dec, eq_dec.
-Qed.
+Proof. intros. apply eq_sym, Eqdep_dec.eq_rect_eq_dec, eq_dec. Qed.
 
 Lemma eq_rect_eqdec_irrel
   {A} {EQ: EqDec A} (x: A) {P: A -> Type} {px: P x} {y: A}

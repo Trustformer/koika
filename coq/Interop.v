@@ -157,8 +157,8 @@ Section TypeConv.
   Lemma struct_of_list_to_list {A}
         (f_ls: forall tau: type, type_denote tau -> A)
         (f_sl: struct_of_list_fn_t A) :
-    (forall a, f_ls (projT1 (f_sl a)) (projT2 (f_sl a)) = a) ->
-    (* (forall a, f_ls (projT1 (f_sl a)) = a) -> *)
+    (forall a, f_ls (projT1 (f_sl a)) (projT2 (f_sl a)) = a)
+    -> (* (forall a, f_ls (projT1 (f_sl a)) = a) -> *)
     forall (aa: list (string * A)),
       struct_to_list f_ls _ (struct_of_list f_sl aa) = aa.
   Proof.
