@@ -697,128 +697,28 @@ Fixpoint list_eqb
   | a1::l1, a2::l2 => Aeq a1 a2 && list_eqb l1 l2 Aeq
   end.
 
-(* Require Import Coq.Lists.List. *)
-(* Scheme Equality for list. *)
-(* Scheme Equality for vect. *)
-
-(* Definition val_beq_bits (v1 v2: val) : bool := *)
-(*   match v1, v2 with *)
-(*   | Bits b1, Bits b2 => list_beq bool Bool.eqb b1 b2 *)
-(*   | _, _ => false *)
-(*   end. *)
-
-(* Lemma val_beq_bits_implies_eq : forall v1 v2, val_beq_bits v1 v2 = true -> v1 = v2. *)
-(* Proof. *)
-(*   intros. *)
-(*   induction v1; induction v2; inv H. *)
-(*   assert (v = v0). *)
-(*   { *)
-(*     generalize dependent v0. *)
-(*     induction v; intros. *)
-(*     - inv H1. destruct v0; eauto. discriminate. *)
-(*     - destruct v0. *)
-(*       + simpl in H1. discriminate. *)
-(*       + simpl in H1. eapply andb_true_iff in H1. destruct H1. *)
-(*         eapply Bool.eqb_prop in H. eapply IHv in H0. subst. reflexivity. *)
-(*   } *)
-(*   subst. reflexivity. *)
-(* Qed. *)
-
-(* Fixpoint val_beq (v1 v2: val) : bool := *)
-(*   match v1, v2 with *)
-(*   | Bits b1, Bits b2 => list_beq bool Bool.eqb b1 b2 *)
-(*   | Enum sig1 b1, Enum sig2 b2 => *)
-(*     list_beq bool Bool.eqb b1 b2 && enum_sig_beq sig1 sig2 *)
-(*   | Struct sig1 v1, Struct sig2 v2 => *)
-(*     list_beq val (val_beq) v1 v2 && struct_sig_beq sig1 sig2 *)
-(*   | Array sig1 v1, Array sig2 v2 => *)
-(*     list_beq val (val_beq) v1 v2 && array_sig_beq sig1 sig2 *)
-(*   | _, _ => false *)
-(*   end *)
-(* with enum_sig_beq (s1 s2: enum_sig) : bool := *)
-(*   eqb (enum_name s1) (enum_name s2) *)
-(*   && Nat.eqb (enum_size s1) (enum_size s2) *)
-(*   && Nat.eqb (enum_bitsize s1) (enum_bitsize s2) *)
-(*   && vect *)
-(*   && vect *)
-(* with struct_sig_beq (s1 s2: struct_sig) : bool := *)
-(*   eqb (struct_name s1) (struct_name s2) *)
-(*   && list_beq () *)
-(* with array_sig_beq (s1 s2: array_sig) : bool := *)
-
-(* . *)
-
-Lemma bits_dec (b1 b2: list bool) : {Bits b1 = Bits b2} + {Bits b1 <> Bits b2}.
+Fixpoint val_eq_dec (v1 v2: val) : {v1 = v2} + {v1 <> v2}.
 Proof.
-  destruct (eq_dec b1 b2).
-  - left. rewrite e. reflexivity.
-  - right. intro H. inv H. easy.
-Qed.
-
-Definition val_eq_dec (v1 v2: val) : {v1 = v2} + {v1 <> v2}.
-Proof.
-  (* refine ( *)
-  (*   match v1, v2 with *)
-  (*   | Bits b1, Bits b2 => _ *)
-  (*   | Enum s1 b1, Enum s2 b2 => _ *)
-  (*   | Struct s1 b1, Struct s2 b2 => _ *)
-  (*   | Array s1 b1, Array s2 b2 => _ *)
-  (*   | _, _ => _ *)
-  (*   end *)
-  (* ). *)
-
-  (* induction v1; induction v2; try (right; discriminate). *)
-  (* - destruct (eq_dec v v0). *)
-  (*   + subst. left. reflexivity. *)
-  (*   + right. intro H. inv H. destruct n. reflexivity. *)
-  (* - destruct (enum_sig_eq_dec sig sig0). *)
-  (*   + destruct (eq_dec v v0). *)
-  (*     * subst. left. reflexivity. *)
-  (*     * right. intro H. inv H. destruct n. reflexivity. *)
-  (*   + right. intro H. inv H. destruct n. reflexivity. *)
-  (* - induction (struct_sig_eq_dec sig sig0). *)
-  (*   + subst. destruct (list_eq_dec' v v0). *)
-  (*     * intros. eapply (eq_dec x y). *)
-  (*     * subst. left. reflexivity. *)
-  (*     * right. intro H. inv H. destruct n. reflexivity. *)
-  (*   + right. intro H. inv H. destruct b. reflexivity. *)
-  (* - induction (array_sig_eq_dec sig sig0). *)
-  (*   + subst. destruct (list_eq_dec' v v0). *)
-  (*     * intros. eapply (eq_dec x y). *)
-  (*     * subst. left. reflexivity. *)
-  (*     * right. intro H. inv H. destruct n. reflexivity. *)
-    (* + right. intro H. inv H. destruct b. reflexivity. *)
-
-  (* Restart. *)
-  revert v2.
-  pattern v1. revert v1.
-  eapply val_ind'; simpl; intros.
-  - destruct v2; try (right; intro A; inv A; congruence).
-    eapply bits_dec.
-    (* destruct (list_eq_dec' bool (Bool.eqb) bs v). *)
-    (* destruct (eq_dec bs v); try (right; intro A; inv A; congruence). *)
-    (* subst; left; reflexivity. *)
-  - destruct v2; try (right; intro A; inv A; congruence).
-    destruct (enum_sig_eq_dec sig sig0);
-      try (right; intro A; inv A; congruence).
-    destruct (eq_dec bs v); try (right; intro A; inv A; congruence).
-    subst; left; reflexivity.
-  - destruct v2; try (right; intro A; inv A; congruence).
-    destruct (struct_sig_eq_dec sig sig0);
-      try (right; intro A; inv A; congruence).
-    destruct (list_eq_dec' lv v); try (right; intro A; inv A; congruence).
-    eauto.
-    left; subst. reflexivity.
-  - destruct v2; try (right; intro A; inv A; congruence).
-    destruct (eq_dec sig sig0); subst. 2: (right; intro A; inv A; congruence).
-    destruct (list_eq_dec' lv v); try (right; intro A; inv A; congruence).
-    eauto.
-    left; subst. reflexivity.
+  destruct v1, v2; try (right; simpl; discriminate).
+  - destruct (eq_dec v v0).
+    + left. subst. reflexivity.
+    + right. intro. inv H. destruct n. reflexivity.
+  - destruct (eq_dec v v0).
+    + subst. destruct (enum_sig_eq_dec sig sig0).
+      * left. subst. reflexivity.
+      * right. intro. inv H. destruct n. reflexivity.
+    + right. intro. inv H. destruct n. reflexivity.
+  - destruct (list_eq_dec (val_eq_dec) v v0).
+    + subst. destruct (eq_dec sig sig0).
+      * left. subst. reflexivity.
+      * right. intro. inv H. destruct n. reflexivity.
+    + right. intro. inv H. destruct n. reflexivity.
+  - destruct (list_eq_dec (val_eq_dec) v v0).
+    + subst. destruct (eq_dec sig sig0).
+      * left. subst. reflexivity.
+      * right. intro. inv H. destruct n. reflexivity.
+    + right. intro. inv H. destruct n. reflexivity.
 Defined.
-
-Time Compute (eq_dec [true] [true]).
-Time Compute (val_eq_dec (Bits [true]) (Bits [true])).
-Time Compute (bits_dec [true] [true]).
 
 Definition enum_sig_eqb (s1 s2: enum_sig) :=
   (enum_name s1 =? enum_name s2)
