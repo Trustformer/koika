@@ -56,6 +56,12 @@ Module Collatz.
                     | divide => _divide
                     | multiply => _multiply
                     end).
+  Definition drules :=
+    tc_rules R empty_Sigma
+             (fun r => match r with
+                    | divide => _divide
+                    | multiply => _multiply
+                    end).
 
   (*! And now we can compute results: uncomment the ``Print`` commands below to show results. !*)
 

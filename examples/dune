@@ -71,6 +71,18 @@ Extraction \"datatypes.ml\" datatypes.prog."))
 
 
 ;; -*- dune -*-
+(subdir "_objects/euclid.v"
+ (rule (write-file "euclid_extr.v"
+                   "Require Coq.extraction.Extraction examples.euclid.
+Extraction \"euclid.ml\" euclid.prog."))
+ (coq.extraction
+  (prelude euclid_extr)
+  (extracted_modules euclid)
+  (theories Koika examples)
+  (flags "-w" "-overriding-logical-loadpath")))
+
+
+;; -*- dune -*-
 (subdir "_objects/external_rule.v"
  (rule (write-file "external_rule_extr.v"
                    "Require Coq.extraction.Extraction examples.external_rule.

@@ -59,6 +59,7 @@ Module RVProofs.
             (UpdateOnOff |> Writeback |> Execute |> done))),
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
+      (* TODO some useless steps, simplify *)
       intros.
       erewrite <- replace_reg_interp_cycle_ok; eauto.
       rewrite HALT_TRUE.
@@ -110,21 +111,91 @@ Module RVProofs.
       clear sf.
       rename sf''' into sf.
       Time Eval vm_compute in Maps.PTree.get 1788 (vars sf).
-      erewrite <- simplify_sifs_sf_interp_cycle_ok; eauto.
-      set (sf' := simplify_sifs_sf ctx ext_sigma sf).
+      erewrite <- simplify_sf_interp_cycle_ok; eauto.
+      set (sf' := simplify_sf ctx ext_sigma sf).
       subst sf.
-      vm_compute simplify_sifs_sf in sf'.
+      vm_compute simplify_sf in sf'.
+      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf').
       Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
+      assert (
+        prune_irrelevant (collapse_sf sf') RV32I.halt
+        = Some (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
+      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
+      eapply collapse_prune_ok in H.
+      2: eauto. 2: eauto.
+      rewrite <- H. clear H.
+      set (sf'' := (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
+      subst sf'.
+      vm_compute in sf''.
+      rename sf'' into sf.
+      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf).
+      erewrite <- simplify_sf_interp_cycle_ok; eauto.
+      set (sf' := simplify_sf ctx ext_sigma sf).
+      subst sf.
+      vm_compute in sf'.
+      rename sf' into sf.
+      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf).
+      assert (
+        prune_irrelevant (collapse_sf sf) RV32I.halt
+        = Some (prune_irrelevant_aux (collapse_sf sf) RV32I.halt 1789)).
+      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
+      eapply collapse_prune_ok in H.
+      2: eauto. 2: eauto.
+      rewrite <- H. clear H.
+      subst sf. vm_compute prune_irrelevant_aux.
+      unfold interp_cycle.
+      vm_compute remove_vars.
+      set (osef :=
+        getenv
+          REnv (create REnv (fun k : RV32I.reg_t => (bits_t 1, @SConst reg_t ext_sigma (Bits [true]))))
+          RV32I.halt
+      ).
+      vm_compute in osef.
+      unfold create.
+      simpl.
+      set (temp_out := (
+        let (env_t, getenv, putenv, create, _, _, _, _, _, _) as e
+          return (
+            forall V : RV32I.reg_t -> Type,
+              (forall k : RV32I.reg_t, V k) -> env_t e V
+           )
+         := REnv in create
+      )).
+      vm_compute in temp_out. simpl in temp_out.
+      set (temp_out2 := temp_out  (fun _ : RV32I.reg_t => val)).
+      vm_compute in temp_out2.
+      simpl in temp_out2.
+      subst temp_out2.
+      unfold getenv.
+      subst temp_out.
+      set (temp_out := (
+        let (env_t, getenv, putenv, create, _, _, _, _, _, _) as e
+          return (
+            forall V : RV32I.reg_t -> Type,
+            env_t e V -> forall k : RV32I.reg_t, V k
+          ) := REnv in getenv)
+          (fun _ : RV32I.reg_t => val)).
+      vm_compute in temp_out.
+      subst temp_out.
+      simpl.
+
+      vm_compute temp_out2.
+      vm_compute create.
+      vm_compute inlining_pass.
+      set (sf8 := remove_vars sf).
+      vm_compute list_assoc at 2.
+      rewrite interp_cycle
+      eapply interp_cycle
+      eapply <- getenv_interp_cycle.
+      vm_compute interp_cycle.
+      vm_compute.
+      set (sf' := (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
+
+      unfold interp_cycle. unfold getenv. simpl.
       Compute (
         eval_sact_no_vars ctx ext_sigma
           (SBinop (UEq false) (SConst (Bits [true])) (SConst (Bits [true])))).
       Compute (eval_sact_no_vars ctx ext_sigma (SConst (Bits [true]))).
-      Require Import Coq.Lists.List.
-      Scheme Equality for list.
-      Compute (list_beq bool (Bool.eqb) [] [true]).
-      Compute (val_eq_dec (Bits [true]) (Bits [true])).
-
-       (SBinop (UEq false) (SConst (Bits [true])) (SConst (Bits [true])))
 
       Time Eval vm_compute in Maps.PTree.get 1789 (vars sf').
       Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').

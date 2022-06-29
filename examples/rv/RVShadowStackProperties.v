@@ -249,7 +249,6 @@ Section ShadowStackProperties.
       end
     | _ => false
     end.
-  
 
   Set Typeclasses Debug.
   Instance eq_dec_reg: EqDec RV32I.reg_t := EqDec_FiniteType.
