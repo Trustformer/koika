@@ -1684,42 +1684,29 @@ Lemma remove_vars_correct:
       eapply eval_sact_no_vars_wt; eauto.
     - inv WTa.
       edestruct IHa1 as (r1 & EQ1); eauto.
-      + intros v VIS; eapply NoVars; eauto. apply var_in_sact_binop_1; eauto.
-      + rewrite EQ1. destruct (eval_sact_no_vars a2); simpl in *.
-        * destruct ufn2.
-          ** destruct negate; destruct (val_beq_bits r1 v) eqn:eq1; eauto;
-              destruct (val_eq_dec r1 v); simpl; eauto.
-           ** simpl. destruct fn; simpl in *.
-            *** destruct r1 eqn:eqr1.
-      (* + rewrite EQ1. simpl. *)
-      (*   edestruct IHa2 as (r2 & EQ2); eauto. *)
-      (*   * *)
-      (*   intros v VIS; eapply NoVars; eauto. apply var_in_sact_binop_2; eauto. *)
-      (*   rewrite EQ2. *)
-      (*   (1* eapply wt_binop_interp; eauto. *1) *)
-      (*   simpl. destruct ufn2; simpl. *)
-      (*   * admit. *)
-      (*   * admit. *)
-      (*   * admit. *)
-      (*   * admit. *)
-
-
-
-      (* + destruct negate. *)
-      (*   * destruct (val_beq_bits r1 r2); eauto. *)
-      (*   * destruct (val_beq_bits r1 r2); eauto. *)
-      (* + destruct r1; eauto. *)
-      (*   * destruct r2; eauto. *)
-      (*     ** destruct H5; eauto; admit. *)
-      (*     ** destruct H5. *)
-      (* eapply wt_binop_interp; eauto. *)
-      (* eapply eval_sact_no_vars_wt; eauto. *)
-      (* eapply eval_sact_no_vars_wt; eauto. *)
-    (* - inv WTa. *)
-      (* edestruct IHa as (r1 & EQ1); eauto. *)
-      (* intros v VIS; eapply NoVars; eauto. apply var_in_sact_external; eauto. *)
-      (* rewrite EQ1. simpl. eauto. *)
-  Admitted.
+      { intros v VIS; eapply NoVars; eauto. apply var_in_sact_binop_1; eauto. }
+      edestruct IHa2 as (r2 & EQ2); eauto.
+      { intros v VIS; eapply NoVars; eauto. apply var_in_sact_binop_2; eauto. }
+      rewrite EQ1, EQ2. simpl.
+      edestruct wt_binop_interp. apply H5.
+      eapply eval_sact_no_vars_wt. eauto. eauto.
+      eapply eval_sact_no_vars_wt. eauto. eauto.
+      exists x.
+      destr.
+      transitivity (if val_beq_bits r1 r2 then Some (Bits [negb negate]) else sigma2 (PrimUntyped.UEq negate) r1 r2).
+      repeat destr; reflexivity.
+      destr.
+      unfold val_beq_bits in Heqb.
+      repeat destr_in Heqb; inv Heqb.
+      apply internal_list_dec_bl in H1. subst.
+      destruct negate; simpl in H. inv H. simpl. destr. inv H. simpl.
+      destr.
+      intros; apply Bool.eqb_eq. rewrite H0. constructor.
+    - inv WTa.
+      edestruct IHa as (r1 & EQ1); eauto.
+      intros v VIS; eapply NoVars; eauto. apply var_in_sact_external; eauto.
+      rewrite EQ1. simpl. eauto.
+  Qed.
 
   Lemma wt_sact_var_exists:
     forall a vvs t (WTa: wt_sact (Sigma:=Sigma) R vvs a t),
