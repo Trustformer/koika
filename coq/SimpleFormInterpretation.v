@@ -1785,22 +1785,22 @@ Lemma remove_vars_correct:
       end
     | SUnop ufn a => (* Perhaps not strictly required *)
       let a := simplify_sact a in
-      match ufn with
-      | PrimUntyped.UBits1 PrimUntyped.UNot =>
-        match eval_sact_no_vars a with
-        | Some (Bits [b]) => SConst (Bits [negb b])
-        | _ => SUnop ufn a
-        end
-      | fn =>
+      (* match ufn with *)
+      (* | PrimUntyped.UBits1 PrimUntyped.UNot => *)
+      (*   match eval_sact_no_vars a with *)
+      (*   | Some (Bits [b]) => SConst (Bits [negb b]) *)
+      (*   | _ => SUnop ufn a *)
+      (*   end *)
+      (* | fn => *)
         match eval_sact_no_vars a with
         | Some x =>
-          match sigma1 fn x with
+          match sigma1 ufn x with
           | Some r => SConst r
           | None => SUnop ufn a
           end
         | None => SUnop ufn a
         end
-      end
+      (* end *)
     | SExternalCall ufn a => SExternalCall ufn (simplify_sact a)
     | SVar _ | SReg _ | SConst _ => ua
     end.
@@ -2445,22 +2445,124 @@ Lemma remove_vars_correct:
       exploit IHn. apply Heqo. eauto. intro; subst. congruence. congruence.
   Qed.
 
+  Lemma wt_simplify_sact:
+    forall vss a t,
+      wt_sact R (Sigma:=Sigma) vss a t ->
+      wt_sact R (Sigma:=Sigma) vss (simplify_sact a) t.
+  Proof.
+    induction 1; simpl; intros; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - destr.
+      exploit eval_sact_no_vars_wt. 2: eauto. eauto.
+      intro WT. apply wt_val_bool in WT. destruct WT; subst.
+      destr.
+      econstructor; eauto.
+    -
+      assert (wt_sact (Sigma:=Sigma) R vss
+                match eval_sact_no_vars (simplify_sact a) with
+                | Some x => match sigma1 ufn x with
+                            | Some r => SConst r
+                            | None => SUnop ufn (simplify_sact a)
+                            end
+                | None => SUnop ufn (simplify_sact a)
+                end t'
+             ).
+      {
+        destr.
+        exploit eval_sact_no_vars_wt. 2: eauto. eauto.
+        intro WT.
+        destr.
+        econstructor; eauto.
+        eapply Wt.wt_unop_sigma1; eauto.
+        econstructor; eauto.
+        econstructor; eauto.
+      }
+      destr; auto.
+    - assert ( wt_sact (Sigma:=Sigma) R vss
+                 match eval_sact_no_vars (simplify_sact a1) with
+                 | Some x =>
+                     match eval_sact_no_vars (simplify_sact a2) with
+                     | Some y => match sigma2 ufn x y with
+                                 | Some r0 => SConst r0
+                                 | None => SBinop ufn (simplify_sact a1) (simplify_sact a2)
+                                 end
+                     | None => SBinop ufn (simplify_sact a1) (simplify_sact a2)
+                     end
+                 | None => SBinop ufn (simplify_sact a1) (simplify_sact a2)
+                 end t').
+      {
+        destr.
+        2: econstructor; eauto.
+        destr.
+        2: econstructor; eauto.
+        exploit eval_sact_no_vars_wt. 2: apply Heqo. eauto.
+        intro WT1.
+        exploit eval_sact_no_vars_wt. 2: apply Heqo0. eauto.
+        intro WT2.
+        destr.
+        2: econstructor; eauto.
+        econstructor.
+        eapply Wt.wt_binop_sigma1; eauto.
+      }
+      destr; auto.
+      destr; auto.
+      + clear H2. inv H1.
+        destr. exploit eval_sact_no_vars_wt. apply IHwt_sact1. eauto. intro WT1. inv WT1.
+        destruct (eval_sact_no_vars (simplify_sact a2)) eqn:?.
+        exploit eval_sact_no_vars_wt. apply IHwt_sact2. eauto. intro WT2. inv WT2.
+        destr. destr. econstructor; eauto. econstructor; eauto. simpl in H2; lia.
+        destruct bs0. simpl in H2; lia. simpl in H2. destruct l.
+        destr; eauto. constructor. constructor. auto.
+        destruct bs0. simpl in H2; lia. simpl in H2.
+        repeat destr; eauto; econstructor; eauto; constructor; auto.
+        repeat destr;
+          repeat econstructor; eauto.
+        repeat destr;
+          repeat econstructor; eauto.
+        subst.
+        exploit eval_sact_no_vars_wt. apply IHwt_sact2. eauto. intro WT2. inv WT2.
+        auto.
+      + clear H2. inv H1.
+        destr. exploit eval_sact_no_vars_wt. apply IHwt_sact1. eauto. intro WT1. inv WT1.
+        destruct (eval_sact_no_vars (simplify_sact a2)) eqn:?.
+        exploit eval_sact_no_vars_wt. apply IHwt_sact2. eauto. intro WT2. inv WT2.
+        destr. destr. econstructor; eauto. econstructor; eauto. simpl in H2; lia.
+        destruct bs0. simpl in H2; lia. simpl in H2. destruct l.
+        destr; eauto. constructor. constructor. auto.
+        destruct bs0. simpl in H2; lia. simpl in H2.
+        repeat destr; eauto; econstructor; eauto; constructor; auto.
+        repeat destr;
+          repeat econstructor; eauto.
+        repeat destr;
+          repeat econstructor; eauto.
+        subst.
+        exploit eval_sact_no_vars_wt. apply IHwt_sact2. eauto. intro WT2. inv WT2.
+        auto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+  Qed.
+
   Lemma simplify_unop_cases:
     forall ufn a a',
-    simplify_sact (SUnop ufn a) = a'
-    -> (
-      exists b,
-      ufn = PrimUntyped.UBits1 PrimUntyped.UNot
-      /\ eval_sact_no_vars (simplify_sact a) = Some (Bits [b])
-      /\ a' = SConst (Bits [negb b])
-    )
+    simplify_sact (SUnop ufn a) = a' ->
+    forall ta tr vss,
+    wt_unop ufn ta tr ->
+    wt_sact (Sigma:=Sigma) R vss a ta ->
+      (
+        exists b x,
+          eval_sact_no_vars (simplify_sact a) = Some b
+          /\ sigma1 ufn b = Some x
+          /\ a' = SConst x
+      )
     \/ a' = SUnop ufn (simplify_sact a).
   Proof.
-    intros. simpl in H. destruct ufn.
-    - simpl in *. destruct fn; eauto; simpl in *.
-      + inv Heqo0. left.
-  (* Qed. *)
-  Admitted.
+    intros. simpl in H. simpl.
+    subst. destr. destr.
+    - left. exists v, v0; split; auto.
+    - right; auto.
+    - right; auto.
+  Qed.
 
   Lemma simplify_bnop_cases:
     forall ufn a1 a2 a' ,
@@ -2483,12 +2585,33 @@ Lemma remove_vars_correct:
               \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits [true])
                   /\ a' = const_true)
               \/ (eval_sact_no_vars (simplify_sact a2) = Some (Bits [false])
-                  /\ a' = simplify_sact a1))).
+                  /\ a' = simplify_sact a1)))
+  \/ (
+      exists v1 v2 v,
+      eval_sact_no_vars (simplify_sact a1) = Some v1 /\
+      eval_sact_no_vars (simplify_sact a2) = Some v2 /\
+        sigma2 ufn v1 v2 = Some v /\
+        a' = SConst v
+    ).
   Proof.
-    (* intros. simpl in H. subst. *)
-    (* repeat destr; intuition eauto. *)
-  (* Qed. *)
-  Admitted.
+    intros. simpl in H. subst.
+    repeat destr; intuition eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+    - repeat right. do 3 eexists; repeat split; eauto.
+  Qed.
 
   Lemma eval_sact_wt:
     forall vvs (WT: wt_vvs (Sigma:=Sigma) R vvs) n a r t
@@ -2535,14 +2658,14 @@ Lemma remove_vars_correct:
       2: intro ES'; rewrite ES'. lia. eauto.
       erewrite IHn. 2-3: eauto. simpl.
       erewrite IHn; eauto.
-    - destruct (simplify_unop_cases ufn1 s _ eq_refl) as
-        [(b & EQ & ESNV & EQ')|EQ].
-      + inv WT.
-        rewrite EQ'. simpl.
+    - inv WT.
+      edestruct (simplify_unop_cases ufn1 s _ eq_refl) as
+        [(b & vv & EQ & ESNV & EQ')|EQ]; eauto.
+      + rewrite EQ'. simpl.
         exploit eval_sact_eval_sact_no_vars. 2: eauto. eapply IHn. eauto. eauto.
         intros ->.
         simpl. auto.
-      + inv WT; rewrite EQ. simpl. erewrite IHn; simpl; eauto.
+      + rewrite EQ. simpl. erewrite IHn; simpl; eauto.
     - inv WT.
       exploit eval_sact_wt. 3: apply Heqo. all: eauto.
       exploit eval_sact_wt. 3: apply Heqo0. all: eauto.
@@ -2552,7 +2675,8 @@ Lemma remove_vars_correct:
       eapply IHn in Heqo0; eauto.
       destruct (simplify_bnop_cases ufn2 s1 s2 _ eq_refl) as
         [EQ|[(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])
-            |(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])]]; rewrite EQ; clear EQ.
+            |[(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])|
+        (v1 & v2 & vv & ESNV1 & ESNV2 & SIGMA & EQ)]]]; rewrite EQ; clear EQ.
       + simpl. rewrite Heqo, Heqo0.  reflexivity.
       + exploit eval_sact_eval_sact_no_vars. apply Heqo. apply ESNV. intros ->.
         inv WTv1. inv H6.
@@ -2600,6 +2724,9 @@ Lemma remove_vars_correct:
         apply wt_val_bool in WTres.
         destruct WTv1, WTres. subst.
         erewrite eval_sact_more_fuel. 2: eauto. simpl. rewrite orb_false_r; auto. lia.
+      + exploit eval_sact_eval_sact_no_vars. 2: apply ESNV1. eauto. intros ->.
+        exploit eval_sact_eval_sact_no_vars. 2: apply ESNV2. eauto. intros ->.
+        rewrite H0 in SIGMA. inv SIGMA. simpl. eauto.
     - simpl. inv WT;  erewrite IHn; simpl; eauto.
   Qed.
 
@@ -2735,21 +2862,20 @@ Lemma remove_vars_correct:
              (WT: wt_sact (Sigma:=Sigma) R (vars sf) s t),
         wt_sact (Sigma:=Sigma) R (vars (remove_vars sf)) s t.
     Proof.
-    Admitted.
-      (* intros. *)
-      (* assert (forall v0, reachable_var (vars sf) (SVar v) v0 -> In v0 (useful_vars sf)). *)
-      (* { *)
-      (*   intros v0 RV. inv RV. auto. *)
-      (*   rewrite GET in H0; inv H0. *)
-      (*   intros; eapply useful_vars_ok; eauto. *)
-      (* } *)
-      (* specialize (fun v REACH vvs t2 => filter_ptree_eq _ _ vvs t2 (H v REACH) (nodup_useful_vars _ VSV)). *)
-      (* simpl. *)
-      (* fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)). *)
-      (* intros. eapply wt_sact_reachable. 2: eauto. *)
-      (* intros; apply H0. econstructor; eauto. *)
-      (* intros; apply PTree.gempty. *)
-    (* Qed. *)
+      intros.
+      assert (forall v0, reachable_var (vars sf) (SVar v) v0 -> In v0 (useful_vars sf)).
+      {
+        intros v0 RV. inv RV. auto.
+        rewrite GET in H0; inv H0.
+        intros; eapply useful_vars_ok; eauto.
+      }
+      specialize (fun v REACH vvs t2 => filter_ptree_eq _ _ vvs t2 (H v REACH) (nodup_useful_vars _ VSV)).
+      simpl.
+      fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)).
+      intros. eapply wt_sact_reachable. 2: eauto.
+      intros; apply H0. econstructor; eauto.
+      intros; apply PTree.gempty.
+    Qed.
 
     Lemma filter_ptree_inv:
       forall vvs l t2 v x,
@@ -2901,88 +3027,8 @@ Lemma remove_vars_correct:
     forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
     wt_sact (Sigma := Sigma) R vvs (simplify_sact a) t.
   Proof.
-  Admitted.
-    (* intros. induction WTS; try econstructor; eauto. *)
-    (* - simpl. *)
-    (*   destruct (eval_sact_no_vars (simplify_sact c)); eauto. *)
-    (*   + destruct v; try econstructor; eauto. *)
-    (*     destruct v; try econstructor; eauto. *)
-    (*     destruct b; try econstructor; eauto; destruct v; eauto; econstructor; *)
-    (*       eauto. *)
-    (*   + econstructor; eauto. *)
-    (* - simpl in *. *)
-    (*   destruct ufn; try econstructor; eauto. *)
-    (*   destruct fn; try econstructor; eauto. *)
-    (*   destruct (eval_sact_no_vars (simplify_sact a)) eqn:eq; eauto. *)
-    (*   2: econstructor; eauto. *)
-    (*   destruct v; destruct v; try econstructor; eauto. *)
-    (*   destruct v; econstructor; eauto. *)
-    (*   inv H. *)
-    (*   destruct (bits_Bits _ _ _ IHWTS _ eq). destruct H. inv H. econstructor. *)
-    (*   eauto. *)
-    (* - simpl in *. *)
-    (*   destruct ufn; try econstructor; eauto. *)
-    (*   inversion H; subst; try (econstructor; eauto). *)
-    (*   + destruct (eval_sact_no_vars (simplify_sact a1)) eqn:eq1; eauto; *)
-    (*     destruct (eval_sact_no_vars (simplify_sact a2)) eqn:eq2; eauto; subst. *)
-    (*     * destruct (bits_Bits _ _ _ IHWTS1 _ eq1). destruct H0. subst. *)
-    (*       destruct (bits_Bits _ _ _ IHWTS2 _ eq2). destruct H0. subst. *)
-    (*       ** destruct x. *)
-    (*         *** destruct x0. *)
-    (*           **** econstructor; eauto. *)
-    (*           **** destruct b; destruct x0; try easy; econstructor; eauto. *)
-    (*         *** destruct b, x; try easy. *)
-    (*           **** destruct x0; try easy. *)
-    (*                destruct b0; destruct x0; try easy; econstructor; eauto. *)
-    (*           **** econstructor; eauto. econstructor; eauto. *)
-    (*           **** destruct x0; try easy; destruct b0, x0; try easy; *)
-    (*                  econstructor; eauto. *)
-    (*     * destruct (bits_Bits _ _ _ IHWTS1 _ eq1). destruct H0. subst. *)
-    (*       destruct x. *)
-    (*       ** econstructor; eauto. *)
-    (*       ** destruct b, x; try easy. *)
-    (*         *** econstructor; eauto. *)
-    (*         *** eauto. econstructor; eauto. econstructor; eauto. *)
-    (*         *** eauto. econstructor; eauto. *)
-    (*     * destruct (bits_Bits _ _ _ IHWTS2 _ eq2). destruct H0. subst. *)
-    (*       destruct x. *)
-    (*       ** econstructor; eauto. *)
-    (*       ** destruct b, x; try easy. *)
-    (*         *** econstructor; eauto. *)
-    (*         *** eauto. econstructor; eauto. econstructor; eauto. *)
-    (*         *** eauto. econstructor; eauto. *)
-    (*     * econstructor; eauto. *)
-    (*   + destruct (eval_sact_no_vars (simplify_sact a1)) eqn:eq1; eauto; *)
-    (*     destruct (eval_sact_no_vars (simplify_sact a2)) eqn:eq2; eauto; subst. *)
-    (*     * destruct (bits_Bits _ _ _ IHWTS1 _ eq1). destruct H0. subst. *)
-    (*       destruct (bits_Bits _ _ _ IHWTS2 _ eq2). destruct H0. subst. *)
-    (*       ** destruct x. *)
-    (*         *** destruct x0. *)
-    (*           **** econstructor; eauto. *)
-    (*           **** destruct b; destruct x0; try easy; econstructor; eauto. *)
-    (*         *** destruct b, x; try easy; destruct x0; try easy; *)
-    (*               try econstructor. *)
-    (*           **** econstructor. reflexivity. *)
-    (*           **** destruct b0, x0; try easy; econstructor; eauto. *)
-    (*           **** destruct b, x0; try easy; econstructor; eauto. *)
-    (*                econstructor; eauto. *)
-    (*           **** destruct b0, x0; try easy; econstructor; eauto. *)
-    (*     * destruct (bits_Bits _ _ _ IHWTS1 _ eq1). destruct H0. subst. *)
-    (*       destruct x. *)
-    (*       ** econstructor; eauto. *)
-    (*       ** destruct b, x; try easy. *)
-    (*         *** econstructor; eauto. econstructor; eauto. *)
-    (*         *** eauto. econstructor; eauto. *)
-    (*         *** eauto. econstructor; eauto. *)
-    (*     * destruct (bits_Bits _ _ _ IHWTS2 _ eq2). destruct H0. subst. *)
-    (*       destruct x. *)
-    (*       ** econstructor; eauto. *)
-    (*       ** destruct b, x; try easy. *)
-    (*         *** eauto. econstructor; eauto. econstructor; eauto. *)
-    (*         *** econstructor; eauto. *)
-    (*         *** eauto. econstructor; eauto. *)
-    (*     * econstructor; eauto. *)
-  (* Qed. *)
+    apply wt_simplify_sact.
+  Qed.
 
 (*   Lemma bits_Bits: *)
 (*     forall vvs a sz (WTA : wt_sact (Sigma := Sigma) R vvs a (bits_t sz)) *)
@@ -3151,32 +3197,49 @@ Lemma remove_vars_correct:
     forall s v (VIS: var_in_sact (simplify_sact s) v),
     var_in_sact s v.
   Proof.
-    (* intros. *)
-    (* induction s; try (eauto; fail). *)
-    (* - simpl in VIS. repeat (destr_in VIS); try ( *)
-    (*     inv VIS; try (apply var_in_if_cond; eauto; fail); *)
-    (*     try (apply var_in_if_true; eauto; fail); *)
-    (*     try (apply var_in_if_false; eauto; fail); *)
-    (*     fail). *)
-    (*   + apply var_in_if_true; eauto. *)
-    (*   + apply var_in_if_false; eauto. *)
-    (* - simpl in VIS. repeat (destr_in VIS); *)
-    (*     (econstructor; eapply IHs; inv VIS; easy). *)
-    (* - simpl in VIS. destr_in VIS; *)
-    (*   try ( *)
-    (*     inv VIS; *)
-    (*     try (apply var_in_sact_binop_1; eauto; fail); *)
-    (*     try (apply var_in_sact_binop_2; eauto; fail); *)
-    (*     fail). *)
-    (*   repeat (destr_in VIS); *)
-    (*     try (apply var_in_sact_binop_1; eauto; fail); *)
-    (*     try (apply var_in_sact_binop_2; eauto; fail); *)
-    (*     try ( *)
-    (*       inv VIS; try (apply var_in_sact_binop_1; eauto; fail); *)
-    (*       try (apply var_in_sact_binop_2; eauto; fail); fail). *)
-    (* - inv VIS. econstructor. eauto. *)
-  (* Qed. *)
-  Admitted.
+    intros.
+    induction s; try (eauto; fail).
+    - simpl in VIS. repeat (destr_in VIS); try (
+        inv VIS; try (apply var_in_if_cond; eauto; fail);
+        try (apply var_in_if_true; eauto; fail);
+        try (apply var_in_if_false; eauto; fail);
+        fail).
+      + apply var_in_if_true; eauto.
+      + apply var_in_if_false; eauto.
+    - simpl in VIS. repeat (destr_in VIS);
+        (econstructor; eapply IHs; inv VIS; easy).
+    - simpl in VIS. destr_in VIS;
+      try (
+        inv VIS;
+        try (apply var_in_sact_binop_1; eauto; fail);
+        try (apply var_in_sact_binop_2; eauto; fail);
+        fail).
+      repeat (destr_in VIS);
+        try (apply var_in_sact_binop_1; eauto; fail);
+        try (apply var_in_sact_binop_2; eauto; fail);
+        try (
+          inv VIS; try (apply var_in_sact_binop_1; eauto; fail);
+          try (apply var_in_sact_binop_2; eauto; fail); fail).
+      repeat (destr_in VIS);
+        try (apply var_in_sact_binop_1; eauto; fail);
+        try (apply var_in_sact_binop_2; eauto; fail);
+        try (
+          inv VIS; try (apply var_in_sact_binop_1; eauto; fail);
+          try (apply var_in_sact_binop_2; eauto; fail); fail).
+      repeat (destr_in VIS);
+        try (apply var_in_sact_binop_1; eauto; fail);
+        try (apply var_in_sact_binop_2; eauto; fail);
+        try (
+          inv VIS; try (apply var_in_sact_binop_1; eauto; fail);
+          try (apply var_in_sact_binop_2; eauto; fail); fail).
+      repeat (destr_in VIS);
+        try (apply var_in_sact_binop_1; eauto; fail);
+        try (apply var_in_sact_binop_2; eauto; fail);
+        try (
+          inv VIS; try (apply var_in_sact_binop_1; eauto; fail);
+          try (apply var_in_sact_binop_2; eauto; fail); fail).
+    - inv VIS. econstructor. eauto.
+  Qed.
 
   Lemma simplify_vars_vvssv_ok':
     forall vvs (VVSSV: vvs_smaller_variables vvs),
@@ -3194,10 +3257,10 @@ Lemma remove_vars_correct:
   Qed.
 
   Lemma replace_reg_in_vars_wt_sact_vvs_ok':
-    forall sf v reg s t (WTV: wt_val (R reg) v)
-      (WTVVS: wt_vvs (Sigma := Sigma) R (vars sf))
-      (WTS: wt_sact (Sigma := Sigma) R (vars sf) s t),
-    wt_sact (Sigma := Sigma) R (replace_reg_in_vars (vars sf) reg v) s t.
+    forall vvs v reg s t (WTV: wt_val (R reg) v)
+      (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+      (WTS: wt_sact (Sigma := Sigma) R vvs s t),
+    wt_sact (Sigma := Sigma) R (replace_reg_in_vars vvs reg v) s t.
   Proof.
     intros.
     induction WTS; econstructor; eauto.
@@ -3206,9 +3269,9 @@ Lemma remove_vars_correct:
   Qed.
 
   Lemma wt_vvs_replace_reg_in_vars:
-    forall sf v reg (WTV: wt_val (R reg) v)
-      (WTVVS: wt_vvs (Sigma := Sigma) R (vars sf)),
-    wt_vvs (Sigma := Sigma) R (replace_reg_in_vars (vars sf) reg v).
+    forall vvs v reg (WTV: wt_val (R reg) v)
+      (WTVVS: wt_vvs (Sigma := Sigma) R vvs),
+    wt_vvs (Sigma := Sigma) R (replace_reg_in_vars vvs reg v).
   Proof.
     intros.
     unfold wt_vvs. intros.
@@ -3220,13 +3283,35 @@ Lemma remove_vars_correct:
     apply replace_reg_in_vars_wt_sact_vvs_ok'; eauto.
   Qed.
 
+
+  Lemma vsv_replace_reg_in_vars:
+    forall vvs v reg
+      (VSV: vvs_smaller_variables vvs),
+      vvs_smaller_variables (replace_reg_in_vars vvs reg v).
+  Proof.
+    intros.
+    red. intros.
+    setoid_rewrite Maps.PTree.gmap in H. unfold option_map in H.
+    repeat destr_in H; inv H.
+    apply var_in_replace_reg in H0. eauto.
+  Qed.
+
   Lemma replace_reg_in_vars_ok:
-    forall (vvs : var_value_map) (idx : reg_t) (v' : val) v a,
+    forall (vvs : var_value_map) (VSV: vvs_smaller_variables vvs)
+           (idx : reg_t) (v' : val) v a t (WT: wt_sact R (Sigma:=Sigma) vvs a t)
+    (WTVVS: wt_vvs R (Sigma:=Sigma) vvs),
     getenv REnv r idx = v'
     -> interp_sact (sigma := sigma) REnv r (replace_reg_in_vars vvs idx v') a v
     -> interp_sact (sigma := sigma) REnv r vvs a v.
   Proof.
-  Admitted.
+    intros vvs VSV idx v' v a t WT WTVVS H.
+    eapply interp_eval.
+    eapply vsv_replace_reg_in_vars; eauto.
+    auto.
+    eapply replace_reg_in_vars_wt_sact_vvs_ok'. subst. apply WTRENV. auto.
+    eauto. eauto.
+    exists O; intros; symmetry; apply eval_sact_replace_reg_vars. auto.
+  Qed.
 
   Lemma simplify_vars_interp_sact_ok':
     forall vvs a v (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
@@ -3246,15 +3331,6 @@ Lemma remove_vars_correct:
       + apply simplify_vars_vvssv_ok'. eauto.
   Qed.
 
-  Lemma simplify_vars_interp_sact_ok:
-    forall vvs a v
-      (EV_INIT: interp_sact (sigma := sigma) REnv r (simplify_vars vvs) a v)
-      (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
-      (VVSSV: vvs_smaller_variables vvs)
-      t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
-    interp_sact (sigma := sigma) REnv r vvs a v.
-  Proof.
-  Admitted.
 
   Lemma simplify_vars_ok:
     forall
@@ -3264,24 +3340,531 @@ Lemma remove_vars_correct:
       t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
     eval_sact (simplify_vars vvs) a fuel = Some res.
   Proof.
-  Admitted.
+    induction fuel; simpl; intros; eauto.
+    Transparent eval_sact.
+    destruct a; simpl in *.
+    - unfold opt_bind in EV_INIT. repeat destr_in EV_INIT; inv EV_INIT.
+      setoid_rewrite PTree.gmap. setoid_rewrite Heqo. simpl.
+      erewrite IHfuel. eauto. eapply simplify_sact_correct; eauto. auto.
+      eapply wt_simplify_sact; eauto.
+    - congruence.
+    - unfold opt_bind in EV_INIT. destr_in EV_INIT; inv EV_INIT.
+      erewrite IHfuel. 2: eauto. simpl.
+      destr_in H0; inv H0.
+      destr_in H1; inv H1.
+      destr_in H0; inv H0.
+      rewrite H1.
+      inv WTS.
+      destr_in H1; (erewrite IHfuel; eauto).
+      auto. inv WTS. eauto.
+    - unfold opt_bind in EV_INIT. destr_in EV_INIT; inv EV_INIT.
+      inv WTS.
+      erewrite IHfuel. 2: eauto. simpl. auto. auto. eauto.
+    - unfold opt_bind in EV_INIT. destr_in EV_INIT; inv EV_INIT.
+      destr_in H0; inv H0.
+      inv WTS.
+      erewrite IHfuel; eauto.
+      erewrite IHfuel; eauto. simpl. auto.
+    - unfold opt_bind in EV_INIT. destr_in EV_INIT; inv EV_INIT.
+      inv WTS.
+      erewrite IHfuel. 2: eauto. simpl. auto. auto. eauto.
+    - auto.
+  Qed.
+
+
+  Lemma simplify_sact_interp_sact_ok:
+    forall vvs
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+           (VVSSV: vvs_smaller_variables vvs)
+           a v
+           (EV_INIT: interp_sact (sigma := sigma) REnv r vvs (simplify_sact a) v)
+           t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+      interp_sact (sigma := sigma) REnv r vvs a v.
+  Proof.
+    induction a; simpl; intros; eauto; inv WTS.
+    - destr_in EV_INIT.
+      exploit eval_sact_no_vars_wt. 2: apply Heqo.
+      apply wt_simplify_sact. eauto. intro WT. apply wt_val_bool in WT. destruct WT; subst.
+      econstructor. eapply eval_sact_no_vars_interp in Heqo.
+      eapply IHa1 in Heqo. eauto. eauto. destr; eauto.
+      inv EV_INIT.
+      econstructor; eauto.
+      destr; eauto.
+    - destr_in EV_INIT.
+      destr_in EV_INIT.
+      + inv EV_INIT.
+        econstructor; eauto.
+        eapply eval_sact_no_vars_interp in Heqo; eauto.
+      + inv EV_INIT.
+        econstructor; eauto.
+      + inv EV_INIT.
+        econstructor; eauto.
+    - destruct (eval_sact_no_vars (simplify_sact a1)) eqn:?.
+      exploit eval_sact_no_vars_interp. apply Heqo. intro IS1. (* eapply IHa1 in IS1. 2: eauto. *)
+      destruct (eval_sact_no_vars (simplify_sact a2)) eqn:?.
+      exploit eval_sact_no_vars_interp. apply Heqo0. intro IS2. (* eapply IHa2 in IS2. 2: eauto. *)
+      + destr_in EV_INIT.
+        destr_in EV_INIT; inv EV_INIT.
+        econstructor; eauto.
+        econstructor; eauto.
+        econstructor; eauto.
+        assert (interp_sact (sigma:=sigma) REnv r vvs match sigma2 (PrimUntyped.UBits2 fn) v0 v1 with
+                                        | Some r => SConst r
+                                        | None => SBinop (PrimUntyped.UBits2 fn) (simplify_sact a1) (simplify_sact a2)
+                                        end v ->
+                sigma2 (PrimUntyped.UBits2 fn) v0 v1 = Some v
+               ).
+        clear EV_INIT.
+        intros EV.
+        destr_in EV. inv EV. auto. inv EV.
+        generalize (interp_sact_determ _ _ _ _ _ IS1 _ H3).
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ H7). congruence.
+        destr_in EV_INIT; auto.
+        simpl.
+        inv H5.
+        exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H2. eauto.
+        exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H4. eauto.
+        intros WT2 WT1. inv WT2; inv WT1. simpl in *.
+        destr_in EV_INIT. destruct bs; [|simpl in H1; lia].
+        inv EV_INIT.
+        generalize (interp_sact_determ _ _ _ _ _ IS1 _ H6).
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ H8).
+        intros. subst. simpl in H9. inv H9. reflexivity.
+        destruct bs; [simpl in H1; lia|].
+        destruct l, bs; try (simpl in H1; lia).
+        subst. simpl in *.
+        destr_in EV_INIT. simpl.
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ EV_INIT). congruence. inv EV_INIT. reflexivity.
+        assert ( interp_sact (sigma:=sigma) REnv r vvs
+                   (SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) (simplify_sact a1) (simplify_sact a2)) v).
+        repeat destr_in EV_INIT; eauto. clear EV_INIT. inv H0.
+        generalize (interp_sact_determ _ _ _ _ _ IS1 _ H7).
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ H9). intros; subst.
+        simpl in H10. inv H10. simpl. auto.
+        simpl.
+        inv H5.
+        exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H2. eauto.
+        exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H4. eauto.
+        intros WT2 WT1. inv WT2; inv WT1. simpl in *.
+        destr_in EV_INIT. destruct bs; [|simpl in H1; lia].
+        inv EV_INIT.
+        generalize (interp_sact_determ _ _ _ _ _ IS1 _ H6).
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ H8).
+        intros. subst. simpl in H9. inv H9. reflexivity.
+        destruct bs; [simpl in H1; lia|].
+        destruct l, bs; try (simpl in H1; lia).
+        subst. simpl in *.
+        destr_in EV_INIT. simpl. inv EV_INIT. auto. simpl.
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ EV_INIT). congruence.
+        assert ( interp_sact (sigma:=sigma) REnv r vvs
+                   (SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) (simplify_sact a1) (simplify_sact a2)) v).
+        repeat destr_in EV_INIT; eauto. clear EV_INIT. inv H0.
+        generalize (interp_sact_determ _ _ _ _ _ IS1 _ H7).
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ H9). intros; subst.
+        simpl in H10. inv H10. simpl. auto.
+        destr_in EV_INIT; auto.
+        econstructor. eauto. eauto.
+        inv EV_INIT. auto.
+        inv EV_INIT.
+        generalize (interp_sact_determ _ _ _ _ _ IS1 _ H3).
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ H7). intros; subst.
+        econstructor; eauto.
+        destr_in EV_INIT; auto.
+        econstructor. eauto. eauto.
+        inv EV_INIT. auto.
+        inv EV_INIT.
+        generalize (interp_sact_determ _ _ _ _ _ IS1 _ H3).
+        generalize (interp_sact_determ _ _ _ _ _ IS2 _ H7). intros; subst.
+        econstructor; eauto.
+      + destr_in EV_INIT. inv EV_INIT.
+        * generalize (interp_sact_determ _ _ _ _ _ IS1 _ H3). intro; subst.
+          econstructor; eauto.
+        * assert (interp_sact (sigma:=sigma) REnv r vvs (SBinop (PrimUntyped.UBits2 fn) (simplify_sact a1) (simplify_sact a2)) v ->
+                  interp_sact (sigma:=sigma) REnv r vvs (SBinop (PrimUntyped.UBits2 fn) a1 a2) v
+                 ).
+          clear EV_INIT.
+          intro IS. inv IS.
+          generalize (interp_sact_determ _ _ _ _ _ IS1 _ H3). intro; subst.
+          econstructor; eauto.
+          repeat destr_in EV_INIT; eauto.
+          clear H.
+          inv H5. econstructor; eauto.
+          exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H4. eauto.
+          intro A; inv A.
+          exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H2. eauto.
+          intro A; inv A.
+          simpl in H1. destruct bs; simpl in H1; try lia. destruct bs; simpl in H1; try lia.
+          simpl. auto.
+          clear H.
+          inv H5. inv EV_INIT.
+          exploit @wt_sact_interp. eauto. eauto. eauto. eauto. apply vvs_range_max_var. apply H4. intros (v2 & IS2 & WT2). inv WT2.
+          econstructor; eauto.
+          exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H2. eauto.
+          intro A; inv A.
+          simpl in H1. destruct bs; simpl in H1; try lia. destruct bs; simpl in H1; try lia.
+          simpl. auto.
+          clear H.
+          inv H5. inv EV_INIT.
+          exploit @wt_sact_interp. eauto. eauto. eauto. eauto. apply vvs_range_max_var. apply H4. intros (v2 & IS2 & WT2). inv WT2.
+          econstructor; eauto.
+          exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H2. eauto.
+          intro A; inv A.
+          simpl in H1. destruct bs; simpl in H1; try lia. destruct bs; simpl in H1; try lia.
+          simpl. auto.
+
+          clear H.
+          inv H5. econstructor; eauto.
+          exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H4. eauto.
+          intro A; inv A.
+          exploit @interp_sact_wt. eauto. eauto. eauto. auto. apply vvs_range_max_var. apply H2. eauto.
+          intro A; inv A.
+          simpl in H1. destruct bs; simpl in H1; try lia. destruct bs; simpl in H1; try lia.
+          simpl. auto.
+        * inv EV_INIT. generalize (interp_sact_determ _ _ _ _ _ IS1 _ H3). intro; subst.
+          econstructor; eauto.
+        * inv EV_INIT. generalize (interp_sact_determ _ _ _ _ _ IS1 _ H3). intro; subst.
+          econstructor; eauto.
+      + assert (interp_sact (sigma:=sigma) REnv r vvs (SBinop ufn2 (simplify_sact a1) (simplify_sact a2)) v ->
+                interp_sact (sigma:=sigma) REnv r vvs (SBinop ufn2 a1 a2) v
+               ).
+        {
+          clear EV_INIT.
+          intro IS. inv IS.
+          econstructor; eauto.
+        }
+        destr_in EV_INIT; auto.
+        repeat destr_in EV_INIT; auto; clear H.
+        econstructor; eauto.
+        eapply IHa2.
+        eapply eval_sact_no_vars_interp. eauto. eauto.
+        exploit eval_sact_no_vars_wt. 2: apply Heqo0. eapply wt_simplify_sact; eauto.
+        exploit @interp_sact_wt. eauto. eauto. eauto. eauto. apply vvs_range_max_var. apply H2. eauto.
+        intros WT1 WT2. inv H5. inv WT2. inv WT1.
+        destruct bs; simpl in H0; try lia.
+        destruct bs; simpl in H0; try lia.
+        simpl. rewrite andb_true_r. auto.
+        exploit @wt_sact_interp. eauto. eauto. eauto. eauto. apply vvs_range_max_var. apply H2. intros (vv1 & IS1 & WT1).
+        econstructor; eauto.
+        eapply IHa2.
+        eapply eval_sact_no_vars_interp. eauto. eauto.
+        exploit eval_sact_no_vars_wt. 2: apply Heqo0. eapply wt_simplify_sact; eauto.
+        intros WT2. inv H5. inv WT2. inv WT1.
+        destruct bs; simpl in H0; try lia.
+        destruct bs; simpl in H0; try lia.
+        simpl. rewrite andb_false_r. inv EV_INIT. auto.
+
+        exploit @wt_sact_interp. eauto. eauto. eauto. eauto. apply vvs_range_max_var. apply H2. intros (vv1 & IS1 & WT1).
+        econstructor; eauto.
+        eapply IHa2.
+        eapply eval_sact_no_vars_interp. eauto. eauto.
+        exploit eval_sact_no_vars_wt. 2: apply Heqo0. eapply wt_simplify_sact; eauto.
+        intros WT2. inv H5. inv WT2. inv WT1.
+        destruct bs; simpl in H0; try lia.
+        destruct bs; simpl in H0; try lia.
+        simpl. rewrite orb_true_r. inv EV_INIT. auto.
+
+        econstructor; eauto.
+        eapply IHa2.
+        eapply eval_sact_no_vars_interp. eauto. eauto.
+        exploit eval_sact_no_vars_wt. 2: apply Heqo0. eapply wt_simplify_sact; eauto.
+        exploit @interp_sact_wt. eauto. eauto. eauto. eauto. apply vvs_range_max_var. apply H2. eauto.
+        intros WT1 WT2. inv H5. inv WT2. inv WT1.
+        destruct bs; simpl in H0; try lia.
+        destruct bs; simpl in H0; try lia.
+        simpl. rewrite orb_false_r. auto.
+    - inv EV_INIT. econstructor; eauto.
+  Qed.
+
+
+  Lemma simplify_vars_interp_sact_ok:
+    forall vvs
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+           (VVSSV: vvs_smaller_variables vvs)
+           a v
+           (EV_INIT: interp_sact (sigma := sigma) REnv r (simplify_vars vvs) a v)
+           t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+      interp_sact (sigma := sigma) REnv r vvs a v.
+  Proof.
+    induction 3; simpl; intros; inv WTS.
+    - setoid_rewrite PTree.gmap in H. setoid_rewrite H1 in H. simpl in H. inv H.
+      econstructor; eauto.
+      eapply simplify_sact_interp_sact_ok; eauto.
+      eapply IHEV_INIT.
+      eapply wt_simplify_sact; eauto.
+    - econstructor.
+    - econstructor. eauto.
+      eapply IHEV_INIT2. destr; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+  Qed.
 
   Lemma simplify_vars_reachable_var_ok:
     forall vvs v (VVSSV: vvs_smaller_variables vvs) a,
     reachable_var (simplify_vars vvs) a v
     -> reachable_var vvs a v.
   Proof.
-  Admitted.
+    induction 2; simpl; intros; eauto.
+    - econstructor.
+    - setoid_rewrite PTree.gmap in H. unfold option_map in H.
+      repeat destr_in H; inv H.
+      econstructor; eauto.
+      eapply simplify_sact_reachable_vars_ok. auto.
+    - eapply reachable_var_if_cond; eauto.
+    - eapply reachable_var_if_true; eauto.
+    - eapply reachable_var_if_false; eauto.
+    - eapply reachable_var_binop1; eauto.
+    - eapply reachable_var_binop2; eauto.
+    - eapply reachable_var_unop; eauto.
+    - constructor; auto.
+  Qed.
+
+  Record wf_sf (sf: simple_form) :=
+    {
+      wf_sf_wt: wt_vvs (Sigma:=Sigma) R (vars sf);
+      wf_sf_vvs: vvs_smaller_variables (vars sf);
+      wf_sf_final:
+      forall reg k,
+        list_assoc (final_values sf) reg = Some k ->
+        wt_sact (Sigma:=Sigma) R (vars sf) (SVar k) (R reg)
+    }.
+
+  Record sf_eq (sf1 sf2: simple_form) :=
+    {
+      sf_eq_final: final_values sf1 = final_values sf2;
+      sf_eq_vars: forall reg v t,
+        In (reg,v) (final_values sf1) ->
+        wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t ->
+        forall x,
+          interp_sact REnv (sigma:=sigma) r (vars sf1) (SVar v) x <->
+            interp_sact REnv (sigma:=sigma) r (vars sf2) (SVar v) x;
+      sf_eq_wt: 
+        forall reg v t,
+        In (reg,v) (final_values sf1) ->
+        wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t <->
+        wt_sact (Sigma:=Sigma) R (vars sf2) (SVar v) t
+    }.
+
+  Lemma sf_eq_simplify_sf sf:
+    wf_sf sf ->
+    sf_eq sf (simplify_sf sf).
+  Proof.
+    unfold simplify_sf. intros. inv H. constructor; auto.
+    intros. simpl.
+    split; intros.
+    eapply simplify_vars_interp_sact_ok'; auto.
+    inversion H1. subst.
+    unfold simplify_vars in H3. rewrite PTree.gmap in H3.
+    unfold option_map in H3. repeat destr_in H3; inv H3.
+    eapply simplify_vars_interp_sact_ok; auto.
+    econstructor. eauto.
+    simpl. intros.
+    split. eapply simplify_vars_wt_sact_ok'; eauto.
+    eapply simplify_vars_wt_sact_ok; eauto.
+  Qed.
+
+  Lemma wf_sf_simplify_sf:
+    forall sf,
+      wf_sf sf ->
+      wf_sf (simplify_sf sf).
+  Proof.
+    destruct 1; constructor.
+    eapply simplify_vars_wtvvs_ok'. auto.
+    eapply simplify_vars_vvssv_ok'; eauto.
+    simpl. intros.
+    eapply wf_sf_final0 in H.
+    eapply simplify_vars_wt_sact_ok'. auto.
+  Qed.
+
+  Lemma sf_eq_refl:
+    forall sf, sf_eq sf sf.
+  Proof.
+    constructor; tauto.
+  Qed.
+
+  Lemma sf_eq_trans:
+    forall sf1 sf2,
+      sf_eq sf1 sf2 ->
+      forall sf3,
+        sf_eq sf2 sf3 ->
+        sf_eq sf1 sf3.
+  Proof.
+    intros sf1 sf2 EQ1 sf3 EQ2.
+    inv EQ1; inv EQ2.
+    constructor. congruence.
+    intros.
+    rewrite sf_eq_vars0. 2: eauto. eapply sf_eq_vars1. rewrite <- sf_eq_final0. eauto.
+    eapply sf_eq_wt0. eauto. eauto. eauto.
+    intros.
+    erewrite sf_eq_wt0. 2: eauto.
+    rewrite sf_eq_final0 in H. eauto.
+  Qed.
+
+  Lemma sf_eq_sym:
+    forall sf1 sf2,
+      sf_eq sf1 sf2 ->
+      sf_eq sf2 sf1.
+  Proof.
+    destruct 1; constructor; eauto.
+    intros; symmetry; eapply sf_eq_vars0. rewrite sf_eq_final0; eauto.
+    rewrite <- sf_eq_final0 in H. rewrite <-sf_eq_wt0 in H0. eauto. eauto.
+    intros.
+    rewrite <- sf_eq_final0 in H. rewrite <-sf_eq_wt0 . tauto. eauto.
+  Qed.
+
+  Lemma sf_eq_remove_vars sf:
+    (* wt_vvs (Sigma:=Sigma) R (vars sf) -> *)
+    (* vvs_smaller_variables (vars sf) -> *)
+    wf_sf sf ->
+    sf_eq sf (remove_vars sf).
+  Proof.
+    constructor; auto.
+    - intros.
+      inversion H1. subst.
+      eapply interp_eval_iff. apply H.
+      apply vsv_remove_vars; auto. apply H. eauto.
+      econstructor.
+      simpl. fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)).
+      rewrite <- filter_ptree_eq. eapply H3.
+      eapply useful_vars_incl. apply H. eauto.
+      change v with (snd (reg, v)). apply in_map. eauto.
+      apply nodup_useful_vars. apply H.
+      intros; rewrite PTree.gempty. auto.
+      exists O; intros; eapply remove_vars_correct. apply H.
+      change v with (snd (reg, v)). apply in_map. eauto.
+    - intros. destruct H. split; intros.
+      + inversion H. subst.
+        econstructor.
+        simpl. fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)).
+        rewrite <- filter_ptree_eq. eapply H2.
+        eapply useful_vars_incl. eauto. auto.
+        change v with (snd (reg, v)). apply in_map. eauto.
+        apply nodup_useful_vars. auto.
+        intros; rewrite PTree.gempty. auto.
+      + inv H.
+        unfold remove_vars in H2. simpl in H2.
+        fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)) in H2.
+        apply filter_ptree_inv in H2. rewrite PTree.gempty in H2.
+        destruct H2. congruence.
+        destruct H. econstructor; eauto.
+        apply nodup_useful_vars. auto.
+        intros; rewrite PTree.gempty. auto.
+  Qed.
+
+  Instance sf_eq_equi: RelationClasses.Equivalence sf_eq.
+  Proof.
+    constructor.
+    red. apply sf_eq_refl.
+    red. apply sf_eq_sym.
+    red. intros; eapply sf_eq_trans; eauto.
+  Qed.
+
+  Lemma sf_eq_apply_l:
+    forall F1 (F1OK: forall sf, wf_sf sf -> sf_eq sf (F1 sf)),
+      forall sf1 sf2,
+        wf_sf sf1 ->
+        sf_eq sf1 sf2 ->
+        sf_eq (F1 sf1) sf2.
+  Proof.
+    intros.
+    rewrite <- F1OK. auto. auto.
+  Qed.
+
+  Lemma sf_eq_apply:
+    forall F1 (F1OK: forall sf, wf_sf sf -> sf_eq sf (F1 sf)),
+      forall sf1 sf2,
+        wf_sf sf1 -> wf_sf sf2 ->
+        sf_eq sf1 sf2 ->
+        sf_eq (F1 sf1) (F1 sf2).
+  Proof.
+    intros.
+    rewrite <- ! F1OK; auto.
+  Qed.
+
+  Lemma inlining_pass_sf_eq':
+    forall sf1 sf2
+           (SFEQ: sf_eq sf1 sf2)
+           (VSV1: vvs_smaller_variables (vars sf1))
+           (VSV2: vvs_smaller_variables (vars sf2))
+           (WT1: wt_vvs (Sigma:=Sigma) R (vars sf1))
+           (WT2: wt_vvs (Sigma:=Sigma) R (vars sf2))
+           (WTfinal: forall reg k,
+               list_assoc (final_values sf1) reg = Some k ->
+               wt_sact (Sigma:=Sigma) R (vars sf1) (SVar k) (R reg)
+           )
+           reg k
+           (FINAL: list_assoc (final_values sf1) reg = Some k),
+      list_assoc (inlining_pass sf1) k = list_assoc (inlining_pass sf2) k.
+  Proof.
+    intros.
+    exploit inlining_pass_correct. reflexivity. apply VSV1. apply WT1.
+    exploit inlining_pass_correct. reflexivity. apply VSV2. apply WT2.
+    intros (ND2 & SPEC2) (ND1 & SPEC1).
+    erewrite <- sf_eq_final in SPEC2. 2: eauto.
+    exploit @wt_sact_interp. eauto. eauto. apply WT1. apply VSV1. apply vvs_range_max_var.
+    apply WTfinal. eauto.
+    intros (v & IS & WT).
+    erewrite in_list_assoc. 2: auto. 2: eapply SPEC1; eauto.
+    erewrite in_list_assoc. 2: auto. 2: eapply SPEC2; eauto.
+    reflexivity.
+    rewrite <- sf_eq_vars; eauto.
+    eapply list_assoc_in; eauto.
+  Qed.
+
+  Lemma inlining_pass_sf_eq:
+    forall sf1 sf2
+           (SFEQ: sf_eq sf1 sf2)
+           (WF1: wf_sf sf1)
+           (WF2: wf_sf sf2)
+           reg k
+           (FINAL: list_assoc (final_values sf1) reg = Some k),
+      list_assoc (inlining_pass sf1) k = list_assoc (inlining_pass sf2) k.
+  Proof.
+    intros.
+    destruct WF1, WF2;
+    eapply inlining_pass_sf_eq'; eauto.
+  Qed.
+
+  Lemma wf_sf_remove_vars sf:
+    wf_sf sf ->
+    wf_sf (remove_vars sf).
+  Proof.
+    destruct 1.
+    constructor.
+    eapply wt_vvs_remove_vars; eauto.
+    eapply vsv_remove_vars; eauto.
+    intros.
+    simpl in H.
+    generalize (wf_sf_final0 _ _ H). intro WT. inversion WT; subst.
+    simpl. econstructor.
+    fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)).
+    rewrite <- filter_ptree_eq. eauto. 2: apply nodup_useful_vars. 2: auto.
+    2: intros; rewrite PTree.gempty; auto.
+    eapply useful_vars_incl. eauto. reflexivity.
+    apply list_assoc_in in H.
+    apply in_map with (f:=snd) in H. simpl in *; auto.
+  Qed.
 
   Lemma simplify_sf_interp_cycle_ok:
     forall reg sf,
+      wf_sf sf ->
     getenv REnv (interp_cycle (simplify_sf sf)) reg
     = getenv REnv (interp_cycle sf) reg.
   Proof.
     intros.
     unfold simplify_sf, interp_cycle. simpl.
-    destruct (list_assoc (final_values sf) reg) eqn:eqreg.
-  Admitted.
+    rewrite ! getenv_create.
+    destr.
+    erewrite inlining_pass_sf_eq. reflexivity.
+    apply sf_eq_apply.
+    apply sf_eq_remove_vars.
+    apply wf_sf_simplify_sf; auto. auto.
+    apply sf_eq_sym. apply sf_eq_simplify_sf. auto.
+    apply wf_sf_remove_vars.
+    apply wf_sf_simplify_sf; auto.
+    apply wf_sf_remove_vars. auto. simpl. eauto.
+  Qed.
 
   Lemma simplify_sifs_sf_interp_cycle_ok:
     forall reg sf,
