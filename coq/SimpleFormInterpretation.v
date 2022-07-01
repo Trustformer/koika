@@ -3846,6 +3846,27 @@ Lemma remove_vars_correct:
     apply in_map with (f:=snd) in H. simpl in *; auto.
   Qed.
 
+
+  Lemma sf_eq_interp_cycle_ok:
+    forall reg sf1 sf2,
+      wf_sf sf1 -> wf_sf sf2 ->
+      sf_eq sf1 sf2 ->
+    getenv REnv (interp_cycle sf1) reg
+    = getenv REnv (interp_cycle sf2) reg.
+  Proof.
+    intros.
+    unfold interp_cycle. simpl.
+    rewrite ! getenv_create.
+    erewrite sf_eq_final; eauto.
+    destr.
+    erewrite inlining_pass_sf_eq. reflexivity.
+    apply sf_eq_apply; auto.
+    apply sf_eq_remove_vars.
+    apply wf_sf_remove_vars; auto.
+    apply wf_sf_remove_vars; auto. simpl.
+    erewrite sf_eq_final; eauto.
+  Qed.
+
   Lemma simplify_sf_interp_cycle_ok:
     forall reg sf,
       wf_sf sf ->
@@ -3853,35 +3874,391 @@ Lemma remove_vars_correct:
     = getenv REnv (interp_cycle sf) reg.
   Proof.
     intros.
-    unfold simplify_sf, interp_cycle. simpl.
-    rewrite ! getenv_create.
-    destr.
-    erewrite inlining_pass_sf_eq. reflexivity.
-    apply sf_eq_apply.
-    apply sf_eq_remove_vars.
+    eapply sf_eq_interp_cycle_ok.
     apply wf_sf_simplify_sf; auto. auto.
     apply sf_eq_sym. apply sf_eq_simplify_sf. auto.
-    apply wf_sf_remove_vars.
-    apply wf_sf_simplify_sf; auto.
-    apply wf_sf_remove_vars. auto. simpl. eauto.
+  Qed.
+
+  Lemma wt_vvs_f:
+    forall f vvs,
+      (forall a t,
+        wt_sact (Sigma:=Sigma) R vvs a t ->
+        wt_sact (Sigma:=Sigma) R (PTree.map (fun _ '(t,a) => (t, f a)) vvs) (f a) t) ->
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      wt_vvs (Sigma:=Sigma) R (PTree.map (fun _ '(t,a) => (t, f a)) vvs).
+  Proof.
+    red; intros.
+    rewrite PTree.gmap in H1.
+    unfold option_map in H1; repeat destr_in H1; inv H1. eauto.
+  Qed.
+
+  Lemma f_wt_sact_ok':
+    forall f vvs s t (WTS: wt_sact (Sigma := Sigma) R vvs s t),
+    wt_sact (Sigma := Sigma) R (PTree.map (fun _ '(t,a) => (t, f a)) vvs) s t.
+  Proof.
+    intros.
+    induction WTS; econstructor; eauto.
+    setoid_rewrite Maps.PTree.gmap.
+    unfold option_map. setoid_rewrite H. easy.
+  Qed.
+
+
+  Lemma f_wtvvs_ok':
+    forall f (FSPEC: forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+               wt_sact (Sigma := Sigma) R vvs (f a) t)
+           vvs (WTVVS: wt_vvs (Sigma := Sigma) R vvs),
+    wt_vvs (Sigma := Sigma) R (PTree.map (fun _ '(t,a) => (t, f a)) vvs).
+  Proof.
+    intros. unfold wt_vvs. intros.
+    apply f_wt_sact_ok'.
+    rewrite Maps.PTree.gmap in H. unfold option_map in H.
+    repeat destr_in H; inv H. apply FSPEC; eauto.
+  Qed.
+
+  Lemma simplify_sif_wt:
+    forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+      wt_sact (Sigma := Sigma) R vvs (simplify_sif a) t.
+  Proof.
+    induction 1; simpl; intros; try now (econstructor; eauto).
+    destr; try (econstructor; eauto).
+    exploit eval_sact_no_vars_wt. apply WTS1. eauto. intro A. apply wt_val_bool in A. destruct A. subst.
+    destr.
+  Qed.
+
+  Lemma vsv_f:
+    forall f (FSPEC: forall s v', var_in_sact (f s) v' -> var_in_sact s v')
+           vvs,
+      vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) vvs ->
+      vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (PTree.map (fun _ '(t,a) => (t, f a)) vvs).
+  Proof.
+    red; intros.
+    rewrite Maps.PTree.gmap in H0. unfold option_map in H0.
+    repeat destr_in H0; inv H0.
+    eapply H in Heqo. apply Heqo. eauto.
+  Qed.
+
+  Lemma simplify_sif_vis:
+    forall a v' (VIS: var_in_sact (simplify_sif a) v'), var_in_sact a v'.
+  Proof.
+    induction a; simpl; intros; eauto.
+    - repeat destr_in VIS; eauto.
+      eapply var_in_if_true; eauto.
+      eapply var_in_if_false; eauto.
+    - inv VIS; econstructor; eauto.
+    - inv VIS. econstructor; eauto.
+      eapply var_in_sact_binop_2; eauto.
+    - inv VIS; econstructor; eauto.
+  Qed.
+
+
+  Lemma wf_f:
+    forall sf f
+           (FWT: forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+               wt_sact (Sigma := Sigma) R vvs (f a) t)
+           (FVIS: forall s v', var_in_sact (f s) v' -> var_in_sact s v'),
+      wf_sf sf ->
+      wf_sf {| final_values := final_values sf; vars := PTree.map (fun _ '(t,a) => (t, f a)) (vars sf) |}.
+  Proof.
+    destruct 3; constructor.
+    - eapply f_wtvvs_ok'; eauto.
+    - eapply vsv_f; eauto.
+    - simpl.
+      intros. eapply f_wt_sact_ok'. eauto.
+  Qed.
+
+  Lemma wf_simplify_sifs:
+    forall sf,
+      wf_sf sf ->
+      wf_sf (simplify_sifs_sf sf).
+  Proof.
+    intros; eapply wf_f; eauto.
+    eapply simplify_sif_wt.
+    eapply simplify_sif_vis.
+  Qed.
+
+  Lemma f_interp_sact_ok':
+    forall f
+           (SPEC: forall (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               forall t : type,
+                 wt_sact (Sigma:=Sigma) R vvs a t ->
+                 vvs_smaller_variables vvs ->
+                 interp_sact (sigma:=sigma) REnv r vvs a v ->
+                 interp_sact (sigma:=sigma) REnv r vvs (f a) v
+           )
+           (FWT: forall vvs (a0 : SimpleForm.sact) (t0 : type),
+               wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
+               wt_sact (Sigma:=Sigma) R vvs (f a0) t0)
+           (VIS: forall (s : SimpleForm.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
+           vvs
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+           (VVSSV: vvs_smaller_variables vvs)
+           a v (EV_INIT: interp_sact (sigma := sigma) REnv r vvs a v)
+           t (WTa: wt_sact (Sigma:=Sigma) R vvs a t),
+    interp_sact (sigma := sigma) REnv r (PTree.map (fun _ '(t,a) => (t, f a)) vvs) a v.
+  Proof.
+    intros f SPEC FWT VIS vvs WTVVS VVSSV.
+    induction 1; try (econstructor; eauto; fail).
+    econstructor.
+    - setoid_rewrite Maps.PTree.gmap.
+      unfold option_map. setoid_rewrite H.
+      f_equal.
+    - eapply SPEC; eauto.
+      eapply f_wtvvs_ok'; eauto.
+      eapply f_wt_sact_ok'; eauto.
+      eapply vsv_f; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+      eapply IHEV_INIT2. destr; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+  Qed.
+
+
+  Lemma f_interp_sact_ok:
+    forall vvs f
+           (FSPEC: forall vvs : PTree.t (type * SimpleForm.sact),
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               vvs_smaller_variables vvs ->
+               forall (a : sact) (v : val),
+                 interp_sact (sigma:=sigma) REnv r vvs (f a) v ->
+                 forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
+           )
+           (FWT: forall vvs (a0 : SimpleForm.sact) (t0 : type),
+               wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
+               wt_sact (Sigma:=Sigma) R vvs (f a0) t0)
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+           (VVSSV: vvs_smaller_variables vvs)
+           a v
+           (EV_INIT: interp_sact (sigma := sigma) REnv r (PTree.map (fun _ '(t,a) => (t, f a)) vvs) a v)
+           t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+      interp_sact (sigma := sigma) REnv r vvs a v.
+  Proof.
+    induction 5; simpl; intros; inv WTS.
+    - setoid_rewrite PTree.gmap in H. setoid_rewrite H1 in H. simpl in H. inv H.
+      econstructor; eauto.
+      eapply FSPEC; eauto.
+    - econstructor.
+    - econstructor. eauto.
+      eapply IHEV_INIT2. destr; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+  Qed.
+
+
+  Lemma sf_eq_f:
+    forall sf f
+           (FSPEC: forall vvs : PTree.t (type * SimpleForm.sact),
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               vvs_smaller_variables vvs ->
+               forall (a : sact) (v : val),
+                 interp_sact (sigma:=sigma) REnv r vvs (f a) v ->
+                 forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
+           )
+           (SPEC: forall (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               forall t : type,
+                 wt_sact (Sigma:=Sigma) R vvs a t ->
+                 vvs_smaller_variables vvs ->
+                 interp_sact (sigma:=sigma) REnv r vvs a v ->
+                 interp_sact (sigma:=sigma) REnv r vvs (f a) v
+           )
+           (FWT: forall vvs (a0 : SimpleForm.sact) (t0 : type),
+               wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
+               wt_sact (Sigma:=Sigma) R vvs (f a0) t0)
+           (VIS: forall (s : SimpleForm.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
+    ,
+      wf_sf sf ->
+      sf_eq sf {| final_values := final_values sf; vars := PTree.map (fun (_ : positive) '(t, a) => (t, f a)) (vars sf) |}.
+  Proof.
+    intros.
+    constructor. simpl. auto.
+    - intros. simpl.
+      split.
+      + intro A; inv A. inv H1. rewrite H3 in H5.
+        inv H5.
+        econstructor.
+        rewrite PTree.gmap. setoid_rewrite H3. simpl. reflexivity.
+        eapply f_interp_sact_ok'. eauto. eauto. eauto. apply H. apply H. eapply SPEC; eauto.
+        apply H. eapply H. eauto. apply H.
+        eapply FWT. eapply H. eauto.
+      + intro A; inv A. rewrite PTree.gmap in H3. unfold option_map in H3; repeat destr_in H3; inv H3.
+        econstructor. eauto. inv H1. setoid_rewrite H3 in Heqo. inv Heqo.
+        eapply FSPEC in H4. eapply f_interp_sact_ok; eauto.
+        apply H. apply H. eapply H. eauto.
+        eapply f_wtvvs_ok'; eauto. apply H.
+        eapply vsv_f; eauto. apply H.
+        eapply f_wt_sact_ok'; eauto. eapply H. eauto.
+    - intros. simpl.
+      split. eapply f_wt_sact_ok'; eauto.
+      intro A; inv A.
+      rewrite PTree.gmap in H2. unfold option_map in H2; repeat destr_in H2; inv H2.
+      econstructor. eauto.
+  Qed.
+
+  Lemma simplify_sif_interp_inv:
+    forall vvs : PTree.t (type * SimpleForm.sact),
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall (a : sact) (v : val),
+        interp_sact (sigma:=sigma) REnv r vvs (simplify_sif a) v ->
+        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v.
+  Proof.
+    induction a; simpl; intros; eauto.
+    - inv H2.
+      destr_in H1; auto.
+      exploit eval_sact_no_vars_wt. 2: eauto. eauto. intro A; apply wt_val_bool in A. destruct A. subst.
+      econstructor; eauto.
+      eapply eval_sact_no_vars_interp; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+  Qed.
+
+  Lemma simplify_sif_interp:
+    forall vvs : PTree.t (type * SimpleForm.sact),
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall (a : sact) (v : val),
+        interp_sact (sigma:=sigma) REnv r vvs a v ->
+        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs (simplify_sif a) v.
+  Proof.
+    induction 3; simpl; intros; try now (econstructor; eauto).
+    - inv H1. destr.
+      exploit eval_sact_no_vars_wt. 2: eauto. eauto. intro A; apply wt_val_bool in A. destruct A. subst.
+      eapply simplify_sif_interp_inv; eauto.
+      exploit @interp_sact_determ. apply H1_. eapply eval_sact_no_vars_interp; eauto.
+      intro A; inv A.
+      eapply IHinterp_sact2. destr; eauto. destr; eauto.
+      econstructor; eauto.
+    - inv H3. econstructor; eauto.
+    - inv H2. econstructor; eauto.
+    - inv H2. econstructor; eauto.
+  Qed.
+
+  Lemma sf_eq_simplify_sifs:
+    forall sf,
+      wf_sf sf ->
+      sf_eq sf (simplify_sifs_sf sf).
+  Proof.
+    intros.
+    eapply sf_eq_f; eauto.
+    - eapply simplify_sif_interp_inv; eauto.
+    - intros; eapply simplify_sif_interp; eauto.
+    - apply simplify_sif_wt; eauto.
+    - eapply simplify_sif_vis.
   Qed.
 
   Lemma simplify_sifs_sf_interp_cycle_ok:
     forall reg sf,
+      wf_sf sf ->
     getenv REnv (interp_cycle (simplify_sifs_sf sf)) reg
     = getenv REnv (interp_cycle sf) reg.
   Proof.
     intros.
-    unfold simplify_sf, interp_cycle. simpl.
-    destruct (list_assoc (final_values sf) reg) eqn:eqreg.
-  Admitted.
+    eapply sf_eq_interp_cycle_ok.
+    apply wf_simplify_sifs; auto. auto.
+    apply sf_eq_sym. apply sf_eq_simplify_sifs. auto.
+  Qed.
+
+  Lemma replace_reg_interp_inv:
+    forall reg (vvs : PTree.t (type * SimpleForm.sact)),
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall (a : sact) (v : val),
+        interp_sact (sigma:=sigma) REnv r vvs (replace_reg_in_sact a reg (getenv REnv r reg)) v ->
+        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v.
+  Proof.
+    induction a; simpl; intros; eauto.
+    - inv H2. inv H1.
+      econstructor; eauto.
+      destr; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+    - inv H2. destr_in H1. subst. inv H1. econstructor. eauto.
+  Qed.
+
+  Lemma replace_reg_interp:
+    forall reg (vvs : PTree.t (type * SimpleForm.sact)),
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall (a : sact) (v : val),
+        interp_sact (sigma:=sigma) REnv r vvs a v ->
+        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs (replace_reg_in_sact a reg (getenv REnv r reg)) v.
+  Proof.
+    induction 3; simpl; intros; try now (econstructor; eauto).
+    - inv H1. econstructor; eauto. destr; eauto.
+    - inv H3. econstructor; eauto.
+    - inv H2. econstructor; eauto.
+    - inv H2. econstructor; eauto.
+    - inv H1. destr; subst; econstructor.
+  Qed.
+
+  Lemma replace_reg_wt:
+    forall reg vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+      wt_sact (Sigma := Sigma) R vvs (replace_reg_in_sact a reg (getenv REnv r reg)) t.
+  Proof.
+    induction 1; simpl; intros; try now (econstructor; eauto).
+    destr; try (econstructor; eauto).
+    subst. eauto.
+  Qed.
+
+
+  Lemma replace_reg_vis:
+    forall reg a v' (VIS: var_in_sact (replace_reg_in_sact a reg (getenv REnv r reg)) v'), var_in_sact a v'.
+  Proof.
+    induction a; simpl; intros; eauto.
+    - inv VIS.
+      eapply var_in_if_cond; eauto.
+      eapply var_in_if_true; eauto.
+      eapply var_in_if_false; eauto.
+    - inv VIS; econstructor; eauto.
+    - inv VIS. econstructor; eauto.
+      eapply var_in_sact_binop_2; eauto.
+    - inv VIS; econstructor; eauto.
+    - destr_in VIS; inv VIS.
+  Qed.
+
+  Lemma wf_replace_reg:
+    forall reg sf,
+      wf_sf sf ->
+      wf_sf (replace_reg sf reg (getenv REnv r reg)).
+  Proof.
+    intros.
+    eapply wf_f.
+    - apply replace_reg_wt.
+    - apply replace_reg_vis.
+    - auto.
+  Qed.
+
+  Lemma sf_eq_replace_reg:
+    forall reg sf,
+      wf_sf sf ->
+      sf_eq sf (replace_reg sf reg (getenv REnv r reg)).
+  Proof.
+    intros.
+    eapply sf_eq_f.
+    - eapply replace_reg_interp_inv.
+    - intros; eapply replace_reg_interp; eauto.
+    - apply replace_reg_wt.
+    - apply replace_reg_vis.
+    - auto.
+  Qed.
 
   Lemma replace_reg_interp_cycle_ok:
     forall reg sf,
+      wf_sf sf ->
     getenv REnv (interp_cycle (replace_reg sf reg (getenv REnv r reg))) reg
     = getenv REnv (interp_cycle sf) reg.
   Proof.
-  Admitted.
+    intros.
+    eapply sf_eq_interp_cycle_ok.
+    apply wf_replace_reg; auto. auto.
+    apply sf_eq_sym. apply sf_eq_replace_reg. auto.
+  Qed.
 
   (* TODO wtsf *)
   Lemma prune_irrelevant_interp_cycle_ok:
