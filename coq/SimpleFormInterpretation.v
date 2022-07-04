@@ -1805,26 +1805,6 @@ Lemma remove_vars_correct:
     | SVar _ | SReg _ | SConst _ => ua
     end.
 
-  Fixpoint collapse_sact (sf: simple_form) (a : sact) :=
-    match a with
-    | SIf cond tb fb =>
-      SIf (collapse_sact sf cond) (collapse_sact sf tb) (collapse_sact sf fb)
-    | SBinop ufn a1 a2 => SBinop ufn (collapse_sact sf a1) (collapse_sact sf a2)
-    | SUnop ufn a => SUnop ufn (collapse_sact sf a)
-    | SVar v =>
-      match PTree.get v (vars sf) with
-      | Some (t, SVar v') => SVar v'
-        (* collapse sf (Var v') *) (* TODO Termination *)
-      | Some (t, SConst c) => SConst c
-      | _ => a
-      end
-    | _ => a
-    end.
-
-  Definition collapse_sf (sf: simple_form) := {|
-    final_values := final_values sf;
-    vars :=
-      Maps.PTree.map (fun _ '(t, a) => (t, collapse_sact sf a)) (vars sf) |}.
 
   Definition simplify_var (sf: simple_form) var :=
     match (vars sf) ! var with
@@ -3782,9 +3762,35 @@ Lemma remove_vars_correct:
     rewrite <- ! F1OK; auto.
   Qed.
 
-  Lemma inlining_pass_sf_eq':
-    forall sf1 sf2
-           (SFEQ: sf_eq sf1 sf2)
+  Record sf_eq_restricted l (sf1 sf2: simple_form) :=
+    {
+      sf_eqr_final:
+      forall reg,
+        In reg l ->
+        list_assoc (final_values sf1) reg =
+          list_assoc (final_values sf2) reg;
+      (* sf_eqr_notin: *)
+      (* forall reg, *)
+      (*   ~ In reg l -> *)
+      (*   list_assoc (final_values sf2) reg = None; *)
+      sf_eqr_vars: forall reg v t,
+        In reg l ->
+        list_assoc (final_values sf2) reg = Some v ->
+        wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t ->
+        forall x,
+          interp_sact REnv (sigma:=sigma) r (vars sf1) (SVar v) x <->
+            interp_sact REnv (sigma:=sigma) r (vars sf2) (SVar v) x;
+      sf_eqr_wt: 
+      forall reg v t,
+        In reg l ->
+        list_assoc (final_values sf2) reg = Some v ->
+        wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t <->
+          wt_sact (Sigma:=Sigma) R (vars sf2) (SVar v) t
+    }.
+
+  Lemma inlining_pass_sf_eqr':
+    forall sf1 sf2 l
+           (SFEQ: sf_eq_restricted l sf1 sf2)
            (VSV1: vvs_smaller_variables (vars sf1))
            (VSV2: vvs_smaller_variables (vars sf2))
            (WT1: wt_vvs (Sigma:=Sigma) R (vars sf1))
@@ -3794,6 +3800,7 @@ Lemma remove_vars_correct:
                wt_sact (Sigma:=Sigma) R (vars sf1) (SVar k) (R reg)
            )
            reg k
+           (IN: In reg l)
            (FINAL: list_assoc (final_values sf1) reg = Some k),
       list_assoc (inlining_pass sf1) k = list_assoc (inlining_pass sf2) k.
   Proof.
@@ -3801,15 +3808,77 @@ Lemma remove_vars_correct:
     exploit inlining_pass_correct. reflexivity. apply VSV1. apply WT1.
     exploit inlining_pass_correct. reflexivity. apply VSV2. apply WT2.
     intros (ND2 & SPEC2) (ND1 & SPEC1).
-    erewrite <- sf_eq_final in SPEC2. 2: eauto.
+    specialize (SPEC2 k reg).
+    erewrite <- sf_eqr_final in SPEC2. 2: eauto. 2: auto.
+    specialize (SPEC2 FINAL).
     exploit @wt_sact_interp. eauto. eauto. apply WT1. apply VSV1. apply vvs_range_max_var.
     apply WTfinal. eauto.
     intros (v & IS & WT).
     erewrite in_list_assoc. 2: auto. 2: eapply SPEC1; eauto.
     erewrite in_list_assoc. 2: auto. 2: eapply SPEC2; eauto.
     reflexivity.
-    rewrite <- sf_eq_vars; eauto.
-    eapply list_assoc_in; eauto.
+    rewrite <- sf_eqr_vars; eauto.
+    erewrite <- sf_eqr_final; eauto.
+  Qed.
+
+  Lemma inlining_pass_sf_eqr:
+    forall sf1 sf2 l
+           (SFEQ: sf_eq_restricted l sf1 sf2)
+           (WF1: wf_sf sf1)
+           (WF2: wf_sf sf2)
+           reg k (IN: In reg l)
+           (FINAL: list_assoc (final_values sf1) reg = Some k),
+      list_assoc (inlining_pass sf1) k = list_assoc (inlining_pass sf2) k.
+  Proof.
+    intros.
+    destruct WF1, WF2;
+    eapply inlining_pass_sf_eqr'; eauto.
+  Qed.
+
+
+  (* Lemma inlining_pass_sf_eq': *)
+  (*   forall sf1 sf2 *)
+  (*          (SFEQ: sf_eq sf1 sf2) *)
+  (*          (VSV1: vvs_smaller_variables (vars sf1)) *)
+  (*          (VSV2: vvs_smaller_variables (vars sf2)) *)
+  (*          (WT1: wt_vvs (Sigma:=Sigma) R (vars sf1)) *)
+  (*          (WT2: wt_vvs (Sigma:=Sigma) R (vars sf2)) *)
+  (*          (WTfinal: forall reg k, *)
+  (*              list_assoc (final_values sf1) reg = Some k -> *)
+  (*              wt_sact (Sigma:=Sigma) R (vars sf1) (SVar k) (R reg) *)
+  (*          ) *)
+  (*          reg k *)
+  (*          (FINAL: list_assoc (final_values sf1) reg = Some k), *)
+  (*     list_assoc (inlining_pass sf1) k = list_assoc (inlining_pass sf2) k. *)
+  (* Proof. *)
+  (*   intros. *)
+  (*   exploit inlining_pass_correct. reflexivity. apply VSV1. apply WT1. *)
+  (*   exploit inlining_pass_correct. reflexivity. apply VSV2. apply WT2. *)
+  (*   intros (ND2 & SPEC2) (ND1 & SPEC1). *)
+  (*   erewrite <- sf_eq_final in SPEC2. 2: eauto. *)
+  (*   exploit @wt_sact_interp. eauto. eauto. apply WT1. apply VSV1. apply vvs_range_max_var. *)
+  (*   apply WTfinal. eauto. *)
+  (*   intros (v & IS & WT). *)
+  (*   erewrite in_list_assoc. 2: auto. 2: eapply SPEC1; eauto. *)
+  (*   erewrite in_list_assoc. 2: auto. 2: eapply SPEC2; eauto. *)
+  (*   reflexivity. *)
+  (*   rewrite <- sf_eq_vars; eauto. *)
+  (*   eapply list_assoc_in; eauto. *)
+  (* Qed. *)
+
+  Lemma sf_eq_is_restricted:
+    forall sf1 sf2,
+      sf_eq sf1 sf2 ->
+      sf_eq_restricted (@finite_elements _ (finite_keys REnv)) sf1 sf2.
+  Proof.
+    intros.
+    inv H. constructor.
+    - rewrite sf_eq_final0. tauto.
+    (* - intros. elim H. eapply nth_error_In. eapply finite_surjective. *)
+    - rewrite <- sf_eq_final0. intros; eapply sf_eq_vars0; eauto.
+      eapply list_assoc_in; eauto.
+    - rewrite <- sf_eq_final0. intros; eapply sf_eq_wt0; eauto.
+      eapply list_assoc_in; eauto.
   Qed.
 
   Lemma inlining_pass_sf_eq:
@@ -3822,8 +3891,9 @@ Lemma remove_vars_correct:
       list_assoc (inlining_pass sf1) k = list_assoc (inlining_pass sf2) k.
   Proof.
     intros.
-    destruct WF1, WF2;
-    eapply inlining_pass_sf_eq'; eauto.
+    eapply inlining_pass_sf_eqr; eauto. apply sf_eq_is_restricted; auto.
+    eapply nth_error_In.
+    apply finite_surjective.
   Qed.
 
   Lemma wf_sf_remove_vars sf:
@@ -4047,6 +4117,51 @@ Lemma remove_vars_correct:
     - econstructor; eauto.
   Qed.
 
+  (* Lemma sf_eq_f: *)
+  (*   forall sf f (WF: wf_sf sf) *)
+  (*          (FSPEC: *)
+  (*              forall (a : sact) (v : val), *)
+  (*                interp_sact (sigma:=sigma) REnv r (vars sf) (f a) v -> *)
+  (*                forall t : type, wt_sact (Sigma:=Sigma) R (vars sf) a t -> *)
+  (*                                 interp_sact (sigma:=sigma) REnv r (vars sf) a v *)
+  (*          ) *)
+  (*          (SPEC: forall (a : SimpleForm.sact) (v : val), *)
+  (*              forall t : type, *)
+  (*                wt_sact (Sigma:=Sigma) R (vars sf) a t -> *)
+  (*                interp_sact (sigma:=sigma) REnv r (vars sf) a v -> *)
+  (*                interp_sact (sigma:=sigma) REnv r (vars sf) (f a) v *)
+  (*          ) *)
+  (*          (FWT: forall (a0 : SimpleForm.sact) (t0 : type), *)
+  (*              wt_sact (Sigma:=Sigma) R (vars sf) a0 t0 -> *)
+  (*              wt_sact (Sigma:=Sigma) R (vars sf) (f a0) t0) *)
+  (*          (VIS: forall (s : SimpleForm.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v') *)
+  (*   , *)
+  (*     sf_eq sf {| final_values := final_values sf; vars := PTree.map (fun (_ : positive) '(t, a) => (t, f a)) (vars sf) |}. *)
+  (* Proof. *)
+  (*   intros. *)
+  (*   constructor. simpl. auto. *)
+  (*   - intros. simpl. *)
+  (*     split. *)
+  (*     + intro A; inv A. inv H0. rewrite H2 in H4. *)
+  (*       inv H4. *)
+  (*       econstructor. *)
+  (*       rewrite PTree.gmap. setoid_rewrite H2. simpl. reflexivity. *)
+  (*       eapply f_interp_sact_ok'. eauto. eauto. eauto. apply H. apply H. eapply SPEC; eauto. *)
+  (*       apply H. eapply H. eauto. apply H. *)
+  (*       eapply FWT. eapply H. eauto. *)
+  (*     + intro A; inv A. rewrite PTree.gmap in H3. unfold option_map in H3; repeat destr_in H3; inv H3. *)
+  (*       econstructor. eauto. inv H1. setoid_rewrite H3 in Heqo. inv Heqo. *)
+  (*       eapply FSPEC in H4. eapply f_interp_sact_ok; eauto. *)
+  (*       apply H. apply H. eapply H. eauto. *)
+  (*       eapply f_wtvvs_ok'; eauto. apply H. *)
+  (*       eapply vsv_f; eauto. apply H. *)
+  (*       eapply f_wt_sact_ok'; eauto. eapply H. eauto. *)
+  (*   - intros. simpl. *)
+  (*     split. eapply f_wt_sact_ok'; eauto. *)
+  (*     intro A; inv A. *)
+  (*     rewrite PTree.gmap in H2. unfold option_map in H2; repeat destr_in H2; inv H2. *)
+  (*     econstructor. eauto. *)
+  (* Qed. *)
 
   Lemma sf_eq_f:
     forall sf f
@@ -4260,21 +4375,927 @@ Lemma remove_vars_correct:
     apply sf_eq_sym. apply sf_eq_replace_reg. auto.
   Qed.
 
+  Lemma wt_sact_filter:
+    forall l (ND: NoDup l) vvs (VSV: vvs_smaller_variables vvs)
+           v (IN: In v l)
+           s t
+           (GET: vvs ! v = Some (t, s))
+           (WT: wt_sact (Sigma:=Sigma) R vvs s t)
+           (REACH: forall v0, reachable_var vvs s v0 -> In v0 l)
+    ,
+      wt_sact (Sigma:=Sigma) R (filter_ptree vvs (PTree.empty _) l) s t.
+  Proof.
+    intros.
+    assert (forall v0, reachable_var vvs (SVar v) v0 -> In v0 l).
+    {
+      intros v0 RV. inv RV. auto.
+      rewrite GET in H0; inv H0. eauto.
+    }
+    specialize (fun v REACH vvs t2 => filter_ptree_eq _ _ vvs t2 (H v REACH) ND).
+    simpl.
+    fold (filter_ptree vvs (PTree.empty _) l).
+    intros. eapply wt_sact_reachable. 2: eauto.
+    intros; apply H0. econstructor; eauto.
+    intros; apply PTree.gempty.
+  Qed.
+
+
+  Lemma wt_vvs_filter:
+    forall vvs l (ND: NoDup l) (VSV: vvs_smaller_variables vvs),
+      wt_vvs (Sigma:=Sigma) R vvs
+      -> (forall v t s
+                 (IN : In v l)
+                 (GET : vvs ! v = Some (t, s))
+                 v0
+                 (REACH: reachable_var vvs s v0), In v0 l)
+      -> wt_vvs (Sigma:=Sigma) R (filter_ptree vvs (PTree.empty _) l).
+  Proof.
+    red; intros vvs l ND VSV WTVVS CLOSED v s t GET.
+    apply filter_ptree_inv in GET; auto. rewrite PTree.gempty in GET.
+    destruct GET as [GET|(IN & GET)]. inv GET.
+    eapply wt_sact_filter; eauto.
+    intros; apply PTree.gempty.
+  Qed.
+
+
+  Lemma vsv_filter:
+    forall vvs l (ND: NoDup l),
+      vvs_smaller_variables vvs
+      -> vvs_smaller_variables (filter_ptree vvs (PTree.empty _) l).
+  Proof.
+    red; intros.
+    simpl in *.
+    apply filter_ptree_inv in H0.
+    destruct H0.
+    rewrite PTree.gempty in H0. congruence.
+    destruct H0 as (IN & GET).
+    eapply H; eauto. auto.
+    intros; apply PTree.gempty.
+  Qed.
+
+
+  Lemma wf_sf_filter_ptree sf1 sf2 l
+    (ND: NoDup l)
+    (CLOSED: forall v t s
+                    (IN : In v l)
+                    (GET : (vars sf1) ! v = Some (t, s))
+                    v0
+                    (REACH: reachable_var (vars sf1) s v0), In v0 l)
+    :
+
+    wf_sf sf1 ->
+    (forall r k,
+        list_assoc (final_values sf2) r = Some k ->
+        list_assoc (final_values sf1) r = Some k /\ In k l) ->
+    vars sf2 = filter_ptree (vars sf1) (PTree.empty _) l ->
+    wf_sf sf2.
+  Proof.
+    destruct 1; intros.
+    constructor.
+    - rewrite H0. eapply wt_vvs_filter; eauto.
+    - rewrite H0. apply vsv_filter; auto.
+    - intros.
+      apply H in H1. destruct H1.
+      apply wf_sf_final0 in H1. inv H1.
+      econstructor.
+      rewrite H0.
+      erewrite <- filter_ptree_eq. eauto. auto. auto.
+      intros; rewrite PTree.gempty; auto.
+  Qed.
+
+  Lemma wf_sf_prune_irrelevant_aux:
+    forall sf reg v,
+      list_assoc (final_values sf) reg = Some v ->
+      wf_sf sf ->
+      wf_sf (prune_irrelevant_aux sf reg v).
+  Proof.
+    intros.
+    eapply wf_sf_filter_ptree. 5: reflexivity.
+    eapply nodup_reachable_vars_aux. apply H0. constructor.
+    intros; eapply reachable_vars_aux_ok. 2: reflexivity. apply H0. simpl; easy. lia. eauto. eauto. eauto. auto.
+    simpl. intros. destr_in H1; inv H1. rewrite H. split; auto.
+  Qed.
+
+
+  Lemma filter_ptree_correct:
+    forall sf1 sf2
+           l lr
+    (ND: NoDup l)
+    (CLOSED: forall v t s
+                    (IN : In v l)
+                    (GET : (vars sf1) ! v = Some (t, s))
+                    v0
+                    (REACH: reachable_var (vars sf1) s v0), In v0 l),
+    wf_sf sf1 ->
+    (forall reg v,
+        In reg lr ->
+        list_assoc (final_values sf1) reg = Some v ->
+        list_assoc (final_values sf2) reg = Some v) ->
+    (forall r k,
+        list_assoc (final_values sf2) r = Some k ->
+        list_assoc (final_values sf1) r = Some k /\ In k l) ->
+    vars sf2 = filter_ptree (vars sf1) (PTree.empty _) l ->
+    forall reg n,
+      list_assoc (final_values sf2) reg = Some n
+      -> forall fuel,
+        eval_sact (vars sf1) (SVar n) fuel = eval_sact (vars sf2) (SVar n) fuel.
+  Proof.
+    intros. simpl.
+    assert (forall v, reachable_var (vars sf1) (SVar n) v -> In v l).
+    {
+      intros v RV. inv RV. eapply H1; eauto.
+      eapply CLOSED; eauto. eapply H1; eauto.
+    }
+    assert (
+      forall l v (vvs t2: var_value_map (ext_fn_t:=ext_fn_t) (reg_t:=reg_t)),
+      In v l
+      -> NoDup l
+      -> (forall x, In x l -> t2 ! x = None)
+      -> vvs ! v = (filter_ptree vvs t2 l) ! v
+    ).
+    {
+      clear.
+      induction l; simpl; intros. easy.
+      inv H0. destruct H. subst.
+      destr.
+      rewrite filter_ptree_in. rewrite PTree.gss. auto. auto.
+      rewrite filter_ptree_in; auto. symmetry; apply H1. auto.
+      rewrite <- IHl. auto. auto. auto. intros.
+      destr; eauto. rewrite PTree.gso; eauto. congruence.
+    }
+
+    specialize (fun v REACH vvs t2 => H5 _ _ vvs t2 (H4 v REACH) ND).
+    rewrite H2.
+    apply eval_sact_reachable. intros; apply H5. auto. intros; apply PTree.gempty.
+  Qed.
+
+
+  Lemma reachable_filter_inv:
+    forall vvs l (ND: NoDup l) v a,
+      reachable_var (filter_ptree vvs (PTree.empty (type * SimpleForm.sact)) l) a v ->
+      reachable_var vvs a v.
+  Proof.
+    induction 2; simpl; intros; eauto.
+    - econstructor.
+    - apply filter_ptree_inv in H; auto. rewrite PTree.gempty in H.
+      destruct H as [H|[A B]]; [congruence|]. econstructor; eauto.
+      intros; apply PTree.gempty.
+    - eapply reachable_var_if_cond; eauto.
+    - eapply reachable_var_if_true; eauto.
+    - eapply reachable_var_if_false; eauto.
+    - eapply reachable_var_binop1; eauto.
+    - eapply reachable_var_binop2; eauto.
+    - eapply reachable_var_unop; eauto.
+    - eapply reachable_var_externalCall; eauto.
+  Qed.
+
+  Lemma filter_ptree_wt:
+    forall sf1 sf2
+           l lr
+    (ND: NoDup l)
+    (CLOSED: forall v t s
+                    (IN : In v l)
+                    (GET : (vars sf1) ! v = Some (t, s))
+                    v0
+                    (REACH: reachable_var (vars sf1) s v0), In v0 l),
+    wf_sf sf1 ->
+    (forall reg v,
+        In reg lr ->
+        list_assoc (final_values sf1) reg = Some v ->
+        list_assoc (final_values sf2) reg = Some v) ->
+    (forall r k,
+        list_assoc (final_values sf2) r = Some k ->
+        list_assoc (final_values sf1) r = Some k /\ In k l) ->
+    vars sf2 = filter_ptree (vars sf1) (PTree.empty _) l ->
+    forall reg n t,
+      list_assoc (final_values sf2) reg = Some n
+      ->
+        wt_sact (Sigma:=Sigma) R (vars sf1) (SVar n) t <-> wt_sact (Sigma:=Sigma) R (vars sf2) (SVar n) t.
+  Proof.
+    intros. simpl.
+    assert (forall v, reachable_var (vars sf1) (SVar n) v -> In v l).
+    {
+      intros v RV. inv RV. eapply H1; eauto.
+      eapply CLOSED; eauto. eapply H1; eauto.
+    }
+    assert (
+      forall l v (vvs t2: var_value_map (ext_fn_t:=ext_fn_t) (reg_t:=reg_t)),
+      In v l
+      -> NoDup l
+      -> (forall x, In x l -> t2 ! x = None)
+      -> vvs ! v = (filter_ptree vvs t2 l) ! v
+    ).
+    {
+      clear.
+      induction l; simpl; intros. easy.
+      inv H0. destruct H. subst.
+      destr.
+      rewrite filter_ptree_in. rewrite PTree.gss. auto. auto.
+      rewrite filter_ptree_in; auto. symmetry; apply H1. auto.
+      rewrite <- IHl. auto. auto. auto. intros.
+      destr; eauto. rewrite PTree.gso; eauto. congruence.
+    }
+
+    split; eapply wt_sact_reachable.
+    rewrite H2. intros. eapply filter_ptree_eq; eauto. intros; apply PTree.gempty.
+    rewrite H2. intros. symmetry; eapply filter_ptree_eq; eauto. 2: intros; apply PTree.gempty.
+    inv H6.
+    eapply H1; eauto.
+    eapply CLOSED; eauto. 3: eapply reachable_filter_inv; eauto.
+    eapply H1; eauto.
+    eapply filter_ptree_inv in H8.
+    rewrite PTree.gempty in H8. destruct H8 as [|[A B]]. inv H6. eauto. auto.
+    intros; apply PTree.gempty.
+  Qed.
+
+
+
+  Lemma sf_eqr_filter sf1 sf2 lr l
+    (ND: NoDup l)
+    (CLOSED: forall v t s
+                    (IN : In v l)
+                    (GET : (vars sf1) ! v = Some (t, s))
+                    v0
+                    (REACH: reachable_var (vars sf1) s v0), In v0 l):
+    wf_sf sf1 ->
+    (forall reg,
+        In reg lr ->
+        list_assoc (final_values sf1) reg =
+        list_assoc (final_values sf2) reg) ->
+    (* (forall reg, *)
+    (*     ~ In reg lr -> *)
+    (*     list_assoc (final_values sf2) reg = None) -> *)
+    (forall r k,
+        list_assoc (final_values sf2) r = Some k ->
+        list_assoc (final_values sf1) r = Some k /\ In k l) ->
+    vars sf2 = filter_ptree (vars sf1) (PTree.empty _) l ->
+    sf_eq_restricted lr sf1 sf2.
+  Proof.
+    intros WF SELECT1 (* NOTIN *) SELECT2 VARS. constructor; auto.
+    - intros. inversion H1. subst.
+      eapply interp_eval_iff. apply WF.
+      rewrite VARS. apply vsv_filter; auto. apply WF. eauto.
+      econstructor.
+      rewrite VARS.
+      rewrite <- filter_ptree_eq. eauto.  eapply SELECT2.  eauto. auto. 
+      intros; rewrite PTree.gempty. auto.
+      exists O; intros; eapply filter_ptree_correct; eauto.
+      intros. rewrite <- SELECT1. eauto. eauto.
+    - intros; eapply filter_ptree_wt; eauto.
+      intros. rewrite <- SELECT1. eauto. eauto.
+  Qed.
+
+  Lemma sf_eqf_prune_irrelevant_aux:
+    forall sf reg v,
+      list_assoc (final_values sf) reg = Some v ->
+      wf_sf sf ->
+      sf_eq_restricted [reg] sf (prune_irrelevant_aux sf reg v).
+  Proof.
+    intros. eapply sf_eqr_filter. 6: reflexivity.
+    apply nodup_reachable_vars_aux. apply H0. constructor.
+    intros; eapply reachable_vars_aux_ok; eauto. apply H0. reflexivity.
+    easy. auto.
+    simpl. intros ? [|[]]. subst.
+    destr.
+    (* simpl. intros. destr. subst. intuition congruence. *)
+    simpl. intros. repeat destr_in H1; inv H1. split; auto.
+  Qed.
+
+  Lemma sf_eqr_apply:
+    forall F1 l1 l2
+           (F1OK: forall sf, wf_sf sf -> sf_eq_restricted l1 sf (F1 sf))
+           (* (F1removes: forall sf reg, ~ In reg l1 -> list_assoc (final_values (F1 sf)) reg = None) *),
+      forall sf1 sf2,
+        wf_sf sf1 -> wf_sf sf2 ->
+        sf_eq_restricted l2 sf1 sf2 ->
+        forall l3, incl l3 l1 -> incl l3 l2 ->
+        sf_eq_restricted l3 (F1 sf1) (F1 sf2).
+  Proof.
+    intros.
+    destruct (F1OK _ H), (F1OK _ H0), H1.
+    constructor.
+    - intros; eauto.
+      rewrite <- sf_eqr_final0; auto.
+      rewrite <- sf_eqr_final1; auto.
+    (* - intros. rewrite sf_eqr_notin1. auto. *)
+    (*   intro IN; apply H1; eauto. *)
+    - intros.
+      rewrite <- sf_eqr_vars0; eauto.
+      rewrite <- sf_eqr_vars1; eauto. eapply sf_eqr_vars2; eauto.
+      erewrite sf_eqr_final1; eauto.
+      eapply sf_eqr_wt0; eauto.
+      rewrite <- sf_eqr_final0; eauto.
+      rewrite sf_eqr_final2; eauto.
+      rewrite sf_eqr_final1; eauto. eauto.
+      eapply sf_eqr_wt2; eauto.
+      rewrite sf_eqr_final1; eauto.
+      eapply sf_eqr_wt0; eauto.
+      rewrite <- sf_eqr_final0; eauto.
+      rewrite sf_eqr_final2; eauto.
+      rewrite sf_eqr_final1; eauto.
+      eauto.
+      rewrite <- sf_eqr_final0; eauto.
+      rewrite sf_eqr_final2; eauto.
+      rewrite sf_eqr_final1; eauto.
+      eapply sf_eqr_wt0; eauto.
+      rewrite <- sf_eqr_final0; eauto.
+      rewrite sf_eqr_final2; eauto.
+      rewrite sf_eqr_final1; eauto.
+    - intros.
+      rewrite <- sf_eqr_wt0; eauto.
+      rewrite <- sf_eqr_wt1; eauto.
+      eapply sf_eqr_wt2; eauto.
+      rewrite sf_eqr_final1; eauto.
+      rewrite <- sf_eqr_final0; eauto.
+      rewrite sf_eqr_final2; eauto.
+      rewrite sf_eqr_final1; eauto.
+  Qed.
+  
+  Lemma sf_eqr_apply':
+    forall F1 l (F1OK: forall sf, wf_sf sf -> sf_eq_restricted l sf (F1 sf)),
+      forall sf1 sf2,
+        wf_sf sf1 -> wf_sf sf2 ->
+        sf_eq_restricted l sf1 sf2 ->
+        sf_eq_restricted l (F1 sf1) (F1 sf2).
+  Proof.
+    intros.
+    eapply sf_eqr_apply; eauto.
+    red; auto. red; auto.
+  Qed.
+
+  Lemma sf_eqr_incl:
+    forall l1 l2 sf1 sf2,
+      sf_eq_restricted l1 sf1 sf2 ->
+      incl l2 l1 ->
+      sf_eq_restricted l2 sf1 sf2.
+  Proof.
+    intros. inv H.
+    constructor; eauto.
+  Qed.
+
+  Lemma sf_eqr_interp_cycle_ok:
+    forall l sf1 sf2,
+      wf_sf sf1 -> wf_sf sf2 ->
+      sf_eq_restricted l sf1 sf2 ->
+      forall reg, In reg l ->
+    getenv REnv (interp_cycle sf1) reg
+    = getenv REnv (interp_cycle sf2) reg.
+  Proof.
+    intros.
+    unfold interp_cycle. simpl.
+    rewrite ! getenv_create.
+    erewrite sf_eqr_final; eauto.
+    destr.
+    erewrite inlining_pass_sf_eqr. reflexivity. 4: apply H2.
+    2: apply wf_sf_remove_vars; eauto.
+    2: apply wf_sf_remove_vars; eauto.
+    eapply sf_eqr_apply; eauto.
+    intros; eapply sf_eq_is_restricted.
+    apply sf_eq_remove_vars. auto. red; intros.
+    eapply nth_error_In, finite_surjective.
+    red; auto. simpl.
+    erewrite sf_eqr_final; eauto.
+  Qed.
+
+
   (* TODO wtsf *)
   Lemma prune_irrelevant_interp_cycle_ok:
-    forall reg sf sf',
-    prune_irrelevant sf reg = Some sf'
-    -> getenv REnv (interp_cycle sf') reg = getenv REnv (interp_cycle sf) reg.
+    forall reg sf sf'
+           (WF: wf_sf sf)
+           (PRUNE: prune_irrelevant sf reg = Some sf'),
+      getenv REnv (interp_cycle sf') reg = getenv REnv (interp_cycle sf) reg.
   Proof.
-  Admitted.
+    intros.
+    unfold prune_irrelevant in PRUNE. destr_in PRUNE; inv PRUNE.
+    symmetry. eapply sf_eqr_interp_cycle_ok. auto.
+    eapply wf_sf_prune_irrelevant_aux; eauto.
+    eapply sf_eqf_prune_irrelevant_aux; eauto.
+    simpl; auto.
+  Qed.
+
+  Fixpoint collapse_sact (vvs : PTree.t (type * SimpleForm.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t))) (a : sact) :=
+    match a with
+    | SIf cond tb fb =>
+      SIf (collapse_sact vvs cond) (collapse_sact vvs tb) (collapse_sact vvs fb)
+    | SBinop ufn a1 a2 => SBinop ufn (collapse_sact vvs a1) (collapse_sact vvs a2)
+    | SUnop ufn a => SUnop ufn (collapse_sact vvs a)
+    | SVar v =>
+      match PTree.get v vvs with
+      | Some (t, SVar v') => SVar v'
+        (* collapse vvs (Var v') *) (* TODO Termination *)
+      | Some (t, SConst c) => SConst c
+      | _ => a
+      end
+    | SExternalCall ufn s => SExternalCall ufn (collapse_sact vvs s)
+    | _ => a
+    end.
+
+  Definition collapse_sf (sf: simple_form) := {|
+    final_values := final_values sf;
+    vars :=
+      Maps.PTree.map (fun _ '(t, a) => (t, collapse_sact (vars sf) a)) (vars sf) |}.
+
+  Lemma collapse_wt:
+    forall sf (WF: wf_sf sf) a t (WTS: wt_sact (Sigma := Sigma) R (vars sf) a t),
+      wt_sact (Sigma := Sigma) R (vars sf) (collapse_sact (vars sf) a) t.
+  Proof.
+    induction 2; simpl; intros; try now (econstructor; eauto).
+    rewrite H.
+    destr; try now (econstructor; eauto).
+    eapply wf_sf_wt; eauto.
+    eapply wf_sf_wt; eauto.
+  Qed.
+
+
+  Lemma vsv_f_reachable:
+    forall f vvs (FSPEC: forall s v', var_in_sact (f s) v' -> reachable_var vvs s v'),
+      vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) vvs ->
+      vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (PTree.map (fun _ '(t,a) => (t, f a)) vvs).
+  Proof.
+    red; intros.
+    rewrite Maps.PTree.gmap in H0. unfold option_map in H0.
+    repeat destr_in H0; inv H0.
+    eapply FSPEC in H1.
+    eapply reachable_var_aux_below. 3: eauto. auto.
+    intros; eapply H; eauto.
+  Qed.
+
+  Lemma f_wtvvs_ok'':
+    forall f vvs (FSPEC: forall a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+               wt_sact (Sigma := Sigma) R vvs (f a) t)
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs),
+    wt_vvs (Sigma := Sigma) R (PTree.map (fun _ '(t,a) => (t, f a)) vvs).
+  Proof.
+    intros. unfold wt_vvs. intros.
+    apply f_wt_sact_ok'.
+    rewrite Maps.PTree.gmap in H. unfold option_map in H.
+    repeat destr_in H; inv H. apply FSPEC; eauto.
+  Qed.
+
+  Lemma wf_f_reachable:
+    forall sf f
+           (FWT: forall a t (WTS: wt_sact (Sigma := Sigma) R (vars sf) a t),
+               wt_sact (Sigma := Sigma) R (vars sf) (f a) t)
+           (FVIS: forall s v', var_in_sact (f s) v' -> reachable_var (vars sf) s v'),
+      wf_sf sf ->
+      wf_sf {| final_values := final_values sf; vars := PTree.map (fun _ '(t,a) => (t, f a)) (vars sf) |}.
+  Proof.
+    destruct 3; constructor.
+    - eapply f_wtvvs_ok''; eauto.
+    - eapply vsv_f_reachable; eauto.
+    - simpl.
+      intros. eapply f_wt_sact_ok'. eauto.
+  Qed.
+
+  Lemma var_in_sact_reachable:
+    forall vvs a v,
+      var_in_sact a v ->
+      reachable_var vvs a v.
+  Proof.
+    induction 1; simpl; intros; try now (econstructor; eauto).
+  Qed.
+
+  Lemma collapse_vis:
+    forall vvs a v' (VIS: var_in_sact (collapse_sact vvs a) v'), reachable_var vvs a v'.
+  Proof.
+    induction a; simpl; intros; eauto; try now (inv VIS).
+    -
+      specialize (var_in_sact_reachable vvs (SVar var) v'). intros.
+      repeat destr_in VIS; auto; clear H.
+      subst.
+      inv VIS. econstructor; eauto. econstructor; eauto. inv VIS.
+    - inv VIS.
+      eapply reachable_var_if_cond; eauto.
+      eapply reachable_var_if_true; eauto.
+      eapply reachable_var_if_false; eauto.
+    - inv VIS; econstructor; eauto.
+    - inv VIS. econstructor; eauto.
+      eapply reachable_var_binop2; eauto.
+    - inv VIS; econstructor; eauto.
+  Qed.
+
+  Lemma wf_collapse_sf:
+    forall sf,
+      wf_sf sf ->
+      wf_sf (collapse_sf sf).
+  Proof.
+    intros; eapply wf_f_reachable.
+    intros; eapply collapse_wt; eauto.
+    intros; eapply collapse_vis; eauto. auto.
+  Qed.
+
+  Lemma collapse_interp_inv:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall (a : sact) (v : val),
+        interp_sact (sigma:=sigma) REnv r vvs (collapse_sact vvs a) v ->
+        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v.
+  Proof.
+    induction a; simpl; intros; eauto.
+    - inv H2.
+      rewrite H4 in H1.
+      destr_in H1; auto. econstructor; eauto. econstructor; eauto.
+    - inv H2; inv H1. econstructor; eauto. destr; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+    - inv H2; inv H1. econstructor; eauto.
+  Qed.
+
+  Lemma pos_strong_ind:
+    forall (P: positive -> Prop),
+      (forall p, (forall n, Pos.lt n p -> P n) -> P p) ->
+      forall n m, Pos.le m n -> P m.
+  Proof.
+    intros.
+    generalize (strong_ind_type (fun n => P (Pos.of_nat (S n)))). intro.
+    replace m with (Pos.of_nat (S (pred (Pos.to_nat m)))).
+    eapply H1.
+    intros. apply H.
+    intros.
+    assert (n1 = Pos.of_nat (S (pred (Pos.to_nat n1)))).
+    erewrite Nat.lt_succ_pred. rewrite Pnat.Pos2Nat.id. auto. instantiate (1:=0); lia. rewrite H4.
+    apply H2. lia.
+    instantiate (1:=pred (Pos.to_nat n)). lia.
+    erewrite Nat.lt_succ_pred. rewrite Pnat.Pos2Nat.id. auto. instantiate (1:=0); lia.
+  Qed.
+
+  Lemma collapse_interp2:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs
+    -> vvs_smaller_variables vvs
+    -> forall n a v,
+        (forall v, reachable_var vvs a v -> v < n)%positive ->
+        interp_sact (sigma:=sigma) REnv r vvs a v ->
+        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t ->
+                         interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact vvs a)) vvs) (collapse_sact vvs a) v.
+  Proof.
+    intros vvs WTvvs VSV n a.
+    change n with (projT1 (existT (fun _ => sact) n a)).
+    change a with (projT2 (existT (fun _ => sact) n a)) at 1 3 4 5.
+    generalize (existT (fun _ => sact) n a).
+    clear n a. intro s. pattern s.
+    eapply well_founded_induction.
+    apply wf_order_sact. clear s.
+    intros x IH v BELOW IS t0 WTs.
+    assert (IH2: forall a0,
+               size_sact a0 < size_sact (projT2 x) ->
+               (forall v0, reachable_var vvs a0 v0 -> (v0 < projT1 x)%positive) ->
+               forall v t,
+                 interp_sact (sigma:=sigma) REnv r vvs a0 v ->
+                 wt_sact (Sigma:=Sigma) R vvs a0 t ->
+                 interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact vvs a)) vvs) (collapse_sact vvs a0) v
+           ).
+    {
+      intros. eapply (IH (existT _ (projT1 x) a0)).
+      red. destruct x. apply Relation_Operators.right_lex. simpl in H.  auto.
+      simpl. auto. simpl. auto. simpl. eauto.
+    }
+    destruct x; simpl in *.
+    inv IS.
+    - simpl in *. rewrite H.
+      destr.
+      + inv H0. econstructor.
+        rewrite PTree.gmap; setoid_rewrite H2. reflexivity.
+        eapply (IH (existT _ var a0)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. econstructor; eauto. simpl. auto.
+        simpl. eauto.
+      + inv H0; econstructor; eauto.
+      + econstructor.
+        rewrite PTree.gmap; setoid_rewrite H. reflexivity.
+        simpl.
+        inv H0.
+        generalize (WTvvs _ _ _ H). intro WT. inv WT.
+        econstructor.
+        eapply (IH (existT _ var s1)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. econstructor; eauto. simpl. eauto.
+        simpl. eauto.
+        destr.
+        eapply (IH (existT _ var s2)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. eapply reachable_var_if_true; eauto. simpl. eauto.
+        simpl. eauto.
+        eapply (IH (existT _ var s3)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. eapply reachable_var_if_false; eauto. simpl. eauto.
+        simpl. eauto.
+      + econstructor.
+        rewrite PTree.gmap; setoid_rewrite H. reflexivity.
+        simpl.
+        inv H0.
+        generalize (WTvvs _ _ _ H). intro WT. inv WT.
+        econstructor.
+        eapply (IH (existT _ var s)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. econstructor; eauto. simpl. eauto.
+        simpl. eauto. auto.
+      + econstructor.
+        rewrite PTree.gmap; setoid_rewrite H. reflexivity.
+        simpl.
+        inv H0.
+        generalize (WTvvs _ _ _ H). intro WT. inv WT.
+        econstructor.
+        eapply (IH (existT _ var s1)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. eapply reachable_var_binop1; eauto. simpl. eauto.
+        simpl. eauto. auto.
+        simpl. eapply (IH (existT _ var s2)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. eapply reachable_var_binop2; eauto. simpl. eauto.
+        simpl. eauto. auto.
+      + econstructor.
+        rewrite PTree.gmap; setoid_rewrite H. reflexivity.
+        simpl.
+        inv H0.
+        generalize (WTvvs _ _ _ H). intro WT. inv WT.
+        econstructor.
+        eapply (IH (existT _ var s)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl. 
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
+        eapply H0. eapply reachable_var_externalCall; eauto. simpl. eauto.
+        simpl. eauto.
+      + econstructor.
+        rewrite PTree.gmap; setoid_rewrite H. reflexivity.
+        simpl.
+        inv H0.
+        generalize (WTvvs _ _ _ H). intro WT. inv WT.
+        econstructor.
+    - simpl; constructor.
+    - simpl.
+      inv WTs.
+      econstructor.
+      eapply IH2. Transparent size_sact. simpl. lia.
+      intros; eapply BELOW. eapply reachable_var_if_cond. eauto. eauto. eauto.
+      destr.
+      eapply IH2. simpl. lia.
+      intros; eapply BELOW. eapply reachable_var_if_true. eauto. eauto. eauto.
+      eapply IH2. simpl. lia.
+      intros; eapply BELOW. eapply reachable_var_if_false. eauto. eauto. eauto.
+    - simpl.
+      inv WTs.
+      econstructor.
+      eapply IH2. simpl. lia.
+      intros; eapply BELOW. eapply reachable_var_unop. eauto. eauto. eauto. auto.
+    - simpl.
+      inv WTs.
+      econstructor.
+      eapply IH2. simpl. lia.
+      intros; eapply BELOW. eapply reachable_var_binop1. eauto. eauto. eauto. auto.
+      eapply IH2. simpl. lia.
+      intros; eapply BELOW. eapply reachable_var_binop2. eauto. eauto. eauto. auto.
+    - simpl.
+      inv WTs.
+      econstructor.
+      eapply IH2. simpl. lia.
+      intros; eapply BELOW. eapply reachable_var_externalCall. eauto. eauto. eauto.
+    - simpl; constructor.
+  Qed.
+
+
+  Lemma collapse_interp_inv2:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs
+    -> vvs_smaller_variables vvs
+    -> forall n a v,
+        (forall v, reachable_var vvs a v -> v < n)%positive ->
+interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact vvs a)) vvs) (collapse_sact vvs a) v ->
+        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t ->
+                         interp_sact (sigma:=sigma) REnv r vvs a v.
+  Proof.
+    intros vvs WTvvs VSV n a.
+    change n with (projT1 (existT (fun _ => sact) n a)).
+    change a with (projT2 (existT (fun _ => sact) n a)) at 1 3 4 5.
+    generalize (existT (fun _ => sact) n a).
+    clear n a. intro s. pattern s.
+    eapply well_founded_induction.
+    apply wf_order_sact. clear s.
+    intros x IH v BELOW IS t0 WTs.
+    assert (IH2: forall a0,
+               size_sact a0 < size_sact (projT2 x) ->
+               (forall v0, reachable_var vvs a0 v0 -> (v0 < projT1 x)%positive) ->
+               forall v t,
+                 interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact vvs a)) vvs) (collapse_sact vvs a0) v ->
+                 wt_sact (Sigma:=Sigma) R vvs a0 t ->
+                 interp_sact (sigma:=sigma) REnv r vvs a0 v
+           ).
+    {
+      intros. eapply (IH (existT _ (projT1 x) a0)).
+      red. destruct x. apply Relation_Operators.right_lex. simpl in H.  auto.
+      simpl. auto. simpl. auto. simpl. eauto.
+    }
+    destruct x; simpl in *.
+    destruct s; simpl in *.
+    - inv WTs. rewrite H0 in IS. econstructor. eauto.
+      destr_in IS; subst.
+      + inv IS.
+        rewrite PTree.gmap in H1. unfold option_map in H1. repeat destr_in H1; inv H1.
+        econstructor. eauto.
+        eapply (IH (existT _ var s)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ Heqo). auto.
+        generalize (reachable_var_aux_below_get _ VSV _ _ _ H0). intros.
+        trim (H var0). constructor. specialize (H1 _ H3). lia.
+        simpl. auto. simpl; eauto.
+      + inv IS. constructor.
+      + inv IS.
+        generalize (WTvvs _ _ _ H0). intro WT; inv WT.
+        rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
+        inv H2.
+        econstructor.
+        eapply (IH (existT _ var s0_1)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        eapply reachable_var_if_cond; eauto. simpl. eauto. simpl. eauto.
+        destr.
+        eapply (IH (existT _ var s0_2)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        eapply reachable_var_if_true; eauto. simpl. eauto. simpl. eauto.
+        eapply (IH (existT _ var s0_3)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        eapply reachable_var_if_false; eauto. simpl. eauto. simpl. eauto.
+      + inv IS.
+        generalize (WTvvs _ _ _ H0). intro WT; inv WT.
+        rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
+        inv H2.
+        econstructor.
+        eapply (IH (existT _ var s0)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        eapply reachable_var_unop; eauto. simpl. eauto. simpl. eauto. auto.
+      + inv IS.
+        generalize (WTvvs _ _ _ H0). intro WT; inv WT.
+        rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
+        inv H2.
+        econstructor.
+        eapply (IH (existT _ var s0_1)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        eapply reachable_var_binop1; eauto. simpl. eauto. simpl. eauto.
+        eapply (IH (existT _ var s0_2)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        eapply reachable_var_binop2; eauto. simpl. eauto. simpl. eauto. auto.
+      + inv IS.
+        generalize (WTvvs _ _ _ H0). intro WT; inv WT.
+        rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
+        inv H2.
+        econstructor.
+        eapply (IH (existT _ var s0)).
+        red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+        simpl.
+        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        eapply reachable_var_externalCall; eauto. simpl. eauto. simpl. eauto.
+      + inv IS.
+        generalize (WTvvs _ _ _ H0). intro WT; inv WT.
+        rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
+        inv H2.
+        econstructor.
+    - inv IS. constructor.
+    - inv IS. inv WTs.
+      econstructor.
+      eapply IH2. lia. intros; eapply BELOW. eapply reachable_var_if_cond; eauto. eauto. eauto.
+      destr.
+      eapply IH2. lia. intros; eapply BELOW. eapply reachable_var_if_true; eauto. eauto. eauto.
+      eapply IH2. lia. intros; eapply BELOW. eapply reachable_var_if_false; eauto. eauto. eauto.
+    - inv IS. inv WTs.
+      econstructor.
+      eapply IH2. lia. intros; eapply BELOW. eapply reachable_var_unop; eauto. eauto. eauto. auto.
+    - inv IS. inv WTs.
+      econstructor.
+      eapply IH2. lia. intros; eapply BELOW. eapply reachable_var_binop1; eauto. eauto. eauto.
+      eapply IH2. lia. intros; eapply BELOW. eapply reachable_var_binop2; eauto. eauto. eauto. auto.
+    - inv IS. inv WTs.
+      econstructor.
+      eapply IH2. lia. intros; eapply BELOW. eapply reachable_var_externalCall; eauto. eauto. eauto.
+    - inv IS. constructor.
+  Qed.
+
+  (* Lemma collapse_interp: *)
+  (*   forall sf, *)
+  (*     wt_vvs (Sigma:=Sigma) R (vars sf) -> *)
+  (*     vvs_smaller_variables (vars sf) -> *)
+  (*     forall (a : sact) (v : val), *)
+  (*       interp_sact (sigma:=sigma) REnv r (vars sf) a v -> *)
+  (*       forall t : type, wt_sact (Sigma:=Sigma) R (vars sf) a t -> interp_sact (sigma:=sigma) REnv r (vars sf) (collapse_sact sf a) v. *)
+  (* Proof. *)
+  (*   induction 3; simpl; intros; try now (econstructor; eauto). *)
+  (*   - rewrite H1. inv H2; try now (econstructor; eauto). *)
+  (*     econstructor; eauto. econstructor; eauto. *)
+  (*     econstructor; eauto. econstructor; eauto. *)
+  (*     econstructor; eauto. econstructor; eauto. *)
+  (*   - inv H1. econstructor; eauto. destr; eauto. *)
+  (*   - inv H3. econstructor; eauto. *)
+  (*   - inv H2. econstructor; eauto. *)
+  (* Qed. *)
+
+
+
+  Lemma sf_eq_collapse_sf:
+    forall sf,
+      wf_sf sf ->
+      sf_eq sf (collapse_sf sf).
+  Proof.
+    intros sf WF.
+    constructor.
+    - simpl. auto.
+    - generalize (wf_collapse_sf _ WF). intro A; inv WF; inv A.
+      intros. inv H0.
+      split; intro A.
+      + inv A. rewrite H2 in H1; inv H1.
+        econstructor. setoid_rewrite PTree.gmap. setoid_rewrite H2. simpl. reflexivity.
+        eapply collapse_interp2. eauto. eauto.
+        eapply reachable_var_aux_below; eauto.
+        eapply wf_sf_vvs0. eauto. auto. eauto.
+      + inv A.
+        setoid_rewrite PTree.gmap in H1. setoid_rewrite H2 in H1. simpl in H1. inv H1.
+        econstructor. eauto.
+        eapply collapse_interp_inv2. eauto. eauto.
+        eapply reachable_var_aux_below; eauto.
+        eapply wf_sf_vvs0. eauto. auto. eauto.
+    - intros. simpl.
+      split. eapply f_wt_sact_ok'; eauto.
+      intro A; inv A.
+      rewrite PTree.gmap in H1. unfold option_map in H1; repeat destr_in H1; inv H1.
+      econstructor. eauto.
+  Qed.
+
+  Lemma sf_eq_restricted_trans:
+    forall l1 l2 l3 sf1 sf2 sf3,
+      sf_eq_restricted l1 sf1 sf2 ->
+      sf_eq_restricted l2 sf2 sf3 ->
+      incl l3 l1 -> incl l3 l2 ->
+      sf_eq_restricted l3 sf1 sf3.
+  Proof.
+    intros.
+    destruct H, H0.
+    constructor.
+    - intros.
+      rewrite sf_eqr_final0; auto.
+    - intros. rewrite sf_eqr_vars0; eauto.
+      rewrite sf_eqr_vars1; eauto. tauto.
+      eapply sf_eqr_wt0; eauto.
+      rewrite sf_eqr_final1; eauto.
+      rewrite sf_eqr_final1; eauto.
+    - intros.
+      rewrite sf_eqr_wt0; eauto.
+      rewrite sf_eqr_final1; eauto.
+  Qed.
+
+  Lemma sf_eq_sf_eq_restricted_trans:
+    forall l sf1 sf2 sf3,
+      sf_eq sf1 sf2 ->
+      sf_eq_restricted l sf2 sf3 ->
+      sf_eq_restricted l sf1 sf3.
+  Proof.
+    intros. eapply sf_eq_restricted_trans.
+    eapply sf_eq_is_restricted. eauto. eauto.
+    red; intros. eapply nth_error_In. apply finite_surjective.
+    red; tauto.
+  Qed.
 
   Lemma collapse_prune_ok:
     forall reg sf sf',
+           wf_sf sf ->
     prune_irrelevant (collapse_sf sf) reg = Some sf'
     -> getenv REnv (interp_cycle sf') reg
     = getenv REnv (interp_cycle sf) reg.
   Proof.
-  Admitted.
+    intros.
+    unfold prune_irrelevant in H0. destr_in H0; inv H0.
+    symmetry.
+    eapply sf_eqr_interp_cycle_ok. auto.
+    eapply wf_sf_prune_irrelevant_aux. eauto.
+    eapply wf_collapse_sf. auto.
+    eapply sf_eq_sf_eq_restricted_trans.
+    2: apply sf_eqf_prune_irrelevant_aux. apply sf_eq_collapse_sf. auto. auto.
+    apply wf_collapse_sf. auto. simpl; auto.
+  Qed.
 
 (*   Lemma remove_vars_spares_regs: *)
 (*     forall sf reg reg_id *)
@@ -4321,9 +5342,24 @@ Lemma remove_vars_correct:
 (*           ** easy. *)
 (*   Qed. *)
 
+  Lemma inlining_no_vars:
+    forall reg_id sf (WF: wf_sf sf) t a y k,
+      list_assoc (final_values sf) k = Some reg_id ->
+      (vars sf) ! reg_id = Some (t,a)
+      -> eval_sact_no_vars a = Some y
+      -> list_assoc (inlining_pass sf) reg_id = Some y.
+  Proof.
+    intros.
+    exploit inlining_pass_correct. reflexivity. apply WF. apply WF.
+    intros (ND & SPEC).
+    eapply in_list_assoc. auto. eapply SPEC. eauto.
+    econstructor. rewrite H0. eauto.
+    eapply eval_sact_no_vars_interp; eauto.
+  Qed.
+
   (* TODO nodup reg_id in sf *)
   Lemma getenv_interp:
-    forall reg reg_id reg_act x sf
+    forall reg reg_id reg_act x sf (WF: wf_sf sf)
       (REG_ID: list_assoc (final_values sf) reg = Some reg_id)
       (REG_ACT: Maps.PTree.get reg_id (vars sf) = Some reg_act)
       (EVAL_DETERMINED: eval_sact_no_vars (snd reg_act) = Some x),
@@ -4333,151 +5369,19 @@ Lemma remove_vars_correct:
     unfold interp_cycle.
     rewrite getenv_create.
     simpl.
-    rewrite REG_ID.
+    rewrite REG_ID. destruct reg_act.
     (* remove_vars removes the variables that are not in useful_vars *)
     assert (In reg_id (useful_vars sf)). {
-     assert (
-       exists l l', map snd (final_values sf) = l ++ [reg_id] ++ l'
-     ). {
-       eapply list_assoc_in in REG_ID.
-       eapply in_split in REG_ID. destruct REG_ID. destruct H.
-       exists (map snd x0), (map snd x1).
-       rewrite H. simpl. erewrite map_app. simpl.
-       reflexivity.
-     }
-     destruct H. destruct H.
-     unfold useful_vars. rewrite H.
-     eapply fold_left_prop_eventually; intros; simpl.
-     - destruct (in_dec Pos.eq_dec reg_id e) eqn:eq; eauto.
-       simpl. left. reflexivity.
-     - destruct (in_dec Pos.eq_dec y e) eqn:eq; eauto.
-       right. destruct ((vars sf) ! y) eqn:eq2; eauto.
-       destruct p. eapply fold_left_induction; eauto; intros.
-       eapply reachable_vars_aux_stays_in. eauto.
+      eapply useful_vars_incl. apply WF. auto.
+      apply list_assoc_in in REG_ID.
+      apply in_map with (f:=snd) in REG_ID. eauto.
     }
     (* remove_vars keeps an association to reg_id *)
-    assert (Maps.PTree.get reg_id (vars (remove_vars sf)) = Some reg_act). {
-      unfold remove_vars. simpl.
-      eapply fold_left_prop.
-      - eapply H.
-      - rewrite REG_ACT. intro. rewrite PTree.gss. reflexivity.
-      - intros. destruct ((vars sf) ! x0) eqn:eq1; eauto.
-        destruct (Pos.eqb x0 reg_id) eqn:eqeq.
-        + rewrite Pos.eqb_eq in eqeq. subst x0. rewrite REG_ACT in eq1.
-          rewrite PTree.gss. eauto.
-        + rewrite Pos.eqb_neq in eqeq. rewrite PTree.gso; eauto.
-    }
+    erewrite <- inlining_pass_sf_eq.
+    2: apply sf_eq_remove_vars; auto. 2: auto.
+    2: apply wf_sf_remove_vars; auto. 2: eauto.
     (* inlining_pass does not impact the result of list_assoc in our case *)
-    assert (
-      forall sf' x y,
-      Maps.PTree.get reg_id (vars sf') = Some x
-      -> eval_sact_no_vars (snd x) = Some y
-      -> list_assoc (inlining_pass sf') reg_id = Some y
-    ). {
-      intros.
-      unfold inlining_pass.
-      assert (In reg_id (sort (map fst (PTree.elements (vars sf'))))). {
-        pose (Permuted_sort (map fst (PTree.elements (vars sf')))).
-        eapply Permutation.Permutation_in in p; eauto. clear p.
-        eapply PTree.elements_correct in H1.
-        eapply (in_map fst (PTree.elements (vars sf')) (reg_id, x0)) in H1.
-        simpl in H1. eauto.
-      }
-      eapply in_split in H3. destruct H3. destruct H3. rewrite H3. clear H3.
-      assert (x1 ++ reg_id :: x2 = x1 ++ [reg_id] ++ x2) by reflexivity.
-      rewrite H3. clear H3.
-      erewrite fold_left_app. simpl.
-      eapply fold_left_induction.
-      - eapply fold_left_induction.
-        + unfold simplify_var. rewrite H1. destruct x0. simpl in H2. rewrite H2.
-          rewrite app_nil_r. unfold list_assoc. rewrite eq_dec_refl.
-          reflexivity.
-        + intros. destruct acc.
-          unfold simplify_var at 1.
-          destruct (eq_dec x3 reg_id).
-          * admit.
-          * destruct ((vars s) ! x3).
-            ** destruct p. destruct (eval_sact_no_vars s0).
-              *** admit.
-              *** eauto.
-            ** eauto.
-      - intros. destruct acc.
-        unfold list_assoc.
-        unfold simplify_var.
-
-
-          * inv e. clear H5. unfold simplify_var in H4.
-            destruct ((vars s) ! reg_id) eqn:eq3.
-            ** destruct p. destruct (eval_sact_no_vars s0) eqn:eq4.
-              *** erewrite list_assoc_app in H4.
-                **** eapply Some_inj in H4. simpl in *.
-                **** unfold list_assoc. rewrite eq_dec_refl. eauto.
-              *** simpl in *.
-
-
-                      list_assoc
-
-
-
-
-
-
-
-          (* assert (eval_sact_no_vars a = Some ) *)
-          destruct (eq_dec x3 reg_id) eqn:eq2.
-          * inv e. unfold simplify_var at 1. unfold simplify_var in H4.
-            destruct ((vars s) ! reg_id) eqn:eq3.
-            ** admit.
-            ** simpl in H4. :
-      eapply fold_left_prop_eventually.
-      simpl. unfold simplify_var. inversion H1. simpl. left. eauto.
-      - intros. simpl. destruct a. unfold simplify_var.
-        assert (forall x l0 l1 sf0, let '(_, l0) := let (sf0, l1) := x in (
-
-      assert ()
-
-      eapply fold_left_prop_eventually; eauto.
-      (* - intros. destruct e. unfold simplify_var. *)
-
-
-
-     match (vars s) ! reg_id with
-
-
-
-      set (sfinit :=
-(*         (fold_left *)
-(*           (fun '(sf0, l) (var : positive) => *)
-(*            let '(sf1, l1) := simplify_var sf0 var in (sf1, l1 ++ l)) *)
-(*            x1 *)
-(*            (@pair simple_form _ sf' nil))). *)
-(*       assert ((vars (fst sfinit)) ! reg_id = Some x0). { *)
-(*         unfold sfinit. *)
-(*         eapply fold_left_prop_eventually_no_tail. *)
-(*         - simpl. *)
-(*       } *)
-(*       assert ([reg_id] ++ x2 = [] ++ [reg_id] ++ x2) by reflexivity. *)
-(*       rewrite H3. clear H3. *)
-(*       eapply fold_left_induction; eauto. *)
-(*       - simpl. left. reflexivity. *)
-(*       - intros. *)
-
-(*       erewrite fold_left_prop_eventually. *)
-(*       unfold simplify_var. *)
-(*     } *)
-(*     unfold list_assoc. *)
-(*     unfold remove_vars. *)
-(*     simpl. *)
-(*     set (l := snd *) 
-(*     unfold remove_vars. *)
-(*     assert ( *)
-(*       list_assoc (vars remove_vars) sf' *)
-(*     ) reg_id = list_assoc) *)
-
-(*     unfold useful_vars. *)
-(*     rewrite REG_ACT. *)
-(*     unfold eval_sact_no_vars in EVAL_DETERMINED. *)
-(*     unfold list_assoc. *)
-(*     unfold remove_vars. *)
+    erewrite inlining_no_vars; eauto.
+  Qed.
 
 End SimpleFormInterpretation.
