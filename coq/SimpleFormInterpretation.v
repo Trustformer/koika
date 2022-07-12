@@ -865,23 +865,25 @@ Lemma remove_vars_correct:
       | PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice width) =>
         match a1', a2' with
         | SReg x, SConst (Bits bs) =>
-          match (R x) with
-          | bits_t sz =>
-            let offset := Bits.to_nat (vect_of_list bs) in
-            if (
-              (first_known_bit <=? offset)
-              && (offset + width <=? first_known_bit + (List.length known_bits))
-              && (offset + width <=? sz) (* TODO remove? Still simplifiable. *)
-            )
-            (* TODO rely on take_drop'? *)
-            then
-              SConst (Bits (
-                List.firstn
-                  width (List.skipn (offset - first_known_bit) known_bits)
-              ))
+            if eq_dec x reg then
+              match (R x) with
+              | bits_t sz =>
+                  let offset := Bits.to_nat (vect_of_list bs) in
+                  if (
+                      (first_known_bit <=? offset)
+                      && (offset + width <=? first_known_bit + (List.length known_bits))
+                      && (offset + width <=? sz) (* TODO remove? Still simplifiable. *)
+                    )
+                       (* TODO rely on take_drop'? *)
+                  then
+                    SConst (Bits (
+                                List.firstn
+                                  width (List.skipn (offset - first_known_bit) known_bits)
+                      ))
+                  else ua'
+              | _ => ua'
+              end
             else ua'
-          | _ => ua'
-          end
         | _, _ => ua'
         end
       | _ => ua'
@@ -2690,19 +2692,6 @@ Lemma remove_vars_correct:
     | Some n => list_assoc fenv n
     | None => None
     end.
-
-  Theorem exploit_partial_bitwise_information_in_vars_ok:
-    forall
-      (sf: simple_form) known_reg first_known_bit known_bits
-      (new_sf :=
-        exploit_partial_bitwise_information
-          sf known_reg first_known_bit known_bits)
-      reg,
-    getenv REnv (interp_cycle sf) reg = getenv REnv (interp_cycle new_sf) reg.
-  Proof.
-    intros.
-    subst new_sf.
-  Admitted.
 
   Lemma normal_form_ok:
     forall
@@ -5091,6 +5080,277 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
     eapply sf_eq_sf_eq_restricted_trans.
     2: apply sf_eqf_prune_irrelevant_aux. apply sf_eq_collapse_sf. auto. auto.
     apply wf_collapse_sf. auto. simpl; auto.
+  Qed.
+
+  Lemma wt_exploit:
+    forall sf (WF: wf_sf sf)
+           vvs (a : SimpleForm.sact) (t : type) r0 b bs,
+      wt_sact (Sigma:=Sigma) R vvs a t -> wt_sact (Sigma:=Sigma) R vvs (exploit_partial_bitwise_information_in_var a r0 b bs) t.
+  Proof.
+    induction a; simpl; intros; eauto.
+    - inv H. econstructor; eauto.
+    - inv H.
+      assert (wt_sact (Sigma:=Sigma) R vvs (SUnop ufn1 (exploit_partial_bitwise_information_in_var a r0 b bs)) t).
+      {
+        econstructor; eauto.
+      }
+      destr; auto.
+      destr; auto.
+      destr; auto.
+      destr; auto.
+      destr; auto.
+      destr; auto.
+      subst. inv H4.
+      econstructor; eauto. constructor.
+      rewrite firstn_length.
+      rewrite skipn_length.
+      apply min_l.
+      apply andb_true_iff in Heqb0. destruct Heqb0.
+      apply andb_true_iff in H0. destruct H0.
+      apply leb_complete in H3.
+      apply leb_complete in H0.
+      lia.
+    - inv H.
+      assert (wt_sact (Sigma:=Sigma) R vvs (SBinop ufn2 (exploit_partial_bitwise_information_in_var a1 r0 b bs) (exploit_partial_bitwise_information_in_var a2 r0 b bs)) t).
+      {
+        econstructor; eauto.
+      }
+      destr; auto.
+      repeat destr; auto.
+      rewrite ! andb_true_iff in Heqb0.
+      rewrite ! Nat.leb_le in Heqb0.
+      destruct Heqb0 as ((A & B) & C).
+      inv H6.
+      econstructor. constructor.
+      rewrite firstn_length. rewrite skipn_length.
+      lia.
+    - inv H. econstructor; eauto.
+  Qed.
+
+  Lemma vis_exploit:
+    forall r0 b bs,
+    forall (s : SimpleForm.sact) (v' : positive), var_in_sact (exploit_partial_bitwise_information_in_var s r0 b bs) v' -> var_in_sact s v'.
+  Proof.
+    induction s; simpl; intros; eauto.
+    - inv H. eapply var_in_if_cond; eauto.
+      eapply var_in_if_true; eauto.
+      eapply var_in_if_false; eauto.
+    - eapply var_in_sact_unop.
+      repeat destr_in H; inv H; eauto.
+    - assert (var_in_sact
+                (SBinop ufn2 (exploit_partial_bitwise_information_in_var s1 r0 b bs) (exploit_partial_bitwise_information_in_var s2 r0 b bs)) v' -> var_in_sact (SBinop ufn2 s1 s2) v').
+      {
+        intros A; inv A.
+        eapply var_in_sact_binop_1; eauto.
+        eapply var_in_sact_binop_2; eauto.
+      }
+      repeat destr_in H; eauto. inv H.
+    - inv H; econstructor; eauto.
+  Qed.
+
+
+  Lemma wf_exploit:
+    forall sf r b bs,
+      wf_sf sf -> wf_sf (exploit_partial_bitwise_information sf r b bs).
+  Proof.
+    intros.
+    apply wf_f; auto.
+    intros; eapply wt_exploit; eauto.
+    intros; eapply vis_exploit; eauto.
+  Qed.
+
+  Lemma take_drop'_firstn_skipn:
+    forall {A:Type} n (l: list A),
+      take_drop' n l = (List.firstn n l, List.skipn n l).
+  Proof.
+    induction n; simpl; intros; eauto.
+    destruct l. reflexivity.
+    erewrite take_drop'_cons. 2: eauto. reflexivity.
+  Qed.
+
+  Lemma skipn_add:
+    forall {A: Type} n2 n1 (l: list A),
+      skipn n1 (skipn n2 l) = skipn (n1 + n2) l.
+  Proof.
+    induction n2; simpl; intros; eauto.
+    rewrite Nat.add_0_r. auto.
+    replace (n1 + S n2) with (S (n1 + n2)). simpl.
+    destr. rewrite skipn_nil. auto. lia.
+  Qed.
+
+  Lemma exploit_interp_inv:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall r0 b bs,
+        (exists v,
+            getenv REnv r r0 = Bits v /\
+              List.firstn (List.length bs) (List.skipn b v) = bs
+        ) ->
+      forall (a : sact) (v : val), interp_sact (sigma:=sigma) REnv r vvs (exploit_partial_bitwise_information_in_var a r0 b bs) v -> forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v.
+  Proof.
+    intros vvs WT VVS r0 b bs (vv & REG & BS) a v IS t WTa.
+    revert a t WTa v IS.
+    induction 1; simpl; intros; eauto.
+    - inv IS. econstructor; eauto.
+      destr; eauto.
+    - 
+      assert (interp_sact (sigma:=sigma) REnv r vvs
+                (SUnop ufn (exploit_partial_bitwise_information_in_var a r0 b bs)) v ->
+              interp_sact (sigma:=sigma) REnv r vvs (SUnop ufn a) v).
+      {
+        intro A; inv A; econstructor; eauto.
+      }
+      repeat destr_in IS; auto.
+      clear H0.
+      inv IS.
+      econstructor.
+      apply IHWTa. econstructor. rewrite REG. simpl.
+      rewrite ! take_drop'_firstn_skipn.
+      rewrite ! andb_true_iff in Heqb0.
+      rewrite ! Nat.leb_le in Heqb0.
+      destruct Heqb0 as ((A & B) & C).
+      rewrite firstn_length. rewrite skipn_length.
+      f_equal. f_equal.
+      generalize (WTRENV idx). rewrite REG. intro D; inv D.
+      rewrite Heqt0 in H0. inv H0.
+      rewrite Nat.min_l. 2: lia.
+      rewrite Nat.sub_diag. simpl. rewrite app_nil_r.
+      rewrite <- BS.
+      rewrite skipn_firstn.
+      rewrite skipn_add. replace (offset - b + b) with offset by lia.
+      rewrite firstn_firstn. f_equal. lia.
+    - assert ( interp_sact REnv r vvs
+                                (sigma:=sigma)
+                      (SBinop ufn (exploit_partial_bitwise_information_in_var a1 r0 b bs) (exploit_partial_bitwise_information_in_var a2 r0 b bs)) v ->
+                    interp_sact (sigma:=sigma) REnv r vvs (SBinop ufn a1 a2) v
+             ).
+      intro A; inv A.
+      econstructor; eauto.
+      repeat destr_in IS; eauto. clear H0.
+      rewrite ! andb_true_iff in Heqb0.
+      rewrite ! Nat.leb_le in Heqb0.
+      destruct Heqb0 as ((A & B) & C).
+      inv IS.
+      econstructor; eauto.
+      apply IHWTa1. econstructor.
+      apply IHWTa2. econstructor. simpl. rewrite REG.
+      generalize (WTRENV r0). rewrite REG. intro D; inv D.
+      rewrite Heqt in H0. inv H0.
+      rewrite ! take_drop'_firstn_skipn.
+      rewrite Nat.min_l. 2: lia.
+      rewrite Nat.sub_diag. simpl. rewrite app_nil_r.
+      f_equal. f_equal.
+      rewrite <- BS.
+      rewrite skipn_firstn.
+      rewrite skipn_add. replace (Bits.to_nat (Bits.of_list v1) - b + b) with (Bits.to_nat (Bits.of_list v1)) by lia.
+      rewrite firstn_firstn. f_equal. lia.
+    - inv IS. econstructor; eauto.
+  Qed.
+
+
+  Lemma exploit_interp:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall r0 b bs,
+        (exists v,
+            getenv REnv r r0 = Bits v /\
+              List.firstn (List.length bs) (List.skipn b v) = bs
+        ) ->
+      forall (a : sact) (v : val), forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v ->
+  interp_sact (sigma:=sigma) REnv r vvs (exploit_partial_bitwise_information_in_var a r0 b bs) v.
+  Proof.
+    intros vvs WT VVS r0 b bs (vv & REG & BS).
+    intros a v t WTa IS.
+    revert a t WTa v IS.
+    induction 1; simpl; intros; eauto.
+    - inv IS. econstructor; eauto.
+      destr; eauto.
+    -
+      assert (interp_sact (sigma:=sigma) REnv r vvs (SUnop ufn a) v ->
+             interp_sact (sigma:=sigma) REnv r vvs
+                (SUnop ufn (exploit_partial_bitwise_information_in_var a r0 b bs)) v ).
+      {
+        intro A; inv A; econstructor; eauto.
+      }
+      repeat destr; auto. subst.
+      clear H0.
+      inv IS.
+      apply IHWTa in H2. inv H2. rewrite REG in H4. simpl in H4. inv H4.
+      rewrite ! take_drop'_firstn_skipn.
+      rewrite ! andb_true_iff in Heqb0.
+      rewrite ! Nat.leb_le in Heqb0.
+      destruct Heqb0 as ((A & B) & C).
+      generalize (WTRENV idx). rewrite REG. intro D; inv D.
+      rewrite Heqt0 in H0. inv H0.
+      rewrite firstn_length. rewrite skipn_length.
+      rewrite Nat.min_l. 2: lia.
+      rewrite Nat.sub_diag. simpl. rewrite app_nil_r.
+      rewrite <- BS.
+      rewrite skipn_firstn.
+      rewrite skipn_add. replace (offset - b + b) with offset by lia.
+      rewrite firstn_firstn.
+      rewrite Nat.min_l by lia. constructor.
+    - assert (
+          interp_sact (sigma:=sigma) REnv r vvs (SBinop ufn a1 a2) v ->
+          interp_sact REnv r vvs
+                                (sigma:=sigma)
+                      (SBinop ufn (exploit_partial_bitwise_information_in_var a1 r0 b bs) (exploit_partial_bitwise_information_in_var a2 r0 b bs)) v
+             ).
+      intro A; inv A.
+      econstructor; eauto.
+      repeat destr; eauto. clear H0.
+      rewrite ! andb_true_iff in Heqb0.
+      rewrite ! Nat.leb_le in Heqb0.
+      destruct Heqb0 as ((A & B) & C).
+      inv IS.
+      apply IHWTa1 in H3.
+      apply IHWTa2 in H5. inv H3. inv H5.
+      rewrite REG in H6. simpl in H6. inv H6.
+      generalize (WTRENV r0). rewrite REG. intro D; inv D.
+      rewrite Heqt in H0. inv H0.
+      rewrite ! take_drop'_firstn_skipn.
+      rewrite Nat.min_l. 2: lia.
+      rewrite Nat.sub_diag. simpl. rewrite app_nil_r.
+      rewrite <- BS.
+      rewrite skipn_firstn.
+      rewrite skipn_add. replace (Bits.to_nat (Bits.of_list v1) - b + b) with (Bits.to_nat (Bits.of_list v1)) by lia.
+      rewrite firstn_firstn. rewrite Nat.min_l by lia. constructor.
+    - inv IS. econstructor; eauto.
+  Qed.
+
+
+  Lemma sf_eq_exploit:
+    forall sf r0 b bs,
+      wf_sf sf ->
+      (exists v0, getenv REnv r r0 = Bits v0 /\ firstn (Datatypes.length bs) (skipn b v0) = bs) ->
+      sf_eq sf (exploit_partial_bitwise_information sf r0 b bs).
+  Proof.
+    intros.
+    eapply sf_eq_f; auto.
+    intros; eapply exploit_interp_inv; eauto.
+    intros; eapply exploit_interp; eauto.
+    intros; eapply wt_exploit; eauto.
+    intros; eapply vis_exploit; eauto.
+  Qed.
+
+  Theorem exploit_partial_bitwise_information_in_vars_ok:
+    forall
+      (sf: simple_form) known_reg first_known_bit known_bits
+      (EQ: exists v0, getenv REnv r known_reg = Bits v0 /\ firstn (Datatypes.length known_bits) (skipn first_known_bit v0) = known_bits)
+      (WF: wf_sf sf)
+      (new_sf :=
+        exploit_partial_bitwise_information
+          sf known_reg first_known_bit known_bits)
+      reg,
+    getenv REnv (interp_cycle sf) reg = getenv REnv (interp_cycle new_sf) reg.
+  Proof.
+    intros.
+    subst new_sf.
+    apply sf_eq_interp_cycle_ok. auto.
+    eapply wf_exploit; eauto.
+    eapply sf_eq_exploit; eauto.
   Qed.
 
   Lemma reachable_vars_aux_stays_in:
