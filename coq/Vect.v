@@ -2,7 +2,8 @@
 Require Import Coq.Lists.List Coq.Bool.Bool.
 Require Import Coq.micromega.Lia.
 Require Import Coq.Arith.Arith.
-Require Export Coq.NArith.NArith.          (* Coq bug: If this isn't exported, other files can't import Vect.vo *)
+(* Coq bug: If this isn't exported, other files can't import Vect.vo *)
+Require Export Coq.NArith.NArith.
 Require Import Coq.ZArith.ZArith.
 Require Import Koika.EqDec.
 Import EqNotations.

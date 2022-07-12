@@ -64,8 +64,7 @@ Section SimpleFormInterpretation.
     match fuel with
     | O => visited
     | S fuel =>
-        if in_dec Pos.eq_dec n visited then
-          visited
+        if in_dec Pos.eq_dec n visited then visited
         else
           n::
             match vvs ! n with
@@ -640,37 +639,6 @@ Section SimpleFormInterpretation.
     eapply reachable_remove; eauto.
   Qed.
 
-  (* Definition remove_vars (sf: simple_form) : simple_form := *)
-  (*   let useless := *)
-  (*     List.filter *)
-  (*       (fun p => *)
-  (*          if in_dec Pos.eq_dec p (useful_vars sf) *)
-  (*          then false else true *)
-  (*       ) *)
-  (*       (map fst (PTree.elements (vars sf))) in *)
-  (*   {| *)
-  (*     final_values := final_values sf; *)
-  (*     vars := fold_left (fun t n => PTree.remove n t) useless (vars sf); *)
-  (*   |}. *)
-
-  (* Lemma remove_vars_correct: *)
-  (*   forall sf (VSV:   vvs_smaller_variables (vars sf)) n, *)
-  (*     In n (map snd (final_values sf)) -> *)
-  (*     forall fuel, *)
-  (*       eval_sact (vars sf) (SVar n) fuel = eval_sact (vars (remove_vars sf)) (SVar n) fuel. *)
-  (* Proof. *)
-  (*   intros. simpl. *)
-  (*   apply eval_remove_vars. *)
-  (*   rewrite Forall_forall. intros x IN. *)
-  (*   rewrite filter_In in IN. *)
-  (*   destruct IN as (IN & PRED). *)
-  (*   destr_in PRED; try congruence. clear Heqs PRED. *)
-  (*   intro RV; apply n0. *)
-  (*   inv RV. *)
-  (*   eapply useful_vars_incl; eauto. *)
-  (*   eapply useful_vars_good; eauto. *)
-  (* Qed. *)
-
   Definition remove_vars (sf: simple_form) : simple_form := {|
       final_values := final_values sf;
       vars :=
@@ -866,17 +834,131 @@ Lemma remove_vars_correct:
       (fun _ '(t, ua) => (t, replace_reg_in_sact ua from to))
       vars.
 
-  (* TODO simplify as well: initial simpl pass then whenever change *)
+  Fixpoint exploit_partial_bitwise_information_in_var
+    (ua: sact) (reg: reg_t) (first_known_bit: nat) (known_bits: list bool)
+  : sact :=
+    match ua with
+    | SBinop ufn a1 a2 =>
+      let a1' :=
+        exploit_partial_bitwise_information_in_var
+          a1 reg first_known_bit known_bits
+      in
+      let a2' :=
+        exploit_partial_bitwise_information_in_var
+          a2 reg first_known_bit known_bits
+      in
+      let ua' := SBinop ufn a1' a2' in
+      match ufn with
+      | PrimUntyped.UBits2 (PrimUntyped.USliceSubst offset width) =>
+        match a1' with
+        | SReg r =>
+          match a2' with
+          | SConst c =>
+            match c with
+            | Bits bs => ua' (* TODO *)
+            | _ => ua'
+            end
+          | _ => ua'
+          end
+        | _ => ua'
+        end
+      | PrimUntyped.UBits2 (PrimUntyped.UIndexedSlice width) =>
+        match a1', a2' with
+        | SReg x, SConst (Bits bs) =>
+          match (R x) with
+          | bits_t sz =>
+            let offset := Bits.to_nat (vect_of_list bs) in
+            if (
+              (first_known_bit <=? offset)
+              && (offset + width <=? first_known_bit + (List.length known_bits))
+              && (offset + width <=? sz) (* TODO remove? Still simplifiable. *)
+            )
+            (* TODO rely on take_drop'? *)
+            then
+              SConst (Bits (
+                List.firstn
+                  width (List.skipn (offset - first_known_bit) known_bits)
+              ))
+            else ua'
+          | _ => ua'
+          end
+        | _, _ => ua'
+        end
+      | _ => ua'
+      end
+    | SUnop ufn a1 =>
+      let a1' :=
+        exploit_partial_bitwise_information_in_var
+          a1 reg first_known_bit known_bits
+      in
+      let ua' := SUnop ufn a1' in
+      match ufn, a1' with
+      (* TODO what about SVar? *)
+      | PrimUntyped.UBits1 (PrimUntyped.USlice offset width), SReg x =>
+        if (eq_dec reg x) then
+          match (R x) with
+          | bits_t sz =>
+            if (
+              (first_known_bit <=? offset)
+              && (offset + width <=? first_known_bit + (List.length known_bits))
+              && (offset + width <=? sz) (* TODO remove? Still simplifiable. *)
+            )
+            then
+              SConst (Bits (
+                List.firstn
+                  width (List.skipn (offset - first_known_bit) known_bits)
+              ))
+            else ua'
+          | _ => ua'
+          end
+        else ua'
+      | _, _ => ua'
+      end
+    | SIf cond tb fb =>
+      SIf
+        (exploit_partial_bitwise_information_in_var cond reg first_known_bit
+         known_bits)
+        (exploit_partial_bitwise_information_in_var tb reg first_known_bit
+         known_bits)
+        (exploit_partial_bitwise_information_in_var fb reg first_known_bit
+         known_bits)
+    | SExternalCall ufn a =>
+      SExternalCall
+        ufn
+        (exploit_partial_bitwise_information_in_var a reg first_known_bit
+         known_bits)
+    | SConst c => SConst c
+    | SVar v => SVar v
+    | SReg r => SReg r
+    end.
 
+  Definition exploit_partial_bitwise_information_in_vars
+    (vars: var_value_map) (reg: reg_t) (first_known_bit: nat)
+    (known_bits: list bool)
+  : var_value_map :=
+    PTree.map
+      (fun _ '(t, ua) => (
+        t,
+        exploit_partial_bitwise_information_in_var
+          ua reg first_known_bit known_bits
+      ))
+      vars.
+
+  Definition exploit_partial_bitwise_information
+    (sf: simple_form) (reg: reg_t) (first_known_bit: nat)
+    (known_bits: list bool)
+  : simple_form := {|
+    final_values := final_values sf;
+    vars :=
+      exploit_partial_bitwise_information_in_vars
+        (vars sf) reg first_known_bit known_bits
+  |}.
+
+  (* TODO simplify as well: initial simpl pass then whenever change *)
   Definition replace_all_occurrences (sf: simple_form) (from: positive) (to: val)
   : simple_form := {|
     final_values := final_values sf;
     vars := replace_all_occurrences_in_vars (vars sf) from to |}.
-
-  (* TODO remove *)
-  (* Lemma replace_reg_in_vars_ok: *)
-  (*   forall sf reg to (regv := getenv REnv r reg), *)
-  (*   interp_cycle (replace_reg_in_vars (vars sf) reg regv) = interp_cycle sf. *)
 
   Definition replace_reg (sf: simple_form) (from: reg_t) (to: val)
   : simple_form := {|
@@ -930,13 +1012,15 @@ Lemma remove_vars_correct:
     - erewrite IHn1; eauto.
   Qed.
 
-  Definition vvs_size (vvs:var_value_map (reg_t:=reg_t) (ext_fn_t:=ext_fn_t)) m : nat :=
-    PTree.fold (fun acc k '(t,a) =>
-                  if Pos.ltb k m then
-                    size_sact (ext_fn_t := ext_fn_t) a + acc
-                  else acc
-               ) vvs O.
-
+  Definition vvs_size
+    (vvs:var_value_map (reg_t:=reg_t) (ext_fn_t:=ext_fn_t)) m
+  : nat :=
+    PTree.fold (
+      fun acc k '(t,a) =>
+        if Pos.ltb k m
+        then size_sact (ext_fn_t := ext_fn_t) a + acc
+        else acc
+    ) vvs O.
 
   Lemma vvs_size1_aux:
     forall var n (LT: (var < n)%positive),
@@ -1819,39 +1903,6 @@ Lemma remove_vars_correct:
   Definition simplify_vars (v: var_value_map) :=
     Maps.PTree.map (fun _ '(t, a) => (t, simplify_sact a)) v.
 
-  (* Fixpoint simplify_vars (l: list (positive * (type * sact))) t := *)
-  (*   match l with *)
-  (*     [] => t *)
-  (*   | (p,(ty,a))::l => *)
-  (*       PTree.set p *)
-
-  (*       let a := fold_left (fun a '(var,v) => replace_all_occurrences_in_sact a var v) lv a in *)
-  (*       match eval_sact_no_vars a with *)
-  (*         Some v => simplify_vars l ((p,v)::lv) *)
-  (*       | None => simplify_vars l lv *)
-  (*       end *)
-  (*   end. *)
-
-  (* Lemma simplify_vars_ok: *)
-  (*   forall l lv n *)
-  (*          (F: Forall (fun '(p,(t,a)) => forall v, var_in_sact a v -> n <= v < p)%positive l) *)
-  (*          (SORTED: Sorted Pos.lt (map fst l)) lv' , *)
-  (*     simplify_vars l lv = lv' -> *)
-  (*     forall vvs (EXT: forall p t a, In (p,(t,a)) l -> vvs ! p = Some (t,a)), *)
-  (*       Forall (fun '(var,v) => interp_sact (sigma:=sigma) REnv r vvs (SVar var) v) lv -> *)
-  (*       Forall (fun '(var,v) => interp_sact (sigma:=sigma) REnv r vvs (SVar var) v) lv'. *)
-  (* Proof. *)
-  (*   induction l; simpl; intros; eauto. *)
-  (*   - inv H. auto. *)
-  (*   - inv F. inv SORTED. destruct a. destruct p0. *)
-  (*     edestruct eval_sact_no_vars_succeeds as (rr & ESNV). 3: rewrite ESNV. *)
-  (*     + intros v VIS. *)
-  (*       assert (var_in_sact s v /\ ~ In v (map fst lv)). admit. *)
-  (*       destruct H as (VIS' & NIN). *)
-  (*       simpl in H5. *)
-  (*       exploit Sorted_extends. 2: constructor; eauto. red. lia. *)
-  (* Qed. *)
-
   Lemma var_not_in_sact_replace:
     forall s0 v0 v,
       ~ var_in_sact (replace_all_occurrences_in_sact s0 v0 v) v0.
@@ -2163,132 +2214,6 @@ Lemma remove_vars_correct:
     - constructor.
   Qed.
 
-  (* Lemma eval_sact_bound: *)
-  (*   forall vvs : var_value_map, *)
-  (*     vvs_smaller_variables vvs -> *)
-  (*     forall (a : SimpleForm.sact) t (WTa: wt_sact (Sigma:=Sigma) vvs a t), *)
-  (*       let bnd := (S (max_var vvs) + vvs_size vvs (S (max_var vvs)) + size_sact a) in *)
-  (*       forall m, m >= bnd -> *)
-  (*       eval_sact vvs a m = None -> *)
-  (*       forall n, n >= m -> eval_sact vvs a n = None. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   destruct (eval_sact vvs a n) eqn:?; auto. *)
-  (*   eapply eval_sact_interp_sact in Heqo. *)
-  (*   eapply interp_sact_eval_sact in Heqo; eauto. *)
-  (*   eapply eval_sact_more_fuel with (n2:= m) in Heqo. congruence. unfold bnd in H0. lia. *)
-  (* Qed. *)
-
-  (* Lemma remove_var_correct: *)
-  (*   forall vvs (VSV: vvs_smaller_variables vvs) (* (WTvvs: wt_vvs (Sigma:=Sigma) vvs) *) v *)
-  (*          (NV: forall x t y, vvs ! x = Some (t,y) -> ~ var_in_sact y v) *)
-  (*          a *)
-  (*          t (WTa: wt_sact (Sigma:=Sigma) vvs a t) *)
-  (*          (NVa: ~ var_in_sact a v) res, *)
-  (*     interp_sact (sigma:=sigma) vvs a res <-> *)
-  (*       interp_sact (sigma:=sigma) (filter (fun '(n,_) => negb (beq_dec n v)) vvs) a res. *)
-  (* Proof. *)
-  (*   intros. eapply interp_eval_iff. eauto. *)
-  (*   red; intros. *)
-  (*   generalize (list_assoc_filter2 vvs v v0). rewrite H. destr. *)
-  (*   rewrite beq_dec_false_iff in Heqb. intros. symmetry in H1. eauto. eauto. *)
-  (*   eapply wt_sact_remove_one; eauto. *)
-
-  (*   (* set (F := fun vvs => (S (max_var vvs) + vvs_size vvs (S (max_var vvs)) + size_sact a)). *) *)
-  (*   (* set (vvs2 := (filter (fun '(n,_) => negb (beq_dec n v)) vvs)). *) *)
-  (*   (* exists (max (F vvs) (F vvs2)). *) *)
-  (*   exists O. intros n0 _. *)
-  (*   intros. *)
-  (*   clear VSV WTa. *)
-  (*   revert a NVa. induction n0; simpl; intros; eauto. *)
-  (*   unfold opt_bind. *)
-  (*   destr. *)
-  (*   - rewrite <- list_assoc_filter. repeat destr.  eauto. *)
-  (*     intros; rewrite negb_true_iff, beq_dec_false_iff; auto. *)
-  (*     intro; subst. apply NVa. constructor. *)
-  (*   - rewrite <- IHn0. repeat destr. *)
-  (*     eapply IHn0. intro VIS; apply NVa; eapply var_in_if_true; auto. *)
-  (*     eapply IHn0. intro VIS; apply NVa; eapply var_in_if_false; auto. *)
-  (*     intro VIS; apply NVa; eapply var_in_if_cond; auto. *)
-  (*   - rewrite <- IHn0. repeat destr. *)
-  (*     intro VIS; apply NVa; eapply var_in_sact_unop; auto. *)
-  (*   - rewrite <- ! IHn0. auto. *)
-  (*     intro VIS; apply NVa; eapply var_in_sact_binop_2; auto. *)
-  (*     intro VIS; apply NVa; eapply var_in_sact_binop_1; auto. *)
-  (*   - rewrite <- IHn0. repeat destr. *)
-  (*     intro VIS; apply NVa; eapply var_in_sact_external; auto. *)
-  (* Qed. *)
-
-  (* Lemma remove_var_preserves_vsv: *)
-  (*   forall l sf (VSV: vvs_smaller_variables (vars sf)), *)
-  (*     vvs_smaller_variables (vars (remove_by_name_var sf l)). *)
-  (* Proof. *)
-  (*   simpl. red; intros. *)
-  (*   generalize (list_assoc_filter2 (vars sf) l v). rewrite H. destr. *)
-  (*   rewrite beq_dec_false_iff in Heqb. intros. symmetry in H1. eauto. *)
-  (* Qed. *)
-
-  (* Lemma remove_vars_preserves_vsv: *)
-  (*   forall l sf (VSV: vvs_smaller_variables (vars sf)), *)
-  (*     vvs_smaller_variables (vars (fold_left remove_by_name_var l sf)). *)
-  (* Proof. *)
-  (*   induction l; simpl; intros; eauto. *)
-  (*   apply IHl. apply remove_var_preserves_vsv. auto. *)
-  (* Qed. *)
-
-  (* Lemma remove_var_preserves_wt_vvs: *)
-  (*   forall l sf (WT_VVS: wt_vvs (Sigma:=Sigma) (vars sf)) *)
-  (*          (NV: forall (x : nat) (t0 : type) (y : SimpleForm.sact), *)
-  (*              list_assoc (vars sf) x = Some (t0, y) -> ~ var_in_sact y l), *)
-  (*     wt_vvs (Sigma:=Sigma) (vars (remove_by_name_var sf l)). *)
-  (* Proof. *)
-  (*   simpl. red; intros. *)
-  (*   generalize (list_assoc_filter2 (vars sf) l v). rewrite H. destr. *)
-  (*   rewrite beq_dec_false_iff in Heqb. intros. symmetry in H0. eauto. *)
-  (*   eapply wt_sact_remove_one; eauto. *)
-  (* Qed. *)
-
-  (* Lemma remove_vars_preserves_wt_vvs: *)
-  (*   forall l sf (WT_VVS: wt_vvs (Sigma:=Sigma) (vars sf)) *)
-  (*          (NV: forall (x : nat) (t0 : type) (y : SimpleForm.sact) v, *)
-  (*              list_assoc (vars sf) x = Some (t0, y) -> var_in_sact y v -> ~ In v l), *)
-  (*     wt_vvs (Sigma:=Sigma) (vars (fold_left remove_by_name_var l sf)). *)
-  (* Proof. *)
-  (*   induction l; simpl; intros; eauto. *)
-  (*   apply IHl. *)
-  (*   apply remove_var_preserves_wt_vvs; auto. *)
-  (*   intros x t0 y GET VIS; eapply NV; eauto. *)
-  (*   simpl. *)
-  (*   intros x t0 y v GET VIS IN. *)
-  (*   generalize (list_assoc_filter2 (vars sf) a x). rewrite GET. destr. *)
-  (*   rewrite beq_dec_false_iff in Heqb. intros. symmetry in H. eapply NV; eauto. *)
-  (* Qed. *)
-
-  (* Lemma remove_vars_correct: *)
-  (*   forall l sf (VSV: vvs_smaller_variables (vars sf))  *)
-  (*          (NV: forall v x t y, list_assoc (vars sf) x = Some (t,y) -> var_in_sact y v -> ~ In v l) *)
-  (*          a *)
-  (*          t (WTa: wt_sact (Sigma:=Sigma) (vars sf) a t) *)
-  (*          (NVa: forall v, var_in_sact a v -> ~ In v l) res, *)
-  (*     interp_sact (sigma:=sigma) (vars sf) a res <-> *)
-  (*       interp_sact (sigma:=sigma) (vars (fold_left remove_by_name_var l sf)) a res. *)
-  (* Proof. *)
-  (*   induction l; simpl; intros; eauto. tauto. *)
-  (*   rewrite <- IHl. *)
-  (*   - simpl. eapply remove_var_correct; eauto. *)
-  (*     + intros x t0 y GET VIS; eapply NV; eauto. *)
-  (*     + intro VIS; eapply NVa; eauto. *)
-  (*   - eapply remove_var_preserves_vsv; eauto. *)
-  (*   - simpl. intros. *)
-  (*     generalize (list_assoc_filter2 (vars sf) a x). rewrite H. destr. *)
-  (*     rewrite beq_dec_false_iff in Heqb. intros. symmetry in H1. eauto. *)
-  (*     eapply NV in H1. 2: eauto. intuition. *)
-  (*   - simpl. eapply wt_sact_remove_one; eauto. *)
-  (*     + intros x t0 y GET VIS; eapply NV in VIS; eauto. *)
-  (*     + intro VIS; eapply NVa; eauto. *)
-  (*   - intros v VIS IN; eapply NVa; eauto. *)
-  (* Qed. *)
-
   Definition inlining_pass (sf: simple_form)
     : list (positive * val) :=
     (* Try to determine the value of variables *)
@@ -2312,10 +2237,7 @@ Lemma remove_vars_correct:
     inv H0. econstructor. econstructor. rewrite STRICT. split; auto. intro; subst. apply H4; simpl; auto.
   Qed.
 
-  Lemma sorted_lt:
-    forall l,
-      NoDup l
-      -> Sorted Pos.lt (PosSort.sort l).
+  Lemma sorted_lt: forall l, NoDup l -> Sorted Pos.lt (PosSort.sort l).
   Proof.
     intros.
     generalize (PosSort.Sorted_sort l). intros.
@@ -2769,11 +2691,18 @@ Lemma remove_vars_correct:
     | None => None
     end.
 
-  (* Lemma prune_irrelevant_ok: *)
-  (*   forall sf reg x env (final_reg_before := getenv REnv (interp_cycle sf) reg), *)
-  (*   getenv (partial_interp_cycle (prune_irrelevant sf)) = final_reg_before. *)
-  (* Proof. *)
-  (* Qed. *)
+  Theorem exploit_partial_bitwise_information_in_vars_ok:
+    forall
+      (sf: simple_form) known_reg first_known_bit known_bits
+      (new_sf :=
+        exploit_partial_bitwise_information
+          sf known_reg first_known_bit known_bits)
+      reg,
+    getenv REnv (interp_cycle sf) reg = getenv REnv (interp_cycle new_sf) reg.
+  Proof.
+    intros.
+    subst new_sf.
+  Admitted.
 
   Lemma normal_form_ok:
     forall
@@ -3010,16 +2939,6 @@ Lemma remove_vars_correct:
     apply wt_simplify_sact.
   Qed.
 
-(*   Lemma bits_Bits: *)
-(*     forall vvs a sz (WTA : wt_sact (Sigma := Sigma) R vvs a (bits_t sz)) *)
-(*       x (VA : eval_sact_no_vars a = Some x), *)
-(*     exists b, x = Bits b /\ List.length b = sz. *)
-(*   Proof. *)
-(*     intros. *)
-(*     apply (eval_sact_no_vars_wt _ _ _ WTA _) in VA. *)
-(*     inv VA. exists bs. split; eauto. *)
-(*   Qed. *)
-
   Lemma interp_sact_eval_sact_iff:
     forall vvs a v (VVSSV: vvs_smaller_variables vvs) t
       (WTS: wt_sact (Sigma := Sigma) R vvs a t),
@@ -3034,36 +2953,6 @@ Lemma remove_vars_correct:
       ). eapply interp_sact_eval_sact; eauto.
     - destruct H. eapply eval_sact_interp_sact; eauto.
   Qed.
-
-(*   Lemma eval_sact_no_vars_eval_sact: *)
-(*     forall (vvs : var_value_map) (a : sact) (res : val) *)
-(*       (VVSSV: vvs_smaller_variables vvs), *)
-(*     eval_sact_no_vars a = Some res *)
-(*     -> exists fuel, eval_sact vvs a fuel = Some res. *)
-(*   Proof. *)
-(*   Qed. *)
-
-(*   Lemma simplify_sact_wt_sact_ok: *)
-(*     forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs (simplify_sact a) t), *)
-(*     wt_sact (Sigma := Sigma) R vvs a t. *)
-(*   Proof. *)
-(*     induction a; intros; eauto; simpl in *. *)
-(*     - admit. *)
-(*     - destruct ufn1; try (inv WTS; econstructor; eauto; fail). *)
-(*       destruct fn; try (inv WTS; econstructor; eauto; fail). *)
-(*       destruct (eval_sact_no_vars (simplify_sact a)) eqn:eq. *)
-(*       + destruct v; destruct v; try (inv WTS; econstructor; eauto; fail). *)
-(*         destruct v; try (inv WTS; econstructor; eauto; fail). *)
-(*         inv WTS. econstructor. *)
-(*         * eapply eval_sact_no_vars inv eq. eapply IHa. . *)
-
-(*   Lemma eval_sact_simplify_vars_ok': *)
-(*     forall fuel vvs a r (EV_INIT: eval_sact vvs a fuel = Some r) *)
-(*       (WTVVS: wt_vvs (Sigma := Sigma) R vvs) t *)
-(*       (WTS: wt_sact (Sigma := Sigma) R vvs a t), *)
-(*     eval_sact (simplify_vars vvs) a fuel = Some r. *)
-(*   Proof. *)
-(*   Qed. *)
 
   Lemma simplify_vars_wt_sact_ok:
     forall vvs s t (WTS: wt_sact (Sigma := Sigma) R (simplify_vars vvs) s t),
@@ -3108,12 +2997,6 @@ Lemma remove_vars_correct:
     setoid_rewrite GET. eauto.
   Qed.
 
-(*   Lemma simplify_vars_wtvvs_ok: *)
-(*     forall vvs (WTVVS: wt_vvs (Sigma := Sigma) R (simplify_vars vvs)), *)
-(*     wt_vvs (Sigma := Sigma) R vvs. *)
-(*   Proof. *)
-(*   Admitted. *)
-
   Lemma simplify_vars_wtvvs_ok':
     forall vvs (WTVVS: wt_vvs (Sigma := Sigma) R vvs),
     wt_vvs (Sigma := Sigma) R (simplify_vars vvs).
@@ -3157,7 +3040,7 @@ Lemma remove_vars_correct:
     - inv RV. econstructor. eauto.
   Qed.
 
-  (* simplify_sact_reachable_vars_ok' is false *)
+  (* TODO simplify_sact_reachable_vars_ok' is false *)
 
   Lemma simplify_sact_interp_sact_ok':
     forall a v vvs (WTVVS: wt_vvs (Sigma := Sigma) R vvs) t
@@ -3262,7 +3145,6 @@ Lemma remove_vars_correct:
     apply WTVVS in Heqo.
     apply replace_reg_in_vars_wt_sact_vvs_ok'; eauto.
   Qed.
-
 
   Lemma vsv_replace_reg_in_vars:
     forall vvs v reg
@@ -3600,35 +3482,31 @@ Lemma remove_vars_correct:
     - constructor; auto.
   Qed.
 
-  Record wf_sf (sf: simple_form) :=
-    {
-      wf_sf_wt: wt_vvs (Sigma:=Sigma) R (vars sf);
-      wf_sf_vvs: vvs_smaller_variables (vars sf);
-      wf_sf_final:
-      forall reg k,
-        list_assoc (final_values sf) reg = Some k ->
-        wt_sact (Sigma:=Sigma) R (vars sf) (SVar k) (R reg)
-    }.
+  Record wf_sf (sf: simple_form) := {
+    wf_sf_wt: wt_vvs (Sigma:=Sigma) R (vars sf);
+    wf_sf_vvs: vvs_smaller_variables (vars sf);
+    wf_sf_final:
+    forall reg k,
+      list_assoc (final_values sf) reg = Some k ->
+      wt_sact (Sigma:=Sigma) R (vars sf) (SVar k) (R reg)
+  }.
 
-  Record sf_eq (sf1 sf2: simple_form) :=
-    {
-      sf_eq_final: final_values sf1 = final_values sf2;
-      sf_eq_vars: forall reg v t,
-        In (reg,v) (final_values sf1) ->
-        wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t ->
-        forall x,
-          interp_sact REnv (sigma:=sigma) r (vars sf1) (SVar v) x <->
-            interp_sact REnv (sigma:=sigma) r (vars sf2) (SVar v) x;
-      sf_eq_wt: 
-        forall reg v t,
-        In (reg,v) (final_values sf1) ->
-        wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t <->
-        wt_sact (Sigma:=Sigma) R (vars sf2) (SVar v) t
-    }.
+  Record sf_eq (sf1 sf2: simple_form) := {
+    sf_eq_final: final_values sf1 = final_values sf2;
+    sf_eq_vars: forall reg v t,
+      In (reg,v) (final_values sf1) ->
+      wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t ->
+      forall x,
+        interp_sact REnv (sigma:=sigma) r (vars sf1) (SVar v) x <->
+          interp_sact REnv (sigma:=sigma) r (vars sf2) (SVar v) x;
+    sf_eq_wt:
+      forall reg v t,
+      In (reg,v) (final_values sf1) ->
+      wt_sact (Sigma:=Sigma) R (vars sf1) (SVar v) t <->
+      wt_sact (Sigma:=Sigma) R (vars sf2) (SVar v) t
+  }.
 
-  Lemma sf_eq_simplify_sf sf:
-    wf_sf sf ->
-    sf_eq sf (simplify_sf sf).
+  Lemma sf_eq_simplify_sf sf: wf_sf sf -> sf_eq sf (simplify_sf sf).
   Proof.
     unfold simplify_sf. intros. inv H. constructor; auto.
     intros. simpl.
@@ -3644,10 +3522,7 @@ Lemma remove_vars_correct:
     eapply simplify_vars_wt_sact_ok; eauto.
   Qed.
 
-  Lemma wf_sf_simplify_sf:
-    forall sf,
-      wf_sf sf ->
-      wf_sf (simplify_sf sf).
+  Lemma wf_sf_simplify_sf: forall sf, wf_sf sf -> wf_sf (simplify_sf sf).
   Proof.
     destruct 1; constructor.
     eapply simplify_vars_wtvvs_ok'. auto.
@@ -3657,18 +3532,14 @@ Lemma remove_vars_correct:
     eapply simplify_vars_wt_sact_ok'. auto.
   Qed.
 
-  Lemma sf_eq_refl:
-    forall sf, sf_eq sf sf.
-  Proof.
-    constructor; tauto.
-  Qed.
+  Lemma sf_eq_refl: forall sf, sf_eq sf sf.
+  Proof. constructor; tauto. Qed.
 
   Lemma sf_eq_trans:
     forall sf1 sf2,
-      sf_eq sf1 sf2 ->
-      forall sf3,
-        sf_eq sf2 sf3 ->
-        sf_eq sf1 sf3.
+    sf_eq sf1 sf2
+    -> forall sf3, sf_eq sf2 sf3
+    -> sf_eq sf1 sf3.
   Proof.
     intros sf1 sf2 EQ1 sf3 EQ2.
     inv EQ1; inv EQ2.
@@ -3681,10 +3552,7 @@ Lemma remove_vars_correct:
     rewrite sf_eq_final0 in H. eauto.
   Qed.
 
-  Lemma sf_eq_sym:
-    forall sf1 sf2,
-      sf_eq sf1 sf2 ->
-      sf_eq sf2 sf1.
+  Lemma sf_eq_sym: forall sf1 sf2, sf_eq sf1 sf2 -> sf_eq sf2 sf1.
   Proof.
     destruct 1; constructor; eauto.
     intros; symmetry; eapply sf_eq_vars0. rewrite sf_eq_final0; eauto.
@@ -3693,11 +3561,7 @@ Lemma remove_vars_correct:
     rewrite <- sf_eq_final0 in H. rewrite <-sf_eq_wt0 . tauto. eauto.
   Qed.
 
-  Lemma sf_eq_remove_vars sf:
-    (* wt_vvs (Sigma:=Sigma) R (vars sf) -> *)
-    (* vvs_smaller_variables (vars sf) -> *)
-    wf_sf sf ->
-    sf_eq sf (remove_vars sf).
+  Lemma sf_eq_remove_vars sf: wf_sf sf -> sf_eq sf (remove_vars sf).
   Proof.
     constructor; auto.
     - intros.
@@ -3742,25 +3606,14 @@ Lemma remove_vars_correct:
 
   Lemma sf_eq_apply_l:
     forall F1 (F1OK: forall sf, wf_sf sf -> sf_eq sf (F1 sf)),
-      forall sf1 sf2,
-        wf_sf sf1 ->
-        sf_eq sf1 sf2 ->
-        sf_eq (F1 sf1) sf2.
-  Proof.
-    intros.
-    rewrite <- F1OK. auto. auto.
-  Qed.
+    forall sf1 sf2, wf_sf sf1 -> sf_eq sf1 sf2 -> sf_eq (F1 sf1) sf2.
+  Proof. intros. rewrite <- F1OK. auto. auto. Qed.
 
   Lemma sf_eq_apply:
     forall F1 (F1OK: forall sf, wf_sf sf -> sf_eq sf (F1 sf)),
-      forall sf1 sf2,
-        wf_sf sf1 -> wf_sf sf2 ->
-        sf_eq sf1 sf2 ->
-        sf_eq (F1 sf1) (F1 sf2).
-  Proof.
-    intros.
-    rewrite <- ! F1OK; auto.
-  Qed.
+    forall sf1 sf2,
+    wf_sf sf1 -> wf_sf sf2 -> sf_eq sf1 sf2 -> sf_eq (F1 sf1) (F1 sf2).
+  Proof. intros. rewrite <- ! F1OK; auto. Qed.
 
   Record sf_eq_restricted l (sf1 sf2: simple_form) :=
     {
@@ -3769,10 +3622,6 @@ Lemma remove_vars_correct:
         In reg l ->
         list_assoc (final_values sf1) reg =
           list_assoc (final_values sf2) reg;
-      (* sf_eqr_notin: *)
-      (* forall reg, *)
-      (*   ~ In reg l -> *)
-      (*   list_assoc (final_values sf2) reg = None; *)
       sf_eqr_vars: forall reg v t,
         In reg l ->
         list_assoc (final_values sf2) reg = Some v ->
@@ -3780,7 +3629,7 @@ Lemma remove_vars_correct:
         forall x,
           interp_sact REnv (sigma:=sigma) r (vars sf1) (SVar v) x <->
             interp_sact REnv (sigma:=sigma) r (vars sf2) (SVar v) x;
-      sf_eqr_wt: 
+      sf_eqr_wt:
       forall reg v t,
         In reg l ->
         list_assoc (final_values sf2) reg = Some v ->
@@ -3834,37 +3683,6 @@ Lemma remove_vars_correct:
     destruct WF1, WF2;
     eapply inlining_pass_sf_eqr'; eauto.
   Qed.
-
-
-  (* Lemma inlining_pass_sf_eq': *)
-  (*   forall sf1 sf2 *)
-  (*          (SFEQ: sf_eq sf1 sf2) *)
-  (*          (VSV1: vvs_smaller_variables (vars sf1)) *)
-  (*          (VSV2: vvs_smaller_variables (vars sf2)) *)
-  (*          (WT1: wt_vvs (Sigma:=Sigma) R (vars sf1)) *)
-  (*          (WT2: wt_vvs (Sigma:=Sigma) R (vars sf2)) *)
-  (*          (WTfinal: forall reg k, *)
-  (*              list_assoc (final_values sf1) reg = Some k -> *)
-  (*              wt_sact (Sigma:=Sigma) R (vars sf1) (SVar k) (R reg) *)
-  (*          ) *)
-  (*          reg k *)
-  (*          (FINAL: list_assoc (final_values sf1) reg = Some k), *)
-  (*     list_assoc (inlining_pass sf1) k = list_assoc (inlining_pass sf2) k. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   exploit inlining_pass_correct. reflexivity. apply VSV1. apply WT1. *)
-  (*   exploit inlining_pass_correct. reflexivity. apply VSV2. apply WT2. *)
-  (*   intros (ND2 & SPEC2) (ND1 & SPEC1). *)
-  (*   erewrite <- sf_eq_final in SPEC2. 2: eauto. *)
-  (*   exploit @wt_sact_interp. eauto. eauto. apply WT1. apply VSV1. apply vvs_range_max_var. *)
-  (*   apply WTfinal. eauto. *)
-  (*   intros (v & IS & WT). *)
-  (*   erewrite in_list_assoc. 2: auto. 2: eapply SPEC1; eauto. *)
-  (*   erewrite in_list_assoc. 2: auto. 2: eapply SPEC2; eauto. *)
-  (*   reflexivity. *)
-  (*   rewrite <- sf_eq_vars; eauto. *)
-  (*   eapply list_assoc_in; eauto. *)
-  (* Qed. *)
 
   Lemma sf_eq_is_restricted:
     forall sf1 sf2,
@@ -4529,7 +4347,6 @@ Lemma remove_vars_correct:
     apply eval_sact_reachable. intros; apply H5. auto. intros; apply PTree.gempty.
   Qed.
 
-
   Lemma reachable_filter_inv:
     forall vvs l (ND: NoDup l) v a,
       reachable_var (filter_ptree vvs (PTree.empty (type * SimpleForm.sact)) l) a v ->
@@ -4637,7 +4454,7 @@ Lemma remove_vars_correct:
       rewrite VARS. apply vsv_filter; auto. apply WF. eauto.
       econstructor.
       rewrite VARS.
-      rewrite <- filter_ptree_eq. eauto.  eapply SELECT2.  eauto. auto. 
+      rewrite <- filter_ptree_eq. eauto.  eapply SELECT2.  eauto. auto.
       intros; rewrite PTree.gempty. auto.
       exists O; intros; eapply filter_ptree_correct; eauto.
       intros. rewrite <- SELECT1. eauto. eauto.
@@ -4710,7 +4527,7 @@ Lemma remove_vars_correct:
       rewrite sf_eqr_final2; eauto.
       rewrite sf_eqr_final1; eauto.
   Qed.
-  
+
   Lemma sf_eqr_apply':
     forall F1 l (F1OK: forall sf, wf_sf sf -> sf_eq_restricted l sf (F1 sf)),
       forall sf1 sf2,
@@ -4959,7 +4776,7 @@ Lemma remove_vars_correct:
         rewrite PTree.gmap; setoid_rewrite H2. reflexivity.
         eapply (IH (existT _ var a0)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. econstructor; eauto. simpl. auto.
         simpl. eauto.
@@ -4972,20 +4789,20 @@ Lemma remove_vars_correct:
         econstructor.
         eapply (IH (existT _ var s1)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. econstructor; eauto. simpl. eauto.
         simpl. eauto.
         destr.
         eapply (IH (existT _ var s2)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. eapply reachable_var_if_true; eauto. simpl. eauto.
         simpl. eauto.
         eapply (IH (existT _ var s3)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. eapply reachable_var_if_false; eauto. simpl. eauto.
         simpl. eauto.
@@ -4997,7 +4814,7 @@ Lemma remove_vars_correct:
         econstructor.
         eapply (IH (existT _ var s)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. econstructor; eauto. simpl. eauto.
         simpl. eauto. auto.
@@ -5009,13 +4826,13 @@ Lemma remove_vars_correct:
         econstructor.
         eapply (IH (existT _ var s1)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. eapply reachable_var_binop1; eauto. simpl. eauto.
         simpl. eauto. auto.
         simpl. eapply (IH (existT _ var s2)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. eapply reachable_var_binop2; eauto. simpl. eauto.
         simpl. eauto. auto.
@@ -5027,7 +4844,7 @@ Lemma remove_vars_correct:
         econstructor.
         eapply (IH (existT _ var s)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl. 
+        simpl.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. eapply reachable_var_externalCall; eauto. simpl. eauto.
         simpl. eauto.
@@ -5067,7 +4884,6 @@ Lemma remove_vars_correct:
       intros; eapply BELOW. eapply reachable_var_externalCall. eauto. eauto. eauto.
     - simpl; constructor.
   Qed.
-
 
   Lemma collapse_interp_inv2:
     forall vvs,
@@ -5196,26 +5012,6 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
     - inv IS. constructor.
   Qed.
 
-  (* Lemma collapse_interp: *)
-  (*   forall sf, *)
-  (*     wt_vvs (Sigma:=Sigma) R (vars sf) -> *)
-  (*     vvs_smaller_variables (vars sf) -> *)
-  (*     forall (a : sact) (v : val), *)
-  (*       interp_sact (sigma:=sigma) REnv r (vars sf) a v -> *)
-  (*       forall t : type, wt_sact (Sigma:=Sigma) R (vars sf) a t -> interp_sact (sigma:=sigma) REnv r (vars sf) (collapse_sact sf a) v. *)
-  (* Proof. *)
-  (*   induction 3; simpl; intros; try now (econstructor; eauto). *)
-  (*   - rewrite H1. inv H2; try now (econstructor; eauto). *)
-  (*     econstructor; eauto. econstructor; eauto. *)
-  (*     econstructor; eauto. econstructor; eauto. *)
-  (*     econstructor; eauto. econstructor; eauto. *)
-  (*   - inv H1. econstructor; eauto. destr; eauto. *)
-  (*   - inv H3. econstructor; eauto. *)
-  (*   - inv H2. econstructor; eauto. *)
-  (* Qed. *)
-
-
-
   Lemma sf_eq_collapse_sf:
     forall sf,
       wf_sf sf ->
@@ -5297,14 +5093,6 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
     apply wf_collapse_sf. auto. simpl; auto.
   Qed.
 
-(*   Lemma remove_vars_spares_regs: *)
-(*     forall sf reg reg_id *)
-(*       (REG_ID: list_assoc (final_values sf) reg = Some reg_id), *)
-(*     list_assoc (inlining_pass (remove_vars sf)) reg_id *)
-(*     = list_assoc (final_values sf) reg_id. *)
-(*   Proof. *)
-(*     intros. *)
-(*     unfold remove_vars. *)
   Lemma reachable_vars_aux_stays_in:
     forall fuel e vs n visited,
     In e visited -> In e (reachable_vars_aux vs n visited fuel).
@@ -5314,33 +5102,6 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
     destruct (vs ! n); eapply in_cons; eauto.
     destruct p. eapply fold_left_induction; eauto.
   Qed.
-
-(*   Lemma fold_left_prop_eventually_2: *)
-(*     forall {A B: Type} (P: B -> Prop) (f: B -> A -> B) (lb la: list A) x e, *)
-(*     P (f e x) *)
-(*     -> (forall y, In y la -> P e -> P (f e y)) *)
-(*     -> P (fold_left f (lb ++ [x] ++ la) s). *)
-(*   Proof. *)
-(*     intros A B P f0 lb la s x H0. *)
-(*     remember (rev la) as la'. apply rev_sym in Heqla'. rewrite <- Heqla'. *)
-(*     generalize dependent la. *)
-(*     induction la'; intros; simpl. *)
-(*     - apply fold_left_prop_eventually_no_tail. easy. *)
-(*     - rewrite <- fold_left_rev_right. *)
-(*       repeat (rewrite rev_app_distr; simpl). rewrite rev_involutive. *)
-(*       apply H. *)
-(*       + apply in_rev. rewrite rev_involutive. left. easy. *)
-(*       + assert ((la' ++ [x]) ++ rev lb = rev (lb ++ [x] ++ rev la')). *)
-(*         { repeat (rewrite rev_app_distr). rewrite rev_involutive. easy. } *)
-(*         rewrite H1. *)
-(*         rewrite fold_left_rev_right. *)
-(*         eapply IHla'. *)
-(*         * eauto. *)
-(*         * intros. apply H. *)
-(*           ** apply in_rev. rewrite rev_involutive. *)
-(*              apply in_rev in H2. right. easy. *)
-(*           ** easy. *)
-(*   Qed. *)
 
   Lemma inlining_no_vars:
     forall reg_id sf (WF: wf_sf sf) t a y k,
@@ -5383,5 +5144,4 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
     (* inlining_pass does not impact the result of list_assoc in our case *)
     erewrite inlining_no_vars; eauto.
   Qed.
-
 End SimpleFormInterpretation.

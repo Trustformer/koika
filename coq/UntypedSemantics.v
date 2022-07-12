@@ -65,8 +65,12 @@ Definition usigma1' (fn: PrimUntyped.ubits1) (bs: list bool)
   | UZExtR w => (List.repeat false (w - List.length bs) ++ bs)
   | URepeat times => (List.concat (List.repeat bs times))
   | USlice ofs w =>
+    (* Remove unrequired bits *)
     let '(_, bs) := take_drop' ofs bs in
     let '(bs, _) := take_drop' w bs in
+    (* Append zeros for the padding. Note that the way padding is used here
+       makes situations in which the last requested bit it out-of-bounds
+       legal. *)
     (bs ++ List.repeat false (w - List.length bs))
   end.
 
@@ -314,10 +318,13 @@ Definition ubits2_sigma (ub: ubits2) (v1 v2: list bool) : list bool :=
     let '(h, _) := take_drop' ofs v1 in
     let '(_, t) := take_drop' (ofs + w) v1 in
     fst (take_drop' (List.length v1) (h ++ v2 ++ t))
-  | UIndexedSlice w =>
-    let ofs := Bits.to_nat (vect_of_list v2) in
-    let '(_, bs) := take_drop' ofs v1 in
-    let '(bs, _) := take_drop' w bs in
+  | UIndexedSlice w => (* A slice of v1 from the value of v2 on *)
+    let ofs := Bits.to_nat (vect_of_list v2) in (* Value of v2 *)
+    (* take_drop splits a list in two from an index on. *)
+    (* Why use take_drop' in here if they are only used as skipn/lastn? *)
+    let '(_, bs) := take_drop' ofs v1 in (* Skip the first bits of v1 *)
+    let '(bs, _) := take_drop' w bs in (* Keep the first w bits of the result *)
+    (* Append 0s to preserve the length *)
     (bs ++ List.repeat false (w - Nat.min w (List.length v1 - ofs)))
   | UPlus =>
     vect_to_list (

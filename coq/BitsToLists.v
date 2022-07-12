@@ -80,11 +80,15 @@ Fixpoint take_drop {A: Type} (n: nat) (l: list A) : option (list A * list A) :=
     end
   end.
 
+(* take_drop is a weird name for a function that splits a list *)
 Definition take_drop' {A: Type} n (l: list A) :=
   match take_drop n l with
   | None => (l,[])
   | Some (l1, l2) => (l1, l2)
   end.
+
+(* take_drop' is equivalent to (List.firstn n l, List.skipn n l). *)
+(* TODO replace *)
 
 Fixpoint bits_splitn (nb sz_elt: nat) (bs: list bool)
 : option (list (list bool)) :=
