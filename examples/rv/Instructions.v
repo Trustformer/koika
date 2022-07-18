@@ -6,8 +6,7 @@ Require Import rv.ISA.
    RISC-V implementation, the instructions names are appended with the
    identifier of the module (base standard or extension) they originate from.
    For instance, both an LUI_32I and an LUI_64I instruction are defined
-   hereafter.
-*)
+   hereafter. *)
 Inductive instruction :=
 | LUI_32I            | AUIPC_32I         | JAL_32I
 | JALR_32I           | BEQ_32I           | BNE_32I

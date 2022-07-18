@@ -50,192 +50,147 @@ Module RVProofs.
         (drules rule) t.
 
     (* Set Printing Depth 20. *)
+    Definition sf :=
+      schedule_to_simple_form RV32I.R (Sigma := ext_Sigma) drules rv_schedule.
+
+    Lemma wt_env : Wt.wt_renv RV32I.R REnv ctx.
+    Proof. eauto. Qed.
+    Lemma rv_schedule_good : good_scheduler rv_schedule.
+    Proof. unfold rv_schedule. repeat constructor. Qed.
+    Lemma sf_def :
+      schedule_to_simple_form RV32I.R (Sigma := ext_Sigma) drules rv_schedule
+      = sf.
+    Proof. unfold sf. reflexivity. Qed.
+    Lemma tret :
+      forall r : rv_rules_t, exists tret : type,
+      wt_daction
+        (R := RV32I.R) (Sigma := ext_Sigma) unit string string [] (drules r)
+        tret.
+    Proof. eauto. Qed.
+    Lemma wt_renv : Wt.wt_renv RV32I.R REnv ctx.
+    Proof. eauto. Qed.
+
+    (* TODO useless in this form *)
+    Lemma specialize_g
+      {A : Set} {P : A -> Prop} (fa: forall x, P x) (x : A) : P x.
+    Proof. eauto. Qed.
+
+    Ltac sf_wf_finish :=
+      lazymatch goal with
+      | H : list_assoc (final_values sf) _ = _ |- _ =>
+        econstructor; vm_compute in H; inversion H; vm_compute; auto
+      end.
+
+    Ltac sf_wf_branch :=
+      lazymatch goal with
+      | a : index _ |- _ =>
+        destruct a;
+        lazymatch goal with
+        | a' : index _ |- _ => sf_wf_branch
+        | H : list_assoc (final_values sf) _ = _ |- _ => sf_wf_finish
+        end
+      | H : list_assoc (final_values sf) _ = _ |- _ => sf_wf_finish
+      end.
+
+    Theorem sf_wf : wf_sf RV32I.R ext_Sigma sf.
+    Proof.
+      set(sok :=
+        schedule_to_simple_form_ok (sigma := ext_sigma) (wt_sigma := wt_sigma)
+          REnv ctx RV32I.R wt_env drules rv_schedule rv_schedule_good sf
+          sf_def tret wt_renv
+      ).
+      destruct sok.
+      destruct H0.
+      destruct H1.
+      constructor.
+      - assumption.
+      - assumption.
+      - intros.
+        destruct reg.
+        + destruct state; sf_wf_finish.
+        + destruct state; sf_wf_finish.
+        + destruct state; sf_wf_finish.
+        + destruct state; sf_wf_finish.
+        + destruct state; sf_wf_finish.
+        + destruct state; sf_wf_finish.
+        + destruct state; sf_wf_finish.
+        + destruct state; sf_wf_finish.
+        + destruct state. sf_wf_branch.
+        + destruct state. sf_wf_finish. sf_wf_branch.
+        + destruct state. destruct state. sf_wf_branch.
+        + sf_wf_finish.
+        + sf_wf_finish.
+        + sf_wf_finish.
+        + sf_wf_finish.
+        + sf_wf_finish.
+        + sf_wf_finish.
+        + sf_wf_finish.
+      (* Qed. TODO Validation is way too slow! vm_compute related? *)
+      Admitted.
+
+    Ltac eautosfwf :=
+      lazymatch goal with
+      | |- prune_irrelevant _ _ = Some _ =>
+        unfold prune_irrelevant; vm_compute list_assoc; eauto
+      | |- wf_sf RV32I.R ext_Sigma sf => apply sf_wf
+      | |- wf_sf RV32I.R ext_Sigma (replace_reg _ _ _) =>
+        apply wf_replace_reg; eautosfwf
+      | |- wf_sf RV32I.R ext_Sigma (simplify_sf _ _ _) =>
+        apply wf_sf_simplify_sf; eautosfwf
+      | |- wf_sf RV32I.R ext_Sigma (prune_irrelevant_aux _ _ _) =>
+        eapply wf_sf_prune_irrelevant_aux; vm_compute list_assoc; eautosfwf
+      | |- wf_sf RV32I.R ext_Sigma (collapse_sf _) =>
+        eapply wf_collapse_sf; eautosfwf
+      | _ => eauto
+      end.
+
+    Ltac isolate_sf :=
+      lazymatch goal with
+      | |- getenv _ (interp_cycle _ _ ?x) _ = _ => set (sf := x)
+      end.
+
+    Ltac get_var x sf :=
+      set (var_val := Maps.PTree.get (Pos.of_nat x) (vars sf));
+      vm_compute in var_val.
 
     Lemma fail_schedule:
-      forall (HALT_TRUE: getenv REnv ctx RV32I.halt = Bits [true])
-        (sf :=
-          (schedule_to_simple_form
-            RV32I.R (Sigma := ext_Sigma) drules
-            (UpdateOnOff |> Writeback |> Execute |> done))),
+      forall (HALT_TRUE: getenv REnv ctx RV32I.halt = Bits [true]),
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
-      (* TODO some useless steps, simplify *)
       intros.
-      erewrite <- replace_reg_interp_cycle_ok; eauto.
-      rewrite HALT_TRUE.
-      erewrite <- simplify_sf_interp_cycle_ok; eauto.
-      set (
-        sf' :=
-          simplify_sf
-            ctx ext_sigma
-            (replace_reg sf RV32I.halt (Bits [true]))).
-      assert (
-        prune_irrelevant sf' RV32I.halt
-        = Some (prune_irrelevant_aux sf' RV32I.halt 1789)).
-      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
-      eapply prune_irrelevant_interp_cycle_ok in H.
-      2: eauto. 2: eauto.
-      rewrite <- H. clear H.
-      subst sf'.
-      set (sf' :=
-        (prune_irrelevant_aux
-          (simplify_sf ctx ext_sigma
-             (replace_reg sf RV32I.halt (Bits [true])))
-          RV32I.halt 1789)
-      ).
-      assert (
-        prune_irrelevant (collapse_sf sf') RV32I.halt
-        = Some (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
-      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
-      eapply collapse_prune_ok in H.
-      2: eauto. 2: eauto.
-      rewrite <- H. clear H.
-      set (sf'' := prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789).
-      assert (
-        prune_irrelevant (collapse_sf sf'') RV32I.halt
-        = Some (prune_irrelevant_aux (collapse_sf sf'') RV32I.halt 1789)).
-      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
-      eapply collapse_prune_ok in H.
-      2: eauto. 2: eauto.
-      rewrite <- H. clear H.
-      set (sf''' := prune_irrelevant_aux (collapse_sf sf'') RV32I.halt 1789).
-      vm_compute in sf'.
-      Compute (List.length (Maps.PTree.elements (vars sf))).
-      Compute (List.length (Maps.PTree.elements (vars sf'))).
-      subst sf'.
-      vm_compute in sf''.
-      Compute (List.length (Maps.PTree.elements (vars sf''))).
-      subst sf''.
-      vm_compute in sf'''.
-      Compute (List.length (Maps.PTree.elements (vars sf'''))).
-      clear sf.
-      rename sf''' into sf.
+      erewrite <- replace_reg_interp_cycle_ok; eautosfwf.
+      erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
+      erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
+      (* erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf. *)
+      erewrite <- collapse_prune_ok; eautosfwf.
+      (* erewrite <- simplify_sf_interp_cycle_ok; eautosfwf. *)
+      erewrite <- replace_reg_interp_cycle_ok; eautosfwf.
+      isolate_sf.
+
+      vm_compute prune_irrelevant_aux in sf.
+      destruct REnv.
+      vm_compute replace_reg in sf.
+
+      RewriteRelation HALT_TRUE in sf.
+      set (tmp := getenv (fun _ : RV32I.reg_t => val) ctx RV32I.halt).
+      set (var_val := Maps.PTree.get 1788 (vars sf)).
+      vm_compute in var_val.
+
+      (* Set Printing All. *)
+      vm_compute in HALT_TRUE.
+      rewrite HALT_TRUE in var_val.
+      vm_compute in sf.
+      (* setoid_rewrite HALT_TRUE in var_val. *)
+      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf).
       Time Eval vm_compute in Maps.PTree.get 1788 (vars sf).
-      erewrite <- simplify_sf_interp_cycle_ok; eauto.
-      set (sf' := simplify_sf ctx ext_sigma sf).
-      subst sf.
-      vm_compute simplify_sf in sf'.
-      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf').
-      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
-      assert (
-        prune_irrelevant (collapse_sf sf') RV32I.halt
-        = Some (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
-      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
-      eapply collapse_prune_ok in H.
-      2: eauto. 2: eauto.
-      rewrite <- H. clear H.
-      set (sf'' := (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
-      subst sf'.
-      vm_compute in sf''.
-      rename sf'' into sf.
-      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf).
-      erewrite <- simplify_sf_interp_cycle_ok; eauto.
-      set (sf' := simplify_sf ctx ext_sigma sf).
-      subst sf.
-      vm_compute in sf'.
-      rename sf' into sf.
-      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf).
-      assert (
-        prune_irrelevant (collapse_sf sf) RV32I.halt
-        = Some (prune_irrelevant_aux (collapse_sf sf) RV32I.halt 1789)).
-      { unfold prune_irrelevant. vm_compute list_assoc. reflexivity. }
-      eapply collapse_prune_ok in H.
-      2: eauto. 2: eauto.
-      rewrite <- H. clear H.
-      subst sf. vm_compute prune_irrelevant_aux.
-      unfold interp_cycle.
-      vm_compute remove_vars.
-      set (osef :=
-        getenv
-          REnv (create REnv (fun k : RV32I.reg_t => (bits_t 1, @SConst reg_t ext_sigma (Bits [true]))))
-          RV32I.halt
-      ).
-      vm_compute in osef.
-      unfold create.
-      simpl.
-      set (temp_out := (
-        let (env_t, getenv, putenv, create, _, _, _, _, _, _) as e
-          return (
-            forall V : RV32I.reg_t -> Type,
-              (forall k : RV32I.reg_t, V k) -> env_t e V
-           )
-         := REnv in create
-      )).
-      vm_compute in temp_out. simpl in temp_out.
-      set (temp_out2 := temp_out  (fun _ : RV32I.reg_t => val)).
-      vm_compute in temp_out2.
-      simpl in temp_out2.
-      subst temp_out2.
-      unfold getenv.
-      subst temp_out.
-      set (temp_out := (
-        let (env_t, getenv, putenv, create, _, _, _, _, _, _) as e
-          return (
-            forall V : RV32I.reg_t -> Type,
-            env_t e V -> forall k : RV32I.reg_t, V k
-          ) := REnv in getenv)
-          (fun _ : RV32I.reg_t => val)).
-      vm_compute in temp_out.
-      subst temp_out.
-      simpl.
+      Time Eval vm_compute in Maps.PTree.get 992 (vars sf).
+      Time Eval vm_compute in Maps.PTree.get 13 (vars sf).
 
-      vm_compute temp_out2.
-      vm_compute create.
-      vm_compute inlining_pass.
-      set (sf8 := remove_vars sf).
-      vm_compute list_assoc at 2.
-      rewrite interp_cycle
-      eapply interp_cycle
-      eapply <- getenv_interp_cycle.
-      vm_compute interp_cycle.
-      vm_compute.
-      set (sf' := (prune_irrelevant_aux (collapse_sf sf') RV32I.halt 1789)).
-
-      unfold interp_cycle. unfold getenv. simpl.
-      Compute (
-        eval_sact_no_vars ctx ext_sigma
-          (SBinop (UEq false) (SConst (Bits [true])) (SConst (Bits [true])))).
-      Compute (eval_sact_no_vars ctx ext_sigma (SConst (Bits [true]))).
-
-      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf').
-      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
-      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
-
-      erewrite <- simplify_sf_interp_cycle_ok; eauto.
-      unfold simplify_sf.
-      vm_compute final_values.
-      unfold simplify_vars.
-      subst sf.
-      vm_compute.
-      set (sf' := simplify_sf ctx ext_sigma sf).
-      subst sf.
-
-      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
       Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
       Time Eval vm_compute in Maps.PTree.get 96 (vars sf).
       Time Eval vm_compute in Maps.PTree.get 1482 (vars sf).
       Time Eval vm_compute in Maps.PTree.get 49 (vars sf).
-      subst sf'.
-      vm_compute simplify_sf.
-
-      erewrite <- replace_reg_interp_cycle_ok; eauto.
-      set (sf' := simplify_sf ctx ext_sigma
-        (replace_reg
-           {|
-             final_values := [(RV32I.halt, 1789%positive)];
-             vars :=
-               filter_ptree (vars sf)
-                 (Maps.PTree.empty (type * SimpleForm.sact))
-                 (useful_vars_for_var sf 1789)
-           |} RV32I.halt (getenv REnv ctx RV32I.halt))).
-      Compute (List.length (Maps.PTree.elements (vars sf))).
-      vm_compute in sf'.
-      Compute (List.length (Maps.PTree.elements (vars sf'))).
-
-      Eval native_compute in
-        Maps.PTree.fold
-          (fun acc k a => (k, regs_in_sact_aux (snd a) [])::acc) (vars ss) [].
-      Eval native_compute in useful_regs_for_var ss 1789.
+    Qed.
 
     Lemma update_on_off_failure:
       forall nid r2v vss sched_rir rir r2v' nid',

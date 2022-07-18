@@ -172,7 +172,8 @@ Section SimpleFormInterpretation.
      var_in_sact a v'
      /\ (
        v = v'
-       \/ exists t' a', vvs ! v' = Some (t', a') /\ reachable_var vvs a' v).
+       \/ exists t' a', vvs ! v' = Some (t', a') /\ reachable_var vvs a' v
+     ).
   Proof.
     induction 1; simpl; intros; eauto.
     - exists n. split. constructor. left; auto.
@@ -5194,8 +5195,7 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
     induction 1; simpl; intros; eauto.
     - inv IS. econstructor; eauto.
       destr; eauto.
-    - 
-      assert (interp_sact (sigma:=sigma) REnv r vvs
+    - assert (interp_sact (sigma:=sigma) REnv r vvs
                 (SUnop ufn (exploit_partial_bitwise_information_in_var a r0 b bs)) v ->
               interp_sact (sigma:=sigma) REnv r vvs (SUnop ufn a) v).
       {
