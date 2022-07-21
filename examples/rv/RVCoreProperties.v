@@ -94,39 +94,11 @@ Module RVProofs.
 
     Theorem sf_wf : wf_sf RV32I.R ext_Sigma sf.
     Proof.
-      set(sok :=
-        schedule_to_simple_form_ok (sigma := ext_sigma) (wt_sigma := wt_sigma)
-          REnv ctx RV32I.R wt_env drules rv_schedule rv_schedule_good sf
-          sf_def tret wt_renv
-      ).
-      destruct sok.
-      destruct H0.
-      destruct H1.
-      constructor.
-      - assumption.
-      - assumption.
-      - intros.
-        destruct reg.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state. sf_wf_branch.
-        + destruct state. sf_wf_finish. sf_wf_branch.
-        + destruct state. destruct state. sf_wf_branch.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-      (* Qed. TODO Validation is way too slow! vm_compute related? *)
-      Admitted.
+      rewrite <- sf_def.
+      eapply schedule_to_simple_form_wf. apply WTRENV. apply wt_sigma.
+      repeat constructor.
+      apply rules_wt.
+    Qed.
 
     Ltac eautosfwf :=
       lazymatch goal with

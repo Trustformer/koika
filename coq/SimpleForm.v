@@ -6352,6 +6352,9 @@ Section SimpleForm.
     wt_vvs (vars sf)
     /\ vvs_smaller_variables (vars sf)
     /\ (forall idx, In idx (map fst (final_values sf)))
+    /\ (forall idx, exists n,
+           list_assoc (final_values sf) idx = Some n
+           /\ wt_sact (vars sf) (SVar n) (R idx))
     /\ forall idx,
        let v :=
          match latest_write (interp_dscheduler rules r sigma s) idx with
@@ -6373,6 +6376,13 @@ Section SimpleForm.
       rewrite in_map_iff. setoid_rewrite filter_map_In.
       apply list_assoc_in in GET1. eexists; split.
       2: eexists; split. 3: apply GET1. 2: simpl; reflexivity. reflexivity.
+    - intro idx. inv WFS. red in wfs_r2v_vvs0.
+      destruct (wfs_r2v_vvs0 (idx, inr tt)) as (y & GET1 & z & GET2).
+      erewrite list_assoc_filter_map. 2: eauto.
+      eexists; split. eauto.
+      econstructor. rewrite GET2. simpl. eauto. simpl. auto.
+      intros. repeat destr_in H; inv H. auto.
+      intros. repeat destr_in H; inv H. repeat destr_in H0; inv H0. auto.
     - intro idx. inv WFS. red in wfs_r2v_vvs0.
       destruct (wfs_r2v_vvs0 (idx, inr tt)) as (y & GET1 & z & GET2).
       inv MLR. exploit mlr_read0. apply GET1. simpl. rewrite log_app_empty.

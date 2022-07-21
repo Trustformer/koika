@@ -2710,7 +2710,7 @@ Lemma remove_vars_correct:
     generalize (schedule_to_simple_form_ok
                   (wt_sigma:=wt_sigma)
                   REnv r R WTRENV rules _ GS _ eq_refl TA WTr). simpl.
-    intros (WTV & VSV & INFINAL & SPECFINAL).
+    intros (WTV & VSV & INFINAL & WTFinal & SPECFINAL).
     unfold interp_cycle. unfold commit_update.
     apply create_funext. intro k.
     simpl.
@@ -2874,7 +2874,7 @@ Lemma remove_vars_correct:
     generalize (schedule_to_simple_form_ok
                   (wt_sigma:=wt_sigma)
                   REnv r R WTRENV rules _ GS _ eq_refl TA WTr). simpl.
-    intros (WTV & VSV  & INFINAL & SPECFINAL).
+    intros (WTV & VSV  & INFINAL & WTFinal & SPECFINAL).
     destruct (SPECFINAL k) as (n & GET & INTERP).
     unfold sf. rewrite GET.
     inv INTERP. exists n. rewrite H0. exists a, t. split; auto. split; auto.
@@ -3480,6 +3480,24 @@ Lemma remove_vars_correct:
       list_assoc (final_values sf) reg = Some k ->
       wt_sact (Sigma:=Sigma) R (vars sf) (SVar k) (R reg)
   }.
+
+  Lemma schedule_to_simple_form_wf:
+    forall `{finite: FiniteType reg_t} (rules: rule_name_t -> SimpleForm.uact)
+           sched (GS: good_scheduler sched)
+           (WTrules: forall r0 : rule_name_t, exists tret : type, wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules r0) tret)
+    ,
+      wf_sf (schedule_to_simple_form (pos_t := pos_t) R (Sigma:=Sigma) rules sched).
+  Proof.
+    intros.
+    edestruct (@schedule_to_simple_form_ok) as (WT & VSV & FINAL & FINALWt & FINAL2).
+    apply wt_sigma. apply WTRENV. apply GS. reflexivity. apply WTrules.
+    apply WTRENV.
+    constructor; auto.
+    - apply WT.
+    - apply VSV.
+    - intros. edestruct FINALWt as (n & GET & WTreg).
+      rewrite GET in H; inv H. eauto.
+  Qed.
 
   Record sf_eq (sf1 sf2: simple_form) := {
     sf_eq_final: final_values sf1 = final_values sf2;
