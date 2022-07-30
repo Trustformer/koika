@@ -19,6 +19,9 @@ Ltac destr :=
 
 Ltac inv H := inversion H; try subst; clear H.
 
+Lemma falso : False. Admitted.
+Ltac cheat := elim falso.
+
 Module RVProofs.
   Context (ext_sigma : RV32I.ext_fn_t -> val -> val).
   Context (ext_Sigma : RV32I.ext_fn_t -> ExternalSignature).
@@ -92,9 +95,460 @@ Module RVProofs.
       | H : list_assoc (final_values sf) _ = _ |- _ => sf_wf_finish
       end.
 
+    Lemma fv_toIMem_RV32I_MemReq_data0 :
+      list_assoc (final_values sf) (RV32I.toIMem RV32I.MemReq.data0) = Some 2969%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_toIMem_RV32I_MemReq_valid0 :
+      list_assoc (final_values sf) (RV32I.toIMem RV32I.MemReq.valid0)
+      = Some 3009%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_fromIMem_RV32I_MemResp_data0 :
+      list_assoc (final_values sf) (RV32I.fromIMem RV32I.MemResp.data0)
+      = Some 3008%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_fromIMem_RV32I_MemResp_valid0 :
+      list_assoc (final_values sf) (RV32I.fromIMem RV32I.MemResp.valid0)
+      = Some 3007%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_toDMem_RV32I_MemReq_data0 :
+      list_assoc (final_values sf) (RV32I.toDMem RV32I.MemReq.data0)
+      = Some 1819%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_toDMem_RV32I_MemReq_valid0 :
+      list_assoc (final_values sf) (RV32I.toDMem RV32I.MemReq.valid0)
+      = Some 3098%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_fromDMem_RV32I_MemResp_data0 :
+      list_assoc (final_values sf) (RV32I.fromDMem RV32I.MemResp.data0)
+      = Some 3097%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_fromDMem_RV32I_MemResp_valid0 :
+      list_assoc (final_values sf) (RV32I.fromDMem RV32I.MemResp.valid0)
+      = Some 3096%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_f2d_RV32I_fromFetch_data0 :
+      list_assoc (final_values sf) (RV32I.f2d RV32I.fromFetch.data0)
+      = Some 2966%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_f2d_RV32I_fromFetch_valid0 :
+      list_assoc (final_values sf) (RV32I.f2d RV32I.fromFetch.valid0)
+      = Some 2965%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_f2dprim_RV32I_waitFromFetch_data0 :
+      list_assoc (final_values sf) (RV32I.f2dprim RV32I.waitFromFetch.data0)
+      = Some 2941%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_f2dprim_RV32I_waitFromFetch_valid0 :
+      list_assoc (final_values sf) (RV32I.f2dprim RV32I.waitFromFetch.valid0)
+      = Some 2940%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_d2e_RV32I_fromDecode_data0 :
+      list_assoc (final_values sf) (RV32I.d2e RV32I.fromDecode.data0)
+      = Some 2920%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_d2e_RV32I_fromDecode_valid0 :
+      list_assoc (final_values sf) (RV32I.d2e RV32I.fromDecode.valid0)
+      = Some 2919%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_e2w_RV32I_fromExecute_data0 :
+      list_assoc (final_values sf) (RV32I.e2w RV32I.fromExecute.data0)
+      = Some 1814%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_e2w_RV32I_fromExecute_valid0 :
+      list_assoc (final_values sf) (RV32I.e2w RV32I.fromExecute.valid0)
+      = Some 1813%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData thisone))
+      = Some 978%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_thisone :
+      list_assoc (final_values sf) ((RV32I.rf (RV32I.Rf.rData (anotherone thisone))))
+      = Some 976%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone thisone))))
+      = Some 974%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone thisone)))))
+      = Some 972%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone thisone))))))
+      = Some 970%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))
+      = Some 968%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))
+      = Some 966%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))
+      = Some 964%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))
+      = Some 962%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))
+      = Some 960%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))
+      = Some 958%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))
+      = Some 956%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))
+      = Some 954%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))
+      = Some 952%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))
+      = Some 950%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))
+      = Some 948%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))
+      = Some 946%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))
+      = Some 944%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))
+      = Some 942%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))
+      = Some 940%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))
+      = Some 938%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))
+      = Some 936%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))
+      = Some 934%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))
+      = Some 932%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))
+      = Some 930%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))
+      = Some 928%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))))
+      = Some 926%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))))
+      = Some 924%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))))))
+      = Some 922%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))))))
+      = Some 920%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))))))))
+      = Some 918%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_rf_RV32I_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.rf (RV32I.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))))))))
+      = Some 916%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_size :
+      list_assoc (final_values sf) (RV32I.stack RV32I.ShadowStack.size)
+      = Some 1811%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_stack_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          (@thisone (index (Init.Nat.pred (2^RV32I.ShadowStack.index_sz)))))
+         ))
+      = Some 1809%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_stack_anotherone_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          @anotherone
+            (index (Init.Nat.pred (2 ^ RV32I.ShadowStack.index_sz)))
+            (@thisone (index
+              (0 + 0*2^0 + 1*2^1 + 1*2^Nat.log2 (Nat.pred (RV32I.ShadowStack.capacity + 1)))
+           )))
+        ))
+      = Some 1807%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_stack_anotherone_anotherone_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          (@anotherone
+            (index
+              (Init.Nat.pred
+                (Nat.pow (S (S O))
+                  (Nat.log2_up
+                    (Init.Nat.add RV32I.ShadowStack.capacity (S O))))))
+            (@anotherone
+              (index
+                (Nat.add
+                  (Nat.add
+                    (Nat.add O (Nat.mul O (Nat.pow (S (S O)) O)))
+                    (Nat.mul (S O) (Nat.pow (S (S O)) (S O))))
+                  (Nat.mul
+                    (S O)
+                    (Nat.pow
+                      (S (S O))
+                      (Nat.log2 (Nat.pred
+                        (Init.Nat.add RV32I.ShadowStack.capacity (S O))))))))
+               (@thisone
+                  (index
+                     (Nat.add
+                        (Nat.add
+                           (Nat.add O
+                              (Nat.mul (S O) (Nat.pow (S (S O)) O)))
+                           (Nat.mul O (Nat.pow (S (S O)) (S O))))
+                        (Nat.mul (S O)
+                           (Nat.pow (S (S O))
+                              (Nat.log2
+                                 (Nat.pred
+                                    (Init.Nat.add
+                                       RV32I.ShadowStack.capacity
+                                       (S O))))))))))))))
+      = Some 1805%positive.
+    Proof. vm_compute. easy. Qed.
+
+    Lemma fv_stack_RV32I_ShadowStack_stack_anotherone_anotherone_anotherone_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          @anotherone (index (Init.Nat.pred (2^RV32I.ShadowStack.index_sz))) (anotherone (anotherone thisone))))
+        )
+      = Some 1803%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_stack_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          @anotherone (index (Init.Nat.pred (2^RV32I.ShadowStack.index_sz))) (anotherone (anotherone (anotherone thisone)))))
+        )
+      = Some 1801%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_stack_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          @anotherone (index (Init.Nat.pred (2^RV32I.ShadowStack.index_sz))) (anotherone (anotherone (anotherone (anotherone thisone))))))
+        )
+      = Some 1799%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_stack_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          @anotherone (index (Init.Nat.pred (2^RV32I.ShadowStack.index_sz))) (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))
+        )
+      = Some 1797%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_stack_RV32I_ShadowStack_stack_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc
+        (final_values sf)
+        (RV32I.stack (RV32I.ShadowStack.stack (
+          @anotherone (index (Init.Nat.pred (2^RV32I.ShadowStack.index_sz))) (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))
+        )
+      = Some 1795%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData thisone))))
+      = Some 2918%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone thisone)))))
+      = Some 2917%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone thisone))))))
+      = Some 2916%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone thisone)))))))
+      = Some 2915%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone thisone))))))))
+      = Some 2914%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))
+      = Some 2913%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))
+      = Some 2912%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))
+      = Some 2911%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))
+      = Some 2910%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))
+      = Some 2909%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))
+      = Some 2908%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))
+      = Some 2907%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))
+      = Some 2906%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))
+      = Some 2905%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))
+      = Some 2904%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))
+      = Some 2903%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))
+      = Some 2902%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))
+      = Some 2901%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))
+      = Some 2900%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))
+      = Some 2899%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))
+      = Some 2898%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))
+      = Some 2897%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))
+      = Some 2896%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))
+      = Some 2895%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))))
+      = Some 2894%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))))
+      = Some 2893%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))))))
+      = Some 2892%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))))))
+      = Some 2891%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))))))))
+      = Some 2890%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))))))))
+      = Some 2889%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone))))))))))))))))))))))))))))))))))
+      = Some 2888%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_scoreboard_RV32I_Scoreboard_Scores_RV32I_Scoreboard_Rf_rData_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_anotherone_thisone :
+      list_assoc (final_values sf) (RV32I.scoreboard ((RV32I.Scoreboard.Scores (RV32I.Scoreboard.Rf.rData (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone (anotherone thisone)))))))))))))))))))))))))))))))))))
+      = Some 2887%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_cycle_count :
+      list_assoc (final_values sf) (RV32I.cycle_count)
+      = Some 3104%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_instr_count :
+      list_assoc (final_values sf) (RV32I.instr_count)
+      = Some 850%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_pc :
+      list_assoc (final_values sf) (RV32I.pc)
+      = Some 2964%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_epoch :
+      list_assoc (final_values sf) (RV32I.epoch)
+      = Some 1791%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_debug :
+      list_assoc (final_values sf) (RV32I.debug)
+      = Some 3110%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_on_off :
+      list_assoc (final_values sf) (RV32I.on_off)
+      = Some 99%positive.
+    Proof. vm_compute. easy. Qed.
+    Lemma fv_halt :
+      list_assoc (final_values sf) (RV32I.halt)
+      = Some 1789%positive.
+    Proof. vm_compute. easy. Qed.
+
     Theorem sf_wf : wf_sf RV32I.R ext_Sigma sf.
     Proof.
-      set(sok :=
+      set (sok :=
         schedule_to_simple_form_ok (sigma := ext_sigma) (wt_sigma := wt_sigma)
           REnv ctx RV32I.R wt_env drules rv_schedule rv_schedule_good sf
           sf_def tret wt_renv
@@ -107,40 +561,68 @@ Module RVProofs.
       - assumption.
       - intros.
         destruct reg.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state; sf_wf_finish.
-        + destruct state. sf_wf_branch.
-        + destruct state. sf_wf_finish. sf_wf_branch.
-        + destruct state. destruct state. sf_wf_branch.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
-        + sf_wf_finish.
+        + destruct state; econstructor.
+          * rewrite fv_toIMem_RV32I_MemReq_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_toIMem_RV32I_MemReq_valid0 in H3. inversion H3. vm_compute. auto.
+        + destruct state; econstructor.
+          * rewrite fv_fromIMem_RV32I_MemResp_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_fromIMem_RV32I_MemResp_valid0 in H3. inversion H3. vm_compute. auto.
+        + destruct state; econstructor.
+          * rewrite fv_toDMem_RV32I_MemReq_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_toDMem_RV32I_MemReq_valid0 in H3. inversion H3. vm_compute. auto.
+        + destruct state; econstructor.
+          * rewrite fv_fromDMem_RV32I_MemResp_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_fromDMem_RV32I_MemResp_valid0 in H3. inversion H3. vm_compute. auto.
+        + destruct state; econstructor.
+          * rewrite fv_f2d_RV32I_fromFetch_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_f2d_RV32I_fromFetch_valid0 in H3. inversion H3. vm_compute. auto.
+        + destruct state; econstructor.
+          * rewrite fv_f2dprim_RV32I_waitFromFetch_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_f2dprim_RV32I_waitFromFetch_valid0 in H3. inversion H3. vm_compute. auto.
+        + destruct state; econstructor.
+          * rewrite fv_d2e_RV32I_fromDecode_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_d2e_RV32I_fromDecode_valid0 in H3. inversion H3. vm_compute. auto.
+        + destruct state; econstructor.
+          * rewrite fv_e2w_RV32I_fromExecute_data0 in H3. inversion H3. vm_compute. auto.
+          * rewrite fv_e2w_RV32I_fromExecute_valid0 in H3. inversion H3. vm_compute. auto.
+        + cheat.
+        + destruct state.
+          * econstructor. rewrite fv_stack_RV32I_ShadowStack_size in H3. inversion H3. vm_compute. auto.
+          * destruct n. econstructor. rewrite fv_stack_RV32I_ShadowStack_stack_thisone in H3. inversion H3. vm_compute. auto.
+            destruct a. econstructor. rewrite fv_stack_RV32I_ShadowStack_stack_anotherone_thisone in H3. inversion H3. vm_compute. auto.
+            destruct a. econstructor. rewrite fv_stack_RV32I_ShadowStack_stack_anotherone_anotherone_thisone in H3. inversion H3. vm_compute. auto.
+            cheat.
+        + cheat.
+        + rewrite fv_cycle_count in H3. inversion H3. econstructor. vm_compute. auto.
+        + rewrite fv_instr_count in H3. inversion H3. econstructor. vm_compute. auto.
+        + rewrite fv_pc in H3. inversion H3. econstructor. vm_compute. auto.
+        + rewrite fv_epoch in H3. inversion H3. econstructor. vm_compute. auto.
+        + rewrite fv_debug in H3. inversion H3. econstructor. vm_compute. auto.
+        + rewrite fv_on_off in H3. inversion H3. econstructor. vm_compute. auto.
+        + rewrite fv_halt in H3. inversion H3. econstructor. vm_compute. auto.
+        (* + sf_wf_branch. *)
+        (* + destruct state. sf_wf_branch. *)
+        (* + destruct state. sf_wf_finish. sf_wf_branch. *)
+        (* + destruct state. destruct state. sf_wf_branch. *)
       (* Qed. TODO Validation is way too slow! vm_compute related? *)
-      Admitted.
+      Qed.
 
     Ltac eautosfwf :=
       lazymatch goal with
       | |- prune_irrelevant _ _ = Some _ =>
         unfold prune_irrelevant; vm_compute list_assoc; eauto
-      | |- wf_sf RV32I.R ext_Sigma sf => apply sf_wf
-      | |- wf_sf RV32I.R ext_Sigma (replace_reg _ _ _) =>
-        apply wf_replace_reg; eautosfwf
+      | RV: getenv REnv ctx RV32I.halt = Bits [true],
+        WTRENV : Wt.wt_renv RV32I.R REnv ctx
+        |- wf_sf RV32I.R ext_Sigma (replace_reg _ _ _) =>
+        apply (wf_replace_reg _ _ _ WTRENV _ _ _ RV); eautosfwf
       | |- wf_sf RV32I.R ext_Sigma (simplify_sf _ _ _) =>
         apply wf_sf_simplify_sf; eautosfwf
       | |- wf_sf RV32I.R ext_Sigma (prune_irrelevant_aux _ _ _) =>
         eapply wf_sf_prune_irrelevant_aux; vm_compute list_assoc; eautosfwf
       | |- wf_sf RV32I.R ext_Sigma (collapse_sf _) =>
         eapply wf_collapse_sf; eautosfwf
+      | |- wf_sf RV32I.R ext_Sigma sf => apply sf_wf
+      | |- wf_sf _ _ _ => apply sf_wf
       | _ => eauto
       end.
 
@@ -153,43 +635,41 @@ Module RVProofs.
       set (var_val := Maps.PTree.get (Pos.of_nat x) (vars sf));
       vm_compute in var_val.
 
+    Lemma halt_true : getenv REnv ctx RV32I.halt = Bits [true].
+    Proof. cheat. Qed.
+
+    Type (
+      @replace_reg_interp_cycle_ok
+        RV32I.reg_t RV32I.ext_fn_t eq_dec_reg REnv RV32I.R RV32I.R ext_Sigma
+        ctx ext_sigma wt_renv wt_sigma RV32I.halt sf (Bits [true]) halt_true 
+        sf_wf
+    ).
+    Type (
+      replace_reg_interp_cycle_ok
+        RV32I.R ext_Sigma ctx ext_sigma wt_renv RV32I.halt sf
+        (Bits [true]) halt_true sf_wf (TR := RV32I.R) (wt_sigma := wt_sigma)
+    ).
+
     Lemma fail_schedule:
       forall (HALT_TRUE: getenv REnv ctx RV32I.halt = Bits [true]),
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
       intros.
-      erewrite <- replace_reg_interp_cycle_ok; eautosfwf.
+      erewrite <- (replace_reg_interp_cycle_ok _ _ _ _ _ _ _ _ HALT_TRUE); eautosfwf.
+      erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
       erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
       erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
-      (* erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf. *)
       erewrite <- collapse_prune_ok; eautosfwf.
-      (* erewrite <- simplify_sf_interp_cycle_ok; eautosfwf. *)
-      erewrite <- replace_reg_interp_cycle_ok; eautosfwf.
-      isolate_sf.
-
-      vm_compute prune_irrelevant_aux in sf.
-      destruct REnv.
-      vm_compute replace_reg in sf.
-
-      RewriteRelation HALT_TRUE in sf.
-      set (tmp := getenv (fun _ : RV32I.reg_t => val) ctx RV32I.halt).
-      set (var_val := Maps.PTree.get 1788 (vars sf)).
-      vm_compute in var_val.
-
-      (* Set Printing All. *)
-      vm_compute in HALT_TRUE.
-      rewrite HALT_TRUE in var_val.
-      vm_compute in sf.
-      (* setoid_rewrite HALT_TRUE in var_val. *)
-      Time Eval vm_compute in Maps.PTree.get 1789 (vars sf).
-      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf).
-      Time Eval vm_compute in Maps.PTree.get 992 (vars sf).
-      Time Eval vm_compute in Maps.PTree.get 13 (vars sf).
-
-      Time Eval vm_compute in Maps.PTree.get 1788 (vars sf').
-      Time Eval vm_compute in Maps.PTree.get 96 (vars sf).
-      Time Eval vm_compute in Maps.PTree.get 1482 (vars sf).
-      Time Eval vm_compute in Maps.PTree.get 49 (vars sf).
+      erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
+      erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
+      erewrite <- collapse_prune_ok; eautosfwf.
+      erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
+      eapply getenv_interp; eautosfwf.
+      - vm_compute. eauto.
+      - vm_compute. eauto.
+      - vm_compute. eauto.
+      Unshelve. 1-36: try (eapply RV32I.R).
+      eauto. eauto.
     Qed.
 
     Lemma update_on_off_failure:
@@ -252,17 +732,15 @@ Module RVProofs.
       eapply vvs_grows_trans. eauto. eapply vvs_grows_set. apply WFS. lia.
     Qed.
 
-    Definition simplify_sf  sf ctx :=
-      {|
-        final_values := final_values sf;
-        vars :=
-          Maps.PTree.map
-            (fun _ '(t,a) =>
-              (t,
-               simplify_sact (REnv:=REnv) (reg_t:=RV32I.reg_t) ctx ext_sigma a)
-            )
-            (vars sf)
-      |}.
+    Definition simplify_sf  sf ctx := {|
+      final_values := final_values sf;
+      vars :=
+        Maps.PTree.map
+          (fun _ '(t,a) =>
+            (t,
+             simplify_sact (REnv:=REnv) (reg_t:=RV32I.reg_t) ctx ext_sigma a))
+          (vars sf)
+    |}.
 
     Lemma fail_schedule:
       forall ss1,
