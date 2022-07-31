@@ -27,7 +27,6 @@ Module RVProofs.
   Context (ext_Sigma : RV32I.ext_fn_t -> ExternalSignature).
   Context {REnv : Env RV32I.reg_t}.
 
-  Check (desugar_action tt (RV32I.rv_urules Fetch)).
   Definition drules rule :=
     match uaction_to_daction (desugar_action tt (RV32I.rv_urules rule)) with
     | Some d => d
@@ -52,7 +51,6 @@ Module RVProofs.
       wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string []
         (drules rule) t.
 
-    (* Set Printing Depth 20. *)
     Definition sf :=
       schedule_to_simple_form RV32I.R (Sigma := ext_Sigma) drules rv_schedule.
 
@@ -640,8 +638,7 @@ Module RVProofs.
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
       intros.
-      erewrite <- (replace_reg_interp_cycle_ok _ _ _ _ _ _ _ _ HALT_TRUE); eautosfwf.
-      erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
+      erewrite <- replace_reg_interp_cycle_ok; eautosfwf.
       erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
       erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
       erewrite <- collapse_prune_ok; eautosfwf.
@@ -649,12 +646,7 @@ Module RVProofs.
       erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
       erewrite <- collapse_prune_ok; eautosfwf.
       erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
-      eapply getenv_interp; eautosfwf.
-      - vm_compute. eauto.
-      - vm_compute. eauto.
-      - vm_compute. eauto.
-      Unshelve. 1-36: try (eapply RV32I.R).
-      eauto. eauto.
+      eapply getenv_interp; eautosfwf; vm_compute; eauto.
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=

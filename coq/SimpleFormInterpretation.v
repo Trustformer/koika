@@ -31,7 +31,6 @@ Section SimpleFormInterpretation.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
   Context {REnv: Env reg_t}.
-  Context {TR: reg_t -> type}.
 
   Context (R: reg_t -> type).
   Context (Sigma: ext_fn_t -> ExternalSignature).
@@ -4189,17 +4188,8 @@ Lemma remove_vars_correct:
     - auto.
   Qed.
 
-  (* Lemma osef : forall reg val, getenv REnv r reg = val. Admitted. *)
-  (* Definition reg : reg_t. Admitted. *)
-  (* Definition value : val. Admitted. *)
-  (* Definition sf : simple_form. Admitted. *)
-
-(*   Type ( *)
-(*     wf_replace_reg (osef reg value) sf *) 
-(*   ). *)
-
   Lemma replace_reg_interp_cycle_ok:
-    forall reg sf val (REG_VAL: getenv REnv r reg = val),
+    forall {reg} {sf} {val} (REG_VAL: getenv REnv r reg = val),
     wf_sf sf ->
     getenv REnv (interp_cycle (replace_reg sf reg val)) reg
     = getenv REnv (interp_cycle sf) reg.
