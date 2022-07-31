@@ -612,7 +612,7 @@ Module RVProofs.
       | RV: getenv REnv ctx RV32I.halt = Bits [true],
         WTRENV : Wt.wt_renv RV32I.R REnv ctx
         |- wf_sf RV32I.R ext_Sigma (replace_reg _ _ _) =>
-        apply (wf_replace_reg _ _ _ WTRENV _ _ _ RV); eautosfwf
+        apply (wf_sf_replace_reg _ _ _ WTRENV _ _ _ RV); eautosfwf
       | |- wf_sf RV32I.R ext_Sigma (simplify_sf _ _ _) =>
         apply wf_sf_simplify_sf; eautosfwf
       | |- wf_sf RV32I.R ext_Sigma (prune_irrelevant_aux _ _ _) =>
@@ -623,6 +623,11 @@ Module RVProofs.
       | |- wf_sf _ _ _ => apply sf_wf
       | _ => eauto
       end.
+    Ltac replace_reg := erewrite replace_reg_interp_cycle_ok; eautosfwf.
+    Ltac simplify := erewrite simplify_sf_interp_cycle_ok; eautosfwf.
+    Ltac prune := erewrite prune_irrelevant_interp_cycle_ok; eautosfwf.
+    Ltac collapse := erewrite collapse_prune_interp_cycle_ok; eautosfwf.
+    Ltac finish := eapply getenv_interp; eautosfwf; vm_compute; eauto.
 
     Ltac isolate_sf :=
       lazymatch goal with
@@ -638,15 +643,9 @@ Module RVProofs.
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
       intros.
-      erewrite <- replace_reg_interp_cycle_ok; eautosfwf.
-      erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
-      erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
-      erewrite <- collapse_prune_ok; eautosfwf.
-      erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
-      erewrite <- prune_irrelevant_interp_cycle_ok; eautosfwf.
-      erewrite <- collapse_prune_ok; eautosfwf.
-      erewrite <- simplify_sf_interp_cycle_ok; eautosfwf.
-      eapply getenv_interp; eautosfwf; vm_compute; eauto.
+      replace_reg. simplify. prune. collapse. simplify.
+      prune. collapse. simplify.
+      finish.
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=

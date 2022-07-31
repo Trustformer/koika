@@ -3761,14 +3761,15 @@ Lemma remove_vars_correct:
 
   Lemma simplify_sf_interp_cycle_ok:
     forall reg sf,
-      wf_sf sf ->
-    getenv REnv (interp_cycle (simplify_sf sf)) reg
-    = getenv REnv (interp_cycle sf) reg.
+    wf_sf sf ->
+    getenv REnv (interp_cycle sf) reg
+    = getenv REnv (interp_cycle (simplify_sf sf)) reg.
   Proof.
     intros.
     eapply sf_eq_interp_cycle_ok.
-    apply wf_sf_simplify_sf; auto. auto.
-    apply sf_eq_sym. apply sf_eq_simplify_sf. auto.
+    - auto.
+    - apply wf_sf_simplify_sf; auto.
+    - apply sf_eq_simplify_sf. auto.
   Qed.
 
   Lemma wt_vvs_f:
@@ -4163,7 +4164,7 @@ Lemma remove_vars_correct:
     - destr_in VIS; inv VIS.
   Qed.
 
-  Lemma wf_replace_reg :
+  Lemma wf_sf_replace_reg :
     forall reg val sf,
     getenv REnv r reg = val -> wf_sf sf -> wf_sf (replace_reg sf reg val).
   Proof.
@@ -4191,14 +4192,14 @@ Lemma remove_vars_correct:
   Lemma replace_reg_interp_cycle_ok:
     forall {reg} {sf} {val} (REG_VAL: getenv REnv r reg = val),
     wf_sf sf ->
-    getenv REnv (interp_cycle (replace_reg sf reg val)) reg
-    = getenv REnv (interp_cycle sf) reg.
+    getenv REnv (interp_cycle sf) reg
+    = getenv REnv (interp_cycle (replace_reg sf reg val)) reg.
   Proof.
     intros.
     eapply sf_eq_interp_cycle_ok.
-    - eapply wf_replace_reg; eauto.
     - auto.
-    - apply sf_eq_sym. rewrite <- REG_VAL. apply sf_eq_replace_reg. auto.
+    - eapply wf_sf_replace_reg in H; eauto.
+    - rewrite <- REG_VAL. apply sf_eq_replace_reg. auto.
   Qed.
 
   Lemma wt_sact_filter:
@@ -4571,17 +4572,17 @@ Lemma remove_vars_correct:
   Qed.
 
   Lemma prune_irrelevant_interp_cycle_ok:
-    forall reg sf sf'
-           (WF: wf_sf sf)
-           (PRUNE: prune_irrelevant sf reg = Some sf'),
-      getenv REnv (interp_cycle sf') reg = getenv REnv (interp_cycle sf) reg.
+    forall
+      reg sf sf' (WF: wf_sf sf) (PRUNE: prune_irrelevant sf reg = Some sf'),
+    getenv REnv (interp_cycle sf) reg = getenv REnv (interp_cycle sf') reg.
   Proof.
     intros.
     unfold prune_irrelevant in PRUNE. destr_in PRUNE; inv PRUNE.
-    symmetry. eapply sf_eqr_interp_cycle_ok. auto.
-    eapply wf_sf_prune_irrelevant_aux; eauto.
-    eapply sf_eqf_prune_irrelevant_aux; eauto.
-    simpl; auto.
+    eapply sf_eqr_interp_cycle_ok.
+    - auto.
+    - eapply wf_sf_prune_irrelevant_aux; eauto.
+    - eapply sf_eqf_prune_irrelevant_aux; eauto.
+    - simpl; auto.
   Qed.
 
   Fixpoint collapse_sact (vvs : PTree.t (type * SimpleForm.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t))) (a : sact) :=
@@ -5068,16 +5069,14 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
     red; tauto.
   Qed.
 
-  Lemma collapse_prune_ok:
+  Lemma collapse_prune_interp_cycle_ok:
     forall reg sf sf',
-           wf_sf sf ->
-    prune_irrelevant (collapse_sf sf) reg = Some sf'
-    -> getenv REnv (interp_cycle sf') reg
-    = getenv REnv (interp_cycle sf) reg.
+    wf_sf sf
+    -> prune_irrelevant (collapse_sf sf) reg = Some sf'
+    -> getenv REnv (interp_cycle sf) reg = getenv REnv (interp_cycle sf') reg.
   Proof.
     intros.
     unfold prune_irrelevant in H0. destr_in H0; inv H0.
-    symmetry.
     eapply sf_eqr_interp_cycle_ok. auto.
     eapply wf_sf_prune_irrelevant_aux. eauto.
     eapply wf_collapse_sf. auto.
