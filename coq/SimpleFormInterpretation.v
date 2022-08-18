@@ -877,8 +877,9 @@ Lemma remove_vars_correct:
                        (* TODO rely on take_drop'? *)
                   then
                     SConst (Bits (
-                                List.firstn
-                                  width (List.skipn (offset - first_known_bit) known_bits)
+                      List.firstn
+                        width
+                        (List.skipn (offset - first_known_bit) known_bits)
                       ))
                   else ua'
               | _ => ua'
@@ -3719,9 +3720,7 @@ Lemma remove_vars_correct:
     apply finite_surjective.
   Qed.
 
-  Lemma wf_sf_remove_vars sf:
-    wf_sf sf ->
-    wf_sf (remove_vars sf).
+  Lemma wf_sf_remove_vars sf: wf_sf sf -> wf_sf (remove_vars sf).
   Proof.
     destruct 1.
     constructor.
@@ -4685,10 +4684,7 @@ Lemma remove_vars_correct:
     - inv VIS; econstructor; eauto.
   Qed.
 
-  Lemma wf_collapse_sf:
-    forall sf,
-      wf_sf sf ->
-      wf_sf (collapse_sf sf).
+  Lemma wf_collapse_sf: forall sf, wf_sf sf -> wf_sf (collapse_sf sf).
   Proof.
     intros; eapply wf_f_reachable.
     intros; eapply collapse_wt; eauto.
@@ -5077,12 +5073,17 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
   Proof.
     intros.
     unfold prune_irrelevant in H0. destr_in H0; inv H0.
-    eapply sf_eqr_interp_cycle_ok. auto.
-    eapply wf_sf_prune_irrelevant_aux. eauto.
-    eapply wf_collapse_sf. auto.
-    eapply sf_eq_sf_eq_restricted_trans.
-    2: apply sf_eqf_prune_irrelevant_aux. apply sf_eq_collapse_sf. auto. auto.
-    apply wf_collapse_sf. auto. simpl; auto.
+    eapply sf_eqr_interp_cycle_ok.
+    - auto.
+    - eapply wf_sf_prune_irrelevant_aux.
+      + eauto.
+      + eapply wf_collapse_sf. auto.
+    - eapply sf_eq_sf_eq_restricted_trans.
+      2: apply sf_eqf_prune_irrelevant_aux.
+      + apply sf_eq_collapse_sf. auto.
+      + auto.
+      + apply wf_collapse_sf. auto.
+    - simpl; auto.
   Qed.
 
   Lemma wt_exploit:
@@ -5340,7 +5341,11 @@ interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, collapse_sact 
   Theorem exploit_partial_bitwise_information_in_vars_ok:
     forall
       (sf: simple_form) known_reg first_known_bit known_bits
-      (EQ: exists v0, getenv REnv r known_reg = Bits v0 /\ firstn (Datatypes.length known_bits) (skipn first_known_bit v0) = known_bits)
+      (EQ:
+        exists v0,
+        getenv REnv r known_reg = Bits v0
+        /\ firstn (Datatypes.length known_bits) (skipn first_known_bit v0)
+          = known_bits)
       (WF: wf_sf sf)
       (new_sf :=
         exploit_partial_bitwise_information
