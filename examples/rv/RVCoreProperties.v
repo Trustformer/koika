@@ -71,11 +71,6 @@ Module RVProofs.
     Lemma wt_renv : Wt.wt_renv RV32I.R REnv ctx.
     Proof. eauto. Qed.
 
-    (* TODO useless in this form *)
-    Lemma specialize_g
-      {A : Set} {P : A -> Prop} (fa: forall x, P x) (x : A) : P x.
-    Proof. eauto. Qed.
-
     Ltac sf_wf_finish :=
       lazymatch goal with
       | H : list_assoc (final_values sf) _ = _ |- _ =>
@@ -725,6 +720,27 @@ Module RVProofs.
     Proof.
       intros. set (wfsf := sf_wf).
       crusher 2.
+    Qed.
+
+    Require Import rv.RVShadowStackProperties.
+
+    Lemma stack_violation_results_in_halt:
+      forall
+        (NoHalt: getenv REnv ctx RV32I.halt = Bits [false])
+        (Valid:
+          getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true])
+        (Legal:
+          forall v v2,
+          getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
+          = Struct RV32I.decode_bookkeeping
+          -> get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst"
+          = Some (Struct decoded_sig v2)
+          -> get_field_struct (struct_fields decoded_sig) v2 "legal"
+          = Some (Bits [true])
+        ),
+      stack_violation ctx -> halt_set ctx.
+    Proof.
+      replace_reg.
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
