@@ -2,7 +2,7 @@
 Require Import Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
   Koika.ProgramTactics Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs
-  UntypedIndSemantics Koika.UntypedSemantics Koika.DesugaredSyntax.
+  Koika.UntypedSemantics Koika.DesugaredSyntax.
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm Koika.SimpleFormInterpretation.
 Require Import SimpleVal.
@@ -599,73 +599,6 @@ Module RVProofs.
         (* + destruct state. destruct state. sf_wf_branch. *)
       (* Qed. TODO Validation is way too slow! vm_compute related? *)
       Qed.
-
-    Ltac prepare_smpl :=
-      let wfsf := fresh "wfsf" in
-      let lassoc := fresh "lassoc" in
-      lazymatch goal with
-      | RV: getenv REnv ctx ?rg = ?vl,
-        WTRENV : Wt.wt_renv RV32I.R REnv ctx,
-        WFSF' : wf_sf RV32I.R ext_Sigma ?sf'
-        |-
-         getenv REnv (interp_cycle ctx ext_sigma (replace_reg ?sf' ?rg ?vl)) ?rg
-         = _
-        =>
-        set (
-          wfsf :=
-            wf_sf_replace_reg
-              (ext_fn_t := RV32I.ext_fn_t) (REnv := REnv) RV32I.R ext_Sigma
-                ctx WTRENV rg vl sf' RV WFSF'
-        ); unfold WFSF' in wfsf; clear WFSF'
-      | WTRENV : Wt.wt_renv RV32I.R REnv ctx,
-        WFSF' : wf_sf RV32I.R ext_Sigma ?sf',
-        WT_SIGMA :
-          forall (ufn : RV32I.ext_fn_t) (vc : val),
-          wt_val (arg1Sig (ext_Sigma ufn)) vc
-          -> wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc)
-        |- getenv REnv
-             (interp_cycle ctx ext_sigma (simplify_sf ctx ext_sigma ?sf')) ?rg
-           = _
-        =>
-        set (
-          wfsf :=
-            wf_sf_simplify_sf
-              (wt_sigma := WT_SIGMA) (ext_fn_t := RV32I.ext_fn_t)
-              (REnv := REnv) RV32I.R ext_Sigma ctx ext_sigma WTRENV sf' WFSF'
-        ); unfold WFSF' in wfsf; clear WFSF'
-      | WTRENV : Wt.wt_renv RV32I.R REnv ctx,
-        WFSF' : wf_sf RV32I.R ext_Sigma ?sf'
-        |- getenv REnv
-             (interp_cycle ctx ext_sigma
-               (prune_irrelevant_aux (collapse_sf ?sf') ?rg ?l)
-             ) ?rg = _
-        =>
-        assert (list_assoc (final_values (collapse_sf sf')) rg = Some l)
-          as lassoc by (vm_compute list_assoc; reflexivity);
-        set (
-          wfsf :=
-            wf_sf_prune_irrelevant_aux (ext_fn_t := RV32I.ext_fn_t) RV32I.R
-              ext_Sigma (collapse_sf sf') rg l lassoc
-              (wf_collapse_sf RV32I.R ext_Sigma sf' WFSF')
-        );
-        unfold WFSF' in wfsf; clear WFSF'
-      | WTRENV : Wt.wt_renv RV32I.R REnv ctx,
-        WFSF' : wf_sf RV32I.R ext_Sigma ?sf'
-        |- getenv REnv
-             (interp_cycle ctx ext_sigma (prune_irrelevant_aux ?sf' ?rg ?l)) ?rg
-           = _
-        =>
-        (* TODO also keep a single live version of lassoc *)
-        assert (list_assoc (final_values sf') rg = Some l)
-          as lassoc by (vm_compute list_assoc; reflexivity);
-        set (
-          wfsf :=
-            wf_sf_prune_irrelevant_aux (ext_fn_t := RV32I.ext_fn_t) RV32I.R
-            ext_Sigma sf' rg l lassoc WFSF'
-        ); unfold WFSF' in wfsf; clear WFSF'
-        (* ; clear lassoc *)
-      | |- _ => idtac
-      end.
 
     Ltac replace_reg := prepare_smpl; erewrite replace_reg_interp_cycle_ok; eauto.
     Ltac simplify := prepare_smpl; erewrite simplify_sf_interp_cycle_ok; eauto.
