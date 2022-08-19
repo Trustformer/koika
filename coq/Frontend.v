@@ -14,7 +14,6 @@ Require Export
   Koika.Parsing
   Koika.DeriveShow
   Koika.BitTactics
-  Koika.ProgramTactics
   Koika.CPS
   Koika.ExtractionSetup.
 Require Koika.CompactSemantics.

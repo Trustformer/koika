@@ -143,18 +143,6 @@ Extraction \"gcd_machine.ml\" gcd_machine.prog."))
 
 
 ;; -*- dune -*-
-(subdir "_objects/invert.v"
- (rule (write-file "invert_extr.v"
-                   "Require Coq.extraction.Extraction examples.invert.
-Extraction \"invert.ml\" invert.prog."))
- (coq.extraction
-  (prelude invert_extr)
-  (extracted_modules invert)
-  (theories Koika examples)
-  (flags "-w" "-overriding-logical-loadpath")))
-
-
-;; -*- dune -*-
 (subdir "_objects/loop.v"
  (rule (write-file "loop_extr.v"
                    "Require Coq.extraction.Extraction examples.loop.
