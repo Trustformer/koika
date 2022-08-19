@@ -1,22 +1,9 @@
 (*! Frontend | Top-level module imported by Kôika programs !*)
 Require Export
-  Koika.SyntaxMacros
-  Koika.Desugaring
-  Koika.TypeInference
-  Koika.TypedSemantics
-  Koika.CircuitOptimization
-  Koika.CircuitGeneration
-  Koika.Primitives
-  Koika.SyntaxFunctions
-  Koika.TypedSyntaxFunctions
-  Koika.Interop
-  Koika.Compiler
-  Koika.Parsing
-  Koika.DeriveShow
-  Koika.BitTactics
-  Koika.CPS
-  Koika.ExtractionSetup.
-Require Koika.CompactSemantics.
+  Koika.SyntaxMacros Koika.Desugaring Koika.TypeInference Koika.TypedSemantics
+  Koika.CircuitOptimization Koika.CircuitGeneration Koika.Primitives
+  Koika.SyntaxFunctions Koika.TypedSyntaxFunctions Koika.Interop Koika.Compiler
+  Koika.Parsing Koika.DeriveShow Koika.BitTactics Koika.ExtractionSetup.
 
 Notation compile_scheduler := (compile_scheduler opt_constprop).
 
@@ -235,14 +222,4 @@ Notation tc_rules R Sigma actions :=
   (ltac:(_tc_rules R Sigma actions)) (only parsing).
 
 Notation tc_compute t :=
-  ltac:(let t := tc_eval_body t in
-        exact t) (only parsing).
-
-Tactic Notation "wpgen" :=
-  apply wp_cycle_correct; simpl.
-
-Tactic Notation "abstract_simpl" constr(r) :=
-  rewrite (interp_cycle_cps_correct_rev r); simpl.
-
-Tactic Notation "abstract_simpl" :=
-  rewrite (interp_cycle_cps_correct_rev); simpl.
+  ltac:(let t := tc_eval_body t in exact t) (only parsing).

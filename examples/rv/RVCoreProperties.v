@@ -33,7 +33,6 @@ Module RVProofs.
     | None => DFail unit_t
     end.
 
-  (* Set Typeclasses Debug. *)
   Instance eq_dec_reg: EqDec RV32I.reg_t := EqDec_FiniteType.
   Existing Instance etaRuleInformationRaw.
 
@@ -601,6 +600,8 @@ Module RVProofs.
       Qed.
 
     Ltac replace_reg := prepare_smpl; erewrite replace_reg_interp_cycle_ok; eauto.
+    (* TODO replace all regs *)
+    (* TODO is_concrete test *)
     Ltac simplify := prepare_smpl; erewrite simplify_sf_interp_cycle_ok; eauto.
     Ltac prune :=
       prepare_smpl; erewrite prune_irrelevant_interp_cycle_ok;
@@ -610,8 +611,7 @@ Module RVProofs.
       erewrite collapse_prune_interp_cycle_ok;
       lazymatch goal with
         | |- _ =>
-          try (unfold prune_irrelevant; vm_compute list_assoc; eauto);
-          try eauto
+          try (unfold prune_irrelevant; vm_compute list_assoc; eauto); try eauto
       end.
 
     Ltac finish :=
