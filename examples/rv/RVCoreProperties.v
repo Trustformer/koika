@@ -1,11 +1,12 @@
 (*! Proofs about our RISC-V implementation !*)
 Require Import Coq.Program.Equality.
 Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
-  Koika.ProgramTactics Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs
+  Koika.SimpleFormTactics Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs
   Koika.UntypedSemantics Koika.DesugaredSyntax.
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm Koika.SimpleFormInterpretation.
 Require Import SimpleVal.
+Require Import Koika.SimpleFormTactics.
 
 Ltac destr_in H :=
   match type of H with
@@ -599,54 +600,6 @@ Module RVProofs.
       (* Qed. TODO Validation is way too slow! vm_compute related? *)
       Qed.
 
-    Ltac replace_reg := prepare_smpl; erewrite replace_reg_interp_cycle_ok; eauto.
-    (* TODO replace all regs *)
-    (* TODO is_concrete test *)
-    Ltac simplify := prepare_smpl; erewrite simplify_sf_interp_cycle_ok; eauto.
-    Ltac prune :=
-      prepare_smpl; erewrite prune_irrelevant_interp_cycle_ok;
-        try (unfold prune_irrelevant; vm_compute list_assoc); eauto.
-    Ltac collapse :=
-      prepare_smpl;
-      erewrite collapse_prune_interp_cycle_ok;
-      lazymatch goal with
-        | |- _ =>
-          try (unfold prune_irrelevant; vm_compute list_assoc; eauto); try eauto
-      end.
-
-    Ltac finish :=
-      simplify;
-      prepare_smpl; eapply getenv_interp;
-      lazymatch goal with
-      | |- list_assoc _ _ = _ => vm_compute list_assoc; reflexivity
-      | |- Maps.PTree.get _ _ = _ => vm_compute Maps.PTree.get; reflexivity
-      | |- _ => eauto
-      end.
-
-    Ltac full_pass := simplify; prune; collapse.
-    Ltac crusher strength :=
-      replace_reg;
-      match strength with
-      | 0 => idtac | 1 => do 1 full_pass | 2 => do 2 full_pass
-      | 3 => do 3 full_pass | 4 => do 4 full_pass | 5 => do 5 full_pass
-      | 6 => do 6 full_pass | 7 => do 7 full_pass | 8 => do 8 full_pass
-      | 9 => do 9 full_pass | 10 => do 10 full_pass | 11 => do 11 full_pass
-      | 12 => do 12 full_pass | 13 => do 13 full_pass | 14 => do 14 full_pass
-      | 15 => do 15 full_pass | 16 => do 16 full_pass | 17 => do 17 full_pass
-      | 18 => do 18 full_pass | 19 => do 19 full_pass | 20 => do 20 full_pass
-      | _ => fail "max strength = 20"
-      end;
-      finish.
-
-    Ltac isolate_sf :=
-      lazymatch goal with
-      | |- getenv _ (interp_cycle _ _ ?x) _ = _ => set (sf := x)
-      end.
-
-    Ltac get_var x sf :=
-      set (var_val := Maps.PTree.get (Pos.of_nat x) (vars sf));
-      vm_compute in var_val.
-
     Lemma fail_schedule:
       forall (HALT_TRUE: getenv REnv ctx RV32I.halt = Bits [true]),
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
@@ -654,8 +607,6 @@ Module RVProofs.
       intros. set (wfsf := sf_wf).
       crusher 2.
     Qed.
-
-    Require Import rv.RVShadowStackProperties.
 
     Lemma stack_violation_results_in_halt:
       forall

@@ -1,7 +1,6 @@
 Require Import Coq.Program.Equality.
 Require Import UntypedSemantics.
-Require Import BitsToLists Desugaring DesugaredSyntax SimpleVal TypeInference
-.
+Require Import BitsToLists Desugaring DesugaredSyntax SimpleVal TypeInference.
 
 Section WT.
   Variables pos_t fn_name_t: Type.

@@ -220,7 +220,7 @@ Section ShadowStackProperties.
 
   Ltac inv H := inversion H; try subst; clear H.
 
-  Definition simplify_sf  sf ctx := {|
+  Definition simplify_sf sf ctx := {|
     final_values := final_values sf;
     vars :=
       Maps.PTree.map
