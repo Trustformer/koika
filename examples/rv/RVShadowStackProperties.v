@@ -1,7 +1,7 @@
 (*! Proofs about the behavior of our basic shadow stack mechanism !*)
 Require Import Coq.Program.Equality.
-Require Import Koika.BitsToLists Koika.Frontend Koika.UntypedSemantics
-  Koika.UntypedIndSemantics Koika.UntypedIndTactics.
+Require Import Koika.BitsToLists Koika.DesugaredSyntax Koika.Frontend
+  Koika.UntypedSemantics Koika.UntypedIndSemantics Koika.UntypedIndTactics.
 Require Import Koika.SimpleFormInterpretation.
 Require Import rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import SimpleForm SimpleVal.
@@ -231,47 +231,47 @@ Section ShadowStackProperties.
         (vars sf)
     |}.
 
-  Definition halt_set2 ctx :=
-    forall sf n,
-    remove_vars_for_var
-      (simplify_sf
-        (schedule_to_simple_form RV32I.R (Sigma:=ext_Sigma) drules schedule) ctx
-      )
-      RV32I.halt
-    = Some sf
-    -> list_assoc (final_values sf) RV32I.halt = Some n
-    -> SimpleForm.interp_sact
-         REnv ctx (vars sf) (sigma:=ext_sigma) (SVar n) (Bits [true]).
+(*   Definition halt_set2 ctx := *)
+(*     forall sf n, *)
+(*     remove_vars_for_var *)
+(*       (simplify_sf *)
+(*         (schedule_to_simple_form RV32I.R (Sigma:=ext_Sigma) drules schedule) ctx *)
+(*       ) *)
+(*       RV32I.halt *)
+(*     = Some sf *)
+(*     -> list_assoc (final_values sf) RV32I.halt = Some n *)
+(*     -> SimpleForm.interp_sact *)
+(*          REnv ctx (vars sf) (sigma:=ext_sigma) (SVar n) (Bits [true]). *)
 
-  Lemma stack_violation_results_in_halt:
-    forall
-      ctx (WTRENV: Wt.wt_renv RV32I.R REnv ctx)
-      (NoHalt: (getenv REnv ctx RV32I.halt) = Bits [false])
-      (Valid: getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true])
-      (Legal:
-        forall v v2,
-        getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
-        = Struct RV32I.decode_bookkeeping v
-        -> get_field_struct
-             (struct_fields RV32I.decode_bookkeeping) v "dInst"
-        = Some (Struct decoded_sig v2
-        -> get_field_struct (struct_fields decoded_sig) v2 "legal"
-        = Some (Bits [true])),
-    stack_violation ctx -> halt_set2 ctx.
-  Proof.
-  Qed.
+(*   Lemma stack_violation_results_in_halt: *)
+(*     forall *)
+(*       ctx (WTRENV: Wt.wt_renv RV32I.R REnv ctx) *)
+(*       (NoHalt: (getenv REnv ctx RV32I.halt) = Bits [false]) *)
+      (* (Valid: getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true]) *)
+(*       (Legal: *)
+(*         forall v v2, *)
+(*         getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0) *)
+(*         = Struct RV32I.decode_bookkeeping v *)
+(*         -> get_field_struct *)
+(*              (struct_fields RV32I.decode_bookkeeping) v "dInst" *)
+(*         = Some (Struct decoded_sig v2 *)
+(*         -> get_field_struct (struct_fields decoded_sig) v2 "legal" *)
+(*         = Some (Bits [true])), *)
+(*     stack_violation ctx -> halt_set2 ctx. *)
+(*   Proof. *)
+(*   Qed. *)
 
-  Lemma no_stack_violation_behaves_as_if_no_stack:
-    forall (ctx: env_t REnv (fun _ : RV32I.reg_t => val)),
-    not (stack_violation ctx) ->
-    interp_n_cycles 1 ctx = interp_n_cycles_no_shadow_stack 1 ctx.
-  Proof.
-  Qed.
+(*   Lemma no_stack_violation_behaves_as_if_no_stack: *)
+(*     forall (ctx: env_t REnv (fun _ : RV32I.reg_t => val)), *)
+(*     not (stack_violation ctx) -> *)
+(*     interp_n_cycles 1 ctx = interp_n_cycles_no_shadow_stack 1 ctx. *)
+(*   Proof. *)
+(*   Qed. *)
 
-  (* Main theorem *)
-  Theorem shadow_stack_ok:
-    stack_violation_results_in_halt /\ halt_leads_to_a_sink_state
-    /\ no_stack_violation_behaves_as_if_no_stack.
-  Proof.
-  Qed.
+(* Main theorem *)
+(*   Theorem shadow_stack_ok: *)
+(*     stack_violation_results_in_halt /\ halt_leads_to_a_sink_state *)
+(*     /\ no_stack_violation_behaves_as_if_no_stack. *)
+(*   Proof. *)
+(*   Qed. *)
 End ShadowStackProperties.

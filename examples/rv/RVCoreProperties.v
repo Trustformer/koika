@@ -5,20 +5,8 @@ Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
   Koika.UntypedSemantics Koika.DesugaredSyntax.
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm Koika.SimpleFormInterpretation.
-Require Import SimpleVal.
+Require Import Koika.SimpleVal.
 Require Import Koika.SimpleFormTactics.
-
-Ltac destr_in H :=
-  match type of H with
-  | context[match ?a with _ => _ end] => destruct a eqn:?
-  end.
-
-Ltac destr :=
-  match goal with
-  |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
-  end.
-
-Ltac inv H := inversion H; try subst; clear H.
 
 Lemma falso : False. Admitted.
 Ltac cheat := elim falso.
@@ -42,17 +30,166 @@ Module RVProofs.
   Variable ctx : env_t REnv (fun _ => val).
   Hypothesis WTRENV: Wt.wt_renv RV32I.R REnv ctx.
 
-    Hypothesis wt_sigma: forall (ufn : RV32I.ext_fn_t) (vc : val),
-      wt_val (arg1Sig (ext_Sigma ufn)) vc
-      -> wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc).
+  Hypothesis wt_sigma: forall (ufn : RV32I.ext_fn_t) (vc : val),
+    wt_val (arg1Sig (ext_Sigma ufn)) vc
+    -> wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc).
 
-    Hypothesis rules_wt:
-      forall rule : rv_rules_t, exists t : type,
-      wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string []
-        (drules rule) t.
+  Hypothesis rules_wt:
+  forall rule : rv_rules_t, exists t : type,
+  wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string []
+    (drules rule) t.
 
-    Definition sf :=
-      schedule_to_simple_form RV32I.R (Sigma := ext_Sigma) drules rv_schedule.
+  Definition sf :=
+    schedule_to_simple_form RV32I.R (Sigma := ext_Sigma) drules rv_schedule.
+
+  (* temp TODO remove, import ShadowStackProperties.v instead *)
+  Section ShadowStackProperties.
+    Definition eql (l1 l2: list bool) : bool := list_beq bool Bool.eqb l1 l2.
+
+    (* Propositions about the initial state *)
+    Definition no_mispred (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+      forall v,
+      getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) =
+        Struct (RV32I.decode_bookkeeping) v ->
+      get_field_struct (struct_fields RV32I.decode_bookkeeping) v "epoch" =
+      Some (getenv REnv ctx (RV32I.epoch)).
+
+    Definition stack_empty (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
+      getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.size))
+      = @val_of_value
+        (bits_t RV32I.ShadowStack.index_sz)
+        (Bits.of_nat (RV32I.ShadowStack.index_sz) 0).
+
+    Definition stack_full (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+      getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.size))
+      = @val_of_value
+        (bits_t RV32I.ShadowStack.index_sz)
+        (Bits.of_nat (RV32I.ShadowStack.index_sz) RV32I.ShadowStack.capacity).
+
+    (* XXX Note that both a pop and a push can happen for the same instruction *)
+
+    (* This function is defined in a way that mirrors RVCore.v *)
+    Definition is_call_instruction (instr: bits_t 32) : bool :=
+      let bits := vect_to_list (bits_of_value instr) in
+      let opcode_ctrl := List.firstn 3 (List.skipn 4 bits) in
+      let opcode_rest := List.firstn 4 (List.skipn 0 bits) in
+      let rs1 := List.firstn 5 (List.skipn 15 bits) in
+      let rd := List.firstn 5 (List.skipn 7 bits) in
+      (eql opcode_ctrl [true; true; false])
+      && (
+        (
+          (eql opcode_rest [true; true; true; true])
+          && (
+            (eql rd [false; false; false; false; true])
+            || (eql rd [false; false; true; false; true])))
+        || (
+          (eql opcode_rest [false; true; true; true])
+          && (
+            (eql rd [false; false; false; false; true])
+            || (eql rd [false; false; true; false; true])))).
+
+    (* This function is defined in a way that mirrors RVCore.v *)
+    Definition is_ret_instruction (instr: bits_t 32) : bool :=
+      let bits := vect_to_list (bits_of_value instr) in
+      let opcode_ctrl := List.firstn 3 (List.skipn 4 bits) in
+      let opcode_rest := List.firstn 4 (List.skipn 0 bits) in
+      let rs1 := List.firstn 5 (List.skipn 15 bits) in
+      let rd := List.firstn 5 (List.skipn 7 bits) in
+      (eql opcode_ctrl [true; true; false])
+      && (eql opcode_rest [false; true; true; true])
+      && (
+        (
+          (
+            (eql rd [false; false; false; false; true])
+            || (eql rd [false; false; true; false; true]))
+          && (negb (eql rd rs1))
+          && (
+            (eql rs1 [false; false; false; false; true])
+            || (eql rs1 [false; false; true; false; true])))
+        || (
+          (negb (eql rd [false; false; false; false; true]))
+          && (eql rd [false; false; true; false; true])
+          && (
+            (eql rs1 [false; false; false; false; true])
+            || (eql rs1 [false; false; true; false; true])))).
+
+    Definition stack_push (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+      forall v w b,
+      getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) =
+        Struct (RV32I.decode_bookkeeping) v ->
+      get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst" =
+        Some (Struct (decoded_sig) w) ->
+      get_field_struct (struct_fields decoded_sig) w "inst" =
+        Some (Bits b) ->
+      is_call_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
+
+    Definition stack_pop (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+      forall v w b,
+      getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) =
+        Struct (RV32I.decode_bookkeeping) v ->
+      get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst" =
+        Some (Struct (decoded_sig) w) ->
+      get_field_struct (struct_fields decoded_sig) w "inst" =
+        Some (Bits b) ->
+      is_ret_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
+
+    (* TODO should never return None, simplify? *)
+    Definition stack_push_address
+      (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : option (bits_t 32) :=
+      let data := getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) in
+      match data with
+      | Struct _ lv =>
+        let v :=
+          get_field_struct (struct_fields RV32I.decode_bookkeeping) lv "pc"
+        in
+        match v with
+        | Some w =>
+          let uw := ubits_of_value w in
+          let addr_val := (Bits.to_N (vect_of_list uw) + 4)%N in
+          Some (Bits.of_N 32 addr_val)
+        | _ => None
+        end
+      | _ => None
+      end.
+
+    (* TODO should never return None, simplify? *)
+    Definition stack_top_address (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : option (bits_t 32) :=
+      let index_raw := getenv REnv ctx (RV32I.stack RV32I.ShadowStack.size) in
+      let index_nat := Bits.to_nat (vect_of_list (ubits_of_value index_raw)) in
+      let index := index_of_nat (pow2 RV32I.ShadowStack.index_sz) index_nat in
+      match index with
+      | Some x =>
+        let data_raw :=
+          (getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.stack x))) in
+        Some (Bits.of_N 32 (Bits.to_N (vect_of_list (ubits_of_value data_raw))))
+      | None => None
+      end.
+
+    Definition stack_underflow (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
+      no_mispred ctx /\ stack_empty ctx /\ stack_pop ctx.
+    Definition stack_overflow (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
+      no_mispred ctx /\ stack_full ctx /\ (not (stack_pop ctx))
+      /\ stack_push ctx.
+    Definition stack_address_violation
+      (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
+      no_mispred ctx /\ stack_push ctx
+      /\ stack_top_address ctx <> stack_push_address ctx.
+
+    Definition stack_violation (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
+      stack_underflow ctx \/ stack_overflow ctx \/ stack_address_violation ctx.
+
+    (* Final state *)
+    (* TODO transition to simple form *)
+    Definition halt_set (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+      getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
+  End ShadowStackProperties.
 
     Lemma wt_env : Wt.wt_renv RV32I.R REnv ctx.
     Proof. eauto. Qed.
@@ -89,7 +226,8 @@ Module RVProofs.
       end.
 
     Lemma fv_toIMem_RV32I_MemReq_data0 :
-      list_assoc (final_values sf) (RV32I.toIMem RV32I.MemReq.data0) = Some 2969%positive.
+      list_assoc (final_values sf) (RV32I.toIMem RV32I.MemReq.data0)
+      = Some 2969%positive.
     Proof. vm_compute. easy. Qed.
     Lemma fv_toIMem_RV32I_MemReq_valid0 :
       list_assoc (final_values sf) (RV32I.toIMem RV32I.MemReq.valid0)
@@ -616,7 +754,7 @@ Module RVProofs.
         (Legal:
           forall v v2,
           getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
-          = Struct RV32I.decode_bookkeeping
+          = Struct RV32I.decode_bookkeeping v
           -> get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst"
           = Some (Struct decoded_sig v2)
           -> get_field_struct (struct_fields decoded_sig) v2 "legal"
@@ -624,7 +762,21 @@ Module RVProofs.
         ),
       stack_violation ctx -> halt_set ctx.
     Proof.
+      intros. set (wfsf := sf_wf).
+      unfold halt_set.
       replace_reg.
+      prepare_smpl.
+      erewrite (
+        @replace_reg_interp_cycle_ok
+          _ _ _ _ RV32I.R ext_Sigma ctx ext_sigma _ _ _ RV32I.halt
+      ); eauto.
+      full_pass.
+      simplify.
+      prepare_smpl.
+      isolate_sf.
+      vm_compute in sf.
+      get_var 13 sf.
+      get_var 1788 sf.
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=

@@ -5,18 +5,16 @@ Ltac prepare_smpl :=
   let wfsf := fresh "wfsf" in
   let lassoc := fresh "lassoc" in
   lazymatch goal with
-  | RV: getenv ?REnv ?ctx ?rg = ?vl,
-    WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
-    WFSF' : wf_sf ?R ?ext_Sigma ?sf'
+  | RV: getenv ?REnv ?ctx ?rg = ?vl, WTRENV: Wt.wt_renv ?R ?REnv ?ctx,
+    WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |-
-     getenv ?REnv (interp_cycle ?ctx ?ext_sigma (replace_reg ?sf' ?rg ?vl)) ?rg
+     getenv ?REnv (interp_cycle ?ctx ?ext_sigma (replace_reg ?sf' ?rg ?vl)) _
      = _
     =>
     set (wfsf := wf_sf_replace_reg R ext_Sigma ctx WTRENV rg vl sf' RV WFSF');
     unfold WFSF' in wfsf; clear WFSF'
-  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
-    WFSF' : wf_sf ?R ?ext_Sigma ?sf',
-    WT_SIGMA :
+  | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
+    WT_SIGMA:
       forall (ufn : ?ext_fn_t) (vc : val),
       wt_val (arg1Sig (?ext_Sigma ufn)) vc
       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
@@ -30,8 +28,7 @@ Ltac prepare_smpl :=
           (wt_sigma := WT_SIGMA) (REnv := REnv) R ext_Sigma ctx ext_sigma WTRENV
           sf' WFSF'
     ); unfold WFSF' in wfsf; clear WFSF'
-  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
-    WFSF' : wf_sf ?R ?ext_Sigma ?sf'
+  | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |- getenv ?REnv
          (interp_cycle ?ctx ?ext_sigma
            (prune_irrelevant_aux (collapse_sf ?sf') ?rg ?l)
@@ -46,8 +43,7 @@ Ltac prepare_smpl :=
           (wf_collapse_sf R ext_Sigma sf' WFSF')
     );
     unfold WFSF' in wfsf; clear WFSF'
-  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
-    WFSF' : wf_sf ?R ?ext_Sigma ?sf'
+  | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |- getenv ?REnv
          (interp_cycle ?ctx ?ext_sigma (prune_irrelevant_aux ?sf' ?rg ?l)) ?rg
        = _
@@ -107,5 +103,6 @@ Ltac isolate_sf :=
   end.
 
 Ltac get_var x sf :=
-  set (var_val := Maps.PTree.get (Pos.of_nat x) (vars sf));
-  vm_compute in var_val.
+  let name := fresh "var_val" in
+  set (name := Maps.PTree.get (Pos.of_nat x) (vars sf));
+  vm_compute in name.

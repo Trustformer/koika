@@ -764,10 +764,6 @@ The following list shows the current state of the repo:
       - |coq/Interop.v|_: Exporting |koika| programs for use with the cuttlec command-line tool
 
    (Language)
-      - |coq/CPS.v|_: Continuation-passing semantics and weakest precondition calculus
-      - |coq/CompactLogs.v|_: Alternative implementation of logs
-      - |coq/CompactSemantics.v|_: Semantics of typed |koika| programs with compact logs
-      - |coq/IndTypedSemantics.v|_: Semantics of typed |koika| programs
       - |coq/Logs.v|_: Logs of reads and writes
       - |coq/LoweredSemantics.v|_: Semantics of Lowered |koika| programs
       - |coq/LoweredSyntax.v|_: Lowered ASTs (weakly-typed)
@@ -778,8 +774,6 @@ The following list shows the current state of the repo:
       - |coq/TypedSemantics.v|_: Semantics of typed |koika| programs
       - |coq/TypedSyntax.v|_: Typed ASTs
       - |coq/Types.v|_: Types used by |koika| programs
-      - |coq/UntypedCompactLogs.v|_: Untyped compact logs of reads and writes
-      - |coq/UntypedIndSemantics.v|_: Semantics of untyped |koika| programs
       - |coq/UntypedLogs.v|_: Untyped logs of reads and writes
       - |coq/UntypedSemantics.v|_: Untyped semantics of typed |koika| programs
 
@@ -811,7 +805,6 @@ The following list shows the current state of the repo:
 
    - |coq/BitTactics.v|_: Tactics for proofs about bit vectors
    - |coq/PrimitiveProperties.v|_: Equations showing how to implement functions on structures and arrays as bitfuns
-   - |coq/ProgramTactics.v|_: Tactics for proving user-defined circuits
 
 ``etc/``
    ``vagrant/``
@@ -889,17 +882,16 @@ The following list shows the current state of the repo:
    - |examples/conflicts_modular.v|_: Understanding conflicts and forwarding, with modules
    - |examples/cosimulation.v|_: Using black-box Verilog models (combining Cuttlesim and Verilator)
    - |examples/datatypes.v|_: Using structures, enums, and arrays
+   - |examples/euclid.v|_: Computing terms of the Euclid sequence (Coq version)
    - |examples/external_rule.v|_: Calling external (verilog) modules from |koika|
    - |examples/fft.v|_: Computing an FFT
    - |examples/fir.v|_: Computing a FIR (Coq version)
    - |examples/function_call.v|_: Calling external functions
    - |examples/gcd_machine.v|_: Computing GCDs
-   - |examples/invert.v|_: Move the contents of r0 to r1
    - |examples/loop.v|_: Loop
    - |examples/method_call.v|_: Calling methods of internal modules
    - |examples/nothing.v|_: Don't do anything, one register
    - |examples/pipeline.v|_: Building simple pipelines
-   - |examples/pipeline_tutorial.v|_: Tutorial: Simple arithmetic pipeline
    - |examples/save_restore.v|_: Save and restore simulation state
    - |examples/uart.v|_: UART transmitter
    - |examples/vector.v|_: Representing vectors of registers using Coq inductives
@@ -974,8 +966,6 @@ The following list shows the current state of the repo:
 .. _coq/BitTactics.v: coq/BitTactics.v
 .. |coq/BitsToLists.v| replace:: ``BitsToLists.v``
 .. _coq/BitsToLists.v: coq/BitsToLists.v
-.. |coq/CPS.v| replace:: ``CPS.v``
-.. _coq/CPS.v: coq/CPS.v
 .. |coq/CircuitGeneration.v| replace:: ``CircuitGeneration.v``
 .. _coq/CircuitGeneration.v: coq/CircuitGeneration.v
 .. |coq/CircuitOptimization.v| replace:: ``CircuitOptimization.v``
@@ -988,10 +978,6 @@ The following list shows the current state of the repo:
 .. _coq/CircuitSyntax.v: coq/CircuitSyntax.v
 .. |coq/Common.v| replace:: ``Common.v``
 .. _coq/Common.v: coq/Common.v
-.. |coq/CompactLogs.v| replace:: ``CompactLogs.v``
-.. _coq/CompactLogs.v: coq/CompactLogs.v
-.. |coq/CompactSemantics.v| replace:: ``CompactSemantics.v``
-.. _coq/CompactSemantics.v: coq/CompactSemantics.v
 .. |coq/Compiler.v| replace:: ``Compiler.v``
 .. _coq/Compiler.v: coq/Compiler.v
 .. |coq/CompilerCorrectness/CircuitCorrectness.v| replace:: ``CircuitCorrectness.v``
@@ -1002,6 +988,8 @@ The following list shows the current state of the repo:
 .. _coq/CompilerCorrectness/LoweringCorrectness.v: coq/CompilerCorrectness/LoweringCorrectness.v
 .. |coq/DeriveShow.v| replace:: ``DeriveShow.v``
 .. _coq/DeriveShow.v: coq/DeriveShow.v
+.. |coq/DesugaredSyntax.v| replace:: ``DesugaredSyntax.v``
+.. _coq/DesugaredSyntax.v: coq/DesugaredSyntax.v
 .. |coq/Desugaring.v| replace:: ``Desugaring.v``
 .. _coq/Desugaring.v: coq/Desugaring.v
 .. |coq/Environments.v| replace:: ``Environments.v``
@@ -1018,8 +1006,6 @@ The following list shows the current state of the repo:
 .. _coq/Frontend.v: coq/Frontend.v
 .. |coq/IdentParsing.v| replace:: ``IdentParsing.v``
 .. _coq/IdentParsing.v: coq/IdentParsing.v
-.. |coq/IndTypedSemantics.v| replace:: ``IndTypedSemantics.v``
-.. _coq/IndTypedSemantics.v: coq/IndTypedSemantics.v
 .. |coq/IndexUtils.v| replace:: ``IndexUtils.v``
 .. _coq/IndexUtils.v: coq/IndexUtils.v
 .. |coq/Interop.v| replace:: ``Interop.v``
@@ -1046,8 +1032,6 @@ The following list shows the current state of the repo:
 .. _coq/PrimitiveProperties.v: coq/PrimitiveProperties.v
 .. |coq/Primitives.v| replace:: ``Primitives.v``
 .. _coq/Primitives.v: coq/Primitives.v
-.. |coq/ProgramTactics.v| replace:: ``ProgramTactics.v``
-.. _coq/ProgramTactics.v: coq/ProgramTactics.v
 .. |coq/Sact.v| replace:: ``Sact.v``
 .. _coq/Sact.v: coq/Sact.v
 .. |coq/SemanticProperties.v| replace:: ``SemanticProperties.v``
@@ -1058,16 +1042,14 @@ The following list shows the current state of the repo:
 .. _coq/SimpleForm.v: coq/SimpleForm.v
 .. |coq/SimpleFormInterpretation.v| replace:: ``SimpleFormInterpretation.v``
 .. _coq/SimpleFormInterpretation.v: coq/SimpleFormInterpretation.v
-.. |coq/SimpleFormInterpretationb.v| replace:: ``SimpleFormInterpretationb.v``
-.. _coq/SimpleFormInterpretationb.v: coq/SimpleFormInterpretationb.v
-.. |coq/SimpleFormTacticsWrites.v| replace:: ``SimpleFormTacticsWrites.v``
-.. _coq/SimpleFormTacticsWrites.v: coq/SimpleFormTacticsWrites.v
-.. |coq/SimpleFormb.v| replace:: ``SimpleFormb.v``
-.. _coq/SimpleFormb.v: coq/SimpleFormb.v
+.. |coq/SimpleFormTactics.v| replace:: ``SimpleFormTactics.v``
+.. _coq/SimpleFormTactics.v: coq/SimpleFormTactics.v
 .. |coq/SimpleLogs.v| replace:: ``SimpleLogs.v``
 .. _coq/SimpleLogs.v: coq/SimpleLogs.v
 .. |coq/SimpleTypedSemantics.v| replace:: ``SimpleTypedSemantics.v``
 .. _coq/SimpleTypedSemantics.v: coq/SimpleTypedSemantics.v
+.. |coq/SimpleVal.v| replace:: ``SimpleVal.v``
+.. _coq/SimpleVal.v: coq/SimpleVal.v
 .. |coq/Std.v| replace:: ``Std.v``
 .. _coq/Std.v: coq/Std.v
 .. |coq/Syntax.v| replace:: ``Syntax.v``
@@ -1088,12 +1070,6 @@ The following list shows the current state of the repo:
 .. _coq/TypedSyntaxProperties.v: coq/TypedSyntaxProperties.v
 .. |coq/Types.v| replace:: ``Types.v``
 .. _coq/Types.v: coq/Types.v
-.. |coq/UntypedCompactLogs.v| replace:: ``UntypedCompactLogs.v``
-.. _coq/UntypedCompactLogs.v: coq/UntypedCompactLogs.v
-.. |coq/UntypedIndSemantics.v| replace:: ``UntypedIndSemantics.v``
-.. _coq/UntypedIndSemantics.v: coq/UntypedIndSemantics.v
-.. |coq/UntypedIndTactics.v| replace:: ``UntypedIndTactics.v``
-.. _coq/UntypedIndTactics.v: coq/UntypedIndTactics.v
 .. |coq/UntypedLogs.v| replace:: ``UntypedLogs.v``
 .. _coq/UntypedLogs.v: coq/UntypedLogs.v
 .. |coq/UntypedSemantics.v| replace:: ``UntypedSemantics.v``
@@ -1122,6 +1098,8 @@ The following list shows the current state of the repo:
 .. _examples/cosimulation.v.etc/cosimulation.cpp: examples/cosimulation.v.etc/cosimulation.cpp
 .. |examples/datatypes.v| replace:: ``datatypes.v``
 .. _examples/datatypes.v: examples/datatypes.v
+.. |examples/euclid.v| replace:: ``euclid.v``
+.. _examples/euclid.v: examples/euclid.v
 .. |examples/external_rule.v| replace:: ``external_rule.v``
 .. _examples/external_rule.v: examples/external_rule.v
 .. |examples/fft.v| replace:: ``fft.v``
@@ -1144,8 +1122,6 @@ The following list shows the current state of the repo:
 .. _examples/function_call.v.etc/fetch_instr.v: examples/function_call.v.etc/fetch_instr.v
 .. |examples/gcd_machine.v| replace:: ``gcd_machine.v``
 .. _examples/gcd_machine.v: examples/gcd_machine.v
-.. |examples/invert.v| replace:: ``invert.v``
-.. _examples/invert.v: examples/invert.v
 .. |examples/loop.v| replace:: ``loop.v``
 .. _examples/loop.v: examples/loop.v
 .. |examples/method_call.v| replace:: ``method_call.v``
@@ -1154,8 +1130,6 @@ The following list shows the current state of the repo:
 .. _examples/nothing.v: examples/nothing.v
 .. |examples/pipeline.v| replace:: ``pipeline.v``
 .. _examples/pipeline.v: examples/pipeline.v
-.. |examples/pipeline_tutorial.v| replace:: ``pipeline_tutorial.v``
-.. _examples/pipeline_tutorial.v: examples/pipeline_tutorial.v
 .. |examples/producer_consumer.v| replace:: ``producer_consumer.v``
 .. _examples/producer_consumer.v: examples/producer_consumer.v
 .. |examples/rv/ExternalsModel.v| replace:: ``ExternalsModel.v``

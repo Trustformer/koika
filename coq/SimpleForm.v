@@ -15,8 +15,7 @@ Import RecordSetNotations.
 
    This is what this simpler form aims to fix. For instance, it makes finding
    under which conditions the value of a register is updated or proving that the
-   value of register x never reaches 5 much easier (even trivial in certain
-   cases).
+   value of register x never reaches 5 much easier.
 
    It goes without saying that the result of the interpretation of a model
    before or after its conversion to the form defined hereafter should be equal

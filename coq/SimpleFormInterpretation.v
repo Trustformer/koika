@@ -4189,15 +4189,16 @@ Lemma remove_vars_correct:
   Qed.
 
   Lemma replace_reg_interp_cycle_ok:
-    forall {reg} {sf} {val} (REG_VAL: getenv REnv r reg = val),
-    wf_sf sf ->
+    forall
+      {reg} {reg2} {sf} {val} (REG_VAL: getenv REnv r reg2 = val)
+      (WFSF: wf_sf sf),
     getenv REnv (interp_cycle sf) reg
-    = getenv REnv (interp_cycle (replace_reg sf reg val)) reg.
+    = getenv REnv (interp_cycle (replace_reg sf reg2 val)) reg.
   Proof.
     intros.
     eapply sf_eq_interp_cycle_ok.
     - auto.
-    - eapply wf_sf_replace_reg in H; eauto.
+    - eapply wf_sf_replace_reg in WFSF; eauto.
     - rewrite <- REG_VAL. apply sf_eq_replace_reg. auto.
   Qed.
 
