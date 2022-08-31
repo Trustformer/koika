@@ -98,11 +98,16 @@ Ltac crusher strength :=
   finish.
 
 Ltac isolate_sf :=
+  let name := fresh "sf" in
   lazymatch goal with
-  | |- getenv _ (interp_cycle _ _ ?x) _ = _ => set (sf := x)
+  | |- getenv _ (interp_cycle _ _ ?x) _ = _ => set (name := x)
   end.
 
 Ltac get_var x sf :=
   let name := fresh "var_val" in
   set (name := Maps.PTree.get (Pos.of_nat x) (vars sf));
-  vm_compute in name.
+  cbn in name.
+
+(* Ltac show_binding v := *)
+(*   let name := fresh "binding" in *)
+(*   set (name := ). *)
