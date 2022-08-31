@@ -4235,9 +4235,8 @@ Section SimpleFormInterpretation.
   Qed.
 
   Lemma replace_field_interp_inv:
-    forall str field (vvs : PTree.t (type * SimpleForm.sact)) str_v field_v,
-    getenv REnv r str = str_v
-    -> get_field str_v field = Some field_v
+    forall str field (vvs : PTree.t (type * SimpleForm.sact)) field_v,
+    get_field (getenv REnv r str) field = Some field_v
     -> forall (a : sact) reg,
       interp_sact
         (sigma:=sigma) REnv r vvs (replace_field_in_sact a str field field_v)
@@ -4245,31 +4244,30 @@ Section SimpleFormInterpretation.
     -> forall t : type, wt_sact (Sigma:=Sigma) R vvs a t
     -> interp_sact (sigma:=sigma) REnv r vvs a reg.
   Proof.
-    induction a; simpl; intros; eauto; inv H2.
-    - inv H1.
+    induction a; simpl; intros; eauto; inv H1.
+    - inv H0.
       econstructor; eauto.
       destr; eauto.
-    - destruct ufn1; try (inv H1; econstructor; eauto; fail).
-      destruct fn; try (inv H1; econstructor; eauto; fail).
-      destruct a; try (inv H1; econstructor; eauto; fail).
-      destr_in H1.
-      + inv H1. econstructor; eauto.
+    - destruct ufn1; try (inv H0; econstructor; eauto; fail).
+      destruct fn; try (inv H0; econstructor; eauto; fail).
+      destruct a; try (inv H0; econstructor; eauto; fail).
+      destr_in H0.
+      + inv H. econstructor; eauto.
         * econstructor.
         * inv H0. cbn.
           eapply andb_true_iff in Heqb.
           repeat (rewrite beq_dec_iff in Heqb).
           inv Heqb. eauto.
-      + inv H1; econstructor; eauto.
-    - inv H1. econstructor; eauto.
-    - inv H1. econstructor; eauto.
+      + inv H0; econstructor; eauto.
+    - inv H0. econstructor; eauto.
+    - inv H0. econstructor; eauto.
   Qed.
 
   Lemma replace_field_interp:
-    forall (vvs : PTree.t (type * SimpleForm.sact)) str str_v field field_v,
+    forall (vvs : PTree.t (type * SimpleForm.sact)) str field field_v,
     wt_vvs (Sigma:=Sigma) R vvs
     -> vvs_smaller_variables vvs
-    -> getenv REnv r str = str_v
-    -> get_field str_v field = Some field_v
+    -> get_field (getenv REnv r str) field = Some field_v
     -> forall (a : sact) (v : val),
     interp_sact (sigma:=sigma) REnv r vvs a v
     -> forall t : type,
@@ -4278,29 +4276,27 @@ Section SimpleFormInterpretation.
         (sigma:=sigma) REnv r vvs
         (replace_field_in_sact a str field field_v) v.
   Proof.
-    induction 5; simpl; intros; try now (econstructor; eauto).
-    - inv H3. econstructor; eauto. destr; eauto.
-    - inv H5.
+    induction 4; simpl; intros; try now (econstructor; eauto).
+    - inv H2. econstructor; eauto. destr; eauto.
+    - inv H4.
       destruct ufn; try (econstructor; eauto).
       destruct fn; try (econstructor; eauto).
       destruct a; try (econstructor; eauto).
       destr.
       + eapply andb_true_iff in Heqb. repeat (rewrite beq_dec_iff in Heqb).
         inv Heqb.
-        inv H4. inv H3. rewrite H2 in H5. inv H5.
+        inv H3. inv H2. rewrite H1 in H5. inv H5.
         econstructor.
       + econstructor; eauto.
-    - inv H4. econstructor; eauto.
-    - inv H4. econstructor; eauto.
+    - inv H3. econstructor; eauto.
+    - inv H3. econstructor; eauto.
   Qed.
 
   Lemma replace_field_wt:
-    forall
-      vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t) str str_v field field_v,
-    getenv REnv r str = str_v
-    -> get_field str_v field = Some field_v
+    forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t) str field field_v,
+    get_field (getenv REnv r str) field = Some field_v
     -> wt_sact
-        (Sigma := Sigma) R vvs (replace_field_in_sact a str field field_v) t.
+         (Sigma := Sigma) R vvs (replace_field_in_sact a str field field_v) t.
   Proof.
     induction 1; simpl; intros; try now (econstructor; eauto).
     destruct ufn; try (econstructor; eauto).
@@ -4310,33 +4306,32 @@ Section SimpleFormInterpretation.
     destr; econstructor; eauto.
     eapply andb_true_iff in Heqb. do 2 (rewrite beq_dec_iff in Heqb). inv Heqb.
     eapply Wt.wt_unop_sigma1; eauto.
+    eapply IHWTS; eauto.
   Qed.
 
   Lemma replace_field_vis:
-    forall a v' str str_v field field_v,
-    getenv REnv r str = str_v
-    -> get_field str_v field = Some field_v
+    forall a v' str field field_v,
+    get_field (getenv REnv r str) field = Some field_v
     -> var_in_sact (replace_field_in_sact a str field field_v) v'
     -> var_in_sact a v'.
   Proof.
     induction a; simpl; intros; eauto.
-    - inv H1.
+    - inv H0.
       eapply var_in_if_cond; eauto.
       eapply var_in_if_true; eauto.
       eapply var_in_if_false; eauto.
-    - destr_in H1; try (inv H1; econstructor; eauto; fail).
-      destr_in H1; try (inv H1; econstructor; eauto; fail).
-      destruct a; try (inv H1; econstructor; eauto; fail).
-      destr_in H1; try (inv H1; econstructor; eauto; fail).
-    - inv H1. econstructor; eauto.
+    - destr_in H0; try (inv H0; econstructor; eauto; fail).
+      destr_in H0; try (inv H0; econstructor; eauto; fail).
+      destruct a; try (inv H0; econstructor; eauto; fail).
+      destr_in H0; try (inv H0; econstructor; eauto; fail).
+    - inv H0. econstructor; eauto.
       eapply var_in_sact_binop_2; eauto.
-    - inv H1; econstructor; eauto.
+    - inv H0; econstructor; eauto.
   Qed.
 
   Lemma wf_sf_replace_field:
-    forall sf str str_v field field_v,
-    getenv REnv r str = str_v
-    -> get_field str_v field = Some field_v
+    forall sf str field field_v,
+    get_field (getenv REnv r str) field = Some field_v
     -> wf_sf sf
     -> wf_sf (replace_field sf str field field_v).
   Proof.
@@ -4347,9 +4342,8 @@ Section SimpleFormInterpretation.
   Qed.
 
   Lemma sf_eq_replace_field:
-    forall sf str str_v field field_v,
-    getenv REnv r str = str_v
-    -> get_field str_v field = Some field_v
+    forall sf str field field_v,
+    get_field (getenv REnv r str) field = Some field_v
     -> wf_sf sf
     -> sf_eq sf (replace_field sf str field field_v).
   Proof.
@@ -4363,9 +4357,8 @@ Section SimpleFormInterpretation.
   Qed.
 
   Lemma replace_field_interp_cycle_ok:
-    forall {reg} {sf} {str} {str_v} {field} {field_v} (WFSF: wf_sf sf),
-    getenv REnv r str = str_v
-    -> get_field str_v field = Some field_v
+    forall {reg} {sf} {str} {field} {field_v} (WFSF: wf_sf sf),
+    get_field (getenv REnv r str) field = Some field_v
     -> getenv REnv (interp_cycle sf) reg
     = getenv REnv (interp_cycle (replace_field sf str field field_v)) reg.
   Proof.
@@ -4436,12 +4429,10 @@ Section SimpleFormInterpretation.
         v t s (IN : In v l) (GET : (vars sf1) ! v = Some (t, s)) v0
         (REACH: reachable_var (vars sf1) s v0),
         In v0 l)
-  :
-    wf_sf sf1 ->
+  : wf_sf sf1 ->
     (forall r k,
       list_assoc (final_values sf2) r = Some k
-      -> list_assoc (final_values sf1) r = Some k /\ In k l
-    )
+      -> list_assoc (final_values sf1) r = Some k /\ In k l)
     -> vars sf2 = filter_ptree (vars sf1) (PTree.empty _) l
     -> wf_sf sf2.
   Proof.

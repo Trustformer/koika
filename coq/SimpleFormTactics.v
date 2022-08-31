@@ -1,6 +1,7 @@
 Require Import Koika.BitsToLists Koika.Environments Koika.SimpleForm
   Koika.SimpleFormInterpretation Koika.SimpleVal Koika.Wt.
 
+(* TODO unclear name, rename *)
 Ltac prepare_smpl :=
   let wfsf := fresh "wfsf" in
   let lassoc := fresh "lassoc" in
@@ -12,6 +13,16 @@ Ltac prepare_smpl :=
      = _
     =>
     set (wfsf := wf_sf_replace_reg R ext_Sigma ctx WTRENV rg vl sf' RV WFSF');
+    unfold WFSF' in wfsf; clear WFSF'
+  | FV: get_field (getenv ?REnv ?ctx ?str) ?f = Some ?fv,
+    WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
+    |-
+     getenv
+       ?REnv (interp_cycle ?ctx ?ext_sigma (replace_field ?sf' ?str ?f ?fv)) _
+     = _
+    =>
+    set (
+      wfsf := wf_sf_replace_field R ext_Sigma ctx WTRENV sf' str f fv FV WFSF');
     unfold WFSF' in wfsf; clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
@@ -57,10 +68,13 @@ Ltac prepare_smpl :=
   | |- _ => idtac
   end.
 
+(* TODO put prepare_smpl at the end instead *)
 Ltac replace_reg :=
   prepare_smpl; erewrite replace_reg_interp_cycle_ok; eauto.
 (* TODO replace all regs *)
 (* TODO is_concrete test *)
+Ltac replace_field :=
+  prepare_smpl; erewrite replace_field_interp_cycle_ok; eauto.
 Ltac simplify :=
   prepare_smpl; erewrite simplify_sf_interp_cycle_ok; eauto.
 Ltac prune :=
