@@ -2,7 +2,7 @@ Require Import Koika.BitsToLists Koika.Environments Koika.SimpleForm
   Koika.SimpleFormInterpretation Koika.SimpleVal Koika.Wt.
 
 (* TODO unclear name, rename *)
-Ltac prepare_smpl :=
+Ltac update_wfsf :=
   let wfsf := fresh "wfsf" in
   let lassoc := fresh "lassoc" in
   lazymatch goal with
@@ -68,28 +68,26 @@ Ltac prepare_smpl :=
   | |- _ => idtac
   end.
 
-(* TODO put prepare_smpl at the end instead *)
 Ltac replace_reg :=
-  prepare_smpl; erewrite replace_reg_interp_cycle_ok; eauto.
+  erewrite replace_reg_interp_cycle_ok; eauto; update_wfsf.
 (* TODO replace all regs *)
 (* TODO is_concrete test *)
 Ltac replace_field :=
-  prepare_smpl; erewrite replace_field_interp_cycle_ok; eauto.
+  erewrite replace_field_interp_cycle_ok; eauto; update_wfsf.
 Ltac simplify :=
-  prepare_smpl; erewrite simplify_sf_interp_cycle_ok; eauto.
+  erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
 Ltac prune :=
-  prepare_smpl; erewrite prune_irrelevant_interp_cycle_ok;
-    try (unfold prune_irrelevant; vm_compute list_assoc); eauto.
+  erewrite prune_irrelevant_interp_cycle_ok;
+    try (unfold prune_irrelevant; vm_compute list_assoc); eauto; update_wfsf.
 Ltac collapse :=
-  prepare_smpl;
   erewrite collapse_prune_interp_cycle_ok;
   lazymatch goal with
   | |- _ =>
     try (unfold prune_irrelevant; vm_compute list_assoc; eauto); try eauto
-  end.
+  end; update_wfsf.
 
 Ltac finish :=
-  simplify; prepare_smpl; eapply getenv_interp;
+  simplify; eapply getenv_interp;
   lazymatch goal with
   | |- list_assoc _ _ = _ => vm_compute list_assoc; reflexivity
   | |- Maps.PTree.get _ _ = _ => vm_compute Maps.PTree.get; reflexivity
@@ -120,7 +118,7 @@ Ltac isolate_sf :=
 Ltac get_var x sf :=
   let name := fresh "var_val" in
   set (name := Maps.PTree.get (Pos.of_nat x) (vars sf));
-  cbn in name.
+  vm_compute in name.
 
 (* Ltac show_binding v := *)
 (*   let name := fresh "binding" in *)
