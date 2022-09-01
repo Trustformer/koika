@@ -240,13 +240,11 @@ Module RVProofs.
       ); eauto.
       update_wfsf.
       full_pass.
-      simplify.
+      collapse.
       replace_field.
       isolate_sf.
       vm_compute in sf0.
       get_var 1788 sf0.
-      get_var 13 sf0.
-      (* get_var 995 sf0. *)
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
