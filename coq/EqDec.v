@@ -59,9 +59,6 @@ Proof.
   - congruence.
 Qed.
 
-Lemma neq_dec {A} {EQ: Eqdec A}:
-  exists x, forall a b, a <> b -> eq_dec a b = right x.
-
 Lemma beq_dec_refl {A} {EQ: EqDec A}: forall a, beq_dec a a = true.
 Proof.
   intros.
