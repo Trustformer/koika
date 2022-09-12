@@ -4887,16 +4887,20 @@ Section SimpleFormInterpretation.
     - eapply replace_field_vis; eauto.
   Qed.
 
-  Lemma collapse_interp2:
+  Lemma replace_field_interp2:
     forall vvs,
       wt_vvs (Sigma:=Sigma) R vvs
     -> vvs_smaller_variables vvs
     -> forall n a v,
+      forall rn field field_v,
         (forall v, reachable_var vvs a v -> v < n)%positive ->
         interp_sact (sigma:=sigma) REnv r vvs a v ->
-        forall t : type, wt_sact (Sigma:=Sigma) R vvs a t ->
-                         forall rn field field_v,
-                         interp_sact (sigma:=sigma) REnv r (PTree.map (fun _ '(t,a) => (t, (replace_field_in_sact vvs a rn field field_v))) vvs) (replace_field_in_sact vvs a rn field field_v) v.
+        get_field (getenv REnv r rn) field = Some field_v ->
+        forall t : type,
+          wt_sact (Sigma:=Sigma) R vvs a t ->
+          interp_sact (sigma:=sigma) REnv r
+            (PTree.map (fun _ '(t,a) => (t, (replace_field_in_sact vvs a rn field field_v))) vvs)
+            (replace_field_in_sact vvs a rn field field_v) v.
   Proof.
     intros vvs WTvvs VSV n a.
     change n with (projT1 (existT (fun _ => sact) n a)).
@@ -4905,7 +4909,7 @@ Section SimpleFormInterpretation.
     clear n a. intro s. pattern s.
     eapply well_founded_induction.
     apply wf_order_sact. clear s.
-    intros x IH v BELOW IS t0 WTs.
+    intros x IH v rn field field_v BELOW IS GF t0 WTs.
     assert (
       IH2:
         forall a0,
@@ -4914,15 +4918,14 @@ Section SimpleFormInterpretation.
         -> forall v t,
         interp_sact (sigma:=sigma) REnv r vvs a0 v
         -> wt_sact (Sigma:=Sigma) R vvs a0 t
-        -> forall rn field field_v,
-            interp_sact
+        -> interp_sact
              (sigma:=sigma) REnv r
              (PTree.map (fun _ '(t,a) => (t, replace_field_in_sact vvs a rn field field_v)) vvs)
              (replace_field_in_sact vvs a0 rn field field_v) v
     ). {
       intros. eapply (IH (existT _ (projT1 x) a0)).
       red. destruct x. apply Relation_Operators.right_lex. simpl in H.  auto.
-      simpl. auto. simpl. auto. simpl. eauto.
+      simpl. auto. simpl. auto. simpl. eauto. eauto.
     }
     destruct x; simpl in *.
     inv IS.
@@ -4932,7 +4935,7 @@ Section SimpleFormInterpretation.
       eapply (IH (existT _ var a)).
       red. apply Relation_Operators.left_lex. apply BELOW. constructor.
       simpl.
-      generalize (reachable_var_aux_below_get _ VSV _ _ _ H). auto. simpl. auto. simpl. eauto.
+      generalize (reachable_var_aux_below_get _ VSV _ _ _ H). auto. simpl. auto. simpl. eauto. eauto.
     - simpl; constructor.
     - simpl.
       inv WTs.
@@ -4946,10 +4949,13 @@ Section SimpleFormInterpretation.
       intros; eapply BELOW. eapply reachable_var_if_false. eauto. eauto. eauto.
     - simpl.
       inv WTs.
-      econstructor.
-      eapply IH2. simpl. lia.
-      intros; eapply BELOW. eapply reachable_var_unop.
-      eauto. eauto. eauto. eauto.
+       specialize (IH2 a). trim IH2. simpl. lia.
+      trim IH2. intros; apply BELOW. econstructor; eauto.
+      specialize (IH2 _ _ H H3).
+      intros; repeat destr; try (econstructor; eauto; fail).
+      inv H. rewrite Heqo in H2; inv H2. inv H4. simpl in H0.
+      apply andb_true_iff in Heqb. destruct Heqb. apply beq_dec_iff in H. apply beq_dec_iff in H1. subst.
+      rewrite GF in H0; inv H0. constructor.
     - simpl.
       inv WTs.
       econstructor.
@@ -4968,6 +4974,89 @@ Section SimpleFormInterpretation.
     - simpl; constructor.
   Qed.
 
+  Lemma replace_field_interp_inv2:
+    forall vvs,
+    wt_vvs (Sigma:=Sigma) R vvs
+    -> vvs_smaller_variables vvs
+    -> forall n a v rn field field_v, (forall v, reachable_var vvs a v -> v < n)%positive
+    -> interp_sact
+         (sigma:=sigma) REnv r
+         (PTree.map (fun _ '(t,a) => (t, replace_field_in_sact vvs a rn field field_v)) vvs)
+         (replace_field_in_sact vvs a rn field field_v) v
+    -> get_field (getenv REnv r rn) field = Some field_v
+    -> forall t : type, wt_sact (Sigma:=Sigma) R vvs a t
+    -> interp_sact (sigma:=sigma) REnv r vvs a v.
+  Proof.
+    intros vvs WTvvs VSV n a.
+    change n with (projT1 (existT (fun _ => sact) n a)).
+    change a with (projT2 (existT (fun _ => sact) n a)) at 1 3 4 5.
+    generalize (existT (fun _ => sact) n a).
+    clear n a. intro s. pattern s.
+    eapply well_founded_induction.
+    apply wf_order_sact. clear s.
+    intros x IH v rn field field_v BELOW IS GF t0 WTs.
+    assert (
+      IH2:
+        forall a0,
+        size_sact a0 < size_sact (projT2 x)
+        -> (forall v0, reachable_var vvs a0 v0 -> (v0 < projT1 x)%positive)
+        -> forall v t,
+        interp_sact
+          (sigma:=sigma) REnv r
+          (PTree.map (fun _ '(t,a) => (t, (replace_field_in_sact vvs a rn field field_v))) vvs)
+          (replace_field_in_sact vvs a0 rn field field_v) v
+        -> wt_sact (Sigma:=Sigma) R vvs a0 t
+        -> interp_sact (sigma:=sigma) REnv r vvs a0 v
+    ). {
+      intros. eapply (IH (existT _ (projT1 x) a0)).
+      red. destruct x. apply Relation_Operators.right_lex. simpl in H.  auto.
+      simpl. auto. simpl. auto. simpl. eauto. eauto. eauto.
+    }
+    destruct x; simpl in *.
+    destruct s; simpl in *.
+    - inv WTs. inv IS. 
+      rewrite PTree.gmap in H1. unfold option_map in H1.
+      repeat destr_in H1; inv H1.
+      econstructor. eauto.
+      eapply (IH (existT _ var s0)).
+      red. apply Relation_Operators.left_lex. apply BELOW. constructor.
+      simpl.
+      generalize (reachable_var_aux_below_get _ VSV _ _ _ Heqo). auto.
+      generalize (reachable_var_aux_below_get _ VSV _ _ _ H0). intros.
+      setoid_rewrite H0 in Heqo; inv Heqo. apply H2. auto. eauto.
+    - inv IS. constructor.
+    - inv IS. inv WTs.
+      econstructor.
+      eapply IH2. lia. intros; eapply BELOW.
+      eapply reachable_var_if_cond; eauto. eauto. eauto.
+      destr.
+      eapply IH2. lia. intros; eapply BELOW.
+      eapply reachable_var_if_true; eauto. eauto. eauto.
+      eapply IH2. lia. intros; eapply BELOW.
+      eapply reachable_var_if_false; eauto. eauto. eauto.
+    - inv WTs.
+      assert ( interp_sact (sigma:=sigma) REnv r
+                 (PTree.map (fun (_ : positive) '(t, a) => (t, replace_field_in_sact vvs a rn field field_v)) vvs)
+                 (SUnop ufn1 (replace_field_in_sact vvs s rn field field_v))
+                 v -> interp_sact (sigma:=sigma) REnv r vvs (SUnop ufn1 s) v
+             ). intro ISS. inv ISS. econstructor. eapply IH2; eauto. intros; eapply BELOW; eauto.
+      econstructor; eauto. eauto.
+      repeat destr_in IS; eauto. inv IS. simpl in *. clear H.
+      econstructor. econstructor. eauto. econstructor. simpl.
+      apply andb_true_iff in Heqb. destruct Heqb. apply beq_dec_iff in H. apply beq_dec_iff in H0. subst.
+      auto.
+    - inv IS. inv WTs.
+      econstructor.
+      eapply IH2. lia. intros; eapply BELOW.
+      eapply reachable_var_binop1; eauto. eauto. eauto.
+      eapply IH2. lia. intros; eapply BELOW.
+      eapply reachable_var_binop2; eauto. eauto. eauto. auto.
+    - inv IS. inv WTs.
+      econstructor.
+      eapply IH2. lia. intros; eapply BELOW.
+      eapply reachable_var_externalCall; eauto. eauto. eauto.
+    - inv IS. constructor.
+  Qed.
 
   Lemma sf_eq_replace_field:
     forall sf str field field_v,
@@ -4984,38 +5073,29 @@ Section SimpleFormInterpretation.
       + inv A. rewrite H2 in H1; inv H1.
         econstructor. setoid_rewrite PTree.gmap.
         setoid_rewrite H2. simpl. reflexivity.
-
-        eapply replace_field_interp. eauto. eauto.
+        eapply replace_field_interp2. eauto. eauto.
         eapply reachable_var_aux_below; eauto.
-        eapply wf_sf_vvs0. eauto. auto. eauto.
+        eapply wf_sf_vvs0. eauto. auto. eauto. eauto.
       + inv A.
         setoid_rewrite PTree.gmap in H1. setoid_rewrite H2 in H1.
         simpl in H1. inv H1.
         econstructor. eauto.
-        eapply collapse_interp_inv2. eauto. eauto.
+        eapply replace_field_interp_inv2. eauto. eauto.
         eapply reachable_var_aux_below; eauto.
-        eapply wf_sf_vvs0. eauto. auto. eauto.
+        eapply wf_sf_vvs0. eauto. apply H3. eauto. eauto.
     - intros. simpl.
       split. eapply f_wt_sact_ok'; eauto.
       intro A; inv A.
       rewrite PTree.gmap in H1.
       unfold option_map in H1; repeat destr_in H1; inv H1.
       econstructor. eauto.
-
-    intros.
-    eapply sf_eq_f; intros.
-    - eapply replace_field_interp_inv; eauto.
-    - eapply replace_field_interp; eauto.
-    - eapply replace_field_wt; eauto.
-    - eapply replace_field_vis; eauto.
-    - auto.
   Qed.
 
   Lemma replace_field_interp_cycle_ok:
     forall {reg} {sf} {str} {field} {field_v} (WFSF: wf_sf sf),
     get_field (getenv REnv r str) field = Some field_v
     -> getenv REnv (interp_cycle sf) reg
-    = getenv REnv (interp_cycle (replace_field sf str field field_v)) reg.
+    = getenv REnv (interp_cycle (replace_field str sf field field_v)) reg.
   Proof.
     intros.
     eapply sf_eq_interp_cycle_ok.
