@@ -216,6 +216,19 @@ Module RVProofs.
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
       intros. set (wfsf := sf_wf).
+      full_pass.
+      simplify.
+      isolate_sf.
+      vm_compute prune_irrelevant_aux in sf0.
+      vm_compute in sf0.
+      simplify.
+      (* vm_compute in sf0. *)
+      Eval native_compute in (
+        simplify_sact REnv ext_sigma (Maps.PTree.get (Pos.of_nat x) (vars sf0))
+      ).
+      vm_compute simplify_sf.
+      vm_compute prune_irrelevant_aux.
+      vm_compute prune_irrelevant_aux.
       crusher 2.
     Qed.
 
@@ -227,24 +240,33 @@ Module RVProofs.
         (EpochOk:
           get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "epoch"
           = Some (Bits [true]))
-        (* (DecodeDInst: get_field v "dInst" = Some v2) *)
+        (* v2 *)
+        (* (DecodeDInst: *)
+        (*   get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "dInst" *)
+        (*   = Some v2) *)
         (* (LegalOk: get_field v2 "legal" = Some (Bits [true])), *),
       stack_violation ctx -> halt_set ctx.
     Proof.
       intros. set (wfsf := sf_wf).
       unfold halt_set.
-      replace_reg.
-      erewrite (
-        @replace_reg_interp_cycle_ok
-          _ _ _ _ RV32I.R ext_Sigma ctx ext_sigma _ _ _ RV32I.halt
-      ); eauto.
-      update_wfsf.
-      full_pass.
+      erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ NoHalt);
+      eauto; update_wfsf.
+      erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ Valid);
+      eauto; update_wfsf.
+      simplify.
+      prune.
       collapse.
-      replace_field.
+      simplify.
+      (* prune. collapse. *)
+      (* simplify. *)
       isolate_sf.
+      vm_compute prune_irrelevant_aux in sf0.
       vm_compute in sf0.
       get_var 1788 sf0.
+      (* replace_regs. *)
+      full_pass.
+      (* replace_field. *)
+      simplify.
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=

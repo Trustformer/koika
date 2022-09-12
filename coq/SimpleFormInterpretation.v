@@ -841,38 +841,44 @@ Section SimpleFormInterpretation.
       vars.
 
   Fixpoint replace_field_in_sact
-    (ua: sact) (str: reg_t) (field: string) (value: val)
+    (vars: @var_value_map reg_t ext_fn_t) (ua: sact) (str: reg_t)
+    (field: string) (value: val)
   : sact :=
     match ua with
     | SBinop ufn a1 a2 =>
       SBinop
-        ufn (replace_field_in_sact a1 str field value)
-        (replace_field_in_sact a2 str field value)
-    | SUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetField f)) (SReg r) =>
-      if beq_dec f field && beq_dec r str
-      then SConst value
-      else ua
+        ufn (replace_field_in_sact vars a1 str field value)
+        (replace_field_in_sact vars a2 str field value)
+    | SUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetField f)) (SVar v) =>
+      match Maps.PTree.get v vars with
+      | Some (_, SReg r) =>
+        if beq_dec f field && beq_dec r str
+        then SConst value
+        else ua
+      | _ => ua
+      end
     | SUnop ufn a1 =>
-      SUnop ufn (replace_field_in_sact a1 str field value)
+      SUnop ufn (replace_field_in_sact vars a1 str field value)
     | SVar v => SVar v
     | SIf cond tb fb =>
       SIf
-        (replace_field_in_sact cond str field value)
-        (replace_field_in_sact tb str field value)
-        (replace_field_in_sact fb str field value)
+        (replace_field_in_sact vars cond str field value)
+        (replace_field_in_sact vars tb str field value)
+        (replace_field_in_sact vars fb str field value)
     | SConst c => ua
     | SReg r => ua
     | SExternalCall ufn a =>
-      SExternalCall ufn (replace_field_in_sact a str field value)
+      SExternalCall ufn (replace_field_in_sact vars a str field value)
     end.
 
   Definition replace_field
-    (sf: simple_form) (str: reg_t) (field: string) (value: val)
+    (str: reg_t) (sf: simple_form) (field: string) (value: val)
   : simple_form := {|
       final_values := final_values sf;
       vars :=
         PTree.map
-          (fun _ '(t, ua) => (t, replace_field_in_sact ua str field value))
+          (fun _ '(t, ua) =>
+            (t, replace_field_in_sact (vars sf) ua str field value))
           (vars sf)
     |}.
 
@@ -4236,8 +4242,8 @@ Section SimpleFormInterpretation.
     get_field (getenv REnv r str) field = Some field_v
     -> forall (a : sact) reg,
       interp_sact
-        (sigma:=sigma) REnv r vvs (replace_field_in_sact a str field field_v)
-        reg
+        (sigma:=sigma) REnv r vvs
+        (replace_field_in_sact vvs a str field field_v) reg
     -> forall t : type, wt_sact (Sigma:=Sigma) R vvs a t
     -> interp_sact (sigma:=sigma) REnv r vvs a reg.
   Proof.
@@ -4248,14 +4254,14 @@ Section SimpleFormInterpretation.
     - destruct ufn1; try (inv H0; econstructor; eauto; fail).
       destruct fn; try (inv H0; econstructor; eauto; fail).
       destruct a; try (inv H0; econstructor; eauto; fail).
-      destr_in H0.
+      destr_in H0; eauto; destr_in H0; destr_in H0; eauto.
       + inv H. econstructor; eauto.
-        * econstructor.
-        * inv H0. cbn.
-          eapply andb_true_iff in Heqb.
-          repeat (rewrite beq_dec_iff in Heqb).
-          inv Heqb. eauto.
-      + inv H0; econstructor; eauto.
+        * destr_in H0; econstructor; eauto; econstructor.
+        * destr_in H0.
+          ** eapply andb_true_iff in Heqb. repeat (rewrite beq_dec_iff in Heqb).
+             destruct Heqb. inv H0. eauto.
+          ** inv H4. inv H6. inv H0. inv H5.
+             inv H4; congruence.
     - inv H0. econstructor; eauto.
     - inv H0. econstructor; eauto.
   Qed.
@@ -4271,7 +4277,7 @@ Section SimpleFormInterpretation.
     wt_sact (Sigma:=Sigma) R vvs a t
     -> interp_sact
         (sigma:=sigma) REnv r vvs
-        (replace_field_in_sact a str field field_v) v.
+        (replace_field_in_sact vvs a str field field_v) v.
   Proof.
     induction 4; simpl; intros; try now (econstructor; eauto).
     - inv H2. econstructor; eauto. destr; eauto.
@@ -4279,37 +4285,97 @@ Section SimpleFormInterpretation.
       destruct ufn; try (econstructor; eauto).
       destruct fn; try (econstructor; eauto).
       destruct a; try (econstructor; eauto).
+      inv H7. rewrite H5.
+      destr; try (econstructor; eauto).
       destr.
       + eapply andb_true_iff in Heqb. repeat (rewrite beq_dec_iff in Heqb).
         inv Heqb.
-        inv H3. inv H2. rewrite H1 in H5. inv H5.
+        inv H2. rewrite H5 in H6. inv H6.
+        inv H3. inv H7. rewrite H1 in H4. inv H4.
         econstructor.
       + econstructor; eauto.
     - inv H3. econstructor; eauto.
     - inv H3. econstructor; eauto.
   Qed.
 
+  Lemma get_field_wt:
+    forall vvs struct_sig field field_v struct_sact struct_v
+      (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+      (VSV: vvs_smaller_variables vvs),
+    wt_sact (Sigma := Sigma) R vvs struct_sact (struct_t struct_sig)
+    -> interp_sact (sigma := sigma) REnv r vvs struct_sact struct_v
+    -> get_field struct_v field = Some field_v
+    -> forall idx, PrimTypeInference.find_field struct_sig field = Success idx
+    -> wt_val (field_type struct_sig idx) field_v .
+  Proof.
+    destruct struct_sig.
+    induction (Datatypes.length struct_fields); eauto.
+    intros.
+    unfold field_type. unfold Types.struct_fields in *.
+    unfold PrimTypeInference.find_field in H2.
+    unfold opt_result in H2.
+    destr_in H2; try congruence. inv H2. 
+    unfold Types.struct_fields in *.
+    unfold get_field in H1. destr_in H1; try congruence. clear Heqv.
+  Admitted.
+    
+
+(*     - unfold field_type. simpl snd. *)
+(*       unfold get_field in H1. *)
+(*       eapply interp_sact_eval_sact_iff in H0; eauto. *)
+(*       destruct H0. eapply eval_sact_wt in H0; eauto. *)
+(*       inv H0. simpl Types.struct_fields in *. inv H3. *) 
+(*       unfold get_field_struct in H1. destruct p. *)
+(*       destr_in H1. *)
+(*       + inv H1. eauto. *)
+(*       + unfold PrimTypeInference.find_field. *)
+(*         unfold Types.struct_fields. unfold opt_result. *)
+(*         destr; try congruence. intro. inv H0. *)
+(*         unfold List_assoc in Heqo. simpl fst in Heqo. *)
+(*         destr_in Heqo. *)
+(*         * inv e; congruence. *)
+(*         * destr_in Heqo; congruence. *)
+(*     - unfold PrimTypeInference.find_field. *)
+(*       unfold Types.struct_fields. unfold opt_result. *)
+(*       destr; try congruence. intro. inv H2. *)
+(*       destruct p. *)
+(*       unfold List_assoc in Heqo. simpl fst in Heqo. *)
+(*       destr_in Heqo. *)
+(*       * inv e; congruence. *)
+(*       * *)
+(*   Admitted. *)
+
   Lemma replace_field_wt:
-    forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t) str field field_v,
+    forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t) str field field_v
+      (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+      (VSV: vvs_smaller_variables vvs),
     get_field (getenv REnv r str) field = Some field_v
     -> wt_sact
-         (Sigma := Sigma) R vvs (replace_field_in_sact a str field field_v) t.
+         (Sigma := Sigma) R vvs (replace_field_in_sact vvs a str field field_v)
+         t.
   Proof.
     induction 1; simpl; intros; try now (econstructor; eauto).
     destruct ufn; try (econstructor; eauto).
     destruct fn; try (econstructor; eauto).
     destruct a; try (econstructor; eauto).
-    inv WTS.
-    destr; econstructor; eauto.
-    eapply andb_true_iff in Heqb. do 2 (rewrite beq_dec_iff in Heqb). inv Heqb.
-    eapply Wt.wt_unop_sigma1; eauto.
-    eapply IHWTS; eauto.
+    inv H. inv WTS.
+    rewrite H1.
+    destr; try (econstructor; econstructor; eauto). destr.
+    - eapply andb_true_iff in Heqb. do 2 (rewrite beq_dec_iff in Heqb).
+      inv Heqb.
+      eapply IHWTS in H0 as HV.
+      econstructor.
+      eapply get_field_wt; eauto.
+      + econstructor; eauto. econstructor.
+      + eauto.
+      + eauto.
+    - econstructor; econstructor; eauto.
   Qed.
 
   Lemma replace_field_vis:
-    forall a v' str field field_v,
+    forall vvs a v' str field field_v,
     get_field (getenv REnv r str) field = Some field_v
-    -> var_in_sact (replace_field_in_sact a str field field_v) v'
+    -> var_in_sact (replace_field_in_sact vvs a str field field_v) v'
     -> var_in_sact a v'.
   Proof.
     induction a; simpl; intros; eauto.
@@ -4320,7 +4386,7 @@ Section SimpleFormInterpretation.
     - destr_in H0; try (inv H0; econstructor; eauto; fail).
       destr_in H0; try (inv H0; econstructor; eauto; fail).
       destruct a; try (inv H0; econstructor; eauto; fail).
-      destr_in H0; try (inv H0; econstructor; eauto; fail).
+      repeat (destr_in H0; try (inv H0; econstructor; eauto; fail)).
     - inv H0. econstructor; eauto.
       eapply var_in_sact_binop_2; eauto.
     - inv H0; econstructor; eauto.
@@ -4330,7 +4396,7 @@ Section SimpleFormInterpretation.
     forall sf str field field_v,
     get_field (getenv REnv r str) field = Some field_v
     -> wf_sf sf
-    -> wf_sf (replace_field sf str field field_v).
+    -> wf_sf (replace_field str sf field field_v).
   Proof.
     intros.
     eapply wf_f; intros; eauto.
@@ -4756,7 +4822,6 @@ Section SimpleFormInterpretation.
       | Some (t, SVar v') => SVar v'
         (* collapse vvs (Var v') *) (* TODO Termination *)
       | Some (t, SConst c) => SConst c
-      | Some (t, SReg r) => SReg r
       | _ => a
       end
     | SExternalCall ufn s => SExternalCall ufn (collapse_sact vvs s)
@@ -4777,7 +4842,6 @@ Section SimpleFormInterpretation.
     induction 2; simpl; intros; try now (econstructor; eauto).
     rewrite H.
     destr; try now (econstructor; eauto).
-    eapply wf_sf_wt; eauto.
     eapply wf_sf_wt; eauto.
     eapply wf_sf_wt; eauto.
   Qed.
@@ -4846,7 +4910,6 @@ Section SimpleFormInterpretation.
       inv VIS.
       + econstructor; eauto. econstructor; eauto.
       + inv VIS.
-      + econstructor; eauto. inv VIS.
     - inv VIS.
       eapply reachable_var_if_cond; eauto.
       eapply reachable_var_if_true; eauto.
@@ -5019,7 +5082,10 @@ Section SimpleFormInterpretation.
         generalize (reachable_var_aux_below_get _ VSV _ _ _ H). intros.
         eapply H0. eapply reachable_var_externalCall; eauto. simpl. eauto.
         simpl. eauto.
-      + inv H0. econstructor.
+      + econstructor.
+        rewrite PTree.gmap; setoid_rewrite H. reflexivity.
+        simpl. inv H0. generalize (WTvvs _ _ _ H). intro WT. inv WT.
+        econstructor.
     - simpl; constructor.
     - simpl.
       inv WTs.
@@ -5142,29 +5208,28 @@ Section SimpleFormInterpretation.
       + inv IS.
         generalize (WTvvs _ _ _ H0). intro WT; inv WT.
         rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
-        inv H2.
-        econstructor.
+        inv H2. econstructor.
         eapply (IH (existT _ var s0_1)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl.
-        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        simpl. intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
         eapply reachable_var_binop1; eauto. simpl. eauto. simpl. eauto.
         eapply (IH (existT _ var s0_2)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
-        simpl.
-        intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
+        simpl. intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
         eapply reachable_var_binop2; eauto. simpl. eauto. simpl. eauto. auto.
       + inv IS.
         generalize (WTvvs _ _ _ H0). intro WT; inv WT.
         rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
-        inv H2.
-        econstructor.
+        inv H2. econstructor.
         eapply (IH (existT _ var s0)).
         red. apply Relation_Operators.left_lex. apply BELOW. constructor.
         simpl.
         intros; eapply (reachable_var_aux_below_get _ VSV _ _ _ H0).
         eapply reachable_var_externalCall; eauto. simpl. eauto. simpl. eauto.
-      + inv IS. constructor.
+      + inv IS.
+        generalize (WTvvs _ _ _ H0). intro WT; inv WT.
+        rewrite PTree.gmap in H1. setoid_rewrite H0 in H1. simpl in H1. inv H1.
+        inv H2. econstructor.
     - inv IS. constructor.
     - inv IS. inv WTs.
       econstructor.
@@ -5192,8 +5257,7 @@ Section SimpleFormInterpretation.
     - inv IS. constructor.
   Qed.
 
-  Lemma sf_eq_collapse_sf:
-    forall sf, wf_sf sf -> sf_eq sf (collapse_sf sf).
+  Lemma sf_eq_collapse_sf: forall sf, wf_sf sf -> sf_eq sf (collapse_sf sf).
   Proof.
     intros sf WF.
     constructor.
@@ -5247,9 +5311,9 @@ Section SimpleFormInterpretation.
 
   Lemma sf_eq_sf_eq_restricted_trans:
     forall l sf1 sf2 sf3,
-      sf_eq sf1 sf2 ->
-      sf_eq_restricted l sf2 sf3 ->
-      sf_eq_restricted l sf1 sf3.
+    sf_eq sf1 sf2
+    -> sf_eq_restricted l sf2 sf3
+    -> sf_eq_restricted l sf1 sf3.
   Proof.
     intros. eapply sf_eq_restricted_trans.
     eapply sf_eq_is_restricted. eauto. eauto.
@@ -5451,7 +5515,6 @@ Section SimpleFormInterpretation.
     - inv IS. econstructor; eauto.
   Qed.
 
-
   Lemma exploit_interp:
     forall vvs,
       wt_vvs (Sigma:=Sigma) R vvs ->
@@ -5522,7 +5585,6 @@ Section SimpleFormInterpretation.
       rewrite firstn_firstn. rewrite Nat.min_l by lia. constructor.
     - inv IS. econstructor; eauto.
   Qed.
-
 
   Lemma sf_eq_exploit:
     forall sf r0 b bs,

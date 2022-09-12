@@ -70,7 +70,16 @@ Ltac update_wfsf :=
 
 Ltac replace_reg :=
   erewrite replace_reg_interp_cycle_ok; eauto; update_wfsf.
-(* TODO replace all regs *)
+(* Ltac replace_regs := *)
+(*   repeat (match goal with *)
+(*   | H: getenv ?REnv ?ctx ?reg = _ |- _ => *)
+(*     erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ H); *)
+(*     eauto; update_wfsf; rewrite H; symmetry H *)
+(*   end); *)
+(*   repeat (match goal with *)
+(*   | H: _ = getenv _ _ _ |- _ => symmetry H *)
+(*   end). *)
+
 (* TODO is_concrete test *)
 Ltac replace_field :=
   erewrite replace_field_interp_cycle_ok; eauto; update_wfsf.
@@ -85,6 +94,8 @@ Ltac collapse :=
   | |- _ =>
     try (unfold prune_irrelevant; vm_compute list_assoc; eauto); try eauto
   end; update_wfsf.
+
+(* Ltac auto_destr_next *)
 
 Ltac finish :=
   simplify; eapply getenv_interp;
@@ -117,7 +128,7 @@ Ltac isolate_sf :=
 
 Ltac get_var x sf :=
   let name := fresh "var_val" in
-  set (name := Maps.PTree.get (Pos.of_nat x) (vars sf));
+  set (name := snd (Maps.PTree.get (Pos.of_nat x) (vars sf)));
   vm_compute in name.
 
 (* Ltac show_binding v := *)
