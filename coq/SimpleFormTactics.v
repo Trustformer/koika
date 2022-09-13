@@ -77,9 +77,16 @@ Ltac replace_regs :=
       destruct H
   end).
 
-(* TODO is_concrete test *)
 Ltac replace_field :=
   erewrite replace_field_interp_cycle_ok; eauto; update_wfsf.
+Ltac replace_fields :=
+  repeat (match goal with
+  | H: get_field (getenv ?REnv ?ctx ?reg) ?name = _ |- _ =>
+      erewrite (replace_field_interp_cycle_ok _ _ _ _ _ _ H); eauto;
+      update_wfsf; destruct H
+  end).
+
+(* TODO is_concrete test *)
 Ltac simplify := erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
 Ltac prune :=
   erewrite prune_irrelevant_interp_cycle_ok;

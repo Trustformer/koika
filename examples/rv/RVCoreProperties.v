@@ -237,7 +237,7 @@ Module RVProofs.
       intros. set (wfsf := sf_wf).
       unfold halt_set.
       replace_regs.
-      replace_field.
+      replace_fields.
 
       simplify.
       prune.
