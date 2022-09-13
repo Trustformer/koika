@@ -70,21 +70,17 @@ Ltac update_wfsf :=
 
 Ltac replace_reg :=
   erewrite replace_reg_interp_cycle_ok; eauto; update_wfsf.
-(* Ltac replace_regs := *)
-(*   repeat (match goal with *)
-(*   | H: getenv ?REnv ?ctx ?reg = _ |- _ => *)
-(*     erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ H); *)
-(*     eauto; update_wfsf; rewrite H; symmetry H *)
-(*   end); *)
-(*   repeat (match goal with *)
-(*   | H: _ = getenv _ _ _ |- _ => symmetry H *)
-(*   end). *)
+Ltac replace_regs :=
+  repeat (match goal with
+  | H: getenv ?REnv ?ctx ?reg = _ |- _ =>
+      erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ H); eauto; update_wfsf;
+      destruct H
+  end).
 
 (* TODO is_concrete test *)
 Ltac replace_field :=
   erewrite replace_field_interp_cycle_ok; eauto; update_wfsf.
-Ltac simplify :=
-  erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
+Ltac simplify := erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
 Ltac prune :=
   erewrite prune_irrelevant_interp_cycle_ok;
     try (unfold prune_irrelevant; vm_compute list_assoc); eauto; update_wfsf.

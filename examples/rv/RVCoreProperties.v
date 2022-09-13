@@ -111,25 +111,25 @@ Module RVProofs.
             (eql rs1 [false; false; false; false; true])
             || (eql rs1 [false; false; true; false; true])))).
 
-    Definition stack_push (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+    Definition stack_push (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
       forall v w b,
-      getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) =
-        Struct (RV32I.decode_bookkeeping) v ->
-      get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst" =
-        Some (Struct (decoded_sig) w) ->
-      get_field_struct (struct_fields decoded_sig) w "inst" =
-        Some (Bits b) ->
-      is_call_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
+      getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0))
+      = Struct (RV32I.decode_bookkeeping) v
+      -> get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst"
+      = Some (Struct (decoded_sig) w)
+      -> get_field_struct (struct_fields decoded_sig) w "inst" = Some (Bits b)
+      -> is_call_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
 
-    Definition stack_pop (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+    Definition stack_pop (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
       forall v w b,
-      getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) =
-        Struct (RV32I.decode_bookkeeping) v ->
-      get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst" =
-        Some (Struct (decoded_sig) w) ->
-      get_field_struct (struct_fields decoded_sig) w "inst" =
-        Some (Bits b) ->
-      is_ret_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
+      getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0))
+      = Struct (RV32I.decode_bookkeeping) v
+      -> get_field_struct (struct_fields RV32I.decode_bookkeeping) v "dInst"
+      = Some (Struct (decoded_sig) w)
+      -> get_field_struct (struct_fields decoded_sig) w "inst" = Some (Bits b)
+      -> is_ret_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
 
     (* TODO should never return None, simplify? *)
     Definition stack_push_address
@@ -216,19 +216,6 @@ Module RVProofs.
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
       intros. set (wfsf := sf_wf).
-      full_pass.
-      simplify.
-      isolate_sf.
-      vm_compute prune_irrelevant_aux in sf0.
-      vm_compute in sf0.
-      simplify.
-      (* vm_compute in sf0. *)
-      Eval native_compute in (
-        simplify_sact REnv ext_sigma (Maps.PTree.get (Pos.of_nat x) (vars sf0))
-      ).
-      vm_compute simplify_sf.
-      vm_compute prune_irrelevant_aux.
-      vm_compute prune_irrelevant_aux.
       crusher 2.
     Qed.
 
@@ -249,12 +236,15 @@ Module RVProofs.
     Proof.
       intros. set (wfsf := sf_wf).
       unfold halt_set.
-      erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ NoHalt);
-      eauto; update_wfsf.
-      erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ Valid);
-      eauto; update_wfsf.
+      replace_regs.
+      replace_field.
+
       simplify.
       prune.
+      collapse.
+      isolate_sf.
+      vm_compute prune_irrelevant_aux in sf0.
+      vm_compute in sf0.
       collapse.
       simplify.
       (* prune. collapse. *)
