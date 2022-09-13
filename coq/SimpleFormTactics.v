@@ -31,7 +31,7 @@ Ltac update_wfsf :=
       wf_sf_replace_field
         (wt_sigma := WTSIGMA) R ext_Sigma ctx ext_sigma WTRENV sf' str f fv FV
         WFSF'
-    )); clear WFSF'; destruct FV
+    )); clear WFSF'; clear FV
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
       forall (ufn : ?ext_fn_t) (vc : val),
@@ -76,22 +76,61 @@ Ltac update_wfsf :=
   | |- _ => idtac "update_wf_sf failed"
   end.
 
-Ltac replace_reg :=
-  erewrite replace_reg_interp_cycle_ok; eauto; update_wfsf.
+Ltac replace_reg H :=
+  match goal with
+  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+    wt_sigma : (
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+      rewrite
+        (replace_reg_interp_cycle_ok (wt_sigma := wt_sigma) _ _ _ _ WTRENV H);
+        eauto; update_wfsf; clear H
+  end.
 Ltac replace_regs :=
   repeat (match goal with
-  | H: getenv ?REnv ?ctx ?reg = _ |- _ =>
-      erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ H); eauto; update_wfsf;
-      clear H
+  | H: getenv ?REnv ?ctx ?reg = _,
+    WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+    wt_sigma : (
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+      rewrite
+        (replace_reg_interp_cycle_ok (wt_sigma := wt_sigma) _ _ _ _ WTRENV H);
+        eauto; update_wfsf; clear H
   end).
 
-Ltac replace_field :=
-  erewrite replace_field_interp_cycle_ok; eauto; update_wfsf.
+Ltac replace_field H :=
+  match goal with
+  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+    WFSF: wf_sf ?R ?ext_Sigma ?sf,
+    wt_sigma : (
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+      rewrite
+        (replace_field_interp_cycle_ok
+          (wt_sigma := wt_sigma) _ _ _ _ WTRENV WFSF H);
+      eauto; update_wfsf; clear H
+  end.
 Ltac replace_fields :=
+  (* TODO Manage imbricated fields *)
   repeat (match goal with
-  | H: get_field (getenv ?REnv ?ctx ?reg) ?name = _ |- _ =>
-      erewrite (replace_field_interp_cycle_ok _ _ _ _ _ _ H); eauto;
-      update_wfsf; clear H
+  | H: get_field (getenv ?REnv ?ctx ?reg) ?name = _,
+    WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+    WFSF: wf_sf ?R ?ext_Sigma ?sf,
+    wt_sigma : (
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+      rewrite
+        (replace_field_interp_cycle_ok
+          (wt_sigma := wt_sigma) _ _ _ _ WTRENV WFSF H);
+      eauto; update_wfsf; clear H
   end).
 
 Ltac exploit_hypotheses := replace_regs; replace_fields.
@@ -120,7 +159,7 @@ Ltac finish :=
 
 Ltac full_pass := simplify; prune; collapse.
 Ltac crusher strength :=
-  replace_reg;
+  exploit_hypotheses;
   lazymatch strength with
   | 0 => idtac | 1 => do 1 full_pass | 2 => do 2 full_pass | 3 => do 3 full_pass
   | 4 => do 4 full_pass | 5 => do 5 full_pass | 6 => do 6 full_pass

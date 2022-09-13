@@ -212,7 +212,7 @@ Module RVProofs.
     Qed.
 
     Lemma fail_schedule:
-      forall (HALT_TRUE: getenv REnv ctx RV32I.halt = Bits [true]),
+      forall (H: getenv REnv ctx RV32I.halt = Bits [true]),
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
       intros. set (wfsf := sf_wf).
@@ -237,8 +237,17 @@ Module RVProofs.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
       exploit_hypotheses.
+      rewrite (
+        replace_field_interp_cycle_ok (wt_sigma := wt_sigma) _ _ _ _ WTRENV
+        wfsf0 EpochOk).
+      eauto; update_wfsf; clear H
+      replace_field EpochOk.
+      replace_fields.
+      exploit_hypotheses.
+      replace_fields.
+      erewrite (replace_field_interp_cycle_ok _ _ _ _ _ _ EpochOk); eauto.
+      update_wfsf. clear H.
       simplify.
-      prune.
       collapse.
       isolate_sf.
       vm_compute prune_irrelevant_aux in sf0.
