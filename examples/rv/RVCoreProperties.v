@@ -227,18 +227,16 @@ Module RVProofs.
         (EpochOk:
           get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "epoch"
           = Some (Bits [true]))
-        (* v2 *)
-        (* (DecodeDInst: *)
-        (*   get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "dInst" *)
-        (*   = Some v2) *)
-        (* (LegalOk: get_field v2 "legal" = Some (Bits [true])), *),
+        v2
+        (DecodeDInst:
+          get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "dInst"
+          = Some v2)
+        (LegalOk: get_field v2 "legal" = Some (Bits [true])),
       stack_violation ctx -> halt_set ctx.
     Proof.
-      intros. set (wfsf := sf_wf).
+      intros. assert (wfsf := sf_wf).
       unfold halt_set.
-      replace_regs.
-      replace_fields.
-
+      exploit_hypotheses.
       simplify.
       prune.
       collapse.

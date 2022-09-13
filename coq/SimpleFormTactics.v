@@ -9,21 +9,29 @@ Ltac update_wfsf :=
   | RV: getenv ?REnv ?ctx ?rg = ?vl, WTRENV: Wt.wt_renv ?R ?REnv ?ctx,
     WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |-
-     getenv ?REnv (interp_cycle ?ctx ?ext_sigma (replace_reg ?sf' ?rg ?vl)) _
-     = _
+      getenv ?REnv (interp_cycle ?ctx ?ext_sigma (replace_reg ?sf' ?rg ?vl)) _
+      = _
     =>
-    set (wfsf := wf_sf_replace_reg R ext_Sigma ctx WTRENV rg vl sf' RV WFSF');
-    unfold WFSF' in wfsf; clear WFSF'
+    assert (wf_sf R ext_Sigma (replace_reg sf' rg vl)) as wfsf by
+    (eapply (wf_sf_replace_reg R ext_Sigma ctx WTRENV rg vl sf' RV WFSF'));
+    clear WFSF'
   | FV: get_field (getenv ?REnv ?ctx ?str) ?f = Some ?fv,
-    WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
+    WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
+    WTSIGMA:
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
     |-
-     getenv
-       ?REnv (interp_cycle ?ctx ?ext_sigma (replace_field ?sf' ?str ?f ?fv)) _
-     = _
+      getenv
+        ?REnv (interp_cycle ?ctx ?ext_sigma (replace_field ?str ?sf' ?f ?fv)) _
+      = _
     =>
-    set (
-      wfsf := wf_sf_replace_field R ext_Sigma ctx WTRENV sf' str f fv FV WFSF');
-    unfold WFSF' in wfsf; clear WFSF'
+    assert (wf_sf R ext_Sigma (replace_field str sf' f fv)) as wfsf by (
+    eapply (
+      wf_sf_replace_field
+        (wt_sigma := WTSIGMA) R ext_Sigma ctx ext_sigma WTRENV sf' str f fv FV
+        WFSF'
+    )); clear WFSF'; destruct FV
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
       forall (ufn : ?ext_fn_t) (vc : val),
@@ -33,12 +41,12 @@ Ltac update_wfsf :=
          (interp_cycle ?ctx ?ext_sigma (simplify_sf ?ctx ?ext_sigma ?sf')) ?rg
        = _
     =>
-    set (
-      wfsf :=
+    assert (wf_sf R ext_Sigma (simplify_sf ctx ext_sigma sf')) as wfsf by
+    (eapply (
         wf_sf_simplify_sf
           (wt_sigma := WT_SIGMA) (REnv := REnv) R ext_Sigma ctx ext_sigma WTRENV
           sf' WFSF'
-    ); unfold WFSF' in wfsf; clear WFSF'
+    )); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |- getenv ?REnv
          (interp_cycle ?ctx ?ext_sigma
@@ -47,13 +55,12 @@ Ltac update_wfsf :=
     =>
     assert (list_assoc (final_values (collapse_sf sf')) rg = Some l)
       as lassoc by (vm_compute list_assoc; reflexivity);
-    set (
-      wfsf :=
-        wf_sf_prune_irrelevant_aux
-          R ext_Sigma (collapse_sf sf') rg l lassoc
-          (wf_collapse_sf R ext_Sigma sf' WFSF')
-    );
-    unfold WFSF' in wfsf; clear WFSF'
+    assert (wf_sf R ext_Sigma (prune_irrelevant_aux (collapse_sf sf') rg l))
+    as wfsf by (eapply (
+      wf_sf_prune_irrelevant_aux
+        R ext_Sigma (collapse_sf sf') rg l lassoc
+        (wf_collapse_sf R ext_Sigma sf' WFSF')
+    )); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |- getenv ?REnv
          (interp_cycle ?ctx ?ext_sigma (prune_irrelevant_aux ?sf' ?rg ?l)) ?rg
@@ -62,10 +69,11 @@ Ltac update_wfsf :=
     (* TODO also keep a single live version of lassoc *)
     assert (list_assoc (final_values sf') rg = Some l)
       as lassoc by (vm_compute list_assoc; reflexivity);
-    set (wfsf := wf_sf_prune_irrelevant_aux R ext_Sigma sf' rg l lassoc WFSF');
-    unfold WFSF' in wfsf; clear WFSF'
+    assert (wf_sf R ext_Sigma (prune_irrelevant_aux sf' rg l)) as wfsf
+    by (eapply (wf_sf_prune_irrelevant_aux R ext_Sigma sf' rg l lassoc WFSF'));
+    clear WFSF'
     (* ; clear lassoc *)
-  | |- _ => idtac
+  | |- _ => idtac "update_wf_sf failed"
   end.
 
 Ltac replace_reg :=
@@ -74,7 +82,7 @@ Ltac replace_regs :=
   repeat (match goal with
   | H: getenv ?REnv ?ctx ?reg = _ |- _ =>
       erewrite (replace_reg_interp_cycle_ok _ _ _ _ _ H); eauto; update_wfsf;
-      destruct H
+      clear H
   end).
 
 Ltac replace_field :=
@@ -83,8 +91,10 @@ Ltac replace_fields :=
   repeat (match goal with
   | H: get_field (getenv ?REnv ?ctx ?reg) ?name = _ |- _ =>
       erewrite (replace_field_interp_cycle_ok _ _ _ _ _ _ H); eauto;
-      update_wfsf; destruct H
+      update_wfsf; clear H
   end).
+
+Ltac exploit_hypotheses := replace_regs; replace_fields.
 
 (* TODO is_concrete test *)
 Ltac simplify := erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
