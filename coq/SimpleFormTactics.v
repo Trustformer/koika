@@ -31,7 +31,7 @@ Ltac update_wfsf :=
       wf_sf_replace_field
         (wt_sigma := WTSIGMA) R ext_Sigma ctx ext_sigma WTRENV sf' str f fv FV
         WFSF'
-    )); clear WFSF'; clear FV
+    )); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
       forall (ufn : ?ext_fn_t) (vc : val),
@@ -86,7 +86,7 @@ Ltac replace_reg H :=
     |- _ =>
       rewrite
         (replace_reg_interp_cycle_ok (wt_sigma := wt_sigma) _ _ _ _ WTRENV H);
-        eauto; update_wfsf; clear H
+        eauto; update_wfsf
   end.
 Ltac replace_regs :=
   repeat (match goal with
@@ -114,7 +114,7 @@ Ltac replace_field H :=
       rewrite
         (replace_field_interp_cycle_ok
           (wt_sigma := wt_sigma) _ _ _ _ WTRENV WFSF H);
-      eauto; update_wfsf; clear H
+      eauto; update_wfsf
   end.
 Ltac replace_fields :=
   (* TODO Manage imbricated fields *)
@@ -180,7 +180,7 @@ Ltac isolate_sf :=
 
 Ltac get_var x sf :=
   let name := fresh "var_val" in
-  set (name := snd (Maps.PTree.get (Pos.of_nat x) (vars sf)));
+  set (name := (Maps.PTree.get (Pos.of_nat x) (vars sf)));
   vm_compute in name.
 
 (* Ltac show_binding v := *)

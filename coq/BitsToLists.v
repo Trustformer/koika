@@ -692,61 +692,88 @@ Proof.
     right; intro B; inv B; congruence.
 Defined.
 
-Fixpoint list_eqb
-  {A: Type} (l1 l2: list A) (Aeq: forall x y:A, bool)
-: bool :=
+Definition
+  list_eqb {A: Type} (Aeq: forall x y:A, bool) :=
+  fix list_eqb (l1 l2: list A)
+    : bool :=
   match l1, l2 with
   | [], [] => true
   | [], _ | _, [] => false
-  | a1::l1, a2::l2 => Aeq a1 a2 && list_eqb l1 l2 Aeq
+  | a1::l1, a2::l2 => Aeq a1 a2 && list_eqb l1 l2
   end.
 
-Fixpoint val_eq_dec (v1 v2: val) : {v1 = v2} + {v1 <> v2}.
+(* Fixpoint val_eq_dec (v1 v2: val) : {v1 = v2} + {v1 <> v2}. *)
+(* Proof. *)
+(*   destruct v1, v2; try (right; simpl; discriminate). *)
+(*   - destruct (eq_dec v v0). *)
+(*     + left. subst. reflexivity. *)
+(*     + right. intro. inv H. destruct n. reflexivity. *)
+(*   - destruct (eq_dec v v0). *)
+(*     + subst. destruct (enum_sig_eq_dec sig sig0). *)
+(*       * left. subst. reflexivity. *)
+(*       * right. intro. inv H. destruct n. reflexivity. *)
+(*     + right. intro. inv H. destruct n. reflexivity. *)
+(*   - destruct (list_eq_dec (val_eq_dec) v v0). *)
+(*     + subst. destruct (eq_dec sig sig0). *)
+(*       * left. subst. reflexivity. *)
+(*       * right. intro. inv H. destruct n. reflexivity. *)
+(*     + right. intro. inv H. destruct n. reflexivity. *)
+(*   - destruct (list_eq_dec (val_eq_dec) v v0). *)
+(*     + subst. destruct (eq_dec sig sig0). *)
+(*       * left. subst. reflexivity. *)
+(*       * right. intro. inv H. destruct n. reflexivity. *)
+(*     + right. intro. inv H. destruct n. reflexivity. *)
+(* Defined. *)
+
+Fixpoint val_beq (v1 v2: val) {struct v1}: bool :=
+  match v1, v2 with
+  | Bits l1, Bits l2 =>
+      list_eqb Bool.eqb l1 l2
+  | Enum sg1 l1, Enum sg2 l2 =>
+      if enum_sig_eq_dec sg1 sg2
+      then list_eqb Bool.eqb l1 l2
+      else false
+  | Struct sg1 l1, Struct sg2 l2 =>
+      if eq_dec sg1 sg2
+      then list_eqb  val_beq l1 l2
+      else false
+  | Array sg1 l1, Array sg2 l2 =>
+      if eq_dec sg1 sg2
+      then list_eqb  val_beq l1 l2
+      else false
+  | _, _ => false
+  end.
+
+Lemma val_beq_correct:
+  forall v1 v2,
+    val_beq v1 v2 = true <-> v1 = v2.
 Proof.
-  destruct v1, v2; try (right; simpl; discriminate).
-  - destruct (eq_dec v v0).
-    + left. subst. reflexivity.
-    + right. intro. inv H. destruct n. reflexivity.
-  - destruct (eq_dec v v0).
-    + subst. destruct (enum_sig_eq_dec sig sig0).
-      * left. subst. reflexivity.
-      * right. intro. inv H. destruct n. reflexivity.
-    + right. intro. inv H. destruct n. reflexivity.
-  - destruct (list_eq_dec (val_eq_dec) v v0).
-    + subst. destruct (eq_dec sig sig0).
-      * left. subst. reflexivity.
-      * right. intro. inv H. destruct n. reflexivity.
-    + right. intro. inv H. destruct n. reflexivity.
-  - destruct (list_eq_dec (val_eq_dec) v v0).
-    + subst. destruct (eq_dec sig sig0).
-      * left. subst. reflexivity.
-      * right. intro. inv H. destruct n. reflexivity.
-    + right. intro. inv H. destruct n. reflexivity.
-Defined.
+Admitted.
 
 Definition enum_sig_eqb (s1 s2: enum_sig) :=
   (enum_name s1 =? enum_name s2)
   && (Nat.eqb (enum_size s1) (enum_size s2))
   && (Nat.eqb (enum_bitsize s1) (enum_bitsize s2))
+  && list_eqb eqb
+     (vect_to_list (enum_members s1)) (vect_to_list (enum_members s2))
   && list_eqb
-     (vect_to_list (enum_members s1)) (vect_to_list (enum_members s2)) eqb
-  && list_eqb
+     (fun l1 l2 => list_eqb  Bool.eqb l1 l2)
      (map vect_to_list (vect_to_list (enum_bitpatterns s1)))
      (map vect_to_list (vect_to_list (enum_bitpatterns s2)))
-     (fun l1 l2 => list_eqb l1 l2 Bool.eqb).
+     .
 
-Lemma list_eqb_correct:
-  forall
-    {A: Type} (eqb: A -> A -> bool)
-    (eqb_correct: forall a1 a2, eqb a1 a2 = true <-> a1 = a2) l1 l2,
-  list_eqb l1 l2 eqb = true <-> l1 = l2.
-Proof.
-  induction l1; simpl; intros; eauto.
-  - destruct l2. tauto. intuition congruence.
-  - destruct l2. intuition congruence.
-    rewrite andb_true_iff. rewrite eqb_correct, IHl1.
-    intuition congruence.
-Qed.
+(* Lemma list_eqb_correct: *)
+(*   forall *)
+(*     {A: Type} (eqb: A -> A -> bool) *)
+(*     (eqb_correct: forall a1 a2, eqb a1 a2 = true <-> a1 = a2) l1 l2, *)
+(*   list_eqb l1 l2 eqb = true <-> l1 = l2. *)
+(* Proof. *)
+(*   induction l1; simpl; intros; eauto. *)
+(*   - destruct l2. tauto. intuition congruence. *)
+(*   - destruct l2. intuition congruence. *)
+(*     rewrite andb_true_iff. rewrite eqb_correct, IHl1. *)
+(*     intuition congruence. *)
+(* Qed. *)
 
 Lemma map_inj:
   forall
@@ -765,50 +792,51 @@ Require Import Coq.Program.Equality.
 
 Lemma list_eqb_refl:
   forall {A: Type} (eqb: A -> A -> bool) (eqb_refl: forall a, eqb a a = true) l,
-  list_eqb l l eqb = true.
+  list_eqb eqb l l = true.
 Proof.
   induction l; simpl; intros; eauto.
   rewrite eqb_refl, IHl; auto.
 Qed.
 
-Lemma enum_sig_eqb_correct:
-  forall s1 s2, enum_sig_eqb s1 s2 = true <-> s1 = s2.
-Proof.
-  intros.
-  unfold enum_sig_eqb. destruct s1, s2; simpl.
-  rewrite ! andb_true_iff.
-  split.
-  - intros ((((A & B) & C) & D) & E).
-    apply eqb_eq in A.
-    apply Nat.eqb_eq in B.
-    apply Nat.eqb_eq in C.
-    apply list_eqb_correct in D. 2: apply eqb_eq.
-    apply list_eqb_correct in E.
-    2: apply list_eqb_correct. 2: apply eqb_true_iff.
-    subst. apply vect_to_list_inj in D. subst.
-    apply map_inj in E.
-    2: apply vect_to_list_inj.
-    apply vect_to_list_inj in E. subst. reflexivity.
-  - intro A.
-    dependent destruction A.
-    repeat refine (conj _ _).
-    apply eqb_refl.
-    apply Nat.eqb_refl.
-    apply Nat.eqb_refl.
-    apply list_eqb_refl. apply eqb_refl.
-    apply list_eqb_refl. apply list_eqb_refl. apply eqb_reflx.
-Qed.
+(* Lemma enum_sig_eqb_correct: *)
+(*   forall s1 s2, enum_sig_eqb s1 s2 = true <-> s1 = s2. *)
+(* Proof. *)
+(*   intros. *)
+(*   unfold enum_sig_eqb. destruct s1, s2; simpl. *)
+(*   rewrite ! andb_true_iff. *)
+(*   split. *)
+(*   - intros ((((A & B) & C) & D) & E). *)
+(*     apply eqb_eq in A. *)
+(*     apply Nat.eqb_eq in B. *)
+(*     apply Nat.eqb_eq in C. *)
+(*     apply list_eqb_correct in D. 2: apply eqb_eq. *)
+(*     apply list_eqb_correct in E. *)
+(*     2: apply list_eqb_correct. 2: apply eqb_true_iff. *)
+(*     subst. apply vect_to_list_inj in D. subst. *)
+(*     apply map_inj in E. *)
+(*     2: apply vect_to_list_inj. *)
+(*     apply vect_to_list_inj in E. subst. reflexivity. *)
+(*   - intro A. *)
+(*     dependent destruction A. *)
+(*     repeat refine (conj _ _). *)
+(*     apply eqb_refl. *)
+(*     apply Nat.eqb_refl. *)
+(*     apply Nat.eqb_refl. *)
+(*     apply list_eqb_refl. apply eqb_refl. *)
+(*     apply list_eqb_refl. apply list_eqb_refl. apply eqb_reflx. *)
+(* Qed. *)
 
 Lemma val_eq_dec_bits:
   forall {T: Type} (A1 A2: T) b1 b2,
-  (if val_eq_dec (Bits b1) (Bits b2) then A1 else A2)
-  = (if list_eqb b1 b2 Bool.eqb then A1 else A2).
+  (if val_beq (Bits b1) (Bits b2) then A1 else A2)
+  = (if list_eqb Bool.eqb b1 b2 then A1 else A2).
 Proof.
   intros.
-  destr. clear Heqs. inv e. rewrite list_eqb_refl. auto. apply eqb_reflx.
-  destr; auto. apply list_eqb_correct in Heqb. subst. congruence.
-  apply eqb_true_iff.
-Qed.
+  destr. apply val_beq_correct in Heqb. inv Heqb. rewrite list_eqb_refl. auto. apply eqb_reflx.
+Admitted.
+(* destr; auto. apply list_eqb_correct in Heqb. subst. congruence. *)
+(*   apply eqb_true_iff. *)
+(* Qed. *)
 
 Fixpoint bitwise (f: bool -> bool -> bool) (l1 l2: list bool) {struct l1}
 : list bool :=

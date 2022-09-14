@@ -217,7 +217,7 @@ Module RVProofs.
     Proof.
       intros. set (wfsf := sf_wf).
       crusher 2.
-    Qed.
+    Time Qed.
 
     Lemma stack_violation_results_in_halt:
       forall
@@ -236,11 +236,42 @@ Module RVProofs.
     Proof.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
-      exploit_hypotheses.
-      rewrite (
-        replace_field_interp_cycle_ok (wt_sigma := wt_sigma) _ _ _ _ WTRENV
-        wfsf0 EpochOk).
-      eauto; update_wfsf; clear H
+
+
+      replace_reg NoHalt.
+      replace_reg Valid.
+      rewrite (replace_field_interp_cycle_ok (wt_sigma:=wt_sigma) _ _ _ _ WTRENV wfsf EpochOk); eauto.
+      update_wfsf.
+      full_pass.
+      replace_field EpochOk.
+      replace_field DecodeDInst.
+      do 10 full_pass.
+      simplify.
+      isolate_sf.
+
+      vm_compute in sf0.
+      Eval vm_compute in Maps.PTree.get 1789
+                           (vars sf0).
+      (* Opaque getenv. *)
+      Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1789) 10.
+      
+
+      Lemma dream:
+          forall sf idx n fuel v,
+            list_assoc (final_values sf) idx = Some n ->
+            eval_sact ctx ext_sigma (vars sf) (SVar n) fuel = Some v ->
+            getenv REnv (interp_cycle ctx ext_sigma sf) idx = v.
+      Admitted.
+      eapply dream with (fuel:=30).
+      cbn. reflexivity.
+      cbn. clear sf0. 
+      rewrite EpochOk. simpl.
+      rewrite DecodeDInst; simpl.
+      Eval vm_compute in Maps.PTree.get 13 (vars sf0).
+
+      get_var 1788 sf0.
+      vm_compute replace_reg.
+      red in H.
       replace_field EpochOk.
       replace_fields.
       exploit_hypotheses.
@@ -254,7 +285,7 @@ Module RVProofs.
       vm_compute in sf0.
       collapse.
       simplify.
-      (* prune. collapse. *)
+      (* prune. collapse. *).
       (* simplify. *)
       isolate_sf.
       vm_compute prune_irrelevant_aux in sf0.

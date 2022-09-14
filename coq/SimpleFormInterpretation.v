@@ -1685,6 +1685,13 @@ Section SimpleFormInterpretation.
     apply eval_sact_replace_reg_vars. auto.
   Qed.
 
+  Lemma val_beq_true:
+    forall b, val_beq b b = true.
+  Proof.
+    intros.
+    destruct val_beq eqn:?; try congruence. apply val_beq_false in Heqb0. congruence.
+  Qed.
+
   Lemma eval_sact_no_vars_interp:
     forall vvs s v (EVAL: eval_sact_no_vars s = Some v),
     interp_sact (sigma:=sigma) REnv r vvs s v.
@@ -1692,9 +1699,9 @@ Section SimpleFormInterpretation.
     induction s; simpl; intros; eauto; unfold opt_bind in EVAL;
       repeat destr_in EVAL; inv EVAL; try (econstructor; eauto).
     - eapply val_beq_bits_implies_eq in Heqb0. destruct Heqb0.
-      simpl. destruct (val_eq_dec v0 v0); eauto; destruct n; eauto.
+      simpl. rewrite val_beq_true. auto.
     - eapply val_beq_bits_implies_eq in Heqb0. destruct Heqb0.
-      simpl. destruct (val_eq_dec v0 v0); eauto; destruct n; eauto.
+      simpl. rewrite val_beq_true. auto.
   Qed.
 
   Context {
@@ -1863,8 +1870,11 @@ Section SimpleFormInterpretation.
       unfold val_beq_bits in Heqb.
       repeat destr_in Heqb; inv Heqb.
       apply internal_list_dec_bl in H1. subst.
-      destruct negate; simpl in H. inv H. simpl. destr. inv H. simpl.
-      destr.
+      destruct negate; simpl in H. inv H. simpl. rewrite list_eqb_refl. auto.
+      intros; apply eqb_reflx.
+      inv H. simpl.
+      rewrite list_eqb_refl. auto.
+      intros; apply eqb_reflx.
       intros; apply Bool.eqb_eq. rewrite H0. constructor.
     - inv WTa.
       edestruct IHa as (r1 & EQ1); eauto.
@@ -2395,8 +2405,8 @@ Section SimpleFormInterpretation.
      Note that we don't need our simplifications to be exhaustive: for instance
      we choose to ignore that an and can be short-circuited based on its right
      operand. *)
-  Lemma val_eq_dec_refl: forall v, exists x, val_eq_dec v v = left x.
-  Proof. intros. destruct (val_eq_dec v v); eauto. congruence. Qed.
+  (* Lemma val_eq_dec_refl: forall v, exists x, val_eq_dec v v = left x. *)
+  (* Proof. intros. destruct (val_eq_dec v v); eauto. congruence. Qed. *)
 
   Lemma eval_sact_eval_sact_no_vars:
     forall vvs n a res res2,
@@ -2425,8 +2435,8 @@ Section SimpleFormInterpretation.
       destruct ufn2; simpl in H2.
       + repeat (destr_in H1); simpl in *; try congruence; destr_in H2;
         try congruence.
-        * apply val_beq_bits_implies_eq in Heqb0. congruence.
-        * apply val_beq_bits_implies_eq in Heqb0. congruence.
+        * apply val_beq_bits_implies_eq in Heqb0. apply val_beq_false in Heqb1; congruence.
+        * apply val_beq_bits_implies_eq in Heqb0. apply val_beq_false in Heqb1; congruence.
       + repeat destr_in H2; simpl in *; congruence.
       + repeat destr_in H2; simpl in *; congruence.
       + destr_in H2; destr_in H2; simpl in *; congruence.

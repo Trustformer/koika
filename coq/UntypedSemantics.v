@@ -483,8 +483,8 @@ Qed.
 
 Definition sigma2 (fn: ufn2) (v1 v2: val) : option val :=
   match fn with
-  | UEq false => Some (Bits [if val_eq_dec v1 v2 then true else false])
-  | UEq true  => Some (Bits [if val_eq_dec v1 v2 then false else true])
+  | UEq false => Some (Bits [if val_beq v1 v2 then true else false])
+  | UEq true  => Some (Bits [if val_beq v1 v2 then false else true])
   | UBits2 fn =>
     match v1, v2 with
     | Bits v1, Bits v2 => let res := ubits2_sigma fn v1 v2 in Some (Bits res)
@@ -527,6 +527,16 @@ Definition sigma2 (fn: ufn2) (v1 v2: val) : option val :=
     end
   end.
 
+Lemma val_beq_false:
+  forall v1 v2, val_beq v1 v2 = false <-> v1 <> v2.
+Proof.
+  split; intros.
+  - intro EQ. subst. generalize (val_beq_correct v2 v2). intros (_ & A). rewrite A in H. congruence. auto.
+  - generalize (val_beq_correct v1 v2). intros. destruct H0.
+    destruct (val_beq v1 v2) eqn:?; auto.
+    elim H; auto.
+Qed.
+
 Lemma sigma2_correct:
   forall ufn fn ty1 ty2,
   PrimTypeInference.tc2 ufn ty1 ty2 = Success fn ->
@@ -540,14 +550,18 @@ Proof.
   - inv H. simpl in *. destr; f_equal; f_equal.
     unfold BitFuns._neq. unfold beq_dec. destruct (eq_dec).
     subst. destr. reflexivity.
+    apply val_beq_false in Heqb; congruence.
     destr. 2: reflexivity.
     exfalso. apply n. apply bits_of_value_inj. apply vect_to_list_inj.
-    erewrite ! (ubits_of_value_ok _ _ eq_refl). rewrite e. reflexivity.
+    erewrite ! (ubits_of_value_ok _ _ eq_refl).
+    apply val_beq_correct in Heqb0. rewrite Heqb0. reflexivity.
     unfold BitFuns._eq. unfold beq_dec. destruct (eq_dec).
     subst. destr. reflexivity.
+    apply val_beq_false in Heqb; congruence.
     destr. 2: reflexivity.
     exfalso. apply n. apply bits_of_value_inj. apply vect_to_list_inj.
-    erewrite ! (ubits_of_value_ok _ _ eq_refl). rewrite e. reflexivity.
+    apply val_beq_correct in Heqb0.
+    erewrite ! (ubits_of_value_ok _ _ eq_refl). rewrite Heqb0. reflexivity.
   - destr_in H. 2: congruence.
     destr_in Heqr; try congruence.
     destr_in H; try congruence.
@@ -928,7 +942,7 @@ Section Interp.
                 interp_action r sigma Gamma sched_log action_log var in
               let/opt3 action_log, v, Gamma :=
                 interp_action r sigma Gamma sched_log action_log cond in
-              if val_eq_dec v v0 then
+              if val_beq v v0 then
                 let/opt3 action_log, v, Gamma :=
                   interp_action r sigma Gamma sched_log action_log body in
                 Some (action_log, Some v, Gamma)
@@ -2258,23 +2272,24 @@ Section Desugar.
         rewrite <- IHbranches; auto.
         2: intros; eapply IHua; simpl in *; lia.
         rewrite fLog_fLog'; auto.
-        destruct val_eq_dec.
-        * subst. destruct val_eq_dec; try congruence.
-          destruct (interp_action _ _ _ _ _ u0) eqn:?; simpl.
-          destruct p0. destruct p0.
-          replace (fold_left _ _ _) with (Some (l4, Some v0, l3)).
-          2: {
-            clear. induction branches; simpl; intros; eauto. destruct a; auto.
-          }
-          simpl. rewrite fLog'_fLog'; auto.
-          rewrite fold_left_none; simpl; auto. intros; destr.
-        * destruct val_eq_dec; try congruence.
-          destruct (fold_left _ _ _) eqn:?; simpl; auto.
-          repeat destr.
-          simpl. rewrite fLog'_fLog'; auto.
-          unfold fState'. unfold opt_bind.
-          repeat destr.
-          rewrite fLog'_fLog'; auto.
+        admit.
+        (* destruct val_eq_dec. *)
+        (* * subst. destruct val_eq_dec; try congruence. *)
+        (*   destruct (interp_action _ _ _ _ _ u0) eqn:?; simpl. *)
+        (*   destruct p0. destruct p0. *)
+        (*   replace (fold_left _ _ _) with (Some (l4, Some v0, l3)). *)
+        (*   2: { *)
+        (*     clear. induction branches; simpl; intros; eauto. destruct a; auto. *)
+        (*   } *)
+        (*   simpl. rewrite fLog'_fLog'; auto. *)
+        (*   rewrite fold_left_none; simpl; auto. intros; destr. *)
+        (* * destruct val_eq_dec; try congruence. *)
+        (*   destruct (fold_left _ _ _) eqn:?; simpl; auto. *)
+        (*   repeat destr. *)
+        (*   simpl. rewrite fLog'_fLog'; auto. *)
+        (*   unfold fState'. unfold opt_bind. *)
+        (*   repeat destr. *)
+        (*   rewrite fLog'_fLog'; auto. *)
         * clear - CUMI0 H1 H2 CUMI2.
           simpl. intuition.
       + cbn.
@@ -2744,7 +2759,7 @@ Section Desugar.
         }
         clear - CUMI. simpl in CUMI. intuition.
         intros; eapply inj; eauto.
-  Qed.
+  Admitted.
 End Desugar.
 
 Section Eq.
