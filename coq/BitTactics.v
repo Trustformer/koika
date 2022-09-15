@@ -1,6 +1,9 @@
 (*! Tactics for proofs about bit vectors !*)
 Require Import Coq.micromega.Lia.
-Require Export Koika.EqDec Koika.Vect Koika.Primitives Koika.PrimitiveProperties.
+Require Export Koika.Utils.EqDec.
+Require Export Koika.Utils.Vect.
+Require Export Koika.Primitives.
+Require Export Koika.Properties.PrimitiveProperties.
 Import BitFuns.
 
 (* This definition is useful for the next tactics *)

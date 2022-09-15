@@ -1,5 +1,9 @@
 (*! Language | Combinational primitives available in all Kôika programs !*)
-Require Export Koika.Common Koika.Environments Koika.IndexUtils Koika.Types Koika.ErrorReporting.
+Require Export Koika.Utils.Common.
+Require Export Koika.Utils.Environments.
+Require Export Koika.Utils.IndexUtils.
+Require Export Koika.KoikaForm.Types.
+Require Export Koika.KoikaForm.ErrorReporting.
 
 Inductive bits_comparison :=
   cLt | cGt | cLe | cGe.

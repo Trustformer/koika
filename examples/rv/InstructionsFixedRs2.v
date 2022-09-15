@@ -1,5 +1,4 @@
 (*! Definitions related to the rs2 instruction field !*)
-
 Require Import Koika.Frontend.
 Require Import rv.Instructions rv.IFields rv.ITypes rv.InstructionsOpcodes.
 

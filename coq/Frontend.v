@@ -1,9 +1,19 @@
 (*! Frontend | Top-level module imported by Kôika programs !*)
-Require Export
-  Koika.SyntaxMacros Koika.Desugaring Koika.TypeInference Koika.TypedSemantics
-  Koika.CircuitOptimization Koika.CircuitGeneration Koika.Primitives
-  Koika.SyntaxFunctions Koika.TypedSyntaxFunctions Koika.Interop Koika.Compiler
-  Koika.Parsing Koika.DeriveShow Koika.BitTactics Koika.ExtractionSetup.
+Require Export Koika.KoikaForm.SyntaxMacros.
+Require Export Koika.KoikaForm.Desugaring.Desugaring.
+Require Export Koika.KoikaForm.TypeInference.
+Require Export Koika.KoikaForm.Typed.TypedSemantics.
+Require Export Koika.CircuitForm.CircuitOptimization.
+Require Export Koika.CircuitForm.CircuitGeneration.
+Require Export Koika.Primitives.
+Require Export Koika.KoikaForm.SyntaxFunctions.
+Require Export Koika.KoikaForm.Typed.TypedSyntaxFunctions.
+Require Export Koika.Extraction.Interop.
+Require Export Koika.Compiler.
+Require Export Koika.KoikaForm.Frontend.Parsing.
+Require Export Koika.Utils.DeriveShow.
+Require Export Koika.BitTactics.
+Require Export Koika.Extraction.ExtractionSetup.
 
 Notation compile_scheduler := (compile_scheduler opt_constprop).
 

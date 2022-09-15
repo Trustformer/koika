@@ -1,12 +1,13 @@
 (*! Proofs about our RISC-V implementation !*)
 Require Import Coq.Program.Equality.
-Require Import Koika.BitsToLists Koika.Frontend Koika.Logs
-  Koika.SimpleFormTactics Koika.SimpleTypedSemantics Koika.Std Koika.UntypedLogs
-  Koika.UntypedSemantics Koika.DesugaredSyntax.
+Require Import Koika.Frontend.
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
-Require Import Koika.SimpleForm Koika.SimpleFormInterpretation.
-Require Import Koika.SimpleVal.
-Require Import Koika.SimpleFormTactics.
+Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.SimpleForm.SimpleFormInterpretation.
+Require Import Koika.SimpleForm.SimpleFormTactics.
+Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
+Require Import Koika.BitsToLists.
+Require Import Koika.KoikaForm.SimpleVal.
 
 Module RVProofs.
   Context (ext_sigma : RV32I.ext_fn_t -> val -> val).
@@ -32,9 +33,9 @@ Module RVProofs.
     -> wt_val (retSig (ext_Sigma ufn)) (ext_sigma ufn vc).
 
   Hypothesis rules_wt:
-  forall rule : rv_rules_t, exists t : type,
-  wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string []
-    (drules rule) t.
+    forall rule : rv_rules_t, exists t : type,
+    wt_daction (Sigma:=ext_Sigma) (R:=RV32I.R) unit string string []
+      (drules rule) t.
 
   Definition sf :=
     schedule_to_simple_form RV32I.R (Sigma := ext_Sigma) drules rv_schedule.
@@ -188,23 +189,6 @@ Module RVProofs.
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
   End ShadowStackProperties.
 
-    Lemma wt_env : Wt.wt_renv RV32I.R REnv ctx.
-    Proof. eauto. Qed.
-    Lemma rv_schedule_good : good_scheduler rv_schedule.
-    Proof. unfold rv_schedule. repeat constructor. Qed.
-    Lemma sf_def :
-      schedule_to_simple_form RV32I.R (Sigma := ext_Sigma) drules rv_schedule
-      = sf.
-    Proof. unfold sf. reflexivity. Qed.
-    Lemma tret :
-      forall r : rv_rules_t, exists tret : type,
-      wt_daction
-        (R := RV32I.R) (Sigma := ext_Sigma) unit string string [] (drules r)
-        tret.
-    Proof. eauto. Qed.
-    Lemma wt_renv : Wt.wt_renv RV32I.R REnv ctx.
-    Proof. eauto. Qed.
-
     Theorem sf_wf : wf_sf RV32I.R ext_Sigma sf.
     Proof.
       eapply schedule_to_simple_form_wf; eauto.
@@ -238,13 +222,13 @@ Module RVProofs.
       unfold halt_set.
 
 
-      replace_reg NoHalt.
-      replace_reg Valid.
+      exploit_reg NoHalt.
+      exploit_reg Valid.
       rewrite (replace_field_interp_cycle_ok (wt_sigma:=wt_sigma) _ _ _ _ WTRENV wfsf EpochOk); eauto.
       update_wfsf.
       full_pass.
-      replace_field EpochOk.
-      replace_field DecodeDInst.
+      exploit_field EpochOk.
+      exploit_field DecodeDInst.
       do 10 full_pass.
       simplify.
       isolate_sf.
@@ -254,7 +238,6 @@ Module RVProofs.
                            (vars sf0).
       (* Opaque getenv. *)
       Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1789) 10.
-      
 
       Lemma dream:
           forall sf idx n fuel v,
@@ -264,7 +247,7 @@ Module RVProofs.
       Admitted.
       eapply dream with (fuel:=30).
       cbn. reflexivity.
-      cbn. clear sf0. 
+      cbn. clear sf0.
       rewrite EpochOk. simpl.
       rewrite DecodeDInst; simpl.
       Eval vm_compute in Maps.PTree.get 13 (vars sf0).
@@ -272,10 +255,10 @@ Module RVProofs.
       get_var 1788 sf0.
       vm_compute replace_reg.
       red in H.
-      replace_field EpochOk.
-      replace_fields.
+      exploit_field EpochOk.
+      exploit_fields.
       exploit_hypotheses.
-      replace_fields.
+      exploit_fields.
       erewrite (replace_field_interp_cycle_ok _ _ _ _ _ _ EpochOk); eauto.
       update_wfsf. clear H.
       simplify.
@@ -291,9 +274,7 @@ Module RVProofs.
       vm_compute prune_irrelevant_aux in sf0.
       vm_compute in sf0.
       get_var 1788 sf0.
-      (* replace_regs. *)
       full_pass.
-      (* replace_field. *)
       simplify.
     Qed.
 

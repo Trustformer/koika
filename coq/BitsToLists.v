@@ -1,5 +1,9 @@
-Require Export Koika.Common Koika.Environments Koika.Syntax Koika.UntypedLogs.
-Require Import Koika.DesugaredSyntax Koika.SimpleVal.
+Require Export Koika.Utils.Common.
+Require Export Koika.Utils.Environments.
+Require Export Koika.KoikaForm.Syntax.
+Require Export Koika.KoikaForm.Untyped.UntypedLogs.
+Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
+Require Import Koika.KoikaForm.SimpleVal.
 
 Ltac destr_in H :=
   match type of H with

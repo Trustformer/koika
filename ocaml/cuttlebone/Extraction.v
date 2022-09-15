@@ -1,14 +1,13 @@
 (*! Interop | Extraction to OCaml (compiler and utilities) !*)
-Require Import Koika.ExtractionSetup.
-
-Require Koika.Common
-        Koika.Environments
-        Koika.TypedSyntax
-        Koika.TypeInference
-        Koika.TypedSyntaxFunctions
-        Koika.CircuitGeneration
-        Koika.Compiler
-        Koika.Interop.
+Require Import Koika.Extraction.ExtractionSetup.
+Require Koika.Utils.Common.
+Require Koika.Utils.Environments.
+Require Koika.KoikaForm.Typed.TypedSyntax.
+Require Koika.KoikaForm.TypeInference.
+Require Koika.KoikaForm.Typed.TypedSyntaxFunctions.
+Require Koika.CircuitForm.CircuitGeneration.
+Require Koika.Compiler.
+Require Koika.Extraction.Interop.
 
 (* Unset Extraction SafeImplicits. *)
 Extraction "extr.ml"

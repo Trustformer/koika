@@ -3,11 +3,6 @@ Require Import Koika.Frontend.
 Require Import rv.RVCore rv.rv32.
 Require Import rv.ShadowStack.
 
-(* TODO remove, imported for temporary tests *)
-Require Import rv.InstructionsProperties Koika.SimpleForm
-  Koika.SimpleFormInterpretation.
-Require Import Koika.Environments.
-
 (* TC_native adds overhead but makes typechecking large rules faster *)
 Ltac _tc_strategy ::= exact TC_native.
 
@@ -52,47 +47,6 @@ Module RV32I <: Core.
     | UpdateOnOff  => update_on_off
     | EndExecution => end_execution
     end.
-
-  (* Definition initial_rule := writeback. *)
-  (* Definition desugared := desugar_action tt initial_rule. *)
-  (* Definition last_controlled_act := get_highest_binding_id action desugared. *)
-  (* Definition last_controlled_expr := get_highest_binding_id expr desugared. *)
-  (* Time Compute distill desugared last_controlled_act last_controlled_expr. *)
-
-  (* Definition sch : scheduler := *)
-  (*   UpdateOnOff |> Writeback |> Execute |> Decode |> WaitImem |> Fetch |> Imem *)
-  (*   |> Dmem |> Tick |> EndExecution |> done. *)
-  (* Definition rules_desug := (fun x => (desugar_action tt (rv_urules x))). *)
-  (* Definition sf := schedule_to_simple_form sch rules_desug. *)
-  (* Definition REnv := Env reg_t. *)
-  (* Type env. *)
-  (* Time Compute (interp_cycle (env) sf). *)
-
-(*   Definition rules_l := schedule_to_list_of_rules rules_desug sch2. *)
-(*   Definition last_action_init := *)
-(*     list_max (List.map (get_highest_binding_id action) rules_l). *)
-(*   Definition last_expr_init := *)
-(*     list_max (List.map (get_highest_binding_id expr) rules_l). *)
-(*   Definition resf := *)
-(*     List.fold_left *)
-(*       (fun '(ri_acc, la', le') r => *)
-(*         let '(ri, la'', le'') := distill r la' le' in *)
-(*         (ri_acc++[ri], la'', le'') *)
-(*       ) *)
-(*       rules_l *)
-(*       ([], last_action_init, last_expr_init). *)
-(*   Compute resf. *)
-(*   Definition rule_info_l := fst (fst resf). *)
-(*   Definition la' := snd (fst resf). *)
-(*   Definition le' := snd resf. *)
-(*   Definition rule_info_with_conflicts_l := detect_all_conflicts rule_info_l. *)
-(*   Definition schedule_info := merge_schedule rule_info_with_conflicts_l le'. *)
-(*   Definition schedule_info_simpl := *)
-(*     remove_write0s (remove_read1s schedule_info la'). *)
-(*   Compute rule_info_l. *)
-(*   Compute rule_info_with_conflicts_l. *)
-(*   Compute schedule_info. *)
-(*   Compute schedule_info_simpl. *)
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
     match rl with

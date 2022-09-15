@@ -1,7 +1,5 @@
 (*! Computing terms of the Euclid sequence (Coq version) !*)
 Require Import Koika.Frontend.
-Require Import Koika.SimpleForm.
-Require Import Koika.DesugaredSyntax.
 
 Module Euclid.
   Inductive reg_t := a | b.
@@ -48,12 +46,6 @@ Module Euclid.
         | pgcd => _pgcd
         end).
 
-  Definition drules rule :=
-    match uaction_to_daction (desugar_action tt (urules rule)) with
-    | Some d => d
-    | None => DFail unit_t
-    end.
-
   (*! And now we can compute results: uncomment the ``Print`` commands below to show results. !*)
 
   Definition cr := ContextEnv.(create) r.
@@ -80,11 +72,6 @@ Module Euclid.
                    sp_prelude := None |};
 
        ip_verilog := {| vp_ext_fn_specs := empty_ext_fn_props |} |}.
-
-  Compute (
-    @schedule_to_simple_form pos_t reg_t empty_ext_fn_t rule_name_t _
-    R empty_Sigma _ drules euclid
-  ).
 End Euclid.
 
 (*! This is the entry point used by the compiler: !*)

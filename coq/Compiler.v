@@ -1,7 +1,11 @@
 (*! Interop | Top-level compilation function and helpers !*)
-Require Import
-  Koika.Common Koika.Environments Koika.Types
-  Koika.Syntax Koika.TypedSyntax Koika.Lowering Koika.CircuitGeneration.
+Require Import Koika.Utils.Common.
+Require Import Koika.Utils.Environments.
+Require Import Koika.KoikaForm.Types.
+Require Import Koika.KoikaForm.Syntax.
+Require Import Koika.KoikaForm.Typed.TypedSyntax.
+Require Import Koika.LoweredForm.Lowering.
+Require Import Koika.CircuitForm.CircuitGeneration.
 Require Export Koika.Primitives.
 
 Section EndToEnd.
