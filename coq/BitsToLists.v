@@ -4,18 +4,7 @@ Require Export Koika.KoikaForm.Syntax.
 Require Export Koika.KoikaForm.Untyped.UntypedLogs.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.KoikaForm.SimpleVal.
-
-Ltac destr_in H :=
-  match type of H with
-  | context[match ?a with _ => _ end] => destruct a eqn:?
-  end.
-
-Ltac destr :=
-  match goal with
-  |- context[match ?a with _ => _ end] => destruct a eqn:?; try congruence
-  end.
-
-Ltac inv H := inversion H; try subst; clear H.
+Require Export Koika.Utils.Tactics.
 
 Lemma ubits_of_value_len:
   forall {tau} (v: type_denote tau) bs,

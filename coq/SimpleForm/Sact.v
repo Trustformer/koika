@@ -9,56 +9,9 @@ Require Import Koika.BitsToLists.
 Require Import Wt.
 Require Import Wellfounded.
 Require Import SimpleVal.
-
-Lemma modusponens: forall (P Q: Prop), P -> (P -> Q) -> Q.
-Proof. auto. Qed.
-
-Ltac exploit x :=
-  refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _) _)
-  || refine (modusponens _ _ (x _ _) _)
-  || refine (modusponens _ _ (x _) _).
-
-Ltac trim H :=
-  match type of H with
-  | ?a -> ?b =>
-      let x := fresh "H" in
-      assert(x: a);[|specialize(H x); clear x]
-  end.
+Require Export Koika.Utils.Tactics.
 
 (* List utils *)
-
 Fixpoint filter_map {A B: Type} (f: A -> option B) (l: list A) : list B :=
   match l with
     [] => []
@@ -324,11 +277,11 @@ Proof.
   inversion 1; subst; simpl; intros; eauto.
   - inv H0. edestruct uvalue_of_bits_succeeds. eauto. rewrite H0. simpl; eauto.
   - inv H0. simpl.  eauto.
-  - inv H0. simpl. eauto. 
   - inv H0. simpl. eauto.
-  - inv H0. simpl. eauto. 
   - inv H0. simpl. eauto.
-  - inv H0. simpl. eauto. 
+  - inv H0. simpl. eauto.
+  - inv H0. simpl. eauto.
+  - inv H0. simpl. eauto.
   - inv H1. simpl.
     unfold PrimTypeInference.find_field in H0. unfold opt_result in H0.
     destr_in H0; inv H0. clear - Heqo H3.
@@ -337,7 +290,7 @@ Proof.
     inv H3.
     repeat destr_in Heqo; inv Heqo.
     rewrite Heqs0. eauto.
-    destr. subst; congruence. 
+    destr. subst; congruence.
     eauto.
   - inv H1. simpl.
     unfold PrimTypeInference.find_field in H0. unfold opt_result in H0.
@@ -403,4 +356,3 @@ Proof.
   destruct bs; simpl in *; try lia.
   destruct bs; simpl in *; try lia. eauto.
 Qed.
-

@@ -1,3 +1,4 @@
+Require Export Koika.Utils.Tactics.
 (* Imported from CompCert, some functions removed. *)
 (* *********************************************************************)
 (*                                                                     *)
@@ -35,47 +36,6 @@
 
 Require Import Equivalence EquivDec.
 Require Import List.
-Ltac inv H := inversion H; try subst; clear H.
-
-Lemma modusponens: forall (P Q: Prop), P -> (P -> Q) -> Q.
-Proof. auto. Qed.
-
-Ltac exploit x :=
-  refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _ _) _)
-  || refine (modusponens _ _ (x _ _ _) _)
-  || refine (modusponens _ _ (x _ _) _)
-  || refine (modusponens _ _ (x _) _).
 
 Definition list_disjoint (A: Type) (l1 l2: list A) : Prop :=
   forall (x y: A), In x l1 -> In y l2 -> x <> y.

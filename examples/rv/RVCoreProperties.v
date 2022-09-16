@@ -4,6 +4,7 @@ Require Import Koika.Frontend.
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.SimpleForm.SimpleFormInterpretation.
+Require Import Koika.SimpleForm.SimpleFormOperations.
 Require Import Koika.SimpleForm.SimpleFormTactics.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.BitsToLists.
