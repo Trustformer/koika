@@ -30,7 +30,6 @@ Import RecordSetNotations.
    (in terms of the effects of a cycle on the final state of the registers and
    of the emitted extcalls, although the latter are not really considered in
    Koîka's pure semantics). *)
-
 Open Scope positive.
 Section SimpleForm.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.

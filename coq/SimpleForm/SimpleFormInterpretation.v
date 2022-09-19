@@ -413,9 +413,7 @@ Section SimpleFormInterpretation.
       apply in_dec. apply Pos.eq_dec.
       auto. simpl in PACC.
       edestruct reachable_vars_aux_inv as [INv | [EQv | PROP]]. eauto. eauto.
-      apply PACC.
-      congruence.
-      subst.
+      apply PACC. congruence. subst.
       exploit VSV. apply Heqo. apply var_in_sact_ok_inv. apply INN.
       unfold var_lt. lia.
       destruct PROP as (? & ? & GET & REACH).
