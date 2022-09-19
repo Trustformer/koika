@@ -15,13 +15,13 @@ Section Simplify.
   Context {REnv: Env reg_t}.
   Context (R: reg_t -> type).
   Context (Sigma: ext_fn_t -> ExternalSignature).
-  Definition ext_funs_defs := forall f: ext_fn_t, val -> val.
-  Definition UREnv := REnv.(env_t) (fun _ => val).
+  Local Definition ext_funs_defs := forall f: ext_fn_t, val -> val.
+  Local Definition UREnv := REnv.(env_t) (fun _ => val).
   Context (r: UREnv).
   Context (sigma: ext_funs_defs).
-  Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
-  Definition eval_sact := eval_sact r sigma.
-  Definition wf_sf := wf_sf R Sigma.
+  Local Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
+  Local Definition eval_sact := eval_sact r sigma.
+  Local Definition wf_sf := wf_sf R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
     wt_sigma:

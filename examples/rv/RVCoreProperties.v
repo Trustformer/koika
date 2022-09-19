@@ -5,7 +5,7 @@ Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.SimpleForm.SimpleFormInterpretation.
 Require Import Koika.SimpleForm.SimpleFormOperations.
-Require Import Koika.SimpleForm.SimpleFormTactics.
+Require Import Koika.SimpleForm.Tactics.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
@@ -200,7 +200,7 @@ Module RVProofs.
       forall (H: getenv REnv ctx RV32I.halt = Bits [true]),
       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
     Proof.
-      intros. set (wfsf := sf_wf).
+      intros. assert (wfsf := sf_wf).
       crusher 2.
     Time Qed.
 
