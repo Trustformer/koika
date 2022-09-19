@@ -204,6 +204,51 @@ Module RVProofs.
       crusher 2.
     Time Qed.
 
+    Lemma length_1_something:
+      forall {A: Type} bs,
+      Datatypes.length (A := A) bs = 1 -> exists k, bs = [k].
+    Proof.
+      intros.
+      destruct bs.
+      - inv H.
+      - inv H. destruct bs; eauto. inv H1.
+    Qed.
+
+    Lemma length_32_something:
+      forall {A: Type} bs,
+      Datatypes.length (A := A) bs = 32
+      ->
+      exists k0, exists k1, exists k2, exists k3, exists k4, exists k5,
+      exists k6, exists k7, exists k8, exists k9, exists k10, exists k11,
+      exists k12, exists k13, exists k14, exists k15, exists k16, exists k17,
+      exists k18, exists k19, exists k20, exists k21, exists k22, exists k23,
+      exists k24, exists k25, exists k26, exists k27, exists k28, exists k29,
+      exists k30, exists k31,
+      bs = [
+        k0; k1; k2; k3; k4; k5; k6; k7; k8; k9; k10; k11; k12; k13; k14; k15;
+        k16; k17; k18; k19; k20; k21; k22; k23; k24; k25; k26; k27; k28; k29;
+        k30; k31
+      ].
+    Proof.
+      intros.
+      destruct bs; inv H. destruct bs; inv H1. destruct bs; inv H0.
+      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
+      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
+      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
+      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
+      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
+      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
+      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
+      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
+      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
+      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
+      exists
+        a, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15,
+        a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29,
+        a30.
+      eauto.
+    Qed.
+
     Lemma stack_violation_results_in_halt:
       forall
         (NoHalt: getenv REnv ctx RV32I.halt = Bits [false])
@@ -221,38 +266,53 @@ Module RVProofs.
     Proof.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
-
-
-      exploit_reg NoHalt.
-      exploit_reg Valid.
-      rewrite (replace_field_interp_cycle_ok (wt_sigma:=wt_sigma) _ _ _ _ WTRENV wfsf EpochOk); eauto.
-      update_wfsf.
+      exploit_regs.
+      simplify.
       full_pass.
-      exploit_field EpochOk.
-      exploit_field DecodeDInst.
-      do 10 full_pass.
       simplify.
       isolate_sf.
 
-      vm_compute in sf0.
-      Eval vm_compute in Maps.PTree.get 1789
-                           (vars sf0).
-      (* Opaque getenv. *)
-      Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1789) 10.
-
-      Lemma dream:
-          forall sf idx n fuel v,
-            list_assoc (final_values sf) idx = Some n ->
-            eval_sact ctx ext_sigma (vars sf) (SVar n) fuel = Some v ->
-            getenv REnv (interp_cycle ctx ext_sigma sf) idx = v.
-      Admitted.
-      eapply dream with (fuel:=30).
-      cbn. reflexivity.
-      cbn. clear sf0.
-      rewrite EpochOk. simpl.
-      rewrite DecodeDInst; simpl.
+      Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
+      Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
       Eval vm_compute in Maps.PTree.get 13 (vars sf0).
+      generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)).
+      intro. inv H0.
+      simpl in H3.
+      inv H3. inv H6. inv H7. inv H8. inv H9. inv H10. inv H11. inv H6. inv H2.
+      inv H1. inv H11. inv H12. inv H13. inv H14. inv H15. inv H16. inv H9.
+      inv H5. inv H10. inv H11. inv H2.
 
+      apply length_1_something in H1. destruct H1.
+      apply length_1_something in H9. destruct H9.
+      apply length_1_something in H5. destruct H5.
+      apply length_1_something in H10. destruct H10.
+      apply length_1_something in H11. destruct H11.
+      subst.
+
+      inv H4. apply length_32_something in H1.
+      destruct H1. repeat (destruct H0).
+      inv H3. apply length_32_something in H1.
+      destruct H1. repeat (destruct H0).
+      inv H7. apply length_32_something in H1.
+      destruct H1. repeat (destruct H0).
+      inv H8. apply length_32_something in H1.
+      destruct H1. repeat (destruct H0).
+      inv H12. apply length_32_something in H1.
+      destruct H1. repeat (destruct H0).
+
+      symmetry in H6.
+      exploit_reg H6.
+      simplify.
+      collapse.
+      collapse.
+      collapse.
+      simplify.
+      collapse.
+      isolate_sf.
+      Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+
+      (* Opaque getenv. *)
+      Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1788) 10.
       get_var 1788 sf0.
       vm_compute replace_reg.
       red in H.

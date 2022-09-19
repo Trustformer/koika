@@ -187,7 +187,3 @@ Ltac get_var x sf :=
   let name := fresh "var_val" in
   set (name := (Maps.PTree.get (Pos.of_nat x) (vars sf)));
   vm_compute in name.
-
-(* Ltac show_binding v := *)
-(*   let name := fresh "binding" in *)
-(*   set (name := ). *)
