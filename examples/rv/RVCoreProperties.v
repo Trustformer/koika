@@ -249,14 +249,21 @@ Module RVProofs.
       eauto.
     Qed.
 
+    Lemma length_n_something:
+      forall {A: Type} bs n,
+      Datatypes.length (A := A) bs = S n -> exists k, bs = k :: tail bs.
+    Proof. intros. destruct bs; inv H; eauto. Qed.
+
+    Lemma tail_smaller:
+      forall {A: Type} bs n,
+      Datatypes.length (A := A) bs = S n -> Datatypes.length (tail bs) = n.
+    Proof. intros. destruct bs; eauto. inv H. Qed.
+
     Lemma stack_violation_results_in_halt:
       forall
         (NoHalt: getenv REnv ctx RV32I.halt = Bits [false])
         (Valid:
           getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true])
-        (EpochOk:
-          get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "epoch"
-          = Some (Bits [true]))
         v2
         (DecodeDInst:
           get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "dInst"
@@ -275,43 +282,92 @@ Module RVProofs.
       Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
       Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
       Eval vm_compute in Maps.PTree.get 13 (vars sf0).
-      generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)).
-      intro. inv H0.
+      generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro.
+      inv H0. rewrite <- H2 in *.
       simpl in H3.
-      inv H3. inv H6. inv H7. inv H8. inv H9. inv H10. inv H11. inv H6. inv H2.
-      inv H1. inv H11. inv H12. inv H13. inv H14. inv H15. inv H16. inv H9.
-      inv H5. inv H10. inv H11. inv H2.
 
-      apply length_1_something in H1. destruct H1.
+      inv H3. inv H6. inv H7. inv H8. inv H9. inv H10. inv H11.
+      inv H6. inv H2. inv H1. inv H11. inv H12. inv H13. inv H14. inv H15.
+      inv H16.
+      inv H13. inv H1. inv H16. inv H17.
+      inv H13. simpl in H1.
+      inv H9. inv H5. inv H10. inv H11. inv H2.
+
+      apply length_1_something in H13. destruct H13.
       apply length_1_something in H9. destruct H9.
       apply length_1_something in H5. destruct H5.
       apply length_1_something in H10. destruct H10.
       apply length_1_something in H11. destruct H11.
       subst.
 
-      inv H4. apply length_32_something in H1.
-      destruct H1. repeat (destruct H0).
-      inv H3. apply length_32_something in H1.
-      destruct H1. repeat (destruct H0).
-      inv H7. apply length_32_something in H1.
-      destruct H1. repeat (destruct H0).
-      inv H8. apply length_32_something in H1.
-      destruct H1. repeat (destruct H0).
-      inv H12. apply length_32_something in H1.
-      destruct H1. repeat (destruct H0).
+(*       inv H4. apply length_32_something in H2. *)
+(*       destruct H2. do 31 (destruct H0). subst. *)
+(*       inv H3. apply length_32_something in H2. *)
+(*       destruct H2. do 31 (destruct H0). subst. *)
+(*       inv H7. apply length_32_something in H2. *)
+(*       destruct H2. do 31 (destruct H0). subst. *)
+(*       inv H8. apply length_32_something in H2. *)
+(*       destruct H2. do 31 (destruct H0). subst. *)
+(*       inv H12. apply length_32_something in H2. *)
+(*       destruct H2. do 31 (destruct H0). subst. *)
 
-      symmetry in H6.
-      exploit_reg H6.
+(*       eapply length_n_something in H1 as ?. *)
+(*       inv H0. eapply tail_smaller in H1. *)
+(*       eapply length_n_something in H1 as ?. *)
+(*       inv H0. rewrite H3 in H2. clear H3. eapply tail_smaller in H1. *)
+(*       eapply length_n_something in H1 as ?. *)
+(*       inv H0. rewrite H3 in H2. clear H3. eapply tail_smaller in H1. *)
+(*       simpl in H1. *)
+(*       eapply length_zero_iff_nil in H1. rewrite H1 in H2. clear H1. subst. *)
+
+      simpl in DecodeDInst.
+      inv DecodeDInst.
+      simpl in LegalOk.
+      inv LegalOk.
+      inv H14.
+      eapply length_1_something in H2. destruct H2. subst.
+
+      assert (
+        getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
+        = getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
+      ) by reflexivity.
+      rewrite <- H6 in H0 at 2.
+      exploit_reg H0.
+
+      generalize (WTRENV (RV32I.epoch)). intro.
+      inv H2.
+      eapply length_1_something in H10. destruct H10. subst.
+      symmetry in H9. exploit_reg H9.
+
+      red in H.
+      assert (x4 = x0). {
+        destruct H.
+        - red in H. repeat (destruct H as [? H]).
+          red in H2. eapply H2 in H0 as Hn. inv Hn.
+          rewrite H9 in H11. inv H11. reflexivity.
+        - destruct H.
+          + red in H. repeat (destruct H as [? H]).
+            red in H2. eapply H2 in H0 as Hn. inv Hn.
+            rewrite H9 in H13. inv H13. reflexivity.
+          + red in H. repeat (destruct H as [? H]).
+            red in H2. eapply H2 in H0 as Hn. inv Hn.
+            rewrite H9 in H11. inv H11. reflexivity.
+      }
+      subst.
+
       simplify.
       collapse.
       collapse.
-      collapse.
       simplify.
-      collapse.
+      (* collapse. *)
+      (* simplify. *)
+      (* collapse. *)
       isolate_sf.
-      Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+      destruct x0.
+      - Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
+        Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+      Eval vm_compute in Maps.PTree.get 93 (vars sf1).
 
-      (* Opaque getenv. *)
       Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1788) 10.
       get_var 1788 sf0.
       vm_compute replace_reg.
