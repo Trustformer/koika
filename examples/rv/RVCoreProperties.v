@@ -359,14 +359,13 @@ Module RVProofs.
       collapse.
       collapse.
       simplify.
-      (* collapse. *)
-      (* simplify. *)
+      simplify.
       (* collapse. *)
       isolate_sf.
       destruct x0.
       - Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
         Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
-      Eval vm_compute in Maps.PTree.get 93 (vars sf1).
+        Eval vm_compute in Maps.PTree.get 995 (vars sf1).
 
       Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1788) 10.
       get_var 1788 sf0.
