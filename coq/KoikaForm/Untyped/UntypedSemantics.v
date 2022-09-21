@@ -84,8 +84,7 @@ Definition usigma1' (fn: PrimUntyped.ubits1) (bs: list bool)
 
 Definition usigma1 fn v : option val :=
   match v with
-  | Bits bs =>
-      let res := usigma1' fn bs in Some (Bits res)
+  | Bits bs => let res := usigma1' fn bs in Some (Bits res)
   | _ => None
   end.
 
@@ -130,8 +129,8 @@ Lemma usigma1_correct:
   forall ufn fn,
   PrimTypeInference.tc1 ufn (arg1Sig (PrimSignatures.Sigma1 fn)) = Success fn
   -> forall (arg: arg1Sig (PrimSignatures.Sigma1 fn)) ret,
-    PrimSpecs.sigma1 fn arg = ret
-    -> sigma1 ufn (val_of_value arg) = Some (val_of_value ret).
+  PrimSpecs.sigma1 fn arg = ret
+  -> sigma1 ufn (val_of_value arg) = Some (val_of_value ret).
 Proof.
   destruct ufn; simpl; intros.
   - destruct fn.

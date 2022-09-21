@@ -38,14 +38,34 @@ Section SimplifyCautious.
       SIf
         (simplify_sact_cautious cond) (simplify_sact_cautious tb)
         (simplify_sact_cautious fb)
-    | SBinop ufn (SConst c1) (SConst c2) =>
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) (SConst (Bits [true])) ua2 =>
+      (simplify_sact_cautious ua2)
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) ua1 (SConst (Bits [true])) =>
+      (simplify_sact_cautious ua1)
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) (SConst (Bits [false])) _ =>
+      SConst (Bits [false])
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UAnd) _ (SConst (Bits [false])) =>
+      SConst (Bits [false])
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) (SConst (Bits [true])) _ =>
+      SConst (Bits [true])
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) _ (SConst (Bits [true])) =>
+      SConst (Bits [true])
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) (SConst (Bits [false])) ua2 =>
+      (simplify_sact_cautious ua2)
+    | SBinop (PrimUntyped.UBits2 PrimUntyped.UOr) ua1 (SConst (Bits [false])) =>
+      (simplify_sact_cautious ua1)
+    | SBinop _ (SConst _) (SConst _) =>
       match eval_sact_no_vars r sigma ua with
       | Some r => SConst r
       | None => ua
       end
+    | SBinop (PrimUntyped.UEq b) a1 a2 =>
+      SBinop (PrimUntyped.UEq b) (simplify_sact_cautious a1) (simplify_sact_cautious a2)
     | SBinop ufn a1 a2 =>
       SBinop ufn (simplify_sact_cautious a1) (simplify_sact_cautious a2)
-    | SUnop ufn (SConst c) =>
+    | SUnop (PrimUntyped.UBits1 UNot) (SConst (Bits [false])) => SConst (Bits [true])
+    | SUnop (PrimUntyped.UBits1 UNot) (SConst (Bits [true])) => SConst (Bits [false])
+    | SUnop _ (SConst _) =>
       match eval_sact_no_vars r sigma ua with
       | Some r => SConst r
       | None => ua

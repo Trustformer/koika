@@ -341,41 +341,12 @@ Module RVProofs.
       collapse.
       collapse.
       simplify_cautious.
+      simplify_cautious.
       isolate_sf.
       destruct x0.
-      - Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
-      collapse.
-      collapse.
-      simplify.
-      collapse.
-      Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
+      - inv H12. eapply length_32_something in H5. repeat destruct H5 as [? H5].
+        Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
 
-
-      Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1788) 10.
-      get_var 1788 sf0.
-      vm_compute replace_reg.
-      red in H.
-      exploit_field EpochOk.
-      exploit_fields.
-      exploit_hypotheses.
-      exploit_fields.
-      erewrite (replace_field_interp_cycle_ok _ _ _ _ _ _ EpochOk); eauto.
-      update_wfsf. clear H.
-      simplify.
-      collapse.
-      isolate_sf.
-      vm_compute prune_irrelevant_aux in sf0.
-      vm_compute in sf0.
-      collapse.
-      simplify.
-      (* prune. collapse. *).
-      (* simplify. *)
-      isolate_sf.
-      vm_compute prune_irrelevant_aux in sf0.
-      vm_compute in sf0.
-      get_var 1788 sf0.
-      full_pass.
-      simplify.
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
