@@ -354,17 +354,17 @@ Module RVProofs.
             rewrite H9 in H11. inv H11. reflexivity.
       }
       subst.
-
       simplify.
       collapse.
       collapse.
       simplify.
       simplify.
-      (* collapse. *)
+      collapse.
+      simplify_cautious.
       isolate_sf.
-      destruct x0.
-      - Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-        Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+      Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
+      Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+
         Eval vm_compute in Maps.PTree.get 995 (vars sf1).
 
       Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1788) 10.

@@ -166,8 +166,7 @@ Section RVHelpers.
   |}.
 
   (* TODO only analyze useful bits - for instance, the last two bits of the
-     opcode are always 11 and can thus be safely ignored
-   *)
+     opcode are always 11 and can thus be safely ignored *)
   Definition getImmediateType
     `{finite_reg: FiniteType reg_t}
   : UInternalFunction reg_t empty_ext_fn_t := {|
@@ -209,32 +208,6 @@ Section RVHelpers.
                   | _             => {{ enum imm_type {ImmI} }}
                   end
       ))]))) opcodes)))
-  |}.
-
-  (* TODO remove once testing over *)
-  Definition getImmediateTypeTesting `{finite_reg: FiniteType reg_t}
-  : UInternalFunction reg_t empty_ext_fn_t := {|
-    int_name    := "getImmediateType";
-    int_argspec := [("inst", bits_t 32)];
-    int_retSig  := enum_t imm_type;
-    int_body    :=
-      UBind "__reserved__matchPattern"
-        ({{|5`d0|}})
-        (USugar (USwitch
-          {{__reserved__matchPattern}}
-          {{{invalid (enum_t imm_type)} ()}}
-          ([(
-            {{|5`d0|}},
-            USugar (
-              UStructInit {|
-                struct_name   := "maybe_immType";
-                struct_fields :=
-                  [ ("valid", bits_t 1); ("data", enum_t imm_type) ]
-              |}
-              [ ("data", {{ enum imm_type {ImmI} }}) ]
-            )
-          )])
-        ))
   |}.
 
   Definition usesRS1 : UInternalFunction reg_t empty_ext_fn_t := {|
@@ -757,7 +730,6 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     write1(on_off, read0(on_off)+Ob~1)
   }}.
 
-  (* TODO Check *)
   Definition end_execution : uaction reg_t ext_fn_t := {{
     let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
       valid := read0(halt); data := |8`d1|

@@ -77,24 +77,16 @@ Section Simplify.
         | _, _ => SBinop ufn a1' a2'
         end
       end
-    | SUnop ufn a => (* Perhaps not strictly required *)
+    | SUnop ufn a =>
       let a := simplify_sact a in
-      (* match ufn with *)
-      (* | PrimUntyped.UBits1 PrimUntyped.UNot => *)
-      (*   match eval_sact_no_vars a with *)
-      (*   | Some (Bits [b]) => SConst (Bits [negb b]) *)
-      (*   | _ => SUnop ufn a *)
-      (*   end *)
-      (* | fn => *)
-        match eval_sact_no_vars r sigma a with
-        | Some x =>
-          match sigma1 ufn x with
-          | Some r => SConst r
-          | None => SUnop ufn a
-          end
+      match eval_sact_no_vars r sigma a with
+      | Some x =>
+        match sigma1 ufn x with
+        | Some r => SConst r
         | None => SUnop ufn a
         end
-      (* end *)
+      | None => SUnop ufn a
+      end
     | SExternalCall ufn a => SExternalCall ufn (simplify_sact a)
     | SVar _ | SReg _ | SConst _ => ua
     end.
