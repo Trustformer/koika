@@ -32,13 +32,20 @@ Section SimplifyCautious.
 
   Fixpoint simplify_sact_cautious (ua: sact) : sact :=
     match ua with
+    | SIf (SConst (Bits [true])) tb fb => simplify_sact_cautious tb
+    | SIf (SConst (Bits [false])) tb fb => simplify_sact_cautious fb
     | SIf cond tb fb =>
       SIf
         (simplify_sact_cautious cond) (simplify_sact_cautious tb)
         (simplify_sact_cautious fb)
+    | SBinop ufn (SConst c1) (SConst c2) =>
+      match eval_sact_no_vars r sigma ua with
+      | Some r => SConst r
+      | None => ua
+      end
     | SBinop ufn a1 a2 =>
       SBinop ufn (simplify_sact_cautious a1) (simplify_sact_cautious a2)
-    | SUnop (PrimUntyped.UStruct1 (PrimUntyped.UGetField f)) (SConst c) =>
+    | SUnop ufn (SConst c) =>
       match eval_sact_no_vars r sigma ua with
       | Some r => SConst r
       | None => ua

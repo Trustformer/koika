@@ -300,26 +300,6 @@ Module RVProofs.
       apply length_1_something in H11. destruct H11.
       subst.
 
-(*       inv H4. apply length_32_something in H2. *)
-(*       destruct H2. do 31 (destruct H0). subst. *)
-(*       inv H3. apply length_32_something in H2. *)
-(*       destruct H2. do 31 (destruct H0). subst. *)
-(*       inv H7. apply length_32_something in H2. *)
-(*       destruct H2. do 31 (destruct H0). subst. *)
-(*       inv H8. apply length_32_something in H2. *)
-(*       destruct H2. do 31 (destruct H0). subst. *)
-(*       inv H12. apply length_32_something in H2. *)
-(*       destruct H2. do 31 (destruct H0). subst. *)
-
-(*       eapply length_n_something in H1 as ?. *)
-(*       inv H0. eapply tail_smaller in H1. *)
-(*       eapply length_n_something in H1 as ?. *)
-(*       inv H0. rewrite H3 in H2. clear H3. eapply tail_smaller in H1. *)
-(*       eapply length_n_something in H1 as ?. *)
-(*       inv H0. rewrite H3 in H2. clear H3. eapply tail_smaller in H1. *)
-(*       simpl in H1. *)
-(*       eapply length_zero_iff_nil in H1. rewrite H1 in H2. clear H1. subst. *)
-
       simpl in DecodeDInst.
       inv DecodeDInst.
       simpl in LegalOk.
@@ -357,15 +337,19 @@ Module RVProofs.
       simplify.
       collapse.
       collapse.
-      simplify.
-      simplify.
+      simplify_cautious.
+      collapse.
       collapse.
       simplify_cautious.
       isolate_sf.
+      destruct x0.
+      - Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+      collapse.
+      collapse.
+      simplify.
+      collapse.
       Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-      Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
 
-        Eval vm_compute in Maps.PTree.get 995 (vars sf1).
 
       Eval cbn in eval_sact ctx ext_sigma (vars sf0) (SVar 1788) 10.
       get_var 1788 sf0.
