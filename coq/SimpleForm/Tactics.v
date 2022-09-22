@@ -81,7 +81,7 @@ Ltac update_wfsf :=
       wf_sf_prune_irrelevant_aux
         R ext_Sigma (collapse_sf sf') rg l lassoc
         (wf_collapse_sf R ext_Sigma sf' WFSF')
-    )); clear WFSF'
+    )); clear WFSF'; clear lassoc
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |- getenv ?REnv
          (interp_cycle ?ctx ?ext_sigma (prune_irrelevant_aux ?sf' ?rg ?l)) ?rg
@@ -92,10 +92,10 @@ Ltac update_wfsf :=
       as lassoc by (vm_compute list_assoc; reflexivity);
     assert (wf_sf R ext_Sigma (prune_irrelevant_aux sf' rg l)) as wfsf
     by (eapply (wf_sf_prune_irrelevant_aux R ext_Sigma sf' rg l lassoc WFSF'));
-    clear WFSF'
+    clear WFSF'; clear lassoc
     (* ; clear lassoc *)
   | |- _ => idtac "update_wf_sf failed"
-  end.
+  end; move wfsf at top.
 
 Ltac exploit_reg H :=
   match goal with

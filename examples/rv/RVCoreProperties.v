@@ -340,12 +340,25 @@ Module RVProofs.
       simplify_cautious.
       collapse.
       collapse.
+      collapse.
       simplify_cautious.
       simplify_cautious.
-      isolate_sf.
-      destruct x0.
-      - inv H12. eapply length_32_something in H5. repeat destruct H5 as [? H5].
+      simplify_cautious.
+      destruct x0; destruct H.
+      - red in H.
+        repeat destruct H as [? H]. clear H2. clear H6.
+        red in H5. simpl in H5. vm_compute vect_to_list in H5.
+        red in H.
+        exploit_reg H5. clear H5. clear H9.
+        isolate_sf. move wfsf at top. move sf1 at top.
+        inv H12. f_equal. simpl. eapply length_32_something in H5.
+        do 32 destruct H5 as [? H5]. subst.
+        eapply H in H0.
+        2: simpl; f_equal.
+        2: simpl; f_equal.
+        simpl in H0.
         Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+        Eval vm_compute in Maps.PTree.get 1007 (vars sf1).
 
     Qed.
 
