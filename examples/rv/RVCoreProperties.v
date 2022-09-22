@@ -356,8 +356,57 @@ Module RVProofs.
         eapply H in H0.
         2: simpl; f_equal.
         2: simpl; f_equal.
+        unfold is_ret_instruction in H0.
+        eapply andb_true_iff in H0. destruct H0.
+        eapply andb_true_iff in H0. destruct H0.
+        unfold eql in *.
+        rewrite Bits.of_N_to_N in *.
+        move H0 at bottom.
         simpl in H0.
-        Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+        eapply andb_true_iff in H0. destruct H0.
+        rewrite Bool.eqb_true_iff in H0.
+        eapply andb_true_iff in H6. destruct H6.
+        rewrite Bool.eqb_true_iff in H6.
+        eapply andb_true_iff in H9. destruct H9.
+        rewrite Bool.eqb_true_iff in H9.
+        clear H10.
+        subst.
+        simpl in H5.
+        repeat (eapply andb_true_iff in H5; destruct H5 as [? H5]).
+        rewrite Bool.eqb_true_iff in H0, H6, H9, H10. subst. clear H5.
+        (eapply orb_true_iff in H2; destruct H2 as [? | H2]).
+        + eapply andb_true_iff in H0. destruct H0.
+          eapply andb_true_iff in H0. destruct H0.
+          simpl in H5.
+          rewrite andb_true_r in H5.
+          repeat (rewrite negb_andb in H5).
+          simpl in H0. simpl in H2.
+          eapply orb_true_iff in H2, H0; destruct H2, H0.
+          * repeat (eapply andb_true_iff in H0; destruct H0 as [? H0]).
+            repeat (eapply andb_true_iff in H2; destruct H2 as [? H2]).
+            clear H0 H2.
+            rewrite Bool.eqb_true_iff
+              in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17. subst.
+              simpl in H5. inv H5.
+          * repeat (eapply andb_true_iff in H0; destruct H0 as [? H0]).
+            repeat (eapply andb_true_iff in H2; destruct H2 as [? H2]).
+            clear H0 H2.
+            rewrite Bool.eqb_true_iff
+              in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17.
+            subst. clear H5.
+            do 5 simplify_cautious.
+            isolate_sf.
+            Eval vm_compute in Maps.PTree.get 1788 (vars sf2).
+            Eval vm_compute in Maps.PTree.get 1711 (vars sf2).
+            Eval vm_compute in Maps.PTree.get 1710 (vars sf2).
+            Eval vm_compute in Maps.PTree.get 1708 (vars sf2).
+            Eval vm_compute in Maps.PTree.get 1663 (vars sf2).
+            Eval vm_compute in Maps.PTree.get 1651 (vars sf2).
+            Eval vm_compute in Maps.PTree.get 1001 (vars sf2).
+
+        eapply eql H0.
+        eapply orb_true_iff in H2. destruct H2.
+        simpl in H0.
         Eval vm_compute in Maps.PTree.get 1007 (vars sf1).
 
     Qed.
