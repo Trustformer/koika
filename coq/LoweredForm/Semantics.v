@@ -3,7 +3,7 @@ Require Export Koika.Utils.Common.
 Require Export Koika.Utils.Environments.
 Require Export Koika.KoikaForm.Syntax.
 Require Export Koika.KoikaForm.Typed.TypedSemantics.
-Require Export Koika.LoweredForm.LoweredSyntax.
+Require Export Koika.LoweredForm.Syntax.
 
 Section Interp.
   Context {pos_t var_t rule_name_t reg_t ext_fn_t: Type}.
@@ -35,7 +35,7 @@ Section Interp.
              (action_log: Log)
              (a: action sig sz)
     : option (Log * bits sz * (lcontext sig)) :=
-      match a in LoweredSyntax.action _ _ _ _ ts sz return (lcontext ts -> option (Log * bits sz * (lcontext ts)))  with
+      match a in Syntax.action _ _ _ _ ts sz return (lcontext ts -> option (Log * bits sz * (lcontext ts)))  with
       | Fail sz => fun _ =>
         None
       | Var k m => fun Gamma =>

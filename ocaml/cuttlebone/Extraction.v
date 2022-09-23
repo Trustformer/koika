@@ -5,7 +5,7 @@ Require Koika.Utils.Environments.
 Require Koika.KoikaForm.Typed.TypedSyntax.
 Require Koika.KoikaForm.TypeInference.
 Require Koika.KoikaForm.Typed.TypedSyntaxFunctions.
-Require Koika.CircuitForm.CircuitGeneration.
+Require Koika.CircuitForm.Generation.
 Require Koika.Compiler.
 Require Koika.Extraction.Interop.
 
@@ -34,7 +34,7 @@ Extraction "extr.ml"
            TypedSyntaxFunctions.compute_register_histories
            TypedSyntaxFunctions.may_fail_without_revert
            TypedSyntaxFunctions.rule_max_log_size
-           CircuitOptimization.lco_all_iterated
+           CircuitForm.Optimization.lco_all_iterated
            Compiler.compile_scheduler
            Interop.koika_package_t
            Interop.circuit_package_t

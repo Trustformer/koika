@@ -225,11 +225,11 @@ Definition slice_subst_impl {sz} offset {width} (a1: bits sz) (a2: bits width) :
   | right _ => a1
   end.
 
-Hint Unfold Bits.slice : vect_to_list.
-Hint Unfold Bits.slice_subst : vect_to_list.
-Hint Unfold slice_subst_impl : vect_to_list.
-Hint Unfold vect_extend_end : vect_to_list.
-Hint Unfold vect_extend_end_firstn : vect_to_list.
+#[export] Hint Unfold Bits.slice : vect_to_list.
+#[export] Hint Unfold Bits.slice_subst : vect_to_list.
+#[export] Hint Unfold slice_subst_impl : vect_to_list.
+#[export] Hint Unfold vect_extend_end : vect_to_list.
+#[export] Hint Unfold vect_extend_end_firstn : vect_to_list.
 
 Ltac vect_to_list_t_step :=
   match goal with

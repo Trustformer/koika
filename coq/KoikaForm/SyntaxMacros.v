@@ -4,7 +4,7 @@ Require Import Koika.KoikaForm.Types.
 Require Import Koika.KoikaForm.Syntax.
 Require Import Koika.KoikaForm.Typed.TypedSyntax.
 Require Import Koika.Primitives.
-Require Import Koika.LoweredForm.LoweredSyntax.
+Require Import Koika.LoweredForm.Syntax.
 Import PrimUntyped.
 
 Section SyntaxMacros.
@@ -223,7 +223,7 @@ Module Display.
   End Display.
 End Display.
 
-Section LoweredSyntaxMacros.
+Section SyntaxMacros.
   Context {pos_t var_t fn_name_t reg_t ext_fn_t: Type}.
   Context {CR: reg_t -> nat} {CSigma: ext_fn_t -> CExternalSignature}.
 
@@ -290,4 +290,4 @@ Section LoweredSyntaxMacros.
     (fn_body: action fn_sig sz)
   : action sig sz :=
     InternalCall' args (suffix_action sig fn_body).
-End LoweredSyntaxMacros.
+End SyntaxMacros.

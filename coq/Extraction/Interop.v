@@ -5,11 +5,10 @@ Require Import Koika.KoikaForm.Types.
 Require Import Koika.KoikaForm.Syntax.
 Require Import Koika.KoikaForm.Typed.TypedSyntax.
 Require Import Koika.LoweredForm.Lowering.
-Require Import Koika.CircuitForm.CircuitGeneration.
+Require Import Koika.CircuitForm.Generation.
 Require Import Koika.Compiler.
 Require Import Koika.Extraction.ExtractionSetup.
 Require Export Koika.Primitives.
-
 
 Record ext_fn_rtl_spec := { efr_name: string; efr_internal: bool }.
 

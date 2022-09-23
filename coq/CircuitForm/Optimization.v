@@ -1,11 +1,11 @@
 (*! Circuits | Local optimization of circuits !*)
 Require Export Koika.Utils.Common.
 Require Export Koika.Utils.Environments.
-Require Export Koika.CircuitForm.CircuitSemantics.
+Require Export Koika.CircuitForm.Semantics.
 Require Export Koika.Properties.PrimitiveProperties.
 Import PrimTyped CircuitSignatures.
 
-Section CircuitOptimizer.
+Section Optimizer.
   Context {rule_name_t reg_t ext_fn_t: Type}.
 
   Context {CR: reg_t -> nat}.
@@ -595,7 +595,7 @@ Section CircuitOptimizer.
         end.
     Qed.
   End PartialEval.
-End CircuitOptimizer.
+End Optimizer.
 
 Arguments unannot {rule_name_t reg_t ext_fn_t CR CSigma rwdata} [sz] c : assert.
 Arguments unannot_sound {rule_name_t reg_t ext_fn_t CR CSigma rwdata} csigma

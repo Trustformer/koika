@@ -1,5 +1,5 @@
-Require Import Koika.SimpleForm.SimpleFormInterpretation.
-Require Import Koika.SimpleForm.SimpleFormOperations.
+Require Import Koika.SimpleForm.Interpretation.
+Require Import Koika.SimpleForm.Operations.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.

@@ -3,8 +3,8 @@ Require Export Koika.KoikaForm.SyntaxMacros.
 Require Export Koika.KoikaForm.Desugaring.Desugaring.
 Require Export Koika.KoikaForm.TypeInference.
 Require Export Koika.KoikaForm.Typed.TypedSemantics.
-Require Export Koika.CircuitForm.CircuitOptimization.
-Require Export Koika.CircuitForm.CircuitGeneration.
+Require Export Koika.CircuitForm.Optimization.
+Require Export Koika.CircuitForm.Generation.
 Require Export Koika.Primitives.
 Require Export Koika.KoikaForm.SyntaxFunctions.
 Require Export Koika.KoikaForm.Typed.TypedSyntaxFunctions.

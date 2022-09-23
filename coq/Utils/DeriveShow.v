@@ -10,6 +10,7 @@ Module Internals.
   Import Coq.Lists.List.ListNotations.
   Import IdentParsing.Unsafe.
   Import IdentParsing.
+  Import Show_nat.
 
   Ltac2 Type exn ::= [ NotAConstructor (constr) ].
 
@@ -105,8 +106,9 @@ Module Internals.
   Ltac2 rec derive_show () :=
     Control.enter derive_show_begin; Control.enter derive_show_app.
 
-  Hint Extern 2 (Show _) => ltac2:(derive_show ()) : typeclass_instances.
 End Internals.
+
+#[export] Hint Extern 2 (Show _) => ltac2:(Internals.derive_show ()) : typeclass_instances.
 
 Ltac derive_show :=
   ltac2:(Control.enter Internals.derive_show).

@@ -10,7 +10,7 @@ Require Import Koika.Properties.PrimitiveProperties.
 Require Import Koika.KoikaForm.SyntaxMacros.
 Require Import Koika.LoweredForm.Lowering.
 Require Koika.KoikaForm.Typed.TypedSemantics.
-Require Koika.LoweredForm.LoweredSemantics.
+Require Koika.LoweredForm.Semantics.
 
 Section LoweringCorrectness.
   Context {pos_t var_t fn_name_t rule_name_t reg_t ext_fn_t: Type}.
@@ -42,11 +42,11 @@ Section LoweringCorrectness.
   Qed.
 
   Notation taction := (TypedSyntax.action pos_t var_t fn_name_t R Sigma).
-  Notation laction := (LoweredSyntax.action pos_t var_t CR CSigma).
+  Notation laction := (Syntax.action pos_t var_t CR CSigma).
   Notation tinterp := (TypedSemantics.interp_action r sigma).
-  Notation linterp := (LoweredSemantics.interp_action lr lsigma).
+  Notation linterp := (Semantics.interp_action lr lsigma).
   Notation tcontext := TypedSemantics.tcontext.
-  Notation lcontext := LoweredSemantics.lcontext.
+  Notation lcontext := Semantics.lcontext.
   Notation tlog := (Logs.Log R REnv).
   Notation llog := (Logs.CLog CR REnv).
 
@@ -464,11 +464,11 @@ Section LoweringCorrectness.
 
   Lemma scheduler_lowering_correct':
     forall s L,
-      LoweredSemantics.interp_scheduler' lr lsigma (fun r => lrules r) (lower_log L) s =
+      Semantics.interp_scheduler' lr lsigma (fun r => lrules r) (lower_log L) s =
       lower_log (TypedSemantics.interp_scheduler' r sigma rules L s).
   Proof.
     induction s; intros; cbn;
-      unfold TypedSemantics.interp_rule, LoweredSemantics.interp_rule.
+      unfold TypedSemantics.interp_rule, Semantics.interp_rule.
     - reflexivity.
     - rewrite log_equiv_empty.
       setoid_rewrite (action_lowering_correct (rules r0) CtxEmpty L log_empty).
@@ -483,7 +483,7 @@ Section LoweringCorrectness.
 
   Theorem scheduler_lowering_correct:
     forall s,
-      LoweredSemantics.interp_scheduler lr lsigma (fun r => lrules r) s =
+      Semantics.interp_scheduler lr lsigma (fun r => lrules r) s =
       lower_log (TypedSemantics.interp_scheduler r sigma rules s).
   Proof.
     unfold TypedSemantics.interp_scheduler; intros.
@@ -492,10 +492,10 @@ Section LoweringCorrectness.
 
   Theorem cycle_lowering_correct:
     forall s,
-      LoweredSemantics.interp_cycle lsigma (fun r => lrules r) s lr =
+      Semantics.interp_cycle lsigma (fun r => lrules r) s lr =
       lower_r (TypedSemantics.interp_cycle sigma rules s r).
   Proof.
-    unfold TypedSemantics.interp_cycle, LoweredSemantics.interp_cycle; intros.
+    unfold TypedSemantics.interp_cycle, Semantics.interp_cycle; intros.
     rewrite scheduler_lowering_correct.
     unfold lower_r, lower_log;
       rewrite SemanticProperties.commit_update_log_map_values;

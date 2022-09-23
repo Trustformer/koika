@@ -277,11 +277,7 @@ Module RVProofs.
       simplify.
       full_pass.
       simplify.
-      isolate_sf.
 
-      Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
-      Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
-      Eval vm_compute in Maps.PTree.get 13 (vars sf0).
       generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro.
       inv H0. rewrite <- H2 in *.
       simpl in H3.
@@ -338,12 +334,13 @@ Module RVProofs.
       collapse.
       collapse.
       simplify_cautious.
-      collapse.
-      collapse.
-      collapse.
-      simplify_cautious.
-      simplify_cautious.
-      simplify_cautious.
+      do 4 collapse.
+      do 1 simplify_cautious.
+      isolate_sf.
+      vm_compute Collapse.collapse_sf in sf0.
+      vm_compute Prune.prune_irrelevant_aux in sf0.
+      Opaque Koika.BitsToLists.val_beq_bits.
+      vm_compute SimplifyCautious.simplify_sf_cautious in sf0.
       destruct x0; destruct H.
       - red in H.
         repeat destruct H as [? H]. clear H2. clear H6.
@@ -396,6 +393,9 @@ Module RVProofs.
             subst. clear H5.
             do 5 simplify_cautious.
             isolate_sf.
+            vm_compute Collapse.collapse_sf in sf1.
+            vm_compute Prune.prune_irrelevant_aux in sf1.
+            vm_compute SimplifyCautious.simplify_sf_cautious in sf1.
             Eval vm_compute in Maps.PTree.get 1788 (vars sf2).
             Eval vm_compute in Maps.PTree.get 1711 (vars sf2).
             Eval vm_compute in Maps.PTree.get 1710 (vars sf2).

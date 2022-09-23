@@ -1,4 +1,4 @@
-Require Import Koika.SimpleForm.SimpleFormInterpretation.
+Require Import Koika.SimpleForm.Interpretation.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.KoikaForm.Syntax.
 Require Import Koika.KoikaForm.Types.
@@ -9,7 +9,7 @@ Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Tactics.
 Require Import Koika.SimpleForm.SimpleForm.
 
-Section SimpleFormProperties.
+Section Properties.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
@@ -53,7 +53,7 @@ Section SimpleFormProperties.
 
   Lemma reachable_remove:
     forall a vvs a0 a1 (RR : reachable_var (PTree.remove a0 vvs) a a1),
-    SimpleFormInterpretation.reachable_var
+    Interpretation.reachable_var
       (reg_t := reg_t) (ext_fn_t := ext_fn_t) vvs a a1.
   Proof.
     induction 1; simpl; intros; eauto.
@@ -87,4 +87,4 @@ Section SimpleFormProperties.
       BitsToLists.list_assoc (final_values sf) reg = Some k
       -> wt_sact (Sigma:=Sigma) R (vars sf) (SVar k) (R reg)
   }.
-End SimpleFormProperties.
+End Properties.

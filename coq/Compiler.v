@@ -5,7 +5,7 @@ Require Import Koika.KoikaForm.Types.
 Require Import Koika.KoikaForm.Syntax.
 Require Import Koika.KoikaForm.Typed.TypedSyntax.
 Require Import Koika.LoweredForm.Lowering.
-Require Import Koika.CircuitForm.CircuitGeneration.
+Require Import Koika.CircuitForm.Generation.
 Require Export Koika.Primitives.
 
 Section EndToEnd.

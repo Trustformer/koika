@@ -253,7 +253,7 @@ Module PTree <: TREE.
         match m with
         | Leaf => Leaf
         | Node Leaf o Leaf => Leaf
-        | Node l o r => Node l None r
+        | Node l _ r => Node l None r
         end
     | xO ii =>
         match m with

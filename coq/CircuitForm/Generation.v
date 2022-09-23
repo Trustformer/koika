@@ -1,13 +1,13 @@
 (*! Circuits | Compilation of lowered ASTs into RTL circuits !*)
 Require Import Koika.KoikaForm.Syntax.
-Require Import Koika.LoweredForm.LoweredSyntax.
-Require Import Koika.LoweredForm.LoweredSyntaxFunctions.
-Require Export Koika.CircuitForm.CircuitSemantics.
+Require Import Koika.LoweredForm.Syntax.
+Require Import Koika.LoweredForm.SyntaxFunctions.
+Require Export Koika.CircuitForm.Semantics.
 Require Export Koika.Utils.Common.
 Require Export Koika.Utils.Environments.
 Import PrimTyped CircuitSignatures.
 
-Section CircuitCompilation.
+Section Compilation.
   Context {pos_t var_t rule_name_t reg_t ext_fn_t: Type}.
 
   Context {CR: reg_t -> nat}.
@@ -436,7 +436,7 @@ Section CircuitCompilation.
   : register_update_circuitry :=
     let s := compile_scheduler_circuit s init_scheduler_circuit in
     map REnv (fun k r => commit_rwdata r) s.
-End CircuitCompilation.
+End Compilation.
 
 Arguments readRegisters {rule_name_t reg_t ext_fn_t} CR CSigma idx : assert.
 Arguments rwdata {rule_name_t reg_t ext_fn_t} CR CSigma sz : assert.

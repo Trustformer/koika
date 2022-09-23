@@ -1,6 +1,6 @@
 (*! Circuits | Lemmas used in the compiler-correctness proof !*)
-Require Export Koika.CircuitForm.CircuitGeneration.
-Require Export Koika.CircuitForm.CircuitOptimization.
+Require Export Koika.CircuitForm.Generation.
+Require Export Koika.CircuitForm.Optimization.
 Require Import Koika.Utils.Common.
 Require Import Koika.Utils.Environments.
 Require Import Koika.KoikaForm.Types.

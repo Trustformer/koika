@@ -28,7 +28,7 @@ End PosOrder.
 
 Module Import PosSort := Sort PosOrder.
 
-Section SimpleFormInterpretation.
+Section Interpretation.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
@@ -587,4 +587,4 @@ Section SimpleFormInterpretation.
       | SReg idx => Some (getenv REnv r idx)
       end
     end.
-End SimpleFormInterpretation.
+End Interpretation.

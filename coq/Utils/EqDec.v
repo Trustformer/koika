@@ -20,8 +20,8 @@ Lemma beq_dec_false_iff {A} (EQ: EqDec A) a1 a2 :
   beq_dec a1 a2 = false <-> a1 <> a2.
 Proof. unfold beq_dec; destruct eq_dec; subst; intuition congruence. Qed.
 
-Hint Extern 1 (EqDec _) => econstructor; decide equality : typeclass_instances.
-Hint Extern 1 ({ _ = _ } + { _ <> _ }) => apply eq_dec : typeclass_instances.
+#[export] Hint Extern 1 (EqDec _) => econstructor; decide equality : typeclass_instances.
+#[export] Hint Extern 1 ({ _ = _ } + { _ <> _ }) => apply eq_dec : typeclass_instances.
 
 Instance EqDec_bool : EqDec bool := _.
 Instance EqDec_ascii : EqDec Ascii.ascii := _.

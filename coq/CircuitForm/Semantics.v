@@ -1,7 +1,7 @@
 (*! Circuits | Interpretation of circuits !*)
 Require Export Koika.Utils.Common.
 Require Export Koika.Utils.Environments.
-Require Export Koika.CircuitForm.CircuitSyntax.
+Require Export Koika.CircuitForm.Syntax.
 Import PrimTyped CircuitSignatures.
 
 Section Interpretation.

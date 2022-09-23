@@ -1,6 +1,6 @@
-Require Import Koika.SimpleForm.SimpleFormInterpretation.
-Require Import Koika.SimpleForm.SimpleFormOperations.
-Require Import Koika.SimpleForm.SimpleFormProperties.
+Require Import Koika.SimpleForm.Interpretation.
+Require Import Koika.SimpleForm.Operations.
+Require Import Koika.SimpleForm.Properties.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
@@ -30,6 +30,8 @@ Section Collapse.
     forall ufn vc, wt_val (arg1Sig (Sigma ufn)) vc
     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
   }.
+
+  (* TODO also collapse elements referenced only once *)
 
   Fixpoint collapse_sact
     (vvs : PTree.t (type * SimpleForm.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t)))

@@ -1,11 +1,11 @@
 Require Import Koika.BitsToLists.
 Require Import Koika.Utils.Environments.
 Require Import Koika.SimpleForm.SimpleForm.
-Require Import Koika.SimpleForm.SimpleFormOperations.
+Require Import Koika.SimpleForm.Operations.
 Require Import Koika.SimpleForm.Simplifications.Simplifications.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.SimpleForm.Wt.
-Require Import Koika.SimpleForm.SimpleFormInterpretation.
+Require Import Koika.SimpleForm.Interpretation.
 
 Ltac update_wfsf :=
   let wfsf := fresh "wfsf" in

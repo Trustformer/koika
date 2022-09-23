@@ -1,9 +1,9 @@
 (*! Tools | Functions defined on lowered ASTs !*)
 Require Import Koika.Utils.Member.
 Require Import Koika.Primitives.
-Require Import Koika.LoweredForm.LoweredSemantics.
+Require Import Koika.LoweredForm.Semantics.
 
-Section LoweredSyntaxFunctions.
+Section SyntaxFunctions.
   Context {pos_t var_t rule_name_t reg_t ext_fn_t: Type}.
   Context {R: reg_t -> nat}
           {Sigma: ext_fn_t -> CExternalSignature}.
@@ -103,4 +103,4 @@ Section LoweredSyntaxFunctions.
         List.map path_dependency_graph paths.
     End Dependencies.
   End Footprint.
-End LoweredSyntaxFunctions.
+End SyntaxFunctions.

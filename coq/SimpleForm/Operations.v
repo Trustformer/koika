@@ -1,5 +1,5 @@
-Require Import Koika.SimpleForm.SimpleFormInterpretation.
-Require Import Koika.SimpleForm.SimpleFormProperties.
+Require Import Koika.SimpleForm.Interpretation.
+Require Import Koika.SimpleForm.Properties.
 Require Import Koika.KoikaForm.Untyped.UntypedSemantics.
 Require Import Koika.BitsToLists.
 Require Import Koika.SimpleForm.Sact.
@@ -16,7 +16,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.Sorting.Sorted.
 Require Import Coq.Sorting.Mergesort.
 
-Section SimpleFormOperations.
+Section Operations.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
@@ -82,7 +82,7 @@ Section SimpleFormOperations.
   Lemma nodup_useful_vars sf:
     vvs_smaller_variables (vars sf) -> NoDup (useful_vars sf).
   Proof.
-    intros. unfold useful_vars. unfold SimpleFormInterpretation.useful_vars.
+    intros. unfold useful_vars. unfold Interpretation.useful_vars.
     apply fold_left_induction. constructor.
     intros.
     eapply nodup_reachable_vars_aux; eauto.
@@ -2851,4 +2851,4 @@ Section SimpleFormOperations.
     (* inlining_pass does not impact the result of list_assoc in our case *)
     erewrite inlining_no_vars; eauto.
   Qed.
-End SimpleFormOperations.
+End Operations.

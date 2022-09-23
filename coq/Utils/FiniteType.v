@@ -156,7 +156,7 @@ Ltac FiniteType_t :=
     fold (@nth_error nat)
   end.
 
-Hint Extern 1 (FiniteType _) => FiniteType_t : typeclass_instances.
+#[export] Hint Extern 1 (FiniteType _) => FiniteType_t : typeclass_instances.
 
 Module Examples.
   Inductive t    := A | B.

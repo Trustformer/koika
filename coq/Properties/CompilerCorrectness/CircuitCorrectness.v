@@ -4,11 +4,11 @@ Require Import Coq.setoid_ring.Ring Coq.setoid_ring.Ring.
 Require Import Koika.Utils.Common.
 Require Import Koika.Properties.SemanticProperties.
 Require Import Koika.Properties.PrimitiveProperties.
-Require Import Koika.LoweredForm.LoweredSyntax.
+Require Import Koika.LoweredForm.Syntax.
 Require Import Koika.LoweredForm.Lowering.
-Require Import Koika.CircuitForm.CircuitSemantics.
-Require Import Koika.CircuitForm.CircuitProperties.
-Require Import Koika.LoweredForm.LoweredSemantics.
+Require Import Koika.CircuitForm.Semantics.
+Require Import Koika.CircuitForm.Properties.
+Require Import Koika.LoweredForm.Semantics.
 Require Import Koika.Utils.Environments.
 
 Section CompilerCorrectness.
@@ -410,7 +410,7 @@ Section CompilerCorrectness.
       apply andb_comm.
   Qed.
 
-  Opaque CircuitGeneration.willFire_of_canFire'.
+  Opaque Generation.willFire_of_canFire'.
 
   Lemma finite_In {T} {FT: FiniteType T}:
     forall t: T, List.In t finite_elements.
@@ -471,7 +471,7 @@ Section CompilerCorrectness.
         eauto using @finite_In.
   Qed.
 
-  Transparent CircuitGeneration.willFire_of_canFire'.
+  Transparent Generation.willFire_of_canFire'.
 
   Definition rwdata_circuit_le_invariant {idx} (rwd1 rwd2: rwdata (CR idx)) :=
       circuit_le (rwd1.(read0)) (rwd2.(read0)) /\
@@ -552,10 +552,10 @@ Section CompilerCorrectness.
 
   Ltac circuit_compile_destruct_t :=
     repeat lazymatch goal with
-           | [ IH: context[CircuitGeneration.compile_action ?lco ?rc _ ?a _],
-                   H: context[CircuitGeneration.compile_action ?lco ?rc ?gamma ?a ?rwc] |- _ ] =>
+           | [ IH: context[Generation.compile_action ?lco ?rc _ ?a _],
+                   H: context[Generation.compile_action ?lco ?rc ?gamma ?a ?rwc] |- _ ] =>
              specialize (IH gamma rwc _ _ (surjective_pairing _));
-             destruct (CircuitGeneration.compile_action lco rc gamma a rwc); cbn
+             destruct (Generation.compile_action lco rc gamma a rwc); cbn
            | [ H: (_, _) = (_, _) |- _ ] => inversion H; subst; clear H
            end.
 
@@ -786,8 +786,8 @@ Section CompilerCorrectness.
     t_interp_circuit_willFire_of_canFire.
   Qed.
 
-  Arguments CircuitGeneration.willFire_of_canFire' : simpl never.
-  Arguments CircuitGeneration.willFire_of_canFire : simpl never.
+  Arguments Generation.willFire_of_canFire' : simpl never.
+  Arguments Generation.willFire_of_canFire : simpl never.
 
   Lemma interp_circuit_willFire_of_canFire'_mux_rwdata:
     forall (idx : reg_t) s (rwd1 rwd2 : rwdata (CR idx)) (cCond : circuit 1) (rwdL : rwdata (CR idx)),
@@ -846,8 +846,8 @@ Section CompilerCorrectness.
       rewrite H
     | [ |- match (if ?x then _ else _) with _ => _ end ] =>
       destruct x eqn:?; cbn
-    | [ |- context[CircuitGeneration.compile_action ?lco ?rc ?gamma ?ex ?clog] ] =>
-      destruct (CircuitGeneration.compile_action lco rc gamma ex clog) eqn:?; cbn
+    | [ |- context[Generation.compile_action ?lco ?rc ?gamma ?ex ?clog] ] =>
+      destruct (Generation.compile_action lco rc gamma ex clog) eqn:?; cbn
     | [ IH: context[interp_action _ _ _ _ _ ?ex]  |-
         context[interp_action _ _ ?Gamma ?Log ?log ?ex] ] =>
       specialize (IH _ Gamma _ log ltac:(ceauto) ltac:(ceauto) ltac:(ceauto)
@@ -859,7 +859,7 @@ Section CompilerCorrectness.
       rewrite H
     | [  |- context[REnv.(getenv) (map2 REnv _ _ _)] ] =>
       rewrite getenv_map2
-    | [ Heq: CircuitGeneration.compile_action ?lco ?rc ?gamma ?ex ?clog = _  |- _ ] => progress rewrite Heq in *
+    | [ Heq: Generation.compile_action ?lco ?rc ?gamma ?ex ?clog = _  |- _ ] => progress rewrite Heq in *
     end.
 
   (* Create HintDb circuits discriminated. *)
@@ -870,13 +870,13 @@ Section CompilerCorrectness.
            | _ => reflexivity
            (* The notations for willFire_of_canFire and willFire_of_canFire'
               can't be used here, because of section variable (Coq bug?) *)
-           | [ H: interp_circuit (CircuitGeneration.willFire_of_canFire _ _ _ _) = Ob~1 |- _ ] =>
+           | [ H: interp_circuit (Generation.willFire_of_canFire _ _ _ _) = Ob~1 |- _ ] =>
              rewrite interp_willFire_of_canFire_true in H
-           | [ H: interp_circuit (CircuitGeneration.willFire_of_canFire _ _ _ _) = Ob~0 |- _ ] =>
+           | [ H: interp_circuit (Generation.willFire_of_canFire _ _ _ _) = Ob~0 |- _ ] =>
              rewrite interp_willFire_of_canFire_false in H
-           | [ |- interp_circuit (CircuitGeneration.willFire_of_canFire _ _ _ _) = Ob~1 ] =>
+           | [ |- interp_circuit (Generation.willFire_of_canFire _ _ _ _) = Ob~1 ] =>
              rewrite interp_willFire_of_canFire_true
-           | [ |- interp_circuit (CircuitGeneration.willFire_of_canFire _ _ _ _) = Ob~0 ] =>
+           | [ |- interp_circuit (Generation.willFire_of_canFire _ _ _ _) = Ob~0 ] =>
              rewrite interp_willFire_of_canFire_false
            | _ => progress cbn
            | _ => progress intros
@@ -888,7 +888,7 @@ Section CompilerCorrectness.
              destruct (eq_dec idx idx'); subst;
              [ rewrite !get_put_eq | rewrite !get_put_neq by eassumption ];
              [ | solve [intuition eauto] ]
-           | [  |- interp_circuit (CircuitGeneration.willFire_of_canFire' _ _ _) = Ob~_ ] =>
+           | [  |- interp_circuit (Generation.willFire_of_canFire' _ _ _) = Ob~_ ] =>
              (rewrite interp_circuit_willFire_of_canFire_read0 ||
               rewrite interp_circuit_willFire_of_canFire_read1 ||
               rewrite interp_circuit_willFire_of_canFire_write0 ||
@@ -1282,7 +1282,7 @@ Section CompilerCorrectness.
     interp_willFire_cleanup.
     - rewrite lco_proof; reflexivity.
     - rewrite getenv_map.
-      unfold CircuitGeneration.willFire_of_canFire'.
+      unfold Generation.willFire_of_canFire'.
       t_interp_circuit_willFire_of_canFire.
   Qed.
 
@@ -1312,10 +1312,10 @@ Section CompilerCorrectness.
   Lemma interp_circuit_willFire_of_canFire_remove_bundle':
     forall (cLog: rwset) (c: rwcircuit) rl rs bundle,
         interp_circuit
-          (CircuitGeneration.willFire_of_canFire
+          (Generation.willFire_of_canFire
              (REnv := REnv) lco rl (bundleref_wrap_erwc rl rs bundle c) cLog) =
         interp_circuit
-          (CircuitGeneration.willFire_of_canFire
+          (Generation.willFire_of_canFire
              (REnv := REnv) lco rl c cLog) .
   Proof.
     unfold bundleref_wrap_erwc; intros.
@@ -1331,9 +1331,9 @@ Section CompilerCorrectness.
   Lemma interp_circuit_willFire_of_canFire_remove_bundle :
     forall (cLog: rwset) (c: rwcircuit) rl rs bundle res,
       interp_circuit
-        ((CircuitGeneration.willFire_of_canFire (REnv := REnv) lco rl c) cLog) = res ->
+        ((Generation.willFire_of_canFire (REnv := REnv) lco rl c) cLog) = res ->
       interp_circuit
-        (CircuitGeneration.willFire_of_canFire lco rl (bundleref_wrap_erwc rl rs bundle c) cLog) = res.
+        (Generation.willFire_of_canFire lco rl (bundleref_wrap_erwc rl rs bundle c) cLog) = res.
   Proof.
     intros; subst; apply interp_circuit_willFire_of_canFire_remove_bundle'.
   Qed.
@@ -1356,10 +1356,10 @@ Section CompilerCorrectness.
 
   Lemma log_data1_consistent'_bundle_equiv : forall Log cLog regs rl rs bundle,
       log_data1_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset
+        Log (Generation.update_accumulated_rwset
                lco regs cLog) <->
       log_data1_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset
+        Log (Generation.update_accumulated_rwset
                lco (bundleref_wrap_rwset rl rs bundle regs) cLog).
   Proof.
     unfold log_data1_consistent', bundleref_wrap_rwset, update_accumulated_rwset;
@@ -1369,10 +1369,10 @@ Section CompilerCorrectness.
 
   Lemma log_data0_consistent'_bundle_equiv : forall Log cLog regs rl rs bundle,
       log_data0_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset
+        Log (Generation.update_accumulated_rwset
                lco regs cLog) <->
       log_data0_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset
+        Log (Generation.update_accumulated_rwset
                lco (bundleref_wrap_rwset rl rs bundle regs) cLog).
   Proof.
     unfold log_data0_consistent', bundleref_wrap_rwset, update_accumulated_rwset;
@@ -1391,18 +1391,18 @@ Section CompilerCorrectness.
 
   Lemma log_data1_consistent'_bundle_elim : forall Log cLog regs rl rs bundle,
       log_data1_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset lco regs cLog) ->
+        Log (Generation.update_accumulated_rwset lco regs cLog) ->
       log_data1_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset lco (bundleref_wrap_rwset rl rs bundle regs) cLog).
+        Log (Generation.update_accumulated_rwset lco (bundleref_wrap_rwset rl rs bundle regs) cLog).
   Proof.
     apply log_data1_consistent'_bundle_equiv.
   Qed.
 
   Lemma log_data0_consistent'_bundle_elim : forall Log cLog regs rl rs bundle,
       log_data0_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset lco regs cLog) ->
+        Log (Generation.update_accumulated_rwset lco regs cLog) ->
       log_data0_consistent'
-        Log (CircuitGeneration.update_accumulated_rwset lco (bundleref_wrap_rwset rl rs bundle regs) cLog).
+        Log (Generation.update_accumulated_rwset lco (bundleref_wrap_rwset rl rs bundle regs) cLog).
   Proof.
     apply log_data0_consistent'_bundle_equiv.
   Qed.

@@ -6,8 +6,8 @@ Require Import Koika.KoikaForm.Types.
 Require Import Koika.Utils.Environments.
 Require Import Koika.KoikaForm.Logs.
 Require Import Koika.LoweredForm.Lowering.
-Require Import Koika.CircuitForm.CircuitGeneration.
-Require Import Koika.CircuitForm.CircuitOptimization.
+Require Import Koika.CircuitForm.Generation.
+Require Import Koika.CircuitForm.Optimization.
 Require Import Koika.Compiler.
 
 Section Thm.
