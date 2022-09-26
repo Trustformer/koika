@@ -3,8 +3,8 @@ Require Import Coq.Program.Equality.
 Require Import Koika.Frontend.
 Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
 Require Import Koika.SimpleForm.SimpleForm.
-Require Import Koika.SimpleForm.SimpleFormInterpretation.
-Require Import Koika.SimpleForm.SimpleFormOperations.
+Require Import Koika.SimpleForm.Interpretation.
+Require Import Koika.SimpleForm.Operations.
 Require Import Koika.SimpleForm.Tactics.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.BitsToLists.
@@ -335,19 +335,12 @@ Module RVProofs.
       collapse.
       simplify_cautious.
       do 4 collapse.
-      do 1 simplify_cautious.
-      isolate_sf.
-      vm_compute Collapse.collapse_sf in sf0.
-      vm_compute Prune.prune_irrelevant_aux in sf0.
-      Opaque Koika.BitsToLists.val_beq_bits.
-      vm_compute SimplifyCautious.simplify_sf_cautious in sf0.
       destruct x0; destruct H.
       - red in H.
         repeat destruct H as [? H]. clear H2. clear H6.
         red in H5. simpl in H5. vm_compute vect_to_list in H5.
         red in H.
         exploit_reg H5. clear H5. clear H9.
-        isolate_sf. move wfsf at top. move sf1 at top.
         inv H12. f_equal. simpl. eapply length_32_something in H5.
         do 32 destruct H5 as [? H5]. subst.
         eapply H in H0.
@@ -391,18 +384,17 @@ Module RVProofs.
             rewrite Bool.eqb_true_iff
               in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17.
             subst. clear H5.
-            do 5 simplify_cautious.
+            do 4 simplify_cautious.
             isolate_sf.
-            vm_compute Collapse.collapse_sf in sf1.
-            vm_compute Prune.prune_irrelevant_aux in sf1.
-            vm_compute SimplifyCautious.simplify_sf_cautious in sf1.
-            Eval vm_compute in Maps.PTree.get 1788 (vars sf2).
-            Eval vm_compute in Maps.PTree.get 1711 (vars sf2).
-            Eval vm_compute in Maps.PTree.get 1710 (vars sf2).
-            Eval vm_compute in Maps.PTree.get 1708 (vars sf2).
-            Eval vm_compute in Maps.PTree.get 1663 (vars sf2).
-            Eval vm_compute in Maps.PTree.get 1651 (vars sf2).
-            Eval vm_compute in Maps.PTree.get 1001 (vars sf2).
+            vm_compute Prune.prune_irrelevant_aux in sf0.
+            vm_compute in sf0.
+            Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1711 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1710 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1708 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1663 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1651 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1001 (vars sf0).
 
         eapply eql H0.
         eapply orb_true_iff in H2. destruct H2.
