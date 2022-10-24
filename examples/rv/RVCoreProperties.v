@@ -399,8 +399,8 @@ Module RVProofs.
             clear wfsf. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
             do 4 collapse.
-            simplify.
-            simplify.
+            (* simplify. *)
+            (* simplify. *)
             isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf1 in sf0. clear sf1.
@@ -411,6 +411,27 @@ Module RVProofs.
             vm_compute in sf1.
 
             Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+
+            let r := eval vm_compute in (Maps.PTree.get 1788 (vars sf1)) in
+            (* let r := eval vm_compute in (Some ( *)
+            (*   false, *)
+            (*   SBinop (reg_t := RV32I.reg_t) (ext_fn_t := RV32I.ext_fn_t) *)
+            (*     (UBits2 UAnd) *)
+            (*     (SConst (Bits [true])) *)
+            (*     (SBinop *) 
+            (*       (UEq false) (SConst (Bits [true])) (SConst (Bits [true]))) *)
+            (* )) in *)
+
+            lazymatch r with
+            | None => idtac "no1"
+            | Some (_, ?var) =>
+              let res :=
+                simplify_tac ctx ext_sigma var (@nil Direction.direction)
+              in (idtac res)
+            | _  => idtac "no2" r
+            end.
+
+            Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
             Eval vm_compute in Maps.PTree.get 995 (vars sf1).
             Eval vm_compute in Maps.PTree.get 1711 (vars sf0).
             Eval vm_compute in Maps.PTree.get 1710 (vars sf0).

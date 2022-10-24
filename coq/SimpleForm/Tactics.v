@@ -12,7 +12,7 @@ Require Import Koika.SimpleForm.Operations.
 (* returns val, [exempted] *)
 Ltac simplify_tac r sigma H pos :=
   lazymatch H with
-  | SIf ?c ?t ?f =>
+  | @SIf ?rt ?eft ?c ?t ?f =>
     let c_ret := simplify_tac r sigma c (branch1::pos) in
     let new_c := (eval vm_compute in (fst c_ret)) in
     let ec := (eval vm_compute in (snd c_ret)) in
@@ -25,9 +25,13 @@ Ltac simplify_tac r sigma H pos :=
     match eval vm_compute in (eval_sact_no_vars r sigma new_c) with
     | Some (Bits [true]) => eval vm_compute in (new_t, ec ++ et)
     | Some (Bits [false]) => eval vm_compute in (new_f, ec ++ ef)
-    | _ => eval vm_compute in (SIf new_c new_t new_f, pos :: ec ++ et ++ ef)
+    | _ =>
+      eval vm_compute in (
+        SIf (reg_t := rt) (ext_fn_t := eft) new_c new_t new_f,
+        pos :: ec ++ et ++ ef
+      )
     end
-  | SUnop ?fn ?arg =>
+  | @SUnop ?rt ?eft ?fn ?arg =>
     let a_ret := simplify_tac r sigma arg (branch1::pos) in
     let new_a := (eval vm_compute in (fst a_ret)) in
     let ea := (eval vm_compute in (snd a_ret)) in
@@ -35,10 +39,10 @@ Ltac simplify_tac r sigma H pos :=
       eval vm_compute in (eval_sact_no_vars r sigma (SUnop fn new_a))
     ) in
     match res with
-    | Some ?x => (eval vm_compute in (SConst x, ea))
-    | _ => eval vm_compute in (SUnop fn new_a, pos :: ea)
+    | Some ?x => (eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea))
+    | _ => eval vm_compute in (SUnop (reg_t := rt) (ext_fn_t := eft) fn new_a, pos :: ea)
     end
-  | SBinop ?fn ?arg1 ?arg2 =>
+  | @SBinop ?rt ?eft ?fn ?arg1 ?arg2 =>
     let a1_ret := simplify_tac r sigma arg1 (branch1::pos) in
     let new_a1 := (eval vm_compute in (fst a1_ret)) in
     let ea1 := (eval vm_compute in (snd a1_ret)) in
@@ -46,13 +50,18 @@ Ltac simplify_tac r sigma H pos :=
     let new_a2 := (eval vm_compute in (fst a2_ret)) in
     let ea2 := (eval vm_compute in (snd a2_ret)) in
     let res := (
-      eval vm_compute in (eval_sact_no_vars r sigma (SBinop fn new_a1 new_a2))
+      eval vm_compute in (eval_sact_no_vars r sigma (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2))
     ) in
-    match res with
-    | Some ?x => eval vm_compute in (SConst x, ea1 ++ ea2)
-    | _ => eval vm_compute in (SBinop fn new_a1 new_a2, pos :: ea1 ++ ea2)
+    lazymatch res with
+    | Some ?x =>
+      eval vm_compute in
+        (SConst (reg_t := rt) (ext_fn_t := eft) x, ea1 ++ ea2)
+    | _ =>
+      eval vm_compute in
+        (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2,
+         pos :: ea1 ++ ea2)
     end
-  | SExternalCall ?fn ?arg =>
+  | @SExternalCall ?rt ?eft ?fn ?arg =>
     let a_ret := simplify_tac r sigma arg (branch1::pos) in
     let new_a := (eval vm_compute in (fst a_ret)) in
     let ea := (eval vm_compute in (snd a_ret)) in
@@ -60,14 +69,16 @@ Ltac simplify_tac r sigma H pos :=
       eval vm_compute in (eval_sact_no_vars r sigma (SExternalCall fn new_a))
     ) in
     match res with
-    | Some ?x => eval vm_compute in (SConst x, ea)
+    | Some ?x =>
+        eval vm_compute in
+          (SConst (reg_t := rt) (ext_fn_t := eft) x, ea)
     | _ => eval vm_compute in (SUnop new_a, pos :: ea)
     end
-  | SReg ?idx =>
+  | @SReg ?rt ?eft ?idx =>
     eval vm_compute in (H, (@nil Direction.position))
-  | SVar ?v =>
+  | @SVar ?rt ?eft ?v =>
     eval vm_compute in (H, (@nil Direction.position))
-  | SConst ?c =>
+  | @SConst ?rt ?eft ?c =>
     eval vm_compute in (H, (@nil Direction.position))
   | _ => idtac "nop2 " H
   end.
