@@ -1,11 +1,110 @@
 Require Import Koika.BitsToLists.
 Require Import Koika.Utils.Environments.
+Require Import Koika.SimpleForm.Direction.
 Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.SimpleForm.Operations.
 Require Import Koika.SimpleForm.Simplifications.Simplifications.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.SimpleForm.Wt.
 Require Import Koika.SimpleForm.Interpretation.
+Require Import Koika.SimpleForm.Operations.
+
+(* returns val, [exempted] *)
+Ltac simplify_tac r sigma H pos :=
+  lazymatch H with
+  | SIf ?c ?t ?f =>
+    let c_ret := simplify_tac r sigma c (branch1::pos) in
+    let new_c := (eval vm_compute in (fst c_ret)) in
+    let ec := (eval vm_compute in (snd c_ret)) in
+    let t_ret := simplify_tac r sigma t (branch2::pos) in
+    let new_t := (eval vm_compute in (fst t_ret)) in
+    let et := (eval vm_compute in (snd t_ret)) in
+    let f_ret := simplify_tac r sigma t (branch3::pos) in
+    let new_f := (eval vm_compute in (fst f_ret)) in
+    let ef := (eval vm_compute in (snd f_ret)) in
+    match eval vm_compute in (eval_sact_no_vars r sigma new_c) with
+    | Some (Bits [true]) => eval vm_compute in (new_t, ec ++ et)
+    | Some (Bits [false]) => eval vm_compute in (new_f, ec ++ ef)
+    | _ => eval vm_compute in (SIf new_c new_t new_f, pos :: ec ++ et ++ ef)
+    end
+  | SUnop ?fn ?arg =>
+    let a_ret := simplify_tac r sigma arg (branch1::pos) in
+    let new_a := (eval vm_compute in (fst a_ret)) in
+    let ea := (eval vm_compute in (snd a_ret)) in
+    let res := (
+      eval vm_compute in (eval_sact_no_vars r sigma (SUnop fn new_a))
+    ) in
+    match res with
+    | Some ?x => (eval vm_compute in (SConst x, ea))
+    | _ => eval vm_compute in (SUnop fn new_a, pos :: ea)
+    end
+  | SBinop ?fn ?arg1 ?arg2 =>
+    let a1_ret := simplify_tac r sigma arg1 (branch1::pos) in
+    let new_a1 := (eval vm_compute in (fst a1_ret)) in
+    let ea1 := (eval vm_compute in (snd a1_ret)) in
+    let a2_ret := simplify_tac r sigma arg2 (branch2::pos) in
+    let new_a2 := (eval vm_compute in (fst a2_ret)) in
+    let ea2 := (eval vm_compute in (snd a2_ret)) in
+    let res := (
+      eval vm_compute in (eval_sact_no_vars r sigma (SBinop fn new_a1 new_a2))
+    ) in
+    match res with
+    | Some ?x => eval vm_compute in (SConst x, ea1 ++ ea2)
+    | _ => eval vm_compute in (SBinop fn new_a1 new_a2, pos :: ea1 ++ ea2)
+    end
+  | SExternalCall ?fn ?arg =>
+    let a_ret := simplify_tac r sigma arg (branch1::pos) in
+    let new_a := (eval vm_compute in (fst a_ret)) in
+    let ea := (eval vm_compute in (snd a_ret)) in
+    let res := (
+      eval vm_compute in (eval_sact_no_vars r sigma (SExternalCall fn new_a))
+    ) in
+    match res with
+    | Some ?x => eval vm_compute in (SConst x, ea)
+    | _ => eval vm_compute in (SUnop new_a, pos :: ea)
+    end
+  | SReg ?idx =>
+    eval vm_compute in (H, (@nil Direction.position))
+  | SVar ?v =>
+    eval vm_compute in (H, (@nil Direction.position))
+  | SConst ?c =>
+    eval vm_compute in (H, (@nil Direction.position))
+  | _ => idtac "nop2 " H
+  end.
+
+Ltac apply_option r sigma i :=
+  lazymatch i with
+  | (_, (_, ?x)) =>
+    let stac := simplify_tac r sigma x (@nil Direction.direction) in
+    eval vm_compute in (snd stac)
+  | _ => idtac "nope" i
+  end.
+
+Ltac apply_to_list r sigma l :=
+  lazymatch l with
+  | [] => eval vm_compute in (@nil (list Direction.position))
+  | ?h :: ?t =>
+    let simpl_h := apply_option r sigma h in
+    let simpl_t := apply_to_list r sigma t in
+    eval vm_compute in (simpl_h::simpl_t)
+  end.
+
+(* Maps.PTree.elements map *)
+Ltac apply_to_map r sigma m :=
+  let m_l := eval vm_compute in (Maps.PTree.elements m) in
+  apply_to_list r sigma m_l.
+
+Ltac simplify_targeted protected :=
+  erewrite simplify_sf_targeted_interp_cycle_ok with (e := protected); eauto.
+
+Ltac simplify_top :=
+  lazymatch goal with
+  | |- getenv ?REnv (interp_cycle ?ctx ?ext_sigma ?sf) _ = _ =>
+    let map := constr:(vars sf) in
+    let protected := apply_to_map ctx ext_sigma map in
+    let sz := (eval vm_compute in (List.length protected)) in
+    simplify_targeted protected
+  end.
 
 Ltac update_wfsf :=
   let wfsf := fresh "wfsf" in
@@ -47,10 +146,29 @@ Ltac update_wfsf :=
        = _
     =>
     assert (wf_sf R ext_Sigma (simplify_sf ctx ext_sigma sf')) as wfsf by
-    (eapply (
+    (intros; eapply (
         wf_sf_simplify_sf
           (wt_sigma := WT_SIGMA) (REnv := REnv) R ext_Sigma ctx ext_sigma WTRENV
           sf' WFSF'
+    ); eauto); clear WFSF'
+  | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
+    WT_SIGMA:
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
+    |- getenv ?REnv
+         (interp_cycle ?ctx ?ext_sigma
+           (simplify_sf_targeted ?ctx ?ext_sigma ?sf' ?e)
+         ) ?rg
+       = _
+    =>
+    assert (forall x, wf_sf R ext_Sigma (simplify_sf_targeted ctx ext_sigma sf' x))
+      as wfsf by
+    (intro; apply (
+      wf_sf_simplify_sf_targeted
+        (wt_sigma := WT_SIGMA) (REnv := REnv)
+        R ext_Sigma ctx ext_sigma WTRENV
+        sf' WFSF'
     )); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
@@ -93,7 +211,6 @@ Ltac update_wfsf :=
     assert (wf_sf R ext_Sigma (prune_irrelevant_aux sf' rg l)) as wfsf
     by (eapply (wf_sf_prune_irrelevant_aux R ext_Sigma sf' rg l lassoc WFSF'));
     clear WFSF'; clear lassoc
-    (* ; clear lassoc *)
   | |- _ => idtac "update_wf_sf failed"
   end; move wfsf at top.
 
@@ -156,8 +273,8 @@ Ltac exploit_fields :=
 
 Ltac exploit_hypotheses := exploit_regs; exploit_fields.
 
-(* TODO is_concrete test *)
 Ltac simplify := erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
+Ltac simplify_careful := simplify_top; update_wfsf.
 Ltac simplify_cautious :=
   erewrite simplify_sf_cautious_interp_cycle_ok; eauto; update_wfsf.
 Ltac prune :=

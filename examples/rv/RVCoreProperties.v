@@ -196,13 +196,13 @@ Module RVProofs.
       repeat constructor.
     Qed.
 
-    Lemma fail_schedule:
-      forall (H: getenv REnv ctx RV32I.halt = Bits [true]),
-      getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true].
-    Proof.
-      intros. assert (wfsf := sf_wf).
-      crusher 2.
-    Time Qed.
+(*     Lemma fail_schedule: *)
+(*       forall (H: getenv REnv ctx RV32I.halt = Bits [true]), *)
+(*       getenv REnv (interp_cycle ctx ext_sigma sf) RV32I.halt = Bits [true]. *)
+(*     Proof. *)
+(*       intros. assert (wfsf := sf_wf). *)
+(*       crusher 2. *)
+(*     Time Qed. *)
 
     Lemma length_1_something:
       forall {A: Type} bs,
@@ -333,8 +333,6 @@ Module RVProofs.
       simplify.
       collapse.
       collapse.
-      simplify_cautious.
-      do 4 collapse.
       destruct x0; destruct H.
       - red in H.
         repeat destruct H as [? H]. clear H2. clear H6.
@@ -384,11 +382,36 @@ Module RVProofs.
             rewrite Bool.eqb_true_iff
               in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17.
             subst. clear H5.
-            do 4 simplify_cautious.
-            isolate_sf.
-            vm_compute Prune.prune_irrelevant_aux in sf0.
+
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
+            clear wfsf. vm_compute in sf0.
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
+            clear wfsf. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
+            clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
+            clear wfsf. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+            do 4 collapse.
+            simplify.
+            simplify.
+            isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
+            clear wfsf0. unfold sf1 in sf0. clear sf1.
+            vm_compute in sf0.
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
+            clear wfsf0. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+
+            Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 995 (vars sf1).
             Eval vm_compute in Maps.PTree.get 1711 (vars sf0).
             Eval vm_compute in Maps.PTree.get 1710 (vars sf0).
             Eval vm_compute in Maps.PTree.get 1708 (vars sf0).
