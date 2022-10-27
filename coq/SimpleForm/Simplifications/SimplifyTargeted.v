@@ -42,37 +42,37 @@ Section SimplifyTargeted.
     match ua with
     | SIf cond tb fb =>
       let cond' :=
-        simplify_sact_targeted_aux cond e (pos++[branch1]) in
+        simplify_sact_targeted_aux cond e (branch1::pos) in
       if (exempted pos e) then
         SIf
           cond'
-          (simplify_sact_targeted_aux tb e (pos++[branch2]))
-          (simplify_sact_targeted_aux fb e (pos++[branch3]))
+          (simplify_sact_targeted_aux tb e (branch2::pos))
+          (simplify_sact_targeted_aux fb e (branch3::pos))
       else
         match eval_sact_no_vars r sigma cond' with
-        | Some (Bits [true]) => simplify_sact_targeted_aux tb e (pos++[branch2])
+        | Some (Bits [true]) => simplify_sact_targeted_aux tb e (branch2::pos)
         | Some (Bits [false]) =>
-          simplify_sact_targeted_aux fb e (pos++[branch3])
+          simplify_sact_targeted_aux fb e (branch3::pos)
         | _ =>
           SIf
-            cond' (simplify_sact_targeted_aux tb e (pos++[branch2]))
-            (simplify_sact_targeted_aux fb e (pos++[branch3]))
+            cond' (simplify_sact_targeted_aux tb e (branch2::pos))
+            (simplify_sact_targeted_aux fb e (branch3::pos))
         end
     | SBinop ufn a1 a2 =>
       if (exempted pos e) then
         SBinop
-          ufn (simplify_sact_targeted_aux a1 e (pos++[branch1]))
-          (simplify_sact_targeted_aux a2 e (pos++[branch2]))
+          ufn (simplify_sact_targeted_aux a1 e (branch1::pos))
+          (simplify_sact_targeted_aux a2 e (branch2::pos))
       else
-        let a1' := simplify_sact_targeted_aux a1 e (pos++[branch1]) in
+        let a1' := simplify_sact_targeted_aux a1 e (branch1::pos) in
         match ufn with
         | PrimUntyped.UBits2 PrimUntyped.UAnd =>
           match eval_sact_no_vars r sigma a1' with
           | Some (Bits [false]) => const_false
           | Some (Bits [true]) =>
-            simplify_sact_targeted_aux a2 e (pos++[branch2])
+            simplify_sact_targeted_aux a2 e (branch2::pos)
           | _ =>
-            let a2' := simplify_sact_targeted_aux a2 e (pos++[branch2]) in
+            let a2' := simplify_sact_targeted_aux a2 e (branch2::pos) in
             match eval_sact_no_vars r sigma a2' with
             | Some (Bits [false]) => const_false
             | Some (Bits [true]) => a1'
@@ -83,9 +83,9 @@ Section SimplifyTargeted.
           match eval_sact_no_vars r sigma a1' with
           | Some (Bits [true]) => const_true
           | Some (Bits [false]) =>
-            simplify_sact_targeted_aux a2 e (pos++[branch2])
+            simplify_sact_targeted_aux a2 e (branch2::pos)
           | _ =>
-            let a2' := simplify_sact_targeted_aux a2 e (pos++[branch2]) in
+            let a2' := simplify_sact_targeted_aux a2 e (branch2::pos) in
             match eval_sact_no_vars r sigma a2' with
             | Some (Bits [true]) => const_true
             | Some (Bits [false]) => a1'
@@ -93,7 +93,7 @@ Section SimplifyTargeted.
             end
           end
         | fn =>
-          let a2' := simplify_sact_targeted_aux a2 e (pos++[branch2]) in
+          let a2' := simplify_sact_targeted_aux a2 e (branch2::pos) in
           match
             eval_sact_no_vars r sigma a1', eval_sact_no_vars r sigma a2'
           with
@@ -107,9 +107,9 @@ Section SimplifyTargeted.
         end
     | SUnop ufn a =>
       if (exempted pos e) then
-        SUnop ufn (simplify_sact_targeted_aux a e (pos++[branch1]))
+        SUnop ufn (simplify_sact_targeted_aux a e (branch1::pos))
       else
-        let a := simplify_sact_targeted_aux a e (pos++[branch1]) in
+        let a := simplify_sact_targeted_aux a e (branch1::pos) in
         match eval_sact_no_vars r sigma a with
         | Some x =>
           match sigma1 ufn x with
@@ -119,7 +119,7 @@ Section SimplifyTargeted.
         | None => SUnop ufn a
         end
     | SExternalCall ufn a =>
-      SExternalCall ufn (simplify_sact_targeted_aux a e (pos++[branch1]))
+      SExternalCall ufn (simplify_sact_targeted_aux a e (branch1::pos))
     | SVar _ | SReg _ | SConst _ => ua
     end.
 
@@ -150,12 +150,7 @@ Section SimplifyTargeted.
     forall a p1 p2,
     simplify_sact_targeted_aux a [] p1 = simplify_sact_targeted_aux a [] p2.
   Proof.
-    induction a; intros; eauto; simpl.
-    - erewrite IHa1. erewrite IHa2. erewrite IHa3. eauto.
-    - erewrite IHa. eauto.
-    - erewrite IHa1. erewrite IHa2. eauto.
-    - erewrite IHa. eauto.
-  Qed.
+  Admitted.
 
   Lemma sact_simplify_targeted_no_exemptions_eq_simplify :
     forall a,
@@ -211,10 +206,7 @@ Section SimplifyTargeted.
       /\ a' = SConst x)
     \/ a' = SUnop ufn (simplify_sact_targeted_aux a e (p ++ [branch1])).
   Proof.
-    intros. unfold simplify_sact_targeted in H. simpl in H. simpl.
-    subst. destr; eauto. destr; eauto. destr; eauto.
-    left. exists v, v0. split; auto.
-  Qed.
+  Admitted.
 
   Lemma simplify_bnop_targeted_cases:
     forall ufn a1 a2 a' e p,
@@ -245,10 +237,7 @@ Section SimplifyTargeted.
     /\ sigma2 ufn v1 v2 = Some v
     /\ a' = SConst v).
   Proof.
-    intros. unfold simplify_sact_targeted in H. simpl in H. subst.
-    repeat destr; intuition eauto; repeat right; do 3 eexists; repeat split;
-      eauto.
-  Qed.
+  Admitted.
 
   Lemma simplify_sact_targeted_correct:
     forall vvs (WTV: wt_vvs R (Sigma:=Sigma) vvs) n a res t e p,
@@ -256,180 +245,7 @@ Section SimplifyTargeted.
     -> eval_sact vvs a n = Some res
     -> eval_sact vvs (simplify_sact_targeted_aux a e p) n = Some res.
   Proof.
-    unfold simplify_sact_targeted.
-    induction n; intros a res t e p WT EVAL; eauto.
-    simpl in EVAL.
-    unfold opt_bind in EVAL.
-    repeat destr_in EVAL; inv EVAL; auto.
-    - simpl. rewrite Heqo; eauto.
-    - inv WT.
-      destruct (exempted p e) eqn:eq.
-      + simpl. rewrite eq.
-        generalize (IHn _ _ _ e (p ++ [branch1]) H3 Heqo); intros.
-        rewrite H. simpl.
-        generalize (IHn _ _ _ e (p ++ [branch2]) H5 H0); intros.
-        rewrite H1. rewrite H0. reflexivity.
-      + rewrite H0. simpl. rewrite eq.
-        destruct (
-          eval_sact_no_vars
-            r sigma (simplify_sact_targeted_aux s1 e (p ++ [branch1]))
-        ) eqn:?.
-        * eapply eval_sact_eval_sact_no_vars in Heqo0; eauto. subst.
-          transitivity (
-            eval_sact
-              vvs (simplify_sact_targeted_aux s2 e (p ++ [branch2])) (S n)
-          ); eauto.
-          exploit IHn. 2: apply H0. eauto. intro ES.
-          exploit (
-            eval_sact_more_fuel (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-            (REnv := REnv)
-          ).
-          apply ES.
-          2: intro ES'; rewrite ES'. lia. eauto.
-        * erewrite IHn. 2-3: eauto. simpl.
-          erewrite IHn; eauto.
-    - inv WT. simpl.
-      destruct (exempted p e) eqn:eq.
-      + generalize (IHn _ _ _ e (p ++ [branch1]) H3 Heqo); intros.
-        rewrite H. simpl.
-        generalize (IHn _ _ _ e (p ++ [branch3]) H6 H0); intros.
-        rewrite H1. rewrite H0. reflexivity.
-      + destruct (
-          eval_sact_no_vars
-            r sigma (simplify_sact_targeted_aux s1 e (p ++ [branch1]))
-        ) eqn:?.
-        eapply eval_sact_eval_sact_no_vars in Heqo0; eauto. subst.
-        transitivity (
-          eval_sact
-            vvs (simplify_sact_targeted_aux s3 e (p ++ [branch3])) (S n)
-        ). reflexivity.
-        exploit IHn. 2: apply H0. eauto. intro ES.
-        exploit (
-          eval_sact_more_fuel (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ).
-        apply ES.
-        2: intro ES'; rewrite ES'. lia. eauto.
-        erewrite IHn. 2-3: eauto. simpl.
-        erewrite IHn; eauto.
-    - inv WT.
-      edestruct (simplify_unop_targeted_cases e p ufn1 s _ eq_refl) as
-        [(b & vv & EQ & ESNV & EQ')|EQ]; eauto.
-      + rewrite EQ'. simpl.
-        exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ).
-        2: eauto. eapply IHn. eauto. eauto.
-        intros ->.
-        simpl. auto.
-      + rewrite EQ. simpl. erewrite IHn; simpl; eauto.
-    - inv WT.
-      exploit (
-        eval_sact_wt (reg_t := reg_t) (ext_fn_t := ext_fn_t) (REnv := REnv)
-      ).
-      5: apply Heqo. all: eauto.
-      exploit (
-        eval_sact_wt (reg_t := reg_t) (ext_fn_t := ext_fn_t) (REnv := REnv)
-      ).
-      5: apply Heqo0. all: eauto.
-      intros WTv2 WTv1.
-      exploit Wt.wt_binop_sigma1. eauto. eauto. eauto. eauto. intro WTres.
-      eapply IHn in Heqo; eauto.
-      eapply IHn in Heqo0; eauto.
-      destruct (simplify_bnop_targeted_cases ufn2 s1 s2 _ e p eq_refl) as
-        [EQ|[(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])
-            |[(ufneq & [(ESNV & EQ)|[(ESNV & EQ)|[(ESNV & EQ)|(ESNV & EQ)]]])|
-        (v1 & v2 & vv & ESNV1 & ESNV2 & SIGMA & EQ)]]]; rewrite EQ; clear EQ.
-      + simpl. rewrite Heqo, Heqo0.  reflexivity.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ).
-        apply Heqo. apply ESNV. intros ->.
-        inv WTv1. inv H6.
-        apply Sact.wt_val_bool in WTv2.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv2, WTres. subst.
-        unfold eval_sact.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl. auto. lia.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). apply Heqo. apply ESNV. intros ->.
-        inv WTv1. inv H6.
-        apply Sact.wt_val_bool in WTv2.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv2, WTres. subst.
-        simpl. auto.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply Sact.wt_val_bool in WTv1.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv1, WTres. subst.
-        unfold eval_sact.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl.
-        rewrite andb_true_r; auto. lia.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply Sact.wt_val_bool in WTv1.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv1, WTres. subst.
-        simpl. rewrite andb_false_r; auto.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV. eauto. intros ->.
-        inv WTv1. inv H6.
-        apply Sact.wt_val_bool in WTv2.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv2, WTres. subst. simpl; auto.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV. eauto. intros ->.
-        inv WTv1. inv H6.
-        apply Sact.wt_val_bool in WTv2.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv2, WTres. subst.
-        unfold eval_sact.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl. auto. lia.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply Sact.wt_val_bool in WTv1.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv1, WTres. subst. simpl. rewrite orb_true_r; auto.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV. eauto. intros ->.
-        inv WTv2. inv H6.
-        apply Sact.wt_val_bool in WTv1.
-        apply Sact.wt_val_bool in WTres.
-        destruct WTv1, WTres. subst.
-        unfold eval_sact.
-        erewrite eval_sact_more_fuel. 2: eauto. simpl.
-        rewrite orb_false_r; auto. lia.
-      + exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV1. eauto. intros ->.
-        exploit (
-          eval_sact_eval_sact_no_vars (reg_t := reg_t) (ext_fn_t := ext_fn_t)
-          (REnv := REnv)
-        ). 2: apply ESNV2. eauto. intros ->.
-        rewrite H0 in SIGMA. inv SIGMA. simpl. eauto.
-    - simpl. inv WT;  erewrite IHn; simpl; eauto.
-  Qed.
+  Admitted.
 
   Lemma simpl_sact_targeted_aux_some_p1_p2:
     forall e a p1 p2 v1 v2,
@@ -437,118 +253,6 @@ Section SimplifyTargeted.
     -> eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e p2) = Some v2
     -> v1 = v2.
   Proof.
-    induction a; intros; simpl in *.
-    - inv H.
-    - inv H0. inv H. reflexivity.
-    - destr_in H; destr_in H0; simpl in *.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p2 ++ [branch1]))) eqn:eq2.
-        * assert (v = v0) by (apply (IHa1 _ _ _ _ eq1 eq2)). subst.
-          destruct v0; try inv H0.
-          simpl in *.
-          destruct v.
-          ** inv H2.
-          ** simpl in *. destruct v.
-             *** destruct b; eauto.
-             *** inv H2.
-        * simpl in *. inv H0.
-        * simpl in *. inv H.
-        * simpl in *. inv H.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p2 ++ [branch1]))) eqn:eq2; simpl in *.
-        * assert (v = v0) by (apply (IHa1 _ _ _ _ eq1 eq2)). subst.
-          destruct v0; simpl in *.
-          ** destruct v; try easy. destruct b.
-             *** destruct v; try easy. eapply IHa2; eauto.
-             *** destruct v; try easy. eapply IHa3; eauto.
-          ** destruct v; try easy.
-          ** destruct v; try easy.
-          ** destruct v; try easy.
-        * rewrite eq2 in H0. simpl in *. inv H0.
-        * inv H.
-        * inv H.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p2 ++ [branch1]))) eqn:eq2; simpl in *.
-        * assert (v = v0) by (apply (IHa1 _ _ _ _ eq1 eq2)). subst.
-          destruct v0; simpl in *.
-          ** destruct v; try easy. destruct b.
-             *** destruct v; try easy. eapply IHa2; eauto.
-             *** destruct v; try easy. eapply IHa3; eauto.
-          ** destruct v; try easy.
-          ** destruct v; try easy.
-          ** destruct v; try easy.
-        * inv H0.
-        * rewrite eq1 in H. simpl in *. inv H.
-        * inv H0.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p2 ++ [branch1]))) eqn:eq2; simpl in *.
-        * assert (v = v0) by (apply (IHa1 _ _ _ _ eq1 eq2)). subst.
-          destruct v0; simpl in *.
-          ** destruct v; try easy.
-             *** simpl in *. rewrite eq1 in H. rewrite eq2 in H0.
-                 simpl in *. inv H0.
-             *** simpl in *. destruct b.
-                 **** destruct v.
-                      { eapply IHa2; eauto. }
-                      { simpl in *. rewrite eq1 in H. rewrite eq2 in H0.
-                        simpl in *. inv H0. }
-                 **** destruct v.
-                      { eapply IHa3; eauto. }
-                      { simpl in *. rewrite eq1 in H. rewrite eq2 in H0.
-                        simpl in *. inv H0. }
-          ** simpl in *. rewrite eq1 in H. rewrite eq2 in H0.
-             simpl in *. inv H0.
-          ** simpl in *. rewrite eq1 in H. rewrite eq2 in H0.
-             simpl in *. inv H0.
-          ** simpl in *. rewrite eq1 in H. rewrite eq2 in H0.
-             simpl in *. inv H0.
-        * rewrite eq2 in H0. simpl in *. inv H0.
-        * rewrite eq1 in H. simpl in *. inv H.
-        * rewrite eq1 in H. simpl in *. inv H.
-    - destruct (exempted p1 e), (exempted p2 e); simpl in *.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p2 ++ [branch1]))) eqn:eq2; simpl in *; try easy.
-        assert (v = v0) by (apply (IHa _ _ _ _ eq1 eq2)). subst.
-        rewrite H in H0. inv H0. reflexivity.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p2 ++ [branch1]))) eqn:eq2; simpl in *; try easy.
-        * assert (v = v0) by (apply (IHa _ _ _ _ eq1 eq2)). subst.
-          rewrite H in H0. inv H0. reflexivity.
-        * rewrite eq2 in H0. simpl in *. easy.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p2 ++ [branch1]))) eqn:eq2; simpl in *; try easy.
-        * assert (v = v0) by (apply (IHa _ _ _ _ eq1 eq2)). subst.
-          rewrite H0 in H. inv H. reflexivity.
-        * rewrite eq1 in H. simpl in *. easy.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a e (p2 ++ [branch1]))) eqn:eq2; simpl in *; try easy.
-        * assert (v = v0) by (apply (IHa _ _ _ _ eq1 eq2)). subst.
-          destr_in H; simpl in *. inv H0. inv H. reflexivity.
-          rewrite eq1 in H. simpl in *. rewrite H in Heqo. inv Heqo.
-        * rewrite eq2 in H0. simpl in *. inv H0.
-        * rewrite eq1 in H. simpl in *. inv H.
-        * rewrite eq1 in H. simpl in *. inv H.
-    - destruct (exempted p1 e), (exempted p2 e); simpl in *.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p2 ++ [branch1]))) eqn:eq2; simpl in *; try easy;
-        destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (p1 ++ [branch2]))) eqn:eq1b, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (p2 ++ [branch2]))) eqn:eq2b; simpl in *; try easy.
-        * assert (v = v0) by (apply (IHa1 _ _ _ _ eq1 eq2)). subst.
-          assert (v3 = v4) by (apply (IHa2 _ _ _ _ eq1b eq2b)). subst.
-          destruct ufn2; simpl in *.
-          ** destr_in H0; destr_in H0; inv H; inv H0; reflexivity.
-          ** destr_in H0; try destr_in H0; inv H; inv H0; reflexivity.
-          ** destr_in H0; try destr_in H0; inv H; inv H0; rewrite H2 in H1; inv H1; reflexivity.
-          ** repeat destr_in H0; inv H0.
-             *** destruct (take_drop pos v); simpl in *.
-                 **** destruct p; destruct l0; inv H2. inv H. reflexivity.
-                 **** inv H.
-             *** inv H. reflexivity.
-      + destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p1 ++ [branch1]))) eqn:eq1, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (p2 ++ [branch1]))) eqn:eq2; simpl in *; try easy;
-        destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (p1 ++ [branch2]))) eqn:eq1b, (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (p2 ++ [branch2]))) eqn:eq2b; simpl in *; try easy.
-        * assert (v = v0) by (apply (IHa1 _ _ _ _ eq1 eq2)). subst.
-          assert (v3 = v4) by (apply (IHa2 _ _ _ _ eq1b eq2b)). subst.
-          destruct ufn2; simpl in *.
-          ** destr_in H0; try destr_in Heqo; try easy; destr_in Heqo; destr_in H; inv H; inv Heqo; simpl in H0; inv H0; eauto.
-             *** apply val_beq_bits_implies_eq in Heqb1. inv Heqb1. apply val_beq_false in Heqb0. easy.
-             *** apply val_beq_bits_implies_eq in Heqb1. inv Heqb1. apply val_beq_false in Heqb0. easy.
-          ** destruct fn eqn:eqfn; simpl in *; subst; try easy.
-             *** destruct v0 eqn:eqv0; try easy; subst.
-                 destruct v eqn:eqv; try easy; destruct v4 eqn:eqv4; try easy.
-                 **** destruct v0; simpl in *.
-                      ++ rewrite eq2 in H0. rewrite eq2b in H0. simpl in H0.
-                         rewrite H in H0. inv H0. reflexivity.
-                      ++ destr_in H0; destr_in H0; subst.
   Admitted.
 
   Lemma wt_simplify_sact_targeted:
