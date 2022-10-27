@@ -5,11 +5,8 @@ Require Export Koika.Utils.IndexUtils.
 Require Export Koika.KoikaForm.Types.
 Require Export Koika.KoikaForm.ErrorReporting.
 
-Inductive bits_comparison :=
-  cLt | cGt | cLe | cGe.
-
-Inductive bits_display_style :=
-  dBin | dDec | dHex | dFull.
+Inductive bits_comparison := cLt | cGt | cLe | cGe.
+Inductive bits_display_style := dBin | dDec | dHex | dFull.
 
 Record display_options :=
   { display_strings : bool;
@@ -118,17 +115,10 @@ Module PrimTyped.
   | EqBits (sz: nat) (negate: bool)
   | Compare (signed: bool) (c: bits_comparison) (sz: nat).
 
-  Inductive fstruct1 :=
-  | GetField.
-
-  Inductive fstruct2 :=
-  | SubstField.
-
-  Inductive farray1 :=
-  | GetElement.
-
-  Inductive farray2 :=
-  | SubstElement.
+  Inductive fstruct1 := GetField.
+  Inductive fstruct2 := SubstField.
+  Inductive farray1 := GetElement.
+  Inductive farray2 := SubstElement.
 
   Inductive fn1 :=
   | Display (fn: fdisplay)
@@ -146,13 +136,15 @@ Module PrimTyped.
   Definition GetElementBits (sig: array_sig) (idx: array_index sig) : fbits1 :=
     Slice (array_sz sig) (element_offset_right sig idx) (element_sz sig).
 
-  Definition SubstElementBits (sig: array_sig) (idx: array_index sig) : fbits2 :=
+  Definition SubstElementBits (sig: array_sig) (idx: array_index sig) : fbits2
+  :=
     SliceSubst (array_sz sig) (element_offset_right sig idx) (element_sz sig).
 
   Definition GetFieldBits (sig: struct_sig) (idx: struct_index sig) : fbits1 :=
     Slice (struct_sz sig) (field_offset_right sig idx) (field_sz sig idx).
 
-  Definition SubstFieldBits (sig: struct_sig) (idx: struct_index sig) : fbits2 :=
+  Definition SubstFieldBits (sig: struct_sig) (idx: struct_index sig) : fbits2
+  :=
     SliceSubst (struct_sz sig) (field_offset_right sig idx) (field_sz sig idx).
 End PrimTyped.
 
@@ -163,7 +155,8 @@ Module PrimTypeInference.
     opt_result (List_assoc f sig.(struct_fields)) (Arg1, UnboundField f sig).
 
   Definition check_index sig pos : result (array_index sig) fn_tc_error :=
-    opt_result (Vect.index_of_nat sig.(array_len) pos) (Arg1, OutOfBounds pos sig).
+    opt_result
+      (Vect.index_of_nat sig.(array_len) pos) (Arg1, OutOfBounds pos sig).
 
   Definition tc1 (fn: ufn1) (tau1: type): result fn1 fn_tc_error :=
     match fn with
@@ -264,7 +257,8 @@ Module CircuitSignatures.
 
   Definition DisplaySigma (fn: fdisplay) : Sig 1 :=
     {$ match fn with
-       | DisplayUtf8 len => array_t {| array_len := len; array_type := bits_t 8 |}
+       | DisplayUtf8 len =>
+         array_t {| array_len := len; array_type := bits_t 8 |}
        | DisplayValue tau _ => tau
        end ~> unit_t $}.
 
@@ -325,13 +319,19 @@ Module PrimSignatures.
     match fn with
     | Eq tau _ => {$ tau ~> tau ~> bits_t 1 $}
     | Bits2 fn => Sig_of_CSig (CSigma2 fn)
-    | Struct2 SubstField sig idx => {$ struct_t sig ~> field_type sig idx ~> struct_t sig $}
-    | Array2 SubstElement sig idx => {$ array_t sig ~> sig.(array_type) ~> array_t sig $}
+    | Struct2 SubstField sig idx => {$
+        struct_t sig ~> field_type sig idx ~> struct_t sig
+      $}
+    | Array2 SubstElement sig idx => {$
+        array_t sig ~> sig.(array_type) ~> array_t sig
+      $}
     end.
 End PrimSignatures.
 
 Module BitFuns.
-  Definition bitfun_of_predicate {sz} (p: bits sz -> bits sz -> bool) (bs1 bs2: bits sz) :=
+  Definition bitfun_of_predicate
+    {sz} (p: bits sz -> bits sz -> bool) (bs1 bs2: bits sz)
+  :=
     Ob~(p bs1 bs2).
 
   Definition sel {sz} (bs: bits sz) (idx: bits (log2 sz)) :=
@@ -340,13 +340,16 @@ Module BitFuns.
        | _ => false (* TODO: x *)
        end.
 
-  Definition lsl {bits_sz shift_sz} (bs: bits bits_sz) (places: bits shift_sz) :=
+  Definition lsl {bits_sz shift_sz} (bs: bits bits_sz) (places: bits shift_sz)
+  :=
     Bits.lsl (Bits.to_nat places) bs.
 
-  Definition lsr {bits_sz shift_sz} (bs: bits bits_sz) (places: bits shift_sz) :=
+  Definition lsr {bits_sz shift_sz} (bs: bits bits_sz) (places: bits shift_sz)
+  :=
     Bits.lsr (Bits.to_nat places) bs.
 
-  Definition asr {bits_sz shift_sz} (bs: bits bits_sz) (places: bits shift_sz) :=
+  Definition asr {bits_sz shift_sz} (bs: bits bits_sz) (places: bits shift_sz)
+  :=
     Bits.asr (Bits.to_nat places) bs.
 
   Definition _eq {tau} {EQ: EqDec tau} (v1 v2: tau) :=
@@ -380,7 +383,9 @@ End BitFuns.
 Module CircuitPrimSpecs.
   Import PrimTyped BitFuns.
 
-  Definition sigma1 (fn: PrimTyped.fbits1) : CSig_denote (CircuitSignatures.CSigma1 fn) :=
+  Definition sigma1 (fn: PrimTyped.fbits1) :
+    CSig_denote (CircuitSignatures.CSigma1 fn)
+  :=
     match fn with
     | Not _ => fun bs => Bits.neg bs
     | SExt sz width => fun bs => Bits.extend_end bs width (Bits.msb bs)
@@ -392,11 +397,14 @@ Module CircuitPrimSpecs.
     | Lowered (IgnoreBits _) => fun bs => Ob
     end.
 
-  Definition sigma2 (fn: PrimTyped.fbits2) : CSig_denote (CircuitSignatures.CSigma2 fn) :=
+  Definition sigma2 (fn: PrimTyped.fbits2) :
+    CSig_denote (CircuitSignatures.CSigma2 fn)
+  :=
     match fn with
     | Sel _ => sel
     | SliceSubst _ offset width => Bits.slice_subst offset width
-    | IndexedSlice _ width => fun bs offset => Bits.slice (Bits.to_nat offset) width bs
+    | IndexedSlice _ width =>
+      fun bs offset => Bits.slice (Bits.to_nat offset) width bs
     | And _ => Bits.and
     | Or _ => Bits.or
     | Xor _ => Bits.xor
@@ -443,10 +451,11 @@ Module PrimSpecs.
 
   Definition sigma2 (fn: fn2) : Sig_denote (PrimSignatures.Sigma2 fn) :=
     match fn with
-    | Eq tau false  => _eq
-    | Eq tau true  => _neq
+    | Eq tau false => _eq
+    | Eq tau true => _neq
     | Bits2 fn => CircuitPrimSpecs.sigma2 fn
-    | Struct2 SubstField sig idx => fun s v => subst_field sig.(struct_fields) s idx v
+    | Struct2 SubstField sig idx =>
+      fun s v => subst_field sig.(struct_fields) s idx v
     | Array2 SubstElement sig idx => fun a e => vect_replace a idx e
     end.
 End PrimSpecs.

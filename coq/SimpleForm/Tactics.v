@@ -80,7 +80,7 @@ Ltac simplify_tac r sigma H pos :=
     eval vm_compute in (H, (@nil Direction.position))
   | @SConst ?rt ?eft ?c =>
     eval vm_compute in (H, (@nil Direction.position))
-  | _ => idtac "nop2 " H
+  | _ => idtac "ERROR: unexpected argument passed to simplify_tac" H
   end.
 
 Ltac apply_option r sigma i :=
@@ -88,7 +88,7 @@ Ltac apply_option r sigma i :=
   | (_, (_, ?x)) =>
     let stac := simplify_tac r sigma x (@nil Direction.direction) in
     eval vm_compute in (snd stac)
-  | _ => idtac "nope" i
+  | _ => idtac "ERROR: unexpected argument passed to apply_option" i
   end.
 
 Ltac apply_to_list r sigma l :=
@@ -104,7 +104,7 @@ Ltac apply_to_list r sigma l :=
 Ltac apply_to_map r sigma m :=
   let m_l := eval vm_compute in (Maps.PTree.elements m) in
   let l := apply_to_list r sigma m_l in
-  eval vm_compute in (rev l).
+  eval vm_compute in l.
 
 Ltac simplify_targeted protected :=
   erewrite simplify_sf_targeted_interp_cycle_ok with (e := protected); eauto.
