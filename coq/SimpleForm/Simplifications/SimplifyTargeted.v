@@ -141,7 +141,7 @@ Section SimplifyTargeted.
           let '(tree, acc_exs) := acc in
           let exs: list position := List.hd [] acc_exs in
           let res := simplify_sact_targeted (snd val) exs in
-          (PTree.set elt (fst val, res) tree, tl exemptions))
+          (PTree.set elt (fst val, res) tree, tl acc_exs))
         (vars sf)
         (PTree.empty (type * SimpleForm.sact), exemptions))
     |}.

@@ -409,6 +409,33 @@ Module RVProofs.
             clear wfsf0. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
             do 2 collapse.
+            (* Eval vm_compute in Maps.PTree.get 995 (vars sf1). *)
+
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
+            clear wfsf0. unfold sf1 in sf0. clear sf1.
+            vm_compute in sf0.
+
+            do 2 collapse.
+            Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1713 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 998 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 996 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 992 (vars sf0).
+            o
+
+            Eval vm_compute in ((Maps.PTree.elements (vars sf0))).
+
+            Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1711 (vars sf0).
+            Eval vm_compute in Maps.PTree.get 1710 (vars sf0).
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
+            clear wfsf0. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+
+            Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 995 (vars sf1).
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
@@ -418,28 +445,19 @@ Module RVProofs.
             Eval vm_compute in Maps.PTree.get 1788 (vars sf0).
             Eval vm_compute in Maps.PTree.get 995 (vars sf0).
 
-            collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-
-            Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
-            Eval vm_compute in Maps.PTree.get 995 (vars sf1).
-            Eval vm_compute in (List.map fst (Maps.PTree.elements (vars sf1))).
-            Eval vm_compute in (
-              List.nth_error (List.map fst (Maps.PTree.elements (vars sf1))) 112
-            ).
+            Eval vm_compute in (List.map fst (Maps.PTree.elements (vars sf0))).
             Eval vm_compute in (List.length all_exem).
-            Eval vm_compute in (List.length (Maps.PTree.elements (vars sf1))).
-            Eval vm_compute in (List.nth_error all_exem 109).
+            Eval vm_compute in (List.length (Maps.PTree.elements (vars sf0))).
+            Eval vm_compute in (List.nth_error all_exem 98).
+            Eval vm_compute in (
+              List.nth_error (List.map fst (Maps.PTree.elements (vars sf0))) 98
+            ).
 
             let v_995 := (eval vm_compute in
               (List.nth
-                40
+                98
                 (List.map
-                  (fun x => (snd (snd x))) (Maps.PTree.elements (vars sf1)))
+                  (fun x => (snd (snd x))) (Maps.PTree.elements (vars sf0)))
                 (SVar 7)
               )
             ) in
@@ -448,8 +466,22 @@ Module RVProofs.
             in
             idtac res.
 
+            Eval vm_compute in (List.nth_error all_exem 98).
+
             Eval vm_compute in (
-              match (Maps.PTree.get 995 (vars sf1)) with
+              option_map (fun x => snd (snd x))
+              (List.nth_error
+                (Maps.PTree.elements
+                  (vars (SimplifyTargeted.simplify_sf_targeted
+                    ctx ext_sigma sf0 all_exem)
+                  )
+                )
+                98
+              )
+            ).
+
+            Eval vm_compute in (
+              match (Maps.PTree.get 995 (vars sf0)) with
               | None => None
               | Some x => Some (
                   SimplifyTargeted.simplify_sact_targeted
@@ -459,7 +491,7 @@ Module RVProofs.
             ).
 
            Eval vm_compute in (
-             match Maps.PTree.get 995 (vars sf1) with
+             match Maps.PTree.get 995 (vars sf0) with
              | None => None
              | Some x => eval_sact_no_vars ctx ext_sigma (snd x)
              end

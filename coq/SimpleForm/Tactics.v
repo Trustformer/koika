@@ -104,7 +104,7 @@ Ltac apply_to_list r sigma l :=
 Ltac apply_to_map r sigma m :=
   let m_l := eval vm_compute in (Maps.PTree.elements m) in
   let l := apply_to_list r sigma m_l in
-  eval vm_compute in l.
+  eval vm_compute in (List.rev l).
 
 Ltac simplify_targeted protected :=
   erewrite simplify_sf_targeted_interp_cycle_ok with (e := protected); eauto.
@@ -114,7 +114,6 @@ Ltac simplify_top :=
   | |- getenv ?REnv (interp_cycle ?ctx ?ext_sigma ?sf) _ = _ =>
     let map := constr:(vars sf) in
     let protected := apply_to_map ctx ext_sigma map in
-    idtac protected;
     simplify_targeted protected
   end.
 
