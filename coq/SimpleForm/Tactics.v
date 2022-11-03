@@ -19,12 +19,16 @@ Ltac simplify_tac r sigma H pos :=
     let t_ret := simplify_tac r sigma t (branch2::pos) in
     let new_t := (eval vm_compute in (fst t_ret)) in
     let et := (eval vm_compute in (snd t_ret)) in
-    let f_ret := simplify_tac r sigma t (branch3::pos) in
+    let f_ret := simplify_tac r sigma f (branch3::pos) in
     let new_f := (eval vm_compute in (fst f_ret)) in
     let ef := (eval vm_compute in (snd f_ret)) in
     match eval vm_compute in (eval_sact_no_vars r sigma new_c) with
     | Some (Bits [true]) => eval vm_compute in (new_t, ec ++ et)
     | Some (Bits [false]) => eval vm_compute in (new_f, ec ++ ef)
+    | None =>
+      eval vm_compute in (
+        SIf (reg_t := rt) (ext_fn_t := eft) new_c new_t new_f, ec ++ et ++ ef
+      )
     | _ =>
       eval vm_compute in (
         SIf (reg_t := rt) (ext_fn_t := eft) new_c new_t new_f,
@@ -39,8 +43,13 @@ Ltac simplify_tac r sigma H pos :=
       eval vm_compute in (eval_sact_no_vars r sigma (SUnop fn new_a))
     ) in
     match res with
-    | Some ?x => (eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea))
-    | _ => eval vm_compute in (SUnop (reg_t := rt) (ext_fn_t := eft) fn new_a, pos :: ea)
+    | Some ?x =>
+      (eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea))
+    | None =>
+      eval vm_compute in (SUnop (reg_t := rt) (ext_fn_t := eft) fn new_a, ea)
+    | _ =>
+      eval vm_compute in
+        (SUnop (reg_t := rt) (ext_fn_t := eft) fn new_a, pos :: ea)
     end
   | @SBinop ?rt ?eft ?fn ?arg1 ?arg2 =>
     let a1_ret := simplify_tac r sigma arg1 (branch1::pos) in
@@ -50,12 +59,16 @@ Ltac simplify_tac r sigma H pos :=
     let new_a2 := (eval vm_compute in (fst a2_ret)) in
     let ea2 := (eval vm_compute in (snd a2_ret)) in
     let res := (
-      eval vm_compute in (eval_sact_no_vars r sigma (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2))
+      eval vm_compute in
+        (eval_sact_no_vars
+          r sigma (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2))
     ) in
     lazymatch res with
     | Some ?x =>
+      eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea1 ++ ea2)
+    | None =>
       eval vm_compute in
-        (SConst (reg_t := rt) (ext_fn_t := eft) x, ea1 ++ ea2)
+        (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2, ea1 ++ ea2)
     | _ =>
       eval vm_compute in
         (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2,
@@ -70,8 +83,8 @@ Ltac simplify_tac r sigma H pos :=
     ) in
     match res with
     | Some ?x =>
-        eval vm_compute in
-          (SConst (reg_t := rt) (ext_fn_t := eft) x, ea)
+      eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea)
+    | None => eval vm_compute in (SUnop new_a, ea)
     | _ => eval vm_compute in (SUnop new_a, pos :: ea)
     end
   | @SReg ?rt ?eft ?idx =>
@@ -104,7 +117,7 @@ Ltac apply_to_list r sigma l :=
 Ltac apply_to_map r sigma m :=
   let m_l := eval vm_compute in (Maps.PTree.elements m) in
   let l := apply_to_list r sigma m_l in
-  eval vm_compute in (List.rev l).
+  eval vm_compute in l.
 
 Ltac simplify_targeted protected :=
   erewrite simplify_sf_targeted_interp_cycle_ok with (e := protected); eauto.
