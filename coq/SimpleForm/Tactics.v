@@ -84,8 +84,8 @@ Ltac simplify_tac r sigma H pos :=
     match res with
     | Some ?x =>
       eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea)
-    | None => eval vm_compute in (SUnop new_a, ea)
-    | _ => eval vm_compute in (SUnop new_a, pos :: ea)
+    | None => eval vm_compute in (SExternalCall fn new_a, ea)
+    | _ => eval vm_compute in (SExternalCall fn new_a, pos :: ea)
     end
   | @SReg ?rt ?eft ?idx =>
     eval vm_compute in (H, (@nil Direction.position))
