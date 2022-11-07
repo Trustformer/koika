@@ -737,11 +737,72 @@ Fixpoint val_beq (v1 v2: val) {struct v1}: bool :=
   | _, _ => false
   end.
 
+Lemma list_eqb_correct:
+  forall {A:Type} (eqb: A -> A -> bool) (eqb_correct: forall a b, eqb a b = true <-> a = b)
+         (l1 l2: list A),
+    list_eqb eqb l1 l2 = true <-> l1 = l2.
+Proof.
+  induction l1; destruct l2; simpl; intros; eauto.
+  - tauto.
+  - intuition congruence.
+  - intuition congruence.
+  - rewrite andb_true_iff. rewrite eqb_correct. rewrite IHl1.
+    split. intuition. subst; auto.
+    inversion 1; intuition congruence.
+Qed.
+
+
+Lemma list_eqb_correct2:
+  forall {A:Type}
+         (l1 l2: list A)
+         (eqb: A -> A -> bool) (eqb_correct: forall a b, In a l1 -> eqb a b = true <-> a = b)
+         ,
+    list_eqb eqb l1 l2 = true <-> l1 = l2.
+Proof.
+  induction l1; destruct l2; simpl; intros; eauto.
+  - tauto.
+  - intuition congruence.
+  - intuition congruence.
+  - rewrite andb_true_iff. rewrite eqb_correct. rewrite IHl1.
+    split. intuition. subst; auto.
+    inversion 1; intuition congruence.
+    intros; eauto. auto.
+Qed.
+
+
 Lemma val_beq_correct:
   forall v1 v2,
     val_beq v1 v2 = true <-> v1 = v2.
 Proof.
-Admitted.
+  intro v1; pattern v1. eapply val_ind'.
+  + intros bs v2.
+    split.
+    intro VBEQ; destruct v2; simpl in VBEQ; try congruence.
+    apply list_eqb_correct in VBEQ. subst; auto.
+    apply eqb_true_iff.
+    intros; subst. simpl. rewrite list_eqb_correct. auto.
+    apply eqb_true_iff.
+  + intros sig bs v2. split.
+    intro VBEQ; simpl in VBEQ; destr_in VBEQ; try congruence.
+    destr_in VBEQ.
+    apply list_eqb_correct in VBEQ. subst; auto.
+    apply eqb_true_iff. congruence.
+    intros; subst. simpl. destr; try congruence.
+    rewrite list_eqb_correct. auto.
+    apply eqb_true_iff.
+  + intros sig lv IH v2.
+    destruct v2; try (simpl; intuition congruence).
+    unfold val_beq. fold val_beq.
+    destr. rewrite list_eqb_correct2.
+    subst. intuition congruence. intros; apply IH; auto.
+    intuition congruence.
+  + intros sig lv IH v2.
+    destruct v2; try (simpl; intuition congruence).
+    unfold val_beq. fold val_beq.
+    destr. rewrite list_eqb_correct2.
+    subst. intuition congruence. intros; apply IH; auto.
+    intuition congruence.
+Qed.
 
 Definition enum_sig_eqb (s1 s2: enum_sig) :=
   (enum_name s1 =? enum_name s2)
@@ -825,11 +886,8 @@ Lemma val_eq_dec_bits:
   = (if list_eqb Bool.eqb b1 b2 then A1 else A2).
 Proof.
   intros.
-  destr. apply val_beq_correct in Heqb. inv Heqb. rewrite list_eqb_refl. auto. apply eqb_reflx.
-Admitted.
-(* destr; auto. apply list_eqb_correct in Heqb. subst. congruence. *)
-(*   apply eqb_true_iff. *)
-(* Qed. *)
+  simpl. auto.
+Qed.
 
 Fixpoint bitwise (f: bool -> bool -> bool) (l1 l2: list bool) {struct l1}
 : list bool :=
