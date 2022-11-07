@@ -34,16 +34,11 @@ Section Simplify.
     match ua with
     | SIf cond tb fb =>
       let cond' := simplify_sact cond in
-      let st := simplify_sact tb in
-      let sf := simplify_sact fb in
       match eval_sact_no_vars r sigma cond' with
-      | Some (Bits [true]) => st
-      | Some (Bits [false]) => sf
-      | _ =>
-          if (Sact.eqb st sf) then st
-          else SIf cond' (simplify_sact tb) (simplify_sact fb)
+      | Some (Bits [true]) => simplify_sact tb
+      | Some (Bits [false]) => simplify_sact fb
+      | _ => SIf cond' (simplify_sact tb) (simplify_sact fb)
       end
-
     | SBinop ufn a1 a2 =>
       let a1' := simplify_sact a1 in
       match ufn with
