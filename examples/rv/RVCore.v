@@ -953,7 +953,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
       return default: fail (* Load Double or Signed Word *)
       end
     else pass;
-    if get(dInst,valid_rd) then
+    if get(dInst, valid_rd) then
       let rd_idx := get(fields, rd) in
       scoreboard.(Scoreboard.remove)(sliceReg(rd_idx));
       if (rd_idx == |5`d0|) then pass

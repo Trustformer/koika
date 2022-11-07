@@ -108,7 +108,7 @@ Module RVProofs.
             || (eql rs1 [false; false; true; false; true])))
         || (
           (negb (eql rd [false; false; false; false; true]))
-          && (eql rd [false; false; true; false; true])
+          && (negb (eql rd [false; false; true; false; true]))
           && (
             (eql rs1 [false; false; false; false; true])
             || (eql rs1 [false; false; true; false; true])))).
@@ -274,9 +274,6 @@ Module RVProofs.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
       exploit_regs.
-      simplify.
-      full_pass.
-      simplify.
 
       generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro.
       inv H0. rewrite <- H2 in *.
@@ -302,80 +299,121 @@ Module RVProofs.
       inv LegalOk.
       inv H14.
       eapply length_1_something in H2. destruct H2. subst.
-
-      assert (
-        getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
-        = getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)
-      ) by reflexivity.
-      rewrite <- H6 in H0 at 2.
-      exploit_reg H0.
+      symmetry in H6. exploit_reg H6.
 
       generalize (WTRENV (RV32I.epoch)). intro.
-      inv H2.
-      eapply length_1_something in H10. destruct H10. subst.
-      symmetry in H9. exploit_reg H9.
+      inv H0.
+      eapply length_1_something in H9. destruct H9. subst.
+      symmetry in H5. exploit_reg H5.
 
       red in H.
       assert (x4 = x0). {
         destruct H.
         - red in H. repeat (destruct H as [? H]).
-          red in H2. eapply H2 in H0 as Hn. inv Hn.
-          rewrite H9 in H11. inv H11. reflexivity.
+          red in H0. eapply H0 in H6 as Hn. inv Hn.
+          rewrite H5 in H10. inv H10. reflexivity.
         - destruct H.
           + red in H. repeat (destruct H as [? H]).
-            red in H2. eapply H2 in H0 as Hn. inv Hn.
-            rewrite H9 in H13. inv H13. reflexivity.
+            red in H0. eapply H0 in H6 as Hn. inv Hn.
+            rewrite H5 in H11. inv H11. reflexivity.
           + red in H. repeat (destruct H as [? H]).
-            red in H2. eapply H2 in H0 as Hn. inv Hn.
-            rewrite H9 in H11. inv H11. reflexivity.
+            red in H0. eapply H0 in H6 as Hn. inv Hn.
+            rewrite H5 in H10. inv H10. reflexivity.
       }
-      subst.
-      simplify.
-      collapse.
-      collapse.
-      destruct x0; destruct H.
+      subst. clear H5.
+      destruct H.
       - red in H.
-        repeat destruct H as [? H]. clear H2. clear H6.
-        red in H5. simpl in H5. vm_compute vect_to_list in H5.
-        red in H.
-        exploit_reg H5. clear H5. clear H9.
-        inv H12. f_equal. simpl. eapply length_32_something in H5.
-        do 32 destruct H5 as [? H5]. subst.
-        eapply H in H0.
-        2: simpl; f_equal.
-        2: simpl; f_equal.
-        unfold is_ret_instruction in H0.
-        eapply andb_true_iff in H0. destruct H0.
-        eapply andb_true_iff in H0. destruct H0.
-        unfold eql in *.
-        rewrite Bits.of_N_to_N in *.
-        move H0 at bottom.
-        simpl in H0.
-        eapply andb_true_iff in H0. destruct H0.
-        rewrite Bool.eqb_true_iff in H0.
-        eapply andb_true_iff in H6. destruct H6.
-        rewrite Bool.eqb_true_iff in H6.
-        eapply andb_true_iff in H9. destruct H9.
-        rewrite Bool.eqb_true_iff in H9.
-        clear H10.
+        destruct H as [no_mispred [stack_empty stack_pop]].
+        red in no_mispred, stack_empty, stack_pop. simpl in *.
+        vm_compute vect_to_list in stack_empty.
+        exploit_reg stack_empty. clear stack_empty.
+        clear no_mispred.
+        inv H12. apply length_32_something in H0. do 32 destruct H0 as [? H0].
         subst.
-        simpl in H5.
-        repeat (eapply andb_true_iff in H5; destruct H5 as [? H5]).
-        rewrite Bool.eqb_true_iff in H0, H6, H9, H10. subst. clear H5.
-        (eapply orb_true_iff in H2; destruct H2 as [? | H2]).
-        + eapply andb_true_iff in H0. destruct H0.
-          eapply andb_true_iff in H0. destruct H0.
-          simpl in H5.
-          rewrite andb_true_r in H5.
-          repeat (rewrite negb_andb in H5).
-          simpl in H0. simpl in H2.
-          eapply orb_true_iff in H2, H0; destruct H2, H0.
-          * repeat (eapply andb_true_iff in H0; destruct H0 as [? H0]).
-            repeat (eapply andb_true_iff in H2; destruct H2 as [? H2]).
-            clear H0 H2.
-            rewrite Bool.eqb_true_iff
-              in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17. subst.
-              simpl in H5. inv H5.
+        eapply stack_pop in H6 as ret_instr. 2-3: reflexivity.
+        clear stack_pop.
+        unfold is_ret_instruction in ret_instr.
+        unfold eql in ret_instr.
+        rewrite Bits.of_N_to_N in ret_instr.
+        simpl in ret_instr.
+        eapply andb_true_iff in ret_instr.
+        repeat rewrite andb_true_iff in opc_ctrl.
+        destruct ret_instr as [opc ret_instr].
+        eapply andb_true_iff in opc. destruct opc as [opc_ctrl opc_jalr].
+        repeat rewrite andb_true_iff in opc_ctrl, opc_jalr.
+        repeat rewrite orb_true_iff in ret_instr.
+        destruct ret_instr as [pop_push | pop].
+        + repeat rewrite andb_true_iff in pop_push.
+          destruct pop_push as [[rd_1_or_5 rd_neq_rs1] rs1_1_or_5].
+          rewrite negb_true_iff in rd_neq_rs1.
+          rewrite orb_true_iff in rd_1_or_5, rs1_1_or_5.
+          destruct rd_1_or_5 as [rd_1 | rd_5], rs1_1_or_5 as [rs1_1 | rs1_5].
+          * repeat rewrite andb_true_iff in rd_1, rs1_1.
+            repeat destruct rd_1 as [? rd_1].
+            repeat destruct rs1_1 as [? rs1_1].
+            apply Bool.eqb_prop in H, H0, H2, H5, H9, H10, H11, H12, H13, H14.
+            subst. simpl in rd_neq_rs1. inversion rd_neq_rs1.
+          * clear rd_neq_rs1. 
+            repeat rewrite andb_true_iff in rd_1, rs1_5.
+            repeat destruct rd_1 as [? rd_1].
+            repeat destruct rs1_5 as [? rs1_5].
+            apply Bool.eqb_prop in H, H0, H2, H5, H9, H10, H11, H12, H13, H14.
+            subst.
+            repeat destruct opc_ctrl as [? opc_ctrl].
+            repeat destruct opc_jalr as [? opc_jalr].
+            apply Bool.eqb_prop in H, H0, H2, H5, H9, H10. subst.
+
+            isolate_sf. vm_compute in sf0.
+
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
+            clear wfsf. vm_compute in sf0.
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
+            clear wfsf. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
+            clear wfsf. unfold sf1 in sf0. clear sf1.
+            vm_compute in sf0.
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
+            clear wfsf. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+            do 4 collapse.
+            isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
+            clear wfsf0. unfold sf1 in sf0. clear sf1.
+            vm_compute in sf0.
+
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
+            clear wfsf0. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+            Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1758 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1728 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1622 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1599 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1578 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1559 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1540 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1537 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1478 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1758 (vars sf1).
+            Eval vm_compute in Maps.PTree.get 1758 (vars sf1).
+            do 2 collapse.
+            simplify_careful. isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
+            clear wfsf0. unfold sf1 in sf0. clear sf1.
+            vm_compute in sf0.
+            do 4 collapse.
+            isolate_sf.
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
+            clear wfsf. unfold sf0 in sf1. clear sf0.
+            vm_compute in sf1.
+            Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
+            admit.
           * repeat (eapply andb_true_iff in H0; destruct H0 as [? H0]).
             repeat (eapply andb_true_iff in H2; destruct H2 as [? H2]).
             clear H0 H2.
@@ -427,15 +465,22 @@ Module RVProofs.
             do 2 collapse.
 
             Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
-            (* Should be trivial from here *)
-            vm_compute Prune.prune_irrelevant_aux.
-            unfold interp_cycle.
-
-        eapply eql H0.
-        eapply orb_true_iff in H2. destruct H2.
-        simpl in H0.
-        Eval vm_compute in Maps.PTree.get 1007 (vars sf1).
-
+            admit.
+          * repeat (eapply andb_true_iff in H0; destruct H0 as [? H0]).
+            repeat (eapply andb_true_iff in H2; destruct H2 as [? H2]).
+            clear H0 H2.
+            rewrite Bool.eqb_true_iff
+              in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17.
+            subst. simpl in H5. inversion H5.
+        + simpl in H2.
+          
+          apply andb_true_iff in H0. destruct H0.
+          eapply andb_true_iff in H0. destruct H0.
+          simpl in H5.
+          rewrite andb_true_r in H5.
+          repeat (rewrite negb_andb in H5).
+          simpl in H0. simpl in H2.
+          eapply orb_true_iff in H2, H0; destruct H2, H0.
     Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
