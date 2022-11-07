@@ -827,7 +827,8 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   Definition execute_1
     `{finite_reg: FiniteType reg_t}
     `{finite_reg_stack: FiniteType ShadowStack.reg_t}
-  : uaction reg_t ext_fn_t := {{(
+    : uaction reg_t ext_fn_t := {{(
+
     let fInst      := get(dInst, inst) in
     let funct3     := get(getFields(fInst), funct3) in
     let rd_val     := get(dInst, inst)[|5`d7| :+ 5] in
@@ -862,7 +863,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
       (* See table 2.1. of the unpriviledged ISA specification for details *)
       set data := (pc + |32`d4|); (* For jump and link *)
       `
-        if (HAS_SHADOW_STACK) then ({{
+        (* if (HAS_SHADOW_STACK) then *) ({{
           (
             let res := Ob~0 in
             let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
@@ -886,12 +887,16 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
             );
             write0(halt, res)
           )
-        }}) else (
-          {{ pass }}
-        )
+        }})
+
+        (* else ( *)
+        (*   {{ pass }} *)
+        (* ) *)
     `
     else
-      pass;
+      pass
+;
+
     let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
     let nextPc        := get(controlResult,nextPC) in
     if nextPc != get(decoded_bookkeeping, ppc) then
