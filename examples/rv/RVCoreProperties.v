@@ -312,16 +312,10 @@ Module RVProofs.
       red in H.
       assert (x4 = x0). {
         destruct H.
-        - red in H. repeat (destruct H as [? H]).
-          red in H0. eapply H0 in H6 as Hn. inv Hn.
-          rewrite H5 in H10. inv H10. reflexivity.
-        - destruct H.
-          + red in H. repeat (destruct H as [? H]).
-            red in H0. eapply H0 in H6 as Hn. inv Hn.
-            rewrite H5 in H11. inv H11. reflexivity.
-          + red in H. repeat (destruct H as [? H]).
-            red in H0. eapply H0 in H6 as Hn. inv Hn.
-            rewrite H5 in H10. inv H10. reflexivity.
+        - repeat (destruct H as [? H]).
+          red in H0. eapply H0 in H6. inv H6. congruence.
+        - destruct H; red in H; repeat (destruct H as [? H]); red in H0;
+            eapply H0 in H6; inv H6; congruence.
       }
       subst. clear H5.
       destruct H.
@@ -406,7 +400,7 @@ Module RVProofs.
 
 
             destruct x0.
-            
+
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
@@ -516,9 +510,9 @@ Module RVProofs.
             Eval vm_compute in Maps.PTree.get 996 (vars sf1).
             Eval vm_compute in Maps.PTree.get 992 (vars sf1).
 
-            
+
             destruct x0.
-            
+
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
@@ -639,7 +633,7 @@ Module RVProofs.
 
 
           destruct x0.
-          
+
           simplify_careful. isolate_sf.
           assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
           clear wfsf. unfold sf1 in sf0. clear sf1.
@@ -677,11 +671,27 @@ Module RVProofs.
           vm_compute in sf0.
 
           Eval vm_compute in Maps.PTree.get 1247 (vars sf0).
-          admit.
-          admit.
-      - 
+          destruct x11, x12, x13, x14, x15, x21;
+            simplify_careful; isolate_sf;
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf;
+            clear wfsf; unfold sf0 in sf1; clear sf0;
+            vm_compute in sf1;
+            do 4 collapse;
+            simplify_careful; isolate_sf;
+            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf;
+            clear wfsf; unfold sf1 in sf0; clear sf1;
+            vm_compute in sf0;
+            do 4 collapse;
+            simplify_careful; isolate_sf;
+            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf;
+            clear wfsf; unfold sf0 in sf1; clear sf0;
+            vm_compute in sf1;
+            eapply getenv_interp; eauto; vm_compute; reflexivity.
 
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
+
+      -
+
+            eapply getenv_interp; eauto; unfold sf0; reflexivity; vm_compute; eauto; reflexivity;
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
@@ -766,9 +776,9 @@ Module RVProofs.
             Eval vm_compute in Maps.PTree.get 996 (vars sf1).
             Eval vm_compute in Maps.PTree.get 992 (vars sf1).
 
-            
+
             destruct x0.
-            
+
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
@@ -830,7 +840,7 @@ Module RVProofs.
             destr_and_in rd_5.
             subst.
             simpl in rd_neq_rs1. intuition congruence.
-        + 
+        +
             simpl in H27. congruence.
 
 
@@ -849,7 +859,7 @@ h
             blabla
             simplify. isolate_sf. vm_compute in sf0.
 
-            Eval vm_compute in Maps.PTree.get 108 (vars sf0).            
+            Eval vm_compute in Maps.PTree.get 108 (vars sf0).
             Eval vm_compute in Maps.PTree.get 15
                                  (vars sf0).
             Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
@@ -914,7 +924,7 @@ h
               in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17.
             subst. simpl in H5. inversion H5.
         + simpl in H2.
-          
+
           apply andb_true_iff in H0. destruct H0.
           eapply andb_true_iff in H0. destruct H0.
           simpl in H5.
