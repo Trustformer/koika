@@ -377,7 +377,6 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            Eval vm_compute in Maps.PTree.get 999 (vars sf0).
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
@@ -394,10 +393,6 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
-            Eval vm_compute in Maps.PTree.get 1015 (vars sf1).
-            Eval vm_compute in Maps.PTree.get 996 (vars sf1).
-            Eval vm_compute in Maps.PTree.get 992 (vars sf1).
-
 
             destruct x0.
 
@@ -425,7 +420,8 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
+            eapply getenv_interp; eauto. unfold sf0; reflexivity.
+            vm_compute; eauto. reflexivity.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
@@ -451,7 +447,8 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
+            eapply getenv_interp; eauto. unfold sf0; reflexivity.
+            vm_compute; eauto. reflexivity.
 
           * repeat (rewrite ? eqb_true_iff in rd_5, rs1_1, opc_ctrl, opc_jalr).
             rewrite ! eqb_true_iff in opc_jalr.
@@ -459,9 +456,9 @@ Module RVProofs.
             rewrite ! eqb_true_iff in rs1_1.
             Ltac destr_and_in H :=
               repeat match type of H with _ /\ _ =>
-                                            let H1 := fresh in let H2 := fresh in
-                                                               destruct H as [H1 H2]; destr_and_in H1; destr_and_in H2
-                end.
+                let H1 := fresh in let H2 := fresh in
+                destruct H as [H1 H2]; destr_and_in H1; destr_and_in H2
+            end.
             destr_and_in opc_ctrl.
             destr_and_in opc_jalr.
             destr_and_in rs1_1.
@@ -489,13 +486,11 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
             do 2 collapse.
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
@@ -506,10 +501,6 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-            Eval vm_compute in Maps.PTree.get 996 (vars sf1).
-            Eval vm_compute in Maps.PTree.get 992 (vars sf1).
-
 
             destruct x0.
 
@@ -537,7 +528,8 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
+            eapply getenv_interp; eauto. unfold sf0; reflexivity.
+            vm_compute; eauto. reflexivity.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
@@ -563,7 +555,8 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
+            eapply getenv_interp; eauto. unfold sf0; reflexivity.
+            vm_compute; eauto. reflexivity.
           * repeat (rewrite ? eqb_true_iff in rd_5, rs1_5, opc_ctrl, opc_jalr).
             rewrite ! eqb_true_iff in opc_jalr.
             rewrite ! eqb_true_iff in rd_5.
