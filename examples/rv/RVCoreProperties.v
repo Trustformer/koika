@@ -276,7 +276,9 @@ Module RVProofs.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
       exploit_regs.
+      prune.
       do 4 collapse.
+      prune.
 
       generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro.
       inv H0. rewrite <- H2 in *.
@@ -372,7 +374,8 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
-            do 4 collapse.
+            do 3 collapse.
+            prune.
             isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf1 in sf0. clear sf1.
@@ -383,12 +386,14 @@ Module RVProofs.
             clear wfsf0. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
             Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-            do 2 collapse.
+            do 3 collapse.
+            prune.
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 5 collapse.
+            prune.
             isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf0 in sf1. clear sf0.
@@ -400,7 +405,8 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 5 collapse.
+            prune.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
@@ -410,7 +416,7 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 5 collapse. prune.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
@@ -427,7 +433,7 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 3 collapse. prune.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
@@ -437,7 +443,7 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 3 collapse. prune.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
@@ -465,7 +471,7 @@ Module RVProofs.
             destr_and_in rd_5.
             subst.
             simpl in rd_neq_rs1. clear rd_neq_rs1.
-            collapse.
+            do 2 collapse. prune.
             move wfsf0 at bottom.
             isolate_sf. fold sf0 in wfsf0. vm_compute in sf0.
             simplify_careful.
@@ -481,7 +487,7 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
-            do 4 collapse.
+            do 3 collapse. prune.
             isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf1 in sf0. clear sf1.
@@ -491,12 +497,12 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf0 in sf1. clear sf0.
             vm_compute in sf1.
-            do 2 collapse.
+            do 3 collapse. prune.
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
             clear wfsf0. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 3 collapse. prune.
             isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf0 in sf1. clear sf0.
@@ -518,7 +524,8 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 3 collapse.
+            prune.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
@@ -535,7 +542,7 @@ Module RVProofs.
             assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
             clear wfsf. unfold sf1 in sf0. clear sf1.
             vm_compute in sf0.
-            do 4 collapse.
+            do 3 collapse. prune.
 
             simplify_careful. isolate_sf.
             assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
@@ -582,7 +589,7 @@ Module RVProofs.
           assert (x19 = true /\ x20 = false /\ x22 = false /\ x23 = false).
           destruct rs1_1_or_5; intuition. clear rs1_1_or_5.
           destr_and_in H. subst.
-          collapse.
+          do 2 collapse. prune.
           move wfsf0 at bottom.
           isolate_sf. fold sf0 in wfsf0. vm_compute in sf0.
           simplify_careful.
@@ -615,7 +622,8 @@ Module RVProofs.
           assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
           clear wfsf0. unfold sf1 in sf0. clear sf1.
           vm_compute in sf0.
-          do 4 collapse.
+          do 3 collapse.
+          prune.
           isolate_sf.
           assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
           clear wfsf. unfold sf0 in sf1. clear sf0.
@@ -652,7 +660,7 @@ Module RVProofs.
           clear wfsf. unfold sf1 in sf0. clear sf1.
           vm_compute in sf0.
 
-          do 4 collapse.
+          do 3 collapse. prune.
 
           simplify_careful. isolate_sf.
           assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.

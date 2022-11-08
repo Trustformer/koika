@@ -31,7 +31,7 @@ Section Collapse.
     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
   }.
 
-  (* TODO also collapse elements referenced only once *)
+  (* TODO Also inline elements referenced only once? *)
 
   Fixpoint collapse_sact
     (vvs : PTree.t (type * SimpleForm.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t)))
@@ -46,7 +46,6 @@ Section Collapse.
     | SVar v =>
       match PTree.get v vvs with
       | Some (t, SVar v') => SVar v'
-        (* collapse vvs (Var v') *) (* TODO Termination *)
       | Some (t, SConst c) => SConst c
       | _ => a
       end
@@ -54,9 +53,12 @@ Section Collapse.
     | _ => a
     end.
 
+  (* Note that *)
   Definition collapse_sf (sf: simple_form) := {|
     final_values := final_values sf;
     vars :=
+      (* TODO Alternatively, fold and handle elements in order. That would
+         remove the need for successive calls to collapse. *)
       Maps.PTree.map
         (fun _ '(t, a) => (t, collapse_sact (vars sf) a)) (vars sf) |}.
 
@@ -459,5 +461,18 @@ Section Collapse.
       + auto.
       + apply wf_collapse_sf. auto.
     - simpl; auto.
+  Qed.
+
+  Lemma collapse_interp_cycle_ok:
+    forall reg sf sf',
+    wf_sf sf
+    -> collapse_sf sf = sf'
+    -> getenv REnv (interp_cycle r sigma sf) reg
+    = getenv REnv (interp_cycle r sigma sf') reg.
+  Proof.
+    intros. subst.
+    eapply sf_eq_interp_cycle_ok; eauto.
+    - eapply wf_collapse_sf. assumption.
+    - eapply sf_eq_collapse_sf. assumption.
   Qed.
 End Collapse.

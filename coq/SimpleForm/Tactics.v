@@ -44,15 +44,16 @@ Ltac update_wfsf :=
       forall (ufn : ?ext_fn_t) (vc : val),
       wt_val (arg1Sig (?ext_Sigma ufn)) vc
       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
-    |- getenv ?REnv
-         (interp_cycle ?ctx ?ext_sigma (simplify_sf ?ctx ?ext_sigma ?sf')) ?rg
+    |- getenv
+        ?REnv (interp_cycle ?ctx ?ext_sigma (simplify_sf ?ctx ?ext_sigma ?sf'))
+        ?rg
        = _
     =>
     assert (wf_sf R ext_Sigma (simplify_sf ctx ext_sigma sf')) as wfsf by
     (intros; eapply (
-        wf_sf_simplify_sf
-          (wt_sigma := WT_SIGMA) (REnv := REnv) R ext_Sigma ctx ext_sigma WTRENV
-          sf' WFSF'
+       wf_sf_simplify_sf
+         (wt_sigma := WT_SIGMA) (REnv := REnv) R ext_Sigma ctx ext_sigma WTRENV
+         sf' WFSF'
     ); eauto); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
@@ -65,34 +66,27 @@ Ltac update_wfsf :=
          ) ?rg
        = _
     =>
-    assert (forall x, wf_sf R ext_Sigma (simplify_sf_targeted ctx ext_sigma sf' x))
-      as wfsf by
-    (intro; apply (
-      wf_sf_simplify_sf_targeted
-        (wt_sigma := WT_SIGMA) (REnv := REnv)
-        R ext_Sigma ctx ext_sigma WTRENV
-        sf' WFSF'
-    )); clear WFSF'
+    assert (
+      forall x, wf_sf R ext_Sigma (simplify_sf_targeted ctx ext_sigma sf' x)
+    ) as wfsf by (
+      intro; apply (
+        wf_sf_simplify_sf_targeted
+          (wt_sigma := WT_SIGMA) (REnv := REnv) R ext_Sigma ctx ext_sigma WTRENV
+          sf' WFSF'
+      )
+    ); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
-    |- getenv ?REnv
-         (interp_cycle ?ctx ?ext_sigma
-           (prune_irrelevant_aux (collapse_sf ?sf') ?rg ?l)
-         ) ?rg = _
+    |- getenv ?REnv (interp_cycle ?ctx ?ext_sigma (collapse_sf ?sf')) ?rg = _
     =>
-    assert (list_assoc (final_values (collapse_sf sf')) rg = Some l)
-      as lassoc by (vm_compute list_assoc; reflexivity);
-    assert (wf_sf R ext_Sigma (prune_irrelevant_aux (collapse_sf sf') rg l))
-    as wfsf by (eapply (
-      wf_sf_prune_irrelevant_aux
-        R ext_Sigma (collapse_sf sf') rg l lassoc
-        (wf_collapse_sf R ext_Sigma sf' WFSF')
-    )); clear WFSF'; clear lassoc
+    assert (wf_sf R ext_Sigma (collapse_sf sf')) as wfsf by (
+      eapply (wf_collapse_sf R ext_Sigma sf' WFSF')
+    ); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
     |- getenv ?REnv
          (interp_cycle ?ctx ?ext_sigma (prune_irrelevant_aux ?sf' ?rg ?l)) ?rg
        = _
     =>
-    (* TODO also keep a single live version of lassoc *)
+    (* TODO also lassoc's value *)
     assert (list_assoc (final_values sf') rg = Some l)
       as lassoc by (vm_compute list_assoc; reflexivity);
     assert (wf_sf R ext_Sigma (prune_irrelevant_aux sf' rg l)) as wfsf
@@ -165,12 +159,7 @@ Ltac simplify_careful := simplify_careful_t; update_wfsf.
 Ltac prune :=
   erewrite prune_irrelevant_interp_cycle_ok;
     try (unfold prune_irrelevant; vm_compute list_assoc); eauto; update_wfsf.
-Ltac collapse :=
-  erewrite collapse_prune_interp_cycle_ok;
-  lazymatch goal with
-  | |- _ =>
-    try (unfold prune_irrelevant; vm_compute list_assoc; eauto); try eauto
-  end; update_wfsf.
+Ltac collapse := erewrite collapse_interp_cycle_ok; eauto; update_wfsf.
 
 (* Ltac auto_destr_next *)
 
