@@ -1962,6 +1962,23 @@ Section Desugar.
       Forall (fun x => x) (map (check_ucall_module_inj) elements)
     end.
 
+  Definition val_eq_dec (v1 v2: val ) : {v1 = v2} + {v1 <> v2}.
+  Proof.
+    intros. destruct (val_beq v1 v2) eqn:?.
+    left; apply val_beq_correct; auto.
+    right; apply val_beq_false; auto.
+  Defined.
+
+  Lemma val_beq_eq_dec:
+    forall {C:Type} (A B: C) v1 v2,
+    (if val_beq v1 v2 then A else B) = (if val_eq_dec v1 v2 then A else B).
+  Proof.
+    intros.
+    destruct (val_beq v1 v2) eqn:?.
+    destr. apply val_beq_correct in Heqb; congruence.
+    destr. apply val_beq_false in Heqb. congruence.
+  Qed.
+
   Lemma interp_action_desugar_ok:
     forall
       (a: Syntax.uaction pos_t var_t fn_name_t reg_t' ext_fn_t')
@@ -2279,24 +2296,24 @@ Section Desugar.
         rewrite <- IHbranches; auto.
         2: intros; eapply IHua; simpl in *; lia.
         rewrite fLog_fLog'; auto.
-        admit.
-        (* destruct val_eq_dec. *)
-        (* * subst. destruct val_eq_dec; try congruence. *)
-        (*   destruct (interp_action _ _ _ _ _ u0) eqn:?; simpl. *)
-        (*   destruct p0. destruct p0. *)
-        (*   replace (fold_left _ _ _) with (Some (l4, Some v0, l3)). *)
-        (*   2: { *)
-        (*     clear. induction branches; simpl; intros; eauto. destruct a; auto. *)
-        (*   } *)
-        (*   simpl. rewrite fLog'_fLog'; auto. *)
-        (*   rewrite fold_left_none; simpl; auto. intros; destr. *)
-        (* * destruct val_eq_dec; try congruence. *)
-        (*   destruct (fold_left _ _ _) eqn:?; simpl; auto. *)
-        (*   repeat destr. *)
-        (*   simpl. rewrite fLog'_fLog'; auto. *)
-        (*   unfold fState'. unfold opt_bind. *)
-        (*   repeat destr. *)
-        (*   rewrite fLog'_fLog'; auto. *)
+        rewrite ! val_beq_eq_dec.
+        destruct val_eq_dec.
+        * subst. destruct val_eq_dec; try congruence.
+          destruct (interp_action _ _ _ _ _ u0) eqn:?; simpl.
+          destruct p0. destruct p0.
+          replace (fold_left _ _ _) with (Some (l4, Some v0, l3)).
+          2: {
+            clear. induction branches; simpl; intros; eauto. destruct a; auto.
+          }
+          simpl. rewrite fLog'_fLog'; auto.
+          rewrite fold_left_none; simpl; auto. intros; destr.
+        * destruct val_eq_dec; try congruence.
+          destruct (fold_left _ _ _) eqn:?; simpl; auto.
+          repeat destr.
+          simpl. rewrite fLog'_fLog'; auto.
+          unfold fState'. unfold opt_bind.
+          repeat destr.
+          rewrite fLog'_fLog'; auto.
         * clear - CUMI0 H1 H2 CUMI2.
           simpl. intuition.
       + cbn.
