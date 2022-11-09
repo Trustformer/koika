@@ -2783,7 +2783,7 @@ Section Desugar.
         }
         clear - CUMI. simpl in CUMI. intuition.
         intros; eapply inj; eauto.
-  Admitted.
+  Qed.
 End Desugar.
 
 Section Eq.
