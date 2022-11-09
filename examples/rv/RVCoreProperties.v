@@ -204,26 +204,21 @@ Module RVProofs.
 (*       crusher 2. *)
 (*     Time Qed. *)
 
-    Lemma length_1_something:
+    Lemma extract_bits_1:
       forall {A: Type} bs,
       Datatypes.length (A := A) bs = 1 -> exists k, bs = [k].
     Proof.
       intros.
-      destruct bs.
-      - inv H.
-      - inv H. destruct bs; eauto. inv H1.
+      destruct bs; inv H.
+      destruct bs; eauto. inv H1.
     Qed.
 
-    Lemma length_32_something:
+    Lemma extract_bits_32:
       forall {A: Type} bs,
       Datatypes.length (A := A) bs = 32
       ->
-      exists k0, exists k1, exists k2, exists k3, exists k4, exists k5,
-      exists k6, exists k7, exists k8, exists k9, exists k10, exists k11,
-      exists k12, exists k13, exists k14, exists k15, exists k16, exists k17,
-      exists k18, exists k19, exists k20, exists k21, exists k22, exists k23,
-      exists k24, exists k25, exists k26, exists k27, exists k28, exists k29,
-      exists k30, exists k31,
+      exists k0 k1 k2 k3 k4 k5 k6 k7 k8 k9 k10 k11 k12 k13 k14 k15 k16 k17 k18
+        k19 k20 k21 k22 k23 k24 k25 k26 k27 k28 k29 k30 k31,
       bs = [
         k0; k1; k2; k3; k4; k5; k6; k7; k8; k9; k10; k11; k12; k13; k14; k15;
         k16; k17; k18; k19; k20; k21; k22; k23; k24; k25; k26; k27; k28; k29;
@@ -231,25 +226,11 @@ Module RVProofs.
       ].
     Proof.
       intros.
-      destruct bs; inv H. destruct bs; inv H1. destruct bs; inv H0.
-      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
-      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
-      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
-      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
-      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
-      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
-      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
-      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
-      destruct bs; inv H1. destruct bs; inv H0. destruct bs; inv H1.
-      destruct bs; inv H0. destruct bs; inv H1. destruct bs; inv H0.
-      exists
-        a, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15,
-        a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29,
-        a30.
-      eauto.
+      do 32 (destruct bs; inv H; rename H1 into H).
+      do 32 eexists. do 32 f_equal. destruct bs. eauto. inv H.
     Qed.
 
-    Lemma length_n_something:
+    Lemma extract_bits_n:
       forall {A: Type} bs n,
       Datatypes.length (A := A) bs = S n -> exists k, bs = k :: tail bs.
     Proof. intros. destruct bs; inv H; eauto. Qed.
@@ -275,8 +256,8 @@ Module RVProofs.
     Proof.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
-      exploit_regs.
       prune.
+      exploit_regs.
       do 4 collapse.
       prune.
 
@@ -291,11 +272,11 @@ Module RVProofs.
       inv H13. simpl in H1.
       inv H9. inv H5. inv H10. inv H11. inv H2.
 
-      apply length_1_something in H13. destruct H13.
-      apply length_1_something in H9. destruct H9.
-      apply length_1_something in H5. destruct H5.
-      apply length_1_something in H10. destruct H10.
-      apply length_1_something in H11. destruct H11.
+      apply extract_bits_1 in H13. destruct H13.
+      apply extract_bits_1 in H9. destruct H9.
+      apply extract_bits_1 in H5. destruct H5.
+      apply extract_bits_1 in H10. destruct H10.
+      apply extract_bits_1 in H11. destruct H11.
       subst.
 
       simpl in DecodeDInst.
@@ -303,12 +284,12 @@ Module RVProofs.
       simpl in LegalOk.
       inv LegalOk.
       inv H14.
-      eapply length_1_something in H2. destruct H2. subst.
+      eapply extract_bits_1 in H2. destruct H2. subst.
       symmetry in H6. exploit_reg H6.
 
       generalize (WTRENV (RV32I.epoch)). intro.
       inv H0.
-      eapply length_1_something in H9. destruct H9. subst.
+      eapply extract_bits_1 in H9. destruct H9. subst.
       symmetry in H5. exploit_reg H5.
 
       red in H.
@@ -320,14 +301,14 @@ Module RVProofs.
             eapply H0 in H6; inv H6; congruence.
       }
       subst. clear H5.
-      destruct H.
-      - red in H.
-        destruct H as [no_mispred [stack_empty stack_pop]].
+      destruct H as [under | [over | violation]].
+      - red in under.
+        destruct under as [no_mispred [stack_empty stack_pop]].
         red in no_mispred, stack_empty, stack_pop. simpl in *.
         vm_compute vect_to_list in stack_empty.
         exploit_reg stack_empty. clear stack_empty.
         clear no_mispred.
-        inv H12. apply length_32_something in H0. do 32 destruct H0 as [? H0].
+        inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].
         subst.
         eapply stack_pop in H6 as ret_instr. 2-3: reflexivity.
         clear stack_pop.
@@ -359,103 +340,10 @@ Module RVProofs.
             rewrite ! eqb_true_iff in rs1_5.
             intuition subst.
             collapse.
-            move wfsf0 at bottom.
-            isolate_sf. fold sf0 in wfsf0. vm_compute in sf0.
-            simplify_careful.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            do 3 collapse.
-            prune.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-            do 3 collapse.
-            prune.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 5 collapse.
-            prune.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-
-            destruct x0.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 5 collapse.
-            prune.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 5 collapse. prune.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity.
-            vm_compute; eauto. reflexivity.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 3 collapse. prune.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 3 collapse. prune.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity.
-            vm_compute; eauto. reflexivity.
-
+            full_pass_c.
+            full_pass_c.
+            do 4 full_pass_c.
+            destruct x0; crusher_c 3.
           * repeat (rewrite ? eqb_true_iff in rd_5, rs1_1, opc_ctrl, opc_jalr).
             rewrite ! eqb_true_iff in opc_jalr.
             rewrite ! eqb_true_iff in rd_5.
@@ -471,99 +359,10 @@ Module RVProofs.
             destr_and_in rd_5.
             subst.
             simpl in rd_neq_rs1. clear rd_neq_rs1.
-            do 2 collapse. prune.
-            move wfsf0 at bottom.
-            isolate_sf. fold sf0 in wfsf0. vm_compute in sf0.
-            simplify_careful.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            do 3 collapse. prune.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            do 3 collapse. prune.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 3 collapse. prune.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-
-            destruct x0.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 3 collapse.
-            prune.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity.
-            vm_compute; eauto. reflexivity.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 3 collapse. prune.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity.
-            vm_compute; eauto. reflexivity.
+            full_pass_c.
+            full_pass_c.
+            do 4 full_pass_c.
+            destruct x0; crusher_c 3.
           * repeat (rewrite ? eqb_true_iff in rd_5, rs1_5, opc_ctrl, opc_jalr).
             rewrite ! eqb_true_iff in opc_jalr.
             rewrite ! eqb_true_iff in rd_5.
@@ -590,350 +389,21 @@ Module RVProofs.
           destruct rs1_1_or_5; intuition. clear rs1_1_or_5.
           destr_and_in H. subst.
           do 2 collapse. prune.
-          move wfsf0 at bottom.
-          isolate_sf. fold sf0 in wfsf0. vm_compute in sf0.
-          simplify_careful.
-          isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf0 in sf1. clear sf0.
-          vm_compute in sf1.
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf1 in sf0. clear sf1.
-          vm_compute in sf0.
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf0 in sf1. clear sf0.
-          vm_compute in sf1.
-          do 4 collapse.
-          isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-          clear wfsf0. unfold sf1 in sf0. clear sf1.
-          vm_compute in sf0.
-          Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
-
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
-          clear wfsf0. unfold sf0 in sf1. clear sf0.
-          vm_compute in sf1.
-          Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-          do 2 collapse.
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-          clear wfsf0. unfold sf1 in sf0. clear sf1.
-          vm_compute in sf0.
-          do 3 collapse.
-          prune.
-          isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf0 in sf1. clear sf0.
-          vm_compute in sf1.
-          Eval vm_compute in Maps.PTree.get 1015 (vars sf1).
-          Eval vm_compute in Maps.PTree.get 996 (vars sf1).
-          Eval vm_compute in Maps.PTree.get 992 (vars sf1).
-
-
+          full_pass_c.
+          full_pass_c.
+          do 4 full_pass_c.
           destruct x0.
-
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf1 in sf0. clear sf1.
-          vm_compute in sf0.
-          do 4 collapse.
-
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf0 in sf1. clear sf0.
-          vm_compute in sf1.
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf1 in sf0. clear sf1.
-          vm_compute in sf0.
-          do 4 collapse.
-
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf0 in sf1. clear sf0.
-          vm_compute in sf1.
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf1 in sf0. clear sf1.
-          vm_compute in sf0.
-
-          do 3 collapse. prune.
-
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf0 in sf1. clear sf0.
-          vm_compute in sf1.
-          simplify_careful. isolate_sf.
-          assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-          clear wfsf. unfold sf1 in sf0. clear sf1.
-          vm_compute in sf0.
-
-          Eval vm_compute in Maps.PTree.get 1247 (vars sf0).
-          destruct x11, x12, x13, x14, x15, x21;
-            simplify_careful; isolate_sf;
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf;
-            clear wfsf; unfold sf0 in sf1; clear sf0;
-            vm_compute in sf1;
-            do 4 collapse;
-            simplify_careful; isolate_sf;
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf;
-            clear wfsf; unfold sf1 in sf0; clear sf1;
-            vm_compute in sf0;
-            do 4 collapse;
-            simplify_careful; isolate_sf;
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf;
-            clear wfsf; unfold sf0 in sf1; clear sf0;
-            vm_compute in sf1;
-            eapply getenv_interp; eauto; vm_compute; reflexivity.
-
-
-      -
-
-            eapply getenv_interp; eauto; unfold sf0; reflexivity; vm_compute; eauto; reflexivity;
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
-
-          * repeat (rewrite ? eqb_true_iff in rd_5, rs1_1, opc_ctrl, opc_jalr).
-            rewrite ! eqb_true_iff in opc_jalr.
-            rewrite ! eqb_true_iff in rd_5.
-            rewrite ! eqb_true_iff in rs1_1.
-            Ltac destr_and_in H :=
-              repeat match type of H with _ /\ _ =>
-                                            let H1 := fresh in let H2 := fresh in
-                                                               destruct H as [H1 H2]; destr_and_in H1; destr_and_in H2
-                end.
-            destr_and_in opc_ctrl.
-            destr_and_in opc_jalr.
-            destr_and_in rs1_1.
-            destr_and_in rd_5.
-            subst.
-            simpl in rd_neq_rs1. clear rd_neq_rs1.
-            collapse.
-            move wfsf0 at bottom.
-            isolate_sf. fold sf0 in wfsf0. vm_compute in sf0.
-            simplify_careful.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            do 4 collapse.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-            do 2 collapse.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf1).
-            Eval vm_compute in Maps.PTree.get 996 (vars sf1).
-            Eval vm_compute in Maps.PTree.get 992 (vars sf1).
-
-
-            destruct x0.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            eapply getenv_interp; eauto. unfold sf0; reflexivity. vm_compute; eauto. reflexivity.
-          * repeat (rewrite ? eqb_true_iff in rd_5, rs1_5, opc_ctrl, opc_jalr).
-            rewrite ! eqb_true_iff in opc_jalr.
-            rewrite ! eqb_true_iff in rd_5.
-            rewrite ! eqb_true_iff in rs1_5.
-            destr_and_in opc_ctrl.
-            destr_and_in opc_jalr.
-            destr_and_in rs1_5.
-            destr_and_in rd_5.
-            subst.
-            simpl in rd_neq_rs1. intuition congruence.
-        +
-            simpl in H27. congruence.
-
-
-            simpl. vm_compute interp_cycle.
-
-            do 4 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-
-            Eval vm_compute in Maps.PTree.get 1196 (vars sf1).
-h
-
-            blabla
-            simplify. isolate_sf. vm_compute in sf0.
-
-            Eval vm_compute in Maps.PTree.get 108 (vars sf0).
-            Eval vm_compute in Maps.PTree.get 15
-                                 (vars sf0).
-            Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
-
-            admit.
-          * repeat (eapply andb_true_iff in H0; destruct H0 as [? H0]).
-            repeat (eapply andb_true_iff in H2; destruct H2 as [? H2]).
-            clear H0 H2.
-            rewrite Bool.eqb_true_iff
-              in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17.
-            subst. clear H5.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. vm_compute in sf0.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf0 by apply wfsf.
-            clear wfsf. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            do 4 collapse.
-            isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            do 2 collapse.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 2 collapse.
-
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf1) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf0 in sf1. clear sf0.
-            vm_compute in sf1.
-            do 2 collapse.
-            simplify_careful. isolate_sf.
-            assert (wf_sf RV32I.R ext_Sigma sf0) as wfsf by apply wfsf0.
-            clear wfsf0. unfold sf1 in sf0. clear sf1.
-            vm_compute in sf0.
-            do 2 collapse.
-
-            Eval vm_compute in Maps.PTree.get 1789 (vars sf0).
-            admit.
-          * repeat (eapply andb_true_iff in H0; destruct H0 as [? H0]).
-            repeat (eapply andb_true_iff in H2; destruct H2 as [? H2]).
-            clear H0 H2.
-            rewrite Bool.eqb_true_iff
-              in H6, H9, H10, H11, H12, H13, H14, H15, H16, H17.
-            subst. simpl in H5. inversion H5.
-        + simpl in H2.
-
-          apply andb_true_iff in H0. destruct H0.
-          eapply andb_true_iff in H0. destruct H0.
-          simpl in H5.
-          rewrite andb_true_r in H5.
-          repeat (rewrite negb_andb in H5).
-          simpl in H0. simpl in H2.
-          eapply orb_true_iff in H2, H0; destruct H2, H0.
-    Qed.
+          * do 3 full_pass_c.
+            destruct x11, x12, x13, x14, x15, x21;
+              crusher_c 3; intuition congruence.
+          * do 3 full_pass_c.
+            destruct x11, x12, x13, x14, x15, x21;
+              crusher_c 3; intuition congruence.
+      - destruct over as [no_mispred [stack_full [not_stack_pop stack_push]]].
+        clear no_mispred.
+        red in stack_full, not_stack_pop, stack_push.
+        unfold stack_pop in not_stack_pop.
+  Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
     UntypedSemantics.interp_dcycle drules r ext_sigma rv_schedule.
