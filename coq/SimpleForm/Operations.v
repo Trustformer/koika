@@ -2050,6 +2050,16 @@ Section Operations.
     unfold option_map. setoid_rewrite H. easy.
   Qed.
 
+  Lemma f_wt_sact_ok'i:
+    forall f vvs s t (WTS: wt_sact (Sigma := Sigma) R vvs s t),
+    wt_sact (Sigma := Sigma) R (PTree.map (fun k '(t,a) => (t, f k a)) vvs) s t.
+  Proof.
+    intros.
+    induction WTS; econstructor; eauto.
+    setoid_rewrite Maps.PTree.gmap.
+    unfold option_map. setoid_rewrite H. easy.
+  Qed.
+
   Lemma f_wtvvs_ok':
     forall f (FSPEC: forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
                wt_sact (Sigma := Sigma) R vvs (f a) t)
@@ -2058,6 +2068,18 @@ Section Operations.
   Proof.
     intros. unfold wt_vvs. intros.
     apply f_wt_sact_ok'.
+    rewrite Maps.PTree.gmap in H. unfold option_map in H.
+    repeat destr_in H; inv H. apply FSPEC; eauto.
+  Qed.
+
+  Lemma f_wtvvs_ok'i:
+    forall f (FSPEC: forall k vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+               wt_sact (Sigma := Sigma) R vvs (f k a) t)
+           vvs (WTVVS: wt_vvs (Sigma := Sigma) R vvs),
+    wt_vvs (Sigma := Sigma) R (PTree.map (fun k '(t,a) => (t, f k a)) vvs).
+  Proof.
+    intros. unfold wt_vvs. intros.
+    apply f_wt_sact_ok'i.
     rewrite Maps.PTree.gmap in H. unfold option_map in H.
     repeat destr_in H; inv H. apply FSPEC; eauto.
   Qed.
@@ -2077,6 +2099,19 @@ Section Operations.
            vvs,
       vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) vvs ->
       vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (PTree.map (fun _ '(t,a) => (t, f a)) vvs).
+  Proof.
+    red; intros.
+    rewrite Maps.PTree.gmap in H0. unfold option_map in H0.
+    repeat destr_in H0; inv H0.
+    eapply H in Heqo. apply Heqo. eauto.
+  Qed.
+
+
+  Lemma vsv_fi:
+    forall f (FSPEC: forall k s v', var_in_sact (f k s) v' -> var_in_sact s v')
+           vvs,
+      vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) vvs ->
+      vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (PTree.map (fun k '(t,a) => (t, f k a)) vvs).
   Proof.
     red; intros.
     rewrite Maps.PTree.gmap in H0. unfold option_map in H0.
@@ -2110,6 +2145,22 @@ Section Operations.
     - eapply vsv_f; eauto.
     - simpl.
       intros. eapply f_wt_sact_ok'. eauto.
+  Qed.
+
+
+  Lemma wf_fi:
+    forall sf f
+           (FWT: forall k vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+               wt_sact (Sigma := Sigma) R vvs (f k a) t)
+           (FVIS: forall k s v', var_in_sact (f k s) v' -> var_in_sact s v'),
+      wf_sf sf ->
+      wf_sf {| final_values := final_values sf; vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf) |}.
+  Proof.
+    destruct 3; constructor.
+    - eapply f_wtvvs_ok'i; eauto.
+    - eapply vsv_fi; eauto.
+    - simpl.
+      intros. eapply f_wt_sact_ok'i. eauto.
   Qed.
 
   Lemma wf_simplify_sifs:
@@ -2160,6 +2211,44 @@ Section Operations.
     - intros t0 WT; inv WT. econstructor; eauto.
   Qed.
 
+  Lemma f_interp_sact_ok'i:
+    forall f
+           (SPEC: forall k (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               forall t : type,
+                 wt_sact (Sigma:=Sigma) R vvs a t ->
+                 vvs_smaller_variables vvs ->
+                 interp_sact (sigma:=sigma) REnv r vvs a v ->
+                 interp_sact (sigma:=sigma) REnv r vvs (f k a) v
+           )
+           (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type),
+               wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
+               wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
+           (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
+           vvs
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+           (VVSSV: vvs_smaller_variables vvs)
+           a v (EV_INIT: interp_sact (sigma := sigma) REnv r vvs a v)
+           t (WTa: wt_sact (Sigma:=Sigma) R vvs a t),
+    interp_sact (sigma := sigma) REnv r (PTree.map (fun k '(t,a) => (t, f k a)) vvs) a v.
+  Proof.
+    intros f SPEC FWT VIS vvs WTVVS VVSSV.
+    induction 1; try (econstructor; eauto; fail).
+    econstructor.
+    - setoid_rewrite Maps.PTree.gmap.
+      unfold option_map. setoid_rewrite H.
+      f_equal.
+    - eapply SPEC; eauto.
+      eapply f_wtvvs_ok'i; eauto.
+      eapply f_wt_sact_ok'i; eauto.
+      eapply vsv_fi; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+      eapply IHEV_INIT2. destr; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+    - intros t0 WT; inv WT. econstructor; eauto.
+  Qed.
+
   Lemma f_interp_sact_ok:
     forall vvs f
            (FSPEC: forall vvs : PTree.t (type * SimpleForm.sact),
@@ -2176,6 +2265,39 @@ Section Operations.
            (VVSSV: vvs_smaller_variables vvs)
            a v
            (EV_INIT: interp_sact (sigma := sigma) REnv r (PTree.map (fun _ '(t,a) => (t, f a)) vvs) a v)
+           t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+      interp_sact (sigma := sigma) REnv r vvs a v.
+  Proof.
+    induction 5; simpl; intros; inv WTS.
+    - setoid_rewrite PTree.gmap in H. setoid_rewrite H1 in H. simpl in H. inv H.
+      econstructor; eauto.
+      eapply FSPEC; eauto.
+    - econstructor.
+    - econstructor. eauto.
+      eapply IHEV_INIT2. destr; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+  Qed.
+
+
+  Lemma f_interp_sact_oki:
+    forall vvs f
+           (FSPEC: forall k (vvs : PTree.t (type * SimpleForm.sact)),
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               vvs_smaller_variables vvs ->
+               forall (a : sact) (v : val),
+                 interp_sact (sigma:=sigma) REnv r vvs (f k a) v ->
+                 forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
+           )
+           (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type),
+               wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
+               wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+           (VVSSV: vvs_smaller_variables vvs)
+           a v
+           (EV_INIT: interp_sact (sigma := sigma) REnv r (PTree.map (fun k '(t,a) => (t, f k a)) vvs) a v)
            t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
       interp_sact (sigma := sigma) REnv r vvs a v.
   Proof.
@@ -2241,6 +2363,57 @@ Section Operations.
       rewrite PTree.gmap in H2. unfold option_map in H2; repeat destr_in H2; inv H2.
       econstructor. eauto.
   Qed.
+
+  Lemma sf_eq_mapi:
+    forall sf f
+           (FSPEC: forall (vvs : PTree.t (type * SimpleForm.sact)) k,
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               vvs_smaller_variables vvs ->
+               forall (a : sact) (v : val),
+                 interp_sact (sigma:=sigma) REnv r vvs (f k a) v ->
+                 forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
+           )
+           (SPEC: forall k (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+               wt_vvs (Sigma:=Sigma) R vvs ->
+               forall t : type,
+                 wt_sact (Sigma:=Sigma) R vvs a t ->
+                 vvs_smaller_variables vvs ->
+                 interp_sact (sigma:=sigma) REnv r vvs a v ->
+                 interp_sact (sigma:=sigma) REnv r vvs (f k a) v
+           )
+           (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type),
+               wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
+               wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
+           (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
+    ,
+      wf_sf sf ->
+      sf_eq sf {| final_values := final_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
+  Proof.
+    intros.
+    constructor. simpl. auto.
+    - intros. simpl.
+      split.
+      + intro A; inv A. inv H1. rewrite H3 in H5.
+        inv H5.
+        econstructor.
+        rewrite PTree.gmap. setoid_rewrite H3. simpl. reflexivity.
+        eapply f_interp_sact_ok'i. eauto. eauto. eauto. apply H. apply H. eapply SPEC; eauto.
+        apply H. eapply H. eauto. apply H.
+        eapply FWT. eapply H. eauto.
+      + intro A; inv A. rewrite PTree.gmap in H3. unfold option_map in H3; repeat destr_in H3; inv H3.
+        econstructor. eauto. inv H1. setoid_rewrite H3 in Heqo. inv Heqo.
+        eapply FSPEC in H4. eapply f_interp_sact_oki; eauto.
+        apply H. apply H. eapply H. eauto.
+        eapply f_wtvvs_ok'i; eauto. apply H.
+        eapply vsv_fi; eauto. apply H.
+        eapply f_wt_sact_ok'i; eauto. eapply H. eauto.
+    - intros. simpl.
+      split. eapply f_wt_sact_ok'i; eauto.
+      intro A; inv A.
+      rewrite PTree.gmap in H2. unfold option_map in H2; repeat destr_in H2; inv H2.
+      econstructor. eauto.
+  Qed.
+
 
   Lemma simplify_sif_interp_inv:
     forall vvs : PTree.t (type * SimpleForm.sact),
@@ -2686,6 +2859,23 @@ Section Operations.
     intros; eapply H; eauto.
   Qed.
 
+  Lemma vsv_f_reachablei:
+    forall
+      f vvs
+      (FSPEC: forall k s v', var_in_sact (f k s) v' -> reachable_var vvs s v'),
+    vvs_smaller_variables (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) vvs
+    -> vvs_smaller_variables
+         (reg_t:=reg_t) (ext_fn_t:=ext_fn_t)
+         (PTree.map (fun k '(t,a) => (t, f k a)) vvs).
+  Proof.
+    red; intros.
+    rewrite Maps.PTree.gmap in H0. unfold option_map in H0.
+    repeat destr_in H0; inv H0.
+    eapply FSPEC in H1.
+    eapply reachable_var_aux_below. 3: eauto. auto.
+    intros; eapply H; eauto.
+  Qed.
+
   Lemma f_wtvvs_ok'':
     forall f vvs (FSPEC: forall a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
                wt_sact (Sigma := Sigma) R vvs (f a) t)
@@ -2694,6 +2884,18 @@ Section Operations.
   Proof.
     intros. unfold wt_vvs. intros.
     apply f_wt_sact_ok'.
+    rewrite Maps.PTree.gmap in H. unfold option_map in H.
+    repeat destr_in H; inv H. apply FSPEC; eauto.
+  Qed.
+
+  Lemma f_wtvvs_ok''i:
+    forall f vvs (FSPEC: forall k a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+               wt_sact (Sigma := Sigma) R vvs (f k a) t)
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs),
+    wt_vvs (Sigma := Sigma) R (PTree.map (fun k '(t,a) => (t, f k a)) vvs).
+  Proof.
+    intros. unfold wt_vvs. intros.
+    apply f_wt_sact_ok'i.
     rewrite Maps.PTree.gmap in H. unfold option_map in H.
     repeat destr_in H; inv H. apply FSPEC; eauto.
   Qed.
@@ -2715,6 +2917,25 @@ Section Operations.
     - eapply f_wtvvs_ok''; eauto.
     - eapply vsv_f_reachable; eauto.
     - simpl. intros. eapply f_wt_sact_ok'. eauto.
+  Qed.
+
+  Lemma wf_f_reachablei:
+    forall
+      sf f
+      (FWT:
+        forall k a t (WTS: wt_sact (Sigma := Sigma) R (vars sf) a t),
+        wt_sact (Sigma := Sigma) R (vars sf) (f k a) t)
+      (FVIS: forall k s v', var_in_sact (f k s) v' -> reachable_var (vars sf) s v'),
+    wf_sf sf
+    -> wf_sf {|
+         final_values := final_values sf;
+         vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf)
+    |}.
+  Proof.
+    destruct 3; constructor.
+    - eapply f_wtvvs_ok''i; eauto.
+    - eapply vsv_f_reachablei; eauto.
+    - simpl. intros. eapply f_wt_sact_ok'i. eauto.
   Qed.
 
   Lemma var_in_sact_reachable:
