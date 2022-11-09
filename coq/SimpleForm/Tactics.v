@@ -215,7 +215,7 @@ Ltac simplify_careful :=
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx,
     OLD_SF: SimpleForm.simple_form, NEW_SF: SimpleForm.simple_form,
     OLD_WFSF:
-      forall x : list (list Direction.position),
+      forall x : Maps.PTree.t (list Direction.position),
       wf_sf
         ?R ?ext_Sigma
         (SimplifyTargeted.simplify_sf_targeted ?ctx ?ext_sigma _ x),

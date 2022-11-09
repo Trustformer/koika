@@ -102,11 +102,11 @@ Ltac probe_in_var r sigma i :=
 
 Ltac probe_in_vars r sigma vars :=
   lazymatch vars with
-  | [] => eval vm_compute in (@nil (list Direction.position))
+  | [] => eval vm_compute in (@Maps.PTree.empty (list Direction.position))
   | ?h :: ?t =>
     let exempted_h := probe_in_var r sigma h in
     let exempted_t := probe_in_vars r sigma t in
-    eval vm_compute in (exempted_h::exempted_t)
+    eval vm_compute in (Maps.PTree.set (fst h) exempted_h exempted_t)
   end.
 
 Ltac simplify_targeted protected :=
