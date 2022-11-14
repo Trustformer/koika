@@ -11,6 +11,7 @@ Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
 Require Import Coq.Logic.FunctionalExtensionality.
+Require Operations.
 
 Section SimplifyTargeted.
   Context {reg_t ext_fn_t: Type}.
@@ -502,7 +503,6 @@ Section SimplifyTargeted.
     - inv H; econstructor; eauto.
   Qed.
 
-  Require Operations.
   Lemma simplify_sact_targeted_correct:
     forall vvs (WTV: wt_vvs R (Sigma:=Sigma) vvs) a e p ta
            (SSTA: ssta a e p ta)
@@ -749,7 +749,7 @@ Section SimplifyTargeted.
     erewrite simplify_sact_targeted_correct; eauto.
     eapply ssta_f.
   Qed.
-  
+
   Lemma simplify_sact_targeted_var_in_sact_ok':
     forall s e p ts (SSTA: ssta s e p ts) v
            (VIS: var_in_sact ts v),
@@ -869,30 +869,10 @@ Section SimplifyTargeted.
       eapply eval_sact_no_vars_interp in H0; eauto.
       eapply IHSSTA1 in H; eauto.
       eapply IHSSTA2 in H0; eauto.
-      inv EV_INIT. econstructor; eauto. 
+      inv EV_INIT. econstructor; eauto.
     - inv EV_INIT. econstructor; eauto.
     - inv EV_INIT. econstructor; eauto.
   Qed.
-
-  (* Definition simplify_sf_targeted *)
-  (*   (sf: simple_form) (exemptions: list (list position)) *)
-  (* := {| *)
-  (*   final_values := final_values sf; *)
-  (*   vars := *)
-  (*     fst ( *)
-  (*       PTree.fold *)
-  (*       (fun *)
-  (*         (acc: ((PTree.tree (type * SimpleForm.sact)) * list (list position))) *)
-  (*         elt (val: (type * SimpleForm.sact)) *)
-  (*       => *)
-  (*         let '(tree, acc_exs) := acc in *)
-  (*         let exs: list position := List.hd [] acc_exs in *)
-  (*         let res := simplify_sact_targeted (snd val) exs in *)
-  (*         (PTree.set elt (fst val, res) tree, tl acc_exs)) *)
-  (*       (vars sf) *)
-  (*       (PTree.empty (type * SimpleForm.sact), exemptions)) *)
-  (*   |}. *)
-
 
   Definition simplify_sf_targeted
     (sf: simple_form) (exemptions: PTree.t (list position))

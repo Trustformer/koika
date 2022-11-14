@@ -240,6 +240,22 @@ Module RVProofs.
       Datatypes.length (A := A) bs = S n -> Datatypes.length (tail bs) = n.
     Proof. intros. destruct bs; eauto. inv H. Qed.
 
+    Ltac destr_and_in H :=
+      repeat match type of H with _ /\ _ =>
+        let H1 := fresh in let H2 := fresh in
+        destruct H as [H1 H2]; destr_and_in H1; destr_and_in H2
+    end.
+
+    Ltac extract_bits_info H :=
+      unfold eql in H; rewrite Bits.of_N_to_N in H;
+      simpl in H;
+      rewrite ! andb_true_r in H;
+      repeat (
+        try rewrite ! andb_true_iff in H;
+        try rewrite ! orb_true_iff in H
+      );
+      rewrite ! eqb_true_iff in H.
+
     Lemma stack_violation_results_in_halt:
       forall
         (NoHalt: getenv REnv ctx RV32I.halt = Bits [false])
@@ -348,11 +364,6 @@ Module RVProofs.
             rewrite ! eqb_true_iff in opc_jalr.
             rewrite ! eqb_true_iff in rd_5.
             rewrite ! eqb_true_iff in rs1_1.
-            Ltac destr_and_in H :=
-              repeat match type of H with _ /\ _ =>
-                let H1 := fresh in let H2 := fresh in
-                destruct H as [H1 H2]; destr_and_in H1; destr_and_in H2
-            end.
             destr_and_in opc_ctrl.
             destr_and_in opc_jalr.
             destr_and_in rs1_1.
@@ -401,8 +412,98 @@ Module RVProofs.
               crusher_c 3; intuition congruence.
       - destruct over as [no_mispred [stack_full [not_stack_pop stack_push]]].
         clear no_mispred.
-        red in stack_full, not_stack_pop, stack_push.
+        red in stack_full, stack_push.
         unfold stack_pop in not_stack_pop.
+        simpl in *.
+        exploit_reg stack_full. clear stack_full.
+        inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].
+        subst.
+        eapply stack_push in H6 as push_instr. 2-3: reflexivity.
+        clear stack_push.
+        unfold is_call_instruction in push_instr.
+        extract_bits_info push_instr.
+        destruct push_instr as [opc_ctrl call_or_ret].
+        do 2 destruct opc_ctrl as [? opc_ctrl].
+        subst.
+        red in not_stack_pop.
+        destruct call_or_ret as [[jal rd_1_or_5] | [jalr rd_1_or_5]].
+        + clear not_stack_pop.
+          do 3 destruct jal as [? jal]. subst.
+          collapse.
+          full_pass_c.
+          full_pass_c.
+          do 4 full_pass_c.
+          destruct rd_1_or_5 as [rd_1 | rd_5].
+          * do 4 destruct rd_1 as [? rd_1]. subst.
+            destruct x0; crusher_c 3.
+          * do 4 destruct rd_5 as [? rd_5]. subst.
+            destruct x0; crusher_c 3.
+        + do 3 destruct jalr as [? jalr]. subst.
+          destruct (
+            orb
+              (andb
+                (andb
+                  (andb
+                    (andb (Bool.eqb x19 true) (Bool.eqb x20 false))
+                    (Bool.eqb x21 false))
+                  (Bool.eqb x22 false))
+                (Bool.eqb x23 false))
+              (andb
+                (andb
+                  (andb
+                    (andb (Bool.eqb x19 true) (Bool.eqb x20 false))
+                    (Bool.eqb x21 true))
+                  (Bool.eqb x22 false))
+                (Bool.eqb x23 false))
+          ) eqn:eq.
+          * rename eq into rs1_1_or_5.
+            rewrite ! orb_true_iff in rs1_1_or_5.
+            rewrite ! andb_true_iff in rs1_1_or_5.
+            rewrite ! eqb_true_iff in rs1_1_or_5.
+            destruct rs1_1_or_5 as [rs1_1 | rs1_5], rd_1_or_5 as [rd_1 | rd_5].
+            ** do 4 destruct rd_1 as [? rd_1].
+               do 4 destruct rs1_1 as [rs1_1 ?].
+               subst.
+               collapse. full_pass_c. full_pass_c. do 4 full_pass_c.
+               destruct x0; crusher_c 3.
+            ** exfalso. apply not_stack_pop. intros. clear not_stack_pop.
+               do 4 destruct rd_5 as [? rd_5].
+               do 4 destruct rs1_1 as [rs1_1 ?].
+               subst.
+               rewrite H6 in H. inv H. inv H0. inv H2.
+               rewrite Bits.of_N_to_N.
+               unfold is_ret_instruction.
+               simpl. reflexivity.
+            ** exfalso. apply not_stack_pop. intros. clear not_stack_pop.
+               do 4 destruct rd_1 as [? rd_1].
+               do 4 destruct rs1_5 as [rs1_5 ?].
+               subst.
+               rewrite H6 in H. inv H. inv H0. inv H2.
+               rewrite Bits.of_N_to_N.
+               unfold is_ret_instruction.
+               simpl. reflexivity.
+            ** do 4 destruct rd_5 as [? rd_5].
+               do 4 destruct rs1_5 as [rs1_5 ?].
+               subst.
+               collapse. full_pass_c. full_pass_c. do 4 full_pass_c.
+               destruct x0; crusher_c 3.
+          * clear not_stack_pop.
+            destruct rd_1_or_5 as [rd_1 | rd_5].
+            ** do 4 destruct rd_1 as [? rd_1]. subst.
+               collapse. full_pass_c. full_pass_c. do 6 full_pass_c.
+               destruct x0.
+               *** do 3 full_pass_c.
+                   destruct x19, x20, x21, x22, x23; simpl in eq;
+                     try (discriminate eq); clear eq; crusher_c 2.
+               *** do 3 full_pass_c.
+                   destruct x19, x20, x21, x22, x23; simpl in eq;
+                     try (discriminate eq); clear eq; crusher_c 2.
+            ** do 4 destruct rd_5 as [? rd_5]. subst.
+               collapse. full_pass_c. full_pass_c. do 6 full_pass_c.
+               destruct x0; do 3 full_pass_c;
+                 destruct x19, x20, x21, x22, x23; simpl in eq;
+                 try (discriminate eq); clear eq; crusher_c 2.
+      -
   Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
