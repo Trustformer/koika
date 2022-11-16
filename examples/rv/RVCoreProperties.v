@@ -46,21 +46,23 @@ Module RVProofs.
     Definition eql (l1 l2: list bool) : bool := list_beq bool Bool.eqb l1 l2.
 
     (* Propositions about the initial state *)
-    Definition no_mispred (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+    Definition no_mispred (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
       forall v,
       getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) =
         Struct (RV32I.decode_bookkeeping) v ->
       get_field_struct (struct_fields RV32I.decode_bookkeeping) v "epoch" =
       Some (getenv REnv ctx (RV32I.epoch)).
 
-    Definition stack_empty (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    Definition sstack_empty (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
       getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.size))
       = @val_of_value
         (bits_t RV32I.ShadowStack.index_sz)
         (Bits.of_nat (RV32I.ShadowStack.index_sz) 0).
 
-    Definition stack_full (ctx: env_t REnv (fun _ : RV32I.reg_t => val)) : Prop :=
+    Definition sstack_full (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    : Prop :=
       getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.size))
       = @val_of_value
         (bits_t RV32I.ShadowStack.index_sz)
@@ -113,7 +115,7 @@ Module RVProofs.
             (eql rs1 (rev [false; false; false; false; true]))
             || (eql rs1 (rev [false; false; true; false; true])))))).
 
-    Definition stack_push (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    Definition sstack_push (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
       forall v w b,
       getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0))
@@ -123,7 +125,7 @@ Module RVProofs.
       -> get_field_struct (struct_fields decoded_sig) w "inst" = Some (Bits b)
       -> is_call_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
 
-    Definition stack_pop (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    Definition sstack_pop (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
       forall v w b,
       getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0))
@@ -134,27 +136,39 @@ Module RVProofs.
       -> is_ret_instruction (Bits.of_N 32 (Bits.to_N (vect_of_list b))) = true.
 
     (* TODO should never return None, simplify? *)
-    Definition stack_push_address
-      (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    Definition ret_address (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : option (bits_t 32) :=
       let data := getenv REnv ctx (RV32I.d2e (RV32I.fromDecode.data0)) in
       match data with
       | Struct _ lv =>
-        let v :=
-          get_field_struct (struct_fields RV32I.decode_bookkeeping) lv "pc"
+        let rs1 :=
+          get_field_struct (struct_fields RV32I.decode_bookkeeping) lv "rv1"
         in
-        match v with
-        | Some w =>
-          let uw := ubits_of_value w in
-          let addr_val := (Bits.to_N (vect_of_list uw) + 4)%N in
-          Some (Bits.of_N 32 addr_val)
-        | _ => None
+        let dInst :=
+          get_field_struct (struct_fields RV32I.decode_bookkeeping) lv "dInst"
+        in
+        match rs1, dInst with
+        | Some rs1_val, Some (Struct (decoded_sig) dInst) =>
+          let inst :=
+            get_field_struct (struct_fields rv.RVCore.decoded_sig) dInst "inst"
+          in
+          match inst with
+          | Some inst_val =>
+            let bits :=
+              Bits.to_N (vect_of_list (
+                (ubits_of_value rs1_val)
+                ++ ((List.skipn 21 (ubits_of_value inst_val)) ++ [false])
+            )) in
+            Some (Bits.of_N 32 bits)
+          | None => None
+          end
+        | _, _ => None
         end
       | _ => None
       end.
 
     (* TODO should never return None, simplify? *)
-    Definition stack_top_address (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    Definition sstack_top_address (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : option (bits_t 32) :=
       let index_raw := getenv REnv ctx (RV32I.stack RV32I.ShadowStack.size) in
       let index_nat := Bits.to_nat (vect_of_list (ubits_of_value index_raw)) in
@@ -167,22 +181,23 @@ Module RVProofs.
       | None => None
       end.
 
-    Definition stack_underflow (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    Definition sstack_underflow (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
-      no_mispred ctx /\ stack_empty ctx /\ stack_pop ctx.
-    Definition stack_overflow (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+      no_mispred ctx /\ sstack_empty ctx /\ sstack_pop ctx.
+    Definition sstack_overflow (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
-      no_mispred ctx /\ stack_full ctx /\ (not (stack_pop ctx))
-      /\ stack_push ctx.
-    Definition stack_address_violation
+      no_mispred ctx /\ sstack_full ctx /\ (not (sstack_pop ctx))
+      /\ sstack_push ctx.
+    Definition sstack_address_violation
       (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
-      no_mispred ctx /\ stack_push ctx
-      /\ stack_top_address ctx <> stack_push_address ctx.
+      no_mispred ctx /\ sstack_pop ctx
+      /\ sstack_top_address ctx <> ret_address ctx.
 
-    Definition stack_violation (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
+    Definition sstack_violation (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
-      stack_underflow ctx \/ stack_overflow ctx \/ stack_address_violation ctx.
+      sstack_underflow ctx \/ sstack_overflow ctx
+      \/ sstack_address_violation ctx.
 
     (* Final state *)
     (* TODO transition to simple form *)
@@ -256,7 +271,7 @@ Module RVProofs.
       );
       rewrite ! eqb_true_iff in H.
 
-    Lemma stack_violation_results_in_halt:
+    Lemma sstack_violation_results_in_halt:
       forall
         (NoHalt: getenv REnv ctx RV32I.halt = Bits [false])
         (Valid:
@@ -268,7 +283,7 @@ Module RVProofs.
         (LegalOk: get_field v2 "legal" = Some (Bits [true]))
         (CanEnq:
           getenv REnv ctx (RV32I.e2w RV32I.fromExecute.valid0) = Bits [false]),
-      stack_violation ctx -> halt_set ctx.
+      sstack_violation ctx -> halt_set ctx.
     Proof.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
@@ -319,15 +334,15 @@ Module RVProofs.
       subst. clear H5.
       destruct H as [under | [over | violation]].
       - red in under.
-        destruct under as [no_mispred [stack_empty stack_pop]].
-        red in no_mispred, stack_empty, stack_pop. simpl in *.
-        vm_compute vect_to_list in stack_empty.
-        exploit_reg stack_empty. clear stack_empty.
+        destruct under as [no_mispred [sstack_empty sstack_pop]].
+        red in no_mispred, sstack_empty, sstack_pop. simpl in *.
+        vm_compute vect_to_list in sstack_empty.
+        exploit_reg sstack_empty. clear sstack_empty.
         clear no_mispred.
         inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].
         subst.
-        eapply stack_pop in H6 as ret_instr. 2-3: reflexivity.
-        clear stack_pop.
+        eapply sstack_pop in H6 as ret_instr. 2-3: reflexivity.
+        clear sstack_pop.
         unfold is_ret_instruction in ret_instr.
         unfold eql in ret_instr.
         rewrite Bits.of_N_to_N in ret_instr.
@@ -410,24 +425,26 @@ Module RVProofs.
           * do 3 full_pass_c.
             destruct x11, x12, x13, x14, x15, x21;
               crusher_c 3; intuition congruence.
-      - destruct over as [no_mispred [stack_full [not_stack_pop stack_push]]].
+      - destruct over as [
+          no_mispred [sstack_full [not_sstack_pop sstack_push]]
+        ].
         clear no_mispred.
-        red in stack_full, stack_push.
-        unfold stack_pop in not_stack_pop.
+        red in sstack_full, sstack_push.
+        unfold sstack_pop in not_sstack_pop.
         simpl in *.
-        exploit_reg stack_full. clear stack_full.
+        exploit_reg sstack_full. clear sstack_full.
         inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].
         subst.
-        eapply stack_push in H6 as push_instr. 2-3: reflexivity.
-        clear stack_push.
+        eapply sstack_push in H6 as push_instr. 2-3: reflexivity.
+        clear sstack_push.
         unfold is_call_instruction in push_instr.
         extract_bits_info push_instr.
         destruct push_instr as [opc_ctrl call_or_ret].
         do 2 destruct opc_ctrl as [? opc_ctrl].
         subst.
-        red in not_stack_pop.
+        red in not_sstack_pop.
         destruct call_or_ret as [[jal rd_1_or_5] | [jalr rd_1_or_5]].
-        + clear not_stack_pop.
+        + clear not_sstack_pop.
           do 3 destruct jal as [? jal]. subst.
           collapse.
           full_pass_c.
@@ -466,7 +483,7 @@ Module RVProofs.
                subst.
                collapse. full_pass_c. full_pass_c. do 4 full_pass_c.
                destruct x0; crusher_c 3.
-            ** exfalso. apply not_stack_pop. intros. clear not_stack_pop.
+            ** exfalso. apply not_sstack_pop. intros. clear not_sstack_pop.
                do 4 destruct rd_5 as [? rd_5].
                do 4 destruct rs1_1 as [rs1_1 ?].
                subst.
@@ -474,7 +491,7 @@ Module RVProofs.
                rewrite Bits.of_N_to_N.
                unfold is_ret_instruction.
                simpl. reflexivity.
-            ** exfalso. apply not_stack_pop. intros. clear not_stack_pop.
+            ** exfalso. apply not_sstack_pop. intros. clear not_sstack_pop.
                do 4 destruct rd_1 as [? rd_1].
                do 4 destruct rs1_5 as [rs1_5 ?].
                subst.
@@ -487,7 +504,7 @@ Module RVProofs.
                subst.
                collapse. full_pass_c. full_pass_c. do 4 full_pass_c.
                destruct x0; crusher_c 3.
-          * clear not_stack_pop.
+          * clear not_sstack_pop.
             destruct rd_1_or_5 as [rd_1 | rd_5].
             ** do 4 destruct rd_1 as [? rd_1]. subst.
                collapse. full_pass_c. full_pass_c. do 6 full_pass_c.
@@ -503,7 +520,34 @@ Module RVProofs.
                destruct x0; do 3 full_pass_c;
                  destruct x19, x20, x21, x22, x23; simpl in eq;
                  try (discriminate eq); clear eq; crusher_c 2.
-      -
+      - destruct violation as [no_mispred [pop address_neq]].
+        clear no_mispred.
+        unfold sstack_pop in pop.
+        inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].
+        subst.
+        eapply pop in H6 as ret_instr. 2-3: reflexivity.
+        unfold is_ret_instruction in ret_instr.
+        extract_bits_info ret_instr.
+        rewrite ! negb_true_iff in ret_instr.
+        rewrite ! andb_false_iff in ret_instr.
+        rewrite ! eqb_false_iff in ret_instr.
+        destruct ret_instr as [[opc1 opc2] ret_instr].
+        do 2 destruct opc1 as [? opc1]. do 3 destruct opc2 as [? opc2]. subst.
+        destruct ret_instr.
+        + destruct H. destruct H.
+          destruct H, H0; do 4 destruct H as [? H]; do 4 destruct H0 as [? H0];
+            subst.
+          * intuition.
+          * unfold sstack_top_address in address_neq.
+          * admit.
+          * intuition.
+        destruct ret_instr.
+        destruct ret_instr. as [[opc1 opc2] ret_instr].
+        rewrite Bits.of_N_to_N in ret_instr.
+        collapse.
+        full_pass_c. full_pass_c.
+        full_pass_c. full_pass_c.
+        do 4 full_pass_c.
   Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
