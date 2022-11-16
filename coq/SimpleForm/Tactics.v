@@ -21,6 +21,16 @@ Ltac update_wfsf :=
     assert (wf_sf R ext_Sigma (replace_reg sf' rg vl)) as wfsf by
     (eapply (wf_sf_replace_reg R ext_Sigma ctx WTRENV rg vl sf' RV WFSF'));
     clear WFSF'
+  | VS: var_simpl ?R ?ext_Sigma ?ctx ?ext_sigma (vars ?sf) ?var ?newv,
+      WTRENV: Wt.wt_renv ?R ?REnv ?ctx,
+        WFSF': wf_sf ?R ?ext_Sigma ?sf'
+    |-
+      getenv ?REnv (interp_cycle ?ctx ?ext_sigma (replace_var ?sf' ?var ?newv)) _
+      = _
+    =>
+    assert (wf_sf R ext_Sigma (replace_var sf' var newv)) as wfsf by
+    (eapply (wf_sf_replace_var R ext_Sigma ctx ext_sigma var newv sf' VS WFSF'));
+    clear WFSF'
   | FV: get_field (getenv ?REnv ?ctx ?str) ?f = Some ?fv,
     WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WTSIGMA:
@@ -158,6 +168,40 @@ Ltac prune :=
   erewrite prune_irrelevant_interp_cycle_ok;
     try (unfold prune_irrelevant; vm_compute list_assoc); eauto; update_wfsf.
 Ltac collapse := erewrite collapse_interp_cycle_ok; eauto; update_wfsf.
+
+
+Ltac exploit_var idx newv :=
+  match goal with
+  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+    WFSF: wf_sf ?R ?ext_Sigma ?sf,
+    wt_sigma : (
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+      let vs := fresh "VS" in
+      assert (vs: var_simpl R ext_Sigma ctx ext_sigma (vars sf) idx newv);
+      [|
+        rewrite (replace_var_interp_cycle_ok
+                   (wt_sigma:=wt_sigma) _ _ _ _ WTRENV WFSF vs); update_wfsf
+        ]
+  end.
+
+Goal
+  forall
+    {reg_t} {ext_fn_t} {reg_t_eq_dec: EqDec reg_t} {REnv: Env reg_t}
+    R Sigma REnv r sigma,
+    wt_renv R REnv r ->
+    (forall (ufn : ext_fn_t) (vc : val), wt_val (arg1Sig (Sigma ufn)) vc -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)) ->
+    forall sf rr,
+      wf_sf R Sigma sf ->
+      getenv REnv (interp_cycle r sigma sf) rr = Bits [].
+Proof.
+  intros.
+  exploit_var 1%positive uconstr:(SConst (Bits [])).
+Abort.
+
+
 
 (* Ltac auto_destr_next *)
 
