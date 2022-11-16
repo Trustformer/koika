@@ -142,7 +142,7 @@ Module RVProofs.
       match data with
       | Struct _ lv =>
         let rs1 :=
-          get_field_struct (struct_fields RV32I.decode_bookkeeping) lv "rv1"
+          get_field_struct (struct_fields RV32I.decode_bookkeeping) lv "rval1"
         in
         let dInst :=
           get_field_struct (struct_fields RV32I.decode_bookkeeping) lv "dInst"
@@ -156,7 +156,7 @@ Module RVProofs.
           | Some inst_val =>
             let bits :=
               Bits.to_N (vect_of_list (
-                (ubits_of_value rs1_val)
+                (List.firstn 20 (ubits_of_value rs1_val))
                 ++ ((List.skipn 21 (ubits_of_value inst_val)) ++ [false])
             )) in
             Some (Bits.of_N 32 bits)
@@ -171,14 +171,14 @@ Module RVProofs.
     Definition sstack_top_address (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : option (bits_t 32) :=
       let index_raw := getenv REnv ctx (RV32I.stack RV32I.ShadowStack.size) in
-      let index_nat := Bits.to_nat (vect_of_list (ubits_of_value index_raw)) in
+      let index_nat := pred (Bits.to_nat (vect_of_list (ubits_of_value index_raw))) in
       let index := index_of_nat (pow2 RV32I.ShadowStack.index_sz) index_nat in
       match index with
       | Some x =>
         let data_raw :=
           (getenv REnv ctx (RV32I.stack (RV32I.ShadowStack.stack x))) in
         Some (Bits.of_N 32 (Bits.to_N (vect_of_list (ubits_of_value data_raw))))
-      | None => None
+      | _ => None
       end.
 
     Definition sstack_underflow (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
@@ -191,7 +191,7 @@ Module RVProofs.
     Definition sstack_address_violation
       (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
     : Prop :=
-      no_mispred ctx /\ sstack_pop ctx
+      no_mispred ctx /\ ~ sstack_empty ctx /\ sstack_pop ctx
       /\ sstack_top_address ctx <> ret_address ctx.
 
     Definition sstack_violation (ctx: env_t REnv (fun _ : RV32I.reg_t => val))
@@ -243,6 +243,21 @@ Module RVProofs.
       intros.
       do 32 (destruct bs; inv H; rename H1 into H).
       do 32 eexists. do 32 f_equal. destruct bs. eauto. inv H.
+    Qed.
+
+
+    Lemma extract_bits_3:
+      forall {A: Type} bs,
+      Datatypes.length (A := A) bs = 3
+      ->
+      exists k0 k1 k2,
+      bs = [
+        k0; k1; k2
+      ].
+    Proof.
+      intros.
+      do 3 (destruct bs; inv H; rename H1 into H).
+      do 3 eexists. do 3 f_equal. destruct bs. eauto. inv H.
     Qed.
 
     Lemma extract_bits_n:
@@ -333,7 +348,7 @@ Module RVProofs.
       }
       subst. clear H5.
       destruct H as [under | [over | violation]].
-      - red in under.
+      - admit. (* red in under.
         destruct under as [no_mispred [sstack_empty sstack_pop]].
         red in no_mispred, sstack_empty, sstack_pop. simpl in *.
         vm_compute vect_to_list in sstack_empty.
@@ -424,7 +439,7 @@ Module RVProofs.
               crusher_c 3; intuition congruence.
           * do 3 full_pass_c.
             destruct x11, x12, x13, x14, x15, x21;
-              crusher_c 3; intuition congruence.
+              crusher_c 3; intuition congruence.*)
       - destruct over as [
           no_mispred [sstack_full [not_sstack_pop sstack_push]]
         ].
@@ -530,8 +545,33 @@ Module RVProofs.
                destruct x0; do 3 full_pass_c;
                  destruct x19, x20, x21, x22, x23; simpl in eq;
                  try (discriminate eq); clear eq; crusher_c 2.
-      - destruct violation as [no_mispred [pop address_neq]].
+      - destruct violation as (no_mispred & not_empty & pop & address_neq).
         clear no_mispred.
+        unfold sstack_empty in not_empty. simpl in not_empty.
+        
+        generalize (WTRENV (RV32I.stack RV32I.ShadowStack.size)). intro A. inv A.
+        change (log2 5) with 3 in H2.
+        apply extract_bits_3 in H2.
+        destruct H2 as (k0 & k1 & k2 & EQ). subst.
+        rename H0 into SIZE.
+        symmetry in SIZE.
+        rewrite SIZE in not_empty.
+        vm_compute in not_empty.
+
+
+        exploit_reg SIZE.
+        collapse.
+        full_pass_c.
+
+        remember
+          (SBinop (UEq false) (SVar 164) (SConst (Bits [false; true; true; true; true]))).
+
+
+        Set Printing Depth 100000.
+        Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
+        
+
+
         unfold sstack_pop in pop.
         inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].
         subst.
@@ -543,16 +583,70 @@ Module RVProofs.
         rewrite ! eqb_false_iff in ret_instr.
         destruct ret_instr as [[opc1 opc2] ret_instr].
         do 2 destruct opc1 as [? opc1]. do 3 destruct opc2 as [? opc2]. subst.
-        destruct ret_instr.
-        + destruct H. destruct H.
-          destruct H, H0; do 4 destruct H as [? H]; do 4 destruct H0 as [? H0];
-            subst.
-          * intuition.
-          * unfold sstack_top_address in address_neq.
-          * admit.
-          * intuition.
-        destruct ret_instr.
-        destruct ret_instr. as [[opc1 opc2] ret_instr].
+
+        move address_neq at bottom.
+        unfold sstack_top_address in address_neq. Opaque index_of_nat.
+        simpl in address_neq.
+        change (pow2 (log2 5)) with 8 in address_neq.
+        rewrite SIZE in address_neq. simpl in address_neq.
+
+        edestruct @index_of_nat_bounded as (idx & EQ). 2: rewrite EQ in address_neq.
+        generalize (Bits.to_nat_bounded Ob~k2~k1~k0). change (pow2 3) with 8. lia.
+        generalize (WTRENV (RV32I.stack (RV32I.ShadowStack.stack idx))). intro A. inv A.
+        rewrite <- H0 in address_neq. simpl in address_neq.
+        unfold ret_address in address_neq.
+        rewrite H6 in address_neq. Opaque List.firstn. simpl in address_neq.
+
+
+        destruct ret_instr as [ret_instr1 | ret_instr2].
+        + destruct ret_instr1 as ((rd_1_or_5 & rd_neq_rs1) & rs1_1_or_5).
+          assert (x11 = true /\ x12 = false /\ x14 = false /\ x15 = false) as rd_1_or_5' by (clear - rd_1_or_5; intuition). clear rd_1_or_5.
+          assert (x19 = true /\ x20 = false /\ x22 = false /\ x23 = false) as rs1_1_or_5' by (clear - rs1_1_or_5; intuition). clear rs1_1_or_5.
+          destr_and_in rd_1_or_5'; destr_and_in rs1_1_or_5'; subst.
+          assert (x13 <> x21) as rd_neq_rs1' by intuition; clear rd_neq_rs1.
+          destruct x13, x21; try congruence.
+          full_pass_c.
+          
+
+          full_pass_c.
+          * collapse.
+            isolate_sf. fold sf0 in wfsf0. vm_compute in sf0.
+
+            (* set (l := List.map (fun n => Pos.of_nat n) (upto 1787)). *)
+            set (l := [1788%positive]).
+            set (VARS := filter_ptree (vars sf0) (Maps.PTree.empty _) l).
+            vm_compute in VARS.
+            let vars := eval vm_compute in (Maps.PTree.elements VARS) in
+            let auth := SimplifyCareful.probe_in_vars ctx ext_sigma vars in
+            set (exemptions := auth).
+
+            set (vvs2 :=
+                   Maps.PTree.map (fun (k : positive) '(t, s) =>
+                                     let exs := match Maps.PTree.get k exemptions with
+                                                | Some l => l
+                                                | None => []
+                                                end in
+                                     (t, SimplifyTargeted.simplify_sact_targeted ctx ext_sigma s exs)) VARS).
+            vm_compute in vvs2.
+            Eval vm_compute in (Maps.PTree.get 1788 (vars sf0), Maps.PTree.get 1788 ).
+            
+            SimplifyCareful.simplify_careful_t.
+            update_wfsf.
+            isolate_sf_named monsf.
+            assert (wf_sf RV32I.R ext_Sigma monsf).
+            apply wfsf.
+            clear wfsf.
+            unfold sf0 in monsf. clear sf0.
+
+            vm_compute in monsf.
+            vm_compute ReplaceReg.replace_reg.
+            vm_compute Collapse.collapse_sf.
+
+            full_pass_c. full_pass_c.
+            full_pass_c. full_pass_c.
+            do 4 full_pass_c.
+ 
+            
         rewrite Bits.of_N_to_N in ret_instr.
         collapse.
         full_pass_c. full_pass_c.
