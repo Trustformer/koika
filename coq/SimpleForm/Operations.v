@@ -2414,6 +2414,86 @@ Section Operations.
       econstructor. eauto.
   Qed.
 
+  (* Lemma f_interp_sact_ok'i': *)
+  (*   forall f *)
+  (*          vvs *)
+  (*          (WTVVS: wt_vvs (Sigma := Sigma) R vvs) *)
+  (*          (VVSSV: vvs_smaller_variables vvs) *)
+  (*          (SPEC: forall k (a : SimpleForm.sact) (v : val), *)
+  (*              forall t : type, *)
+  (*                wt_sact (Sigma:=Sigma) R vvs a t -> *)
+  (*                interp_sact (sigma:=sigma) REnv r vvs a v -> *)
+  (*                interp_sact (sigma:=sigma) REnv r vvs (f k a) v *)
+  (*          ) *)
+  (*          (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type), *)
+  (*              wt_sact (Sigma:=Sigma) R vvs a0 t0 -> *)
+  (*              wt_sact (Sigma:=Sigma) R vvs (f k a0) t0) *)
+  (*          (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v') *)
+  (*          a v (EV_INIT: interp_sact (sigma := sigma) REnv r vvs a v) *)
+  (*          t (WTa: wt_sact (Sigma:=Sigma) R vvs a t), *)
+  (*   interp_sact (sigma := sigma) REnv r (PTree.map (fun k '(t,a) => (t, f k a)) vvs) a v. *)
+  (* Proof. *)
+  (*   intros f vvs WTVVS VVSSV SPEC FWT VIS. *)
+  (*   induction 1; try (econstructor; eauto; fail). *)
+  (*   econstructor. *)
+  (*   - setoid_rewrite Maps.PTree.gmap. *)
+  (*     unfold option_map. setoid_rewrite H. *)
+  (*     f_equal. *)
+  (*   - eapply SPEC; eauto. *)
+  (*     eapply f_wtvvs_ok'i; eauto. *)
+  (*     eapply f_wt_sact_ok'i; eauto. *)
+  (*     eapply vsv_fi; eauto. *)
+  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
+  (*     eapply IHEV_INIT2. destr; eauto. *)
+  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
+  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
+  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
+  (* Qed. *)
+
+
+
+  Lemma sf_eq_mapi':
+    forall sf f
+           (SPEC: forall (a : SimpleForm.sact) (v : val),
+               forall t : type,
+                 wt_sact (Sigma:=Sigma) R (vars sf) a t ->
+                 interp_sact (sigma:=sigma) REnv r (vars sf) a v <->
+                 interp_sact (sigma:=sigma) REnv r (PTree.map (fun k '(t,a) => (t, f k a)) (vars sf)) a v
+           )
+           (SPEC2:
+             forall s x t v,
+               (vars sf) ! v = Some (t, s) ->
+               interp_sact (sigma:=sigma) REnv r (vars sf) s x <->
+               interp_sact (sigma:=sigma) REnv r (vars sf) (f v s) x
+           )
+           (FWT: forall k (a0 : SimpleForm.sact) (t0 : type),
+               wt_sact (Sigma:=Sigma) R (vars sf) a0 t0 ->
+               wt_sact (Sigma:=Sigma) R (vars sf) (f k a0) t0)
+           (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
+    ,
+      wf_sf sf ->
+      sf_eq sf {| final_values := final_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
+  Proof.
+    intros.
+    constructor. simpl. auto.
+    - intros. simpl.
+      split.
+      + intro A; inv A. inv H1. rewrite H3 in H5.
+        inv H5.
+        econstructor.
+        rewrite PTree.gmap. setoid_rewrite H3. simpl. reflexivity.
+        eapply SPEC. eapply FWT. eapply wf_sf_wt.  apply H. eauto.
+        rewrite <- SPEC2; eauto.
+      + intro A; inv A. rewrite PTree.gmap in H3. unfold option_map in H3; repeat destr_in H3; inv H3.
+        econstructor. eauto. inv H1. setoid_rewrite H3 in Heqo. inv Heqo.
+        eapply SPEC in H4. eapply SPEC2; eauto.
+        eapply FWT. eapply wf_sf_wt.  apply H. eauto.
+    - intros. simpl.
+      split; intro A; inv A.
+      econstructor. rewrite PTree.gmap; unfold option_map. rewrite H2. eauto.
+      rewrite PTree.gmap in H2. unfold option_map in H2; repeat destr_in H2; inv H2.
+      econstructor. eauto.
+  Qed.
 
   Lemma simplify_sif_interp_inv:
     forall vvs : PTree.t (type * SimpleForm.sact),
