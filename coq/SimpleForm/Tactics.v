@@ -71,12 +71,12 @@ Ltac update_wfsf :=
       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
     |- getenv ?REnv
          (interp_cycle ?ctx ?ext_sigma
-           (simplify_sf_targeted ?ctx ?ext_sigma ?sf' ?e)
+           (simplify_sf_targeted ?sf' ?e)
          ) ?rg
        = _
     =>
     assert (
-      forall x, wf_sf R ext_Sigma (simplify_sf_targeted ctx ext_sigma sf' x)
+      forall x, wf_sf R ext_Sigma (simplify_sf_targeted sf' x)
     ) as wfsf by (
       intro; apply (
         wf_sf_simplify_sf_targeted
@@ -262,7 +262,7 @@ Ltac simplify_careful :=
       forall x : Maps.PTree.t (list Direction.position),
       wf_sf
         ?R ?ext_Sigma
-        (SimplifyTargeted.simplify_sf_targeted ?ctx ?ext_sigma _ x),
+        (SimplifyTargeted.simplify_sf_targeted _ x),
     WT_SIGMA:
       forall (ufn : ?ext_fn_t) (vc : val),
       wt_val (arg1Sig (?ext_Sigma ufn)) vc

@@ -505,6 +505,16 @@ Module RVProofs.
                collapse. full_pass_c. full_pass_c. do 4 full_pass_c.
                destruct x0; crusher_c 3.
           * clear not_sstack_pop.
+            exploit_var 992%positive uconstr:(SConst (Bits [true])).
+            {
+              econstructor.
+              intros. inv H. vm_compute in H2. inv H2.
+              inv H5. inv H9. inv H2. vm_compute in H0. inv H0. inv H5. simpl in H10. inv H10.
+              inv H11. vm_compute in H0. inv H0. inv H2. simpl in H12. inv H12.
+              destr. constructor. rewrite andb_false_iff in Heqb. destruct Heqb. 2: congruence.
+              rewrite eqb_reflx in H. congruence.
+              intros. inv H. econstructor. vm_compute. reflexivity. repeat constructor.
+            }
             destruct rd_1_or_5 as [rd_1 | rd_5].
             ** do 4 destruct rd_1 as [? rd_1]. subst.
                collapse. full_pass_c. full_pass_c. do 6 full_pass_c.

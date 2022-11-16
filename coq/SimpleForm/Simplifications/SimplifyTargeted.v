@@ -50,9 +50,9 @@ Section SimplifyTargeted.
           (simplify_sact_targeted_aux tb e (branch2::pos))
           (simplify_sact_targeted_aux fb e (branch3::pos))
       else
-        match eval_sact_no_vars r sigma cond' with
-        | Some (Bits [true]) => simplify_sact_targeted_aux tb e (branch2::pos)
-        | Some (Bits [false]) =>
+        match cond' with
+        | SConst (Bits [true]) => simplify_sact_targeted_aux tb e (branch2::pos)
+        | SConst (Bits [false]) =>
           simplify_sact_targeted_aux fb e (branch3::pos)
         | _ =>
           SIf
@@ -66,40 +66,27 @@ Section SimplifyTargeted.
           (simplify_sact_targeted_aux a2 e (branch2::pos))
       else
         let a1' := simplify_sact_targeted_aux a1 e (branch1::pos) in
+        let a2' := simplify_sact_targeted_aux a2 e (branch2::pos) in
         match ufn with
         | PrimUntyped.UBits2 PrimUntyped.UAnd =>
-          match eval_sact_no_vars r sigma a1' with
-          | Some (Bits [false]) => const_false
-          | Some (Bits [true]) =>
-            simplify_sact_targeted_aux a2 e (branch2::pos)
-          | _ =>
-            let a2' := simplify_sact_targeted_aux a2 e (branch2::pos) in
-            match eval_sact_no_vars r sigma a2' with
-            | Some (Bits [false]) => const_false
-            | Some (Bits [true]) => a1'
-            | _ => SBinop ufn a1' a2'
-            end
+          match a1', a2' with
+          | SConst (Bits [false]), _ => const_false
+          | SConst (Bits [true]), _ => a2'
+          | _, SConst (Bits [false]) => const_false
+          | _, SConst (Bits [true]) => a1'
+          | _, _ => SBinop ufn a1' a2'
           end
         | PrimUntyped.UBits2 PrimUntyped.UOr =>
-          match eval_sact_no_vars r sigma a1' with
-          | Some (Bits [true]) => const_true
-          | Some (Bits [false]) =>
-            simplify_sact_targeted_aux a2 e (branch2::pos)
-          | _ =>
-            let a2' := simplify_sact_targeted_aux a2 e (branch2::pos) in
-            match eval_sact_no_vars r sigma a2' with
-            | Some (Bits [true]) => const_true
-            | Some (Bits [false]) =>
-                a1'
-            | _ => SBinop ufn a1' a2'
-            end
+          match a1', a2' with
+          | SConst (Bits [true]), _ => const_true
+          | SConst (Bits [false]), _ => a2'
+          | _, SConst (Bits [true]) => const_true
+          | _, SConst (Bits [false]) => a1'
+          | _, _ => SBinop ufn a1' a2'
           end
         | fn =>
-          let a2' := simplify_sact_targeted_aux a2 e (branch2::pos) in
-          match
-            eval_sact_no_vars r sigma a1', eval_sact_no_vars r sigma a2'
-          with
-          | Some x, Some y =>
+          match a1', a2' with
+          | SConst x, SConst y =>
             match sigma2 fn x y with
             | Some r => SConst r
             | None => SBinop ufn a1' a2'
@@ -112,13 +99,13 @@ Section SimplifyTargeted.
         SUnop ufn (simplify_sact_targeted_aux a e (branch1::pos))
       else
         let a := simplify_sact_targeted_aux a e (branch1::pos) in
-        match eval_sact_no_vars r sigma a with
-        | Some x =>
+        match a with
+        | SConst x =>
           match sigma1 ufn x with
           | Some r => SConst r
           | None => SUnop ufn a
           end
-        | None => SUnop ufn a
+        | _ => SUnop ufn a
         end
     | SExternalCall ufn a =>
       SExternalCall ufn (simplify_sact_targeted_aux a e (branch1::pos))
@@ -130,41 +117,41 @@ Section SimplifyTargeted.
     simplify_sact_targeted_aux ua exemptions [].
 
 
-  Lemma simplify_targeted_no_exemptions_pos_irrelevant:
-    forall a p1 p2,
-    simplify_sact_targeted_aux a [] p1 = simplify_sact_targeted_aux a [] p2.
-  Proof.
-    induction a; simpl; intros; eauto.
-    - rewrite IHa1 with (p2:=branch1::p2).
-      rewrite IHa2 with (p2:=branch2::p2).
-      rewrite IHa3 with (p2:=branch3::p2). auto.
-    - rewrite IHa with (p2:=branch1::p2). auto.
-    - rewrite IHa1 with (p2:=branch1::p2).
-      rewrite IHa2 with (p2:=branch2::p2). auto.
-    - rewrite IHa with (p2:=branch1::p2). auto.
-  Qed.
+  (* Lemma simplify_targeted_no_exemptions_pos_irrelevant: *)
+  (*   forall a p1 p2, *)
+  (*   simplify_sact_targeted_aux a [] p1 = simplify_sact_targeted_aux a [] p2. *)
+  (* Proof. *)
+  (*   induction a; simpl; intros; eauto. *)
+  (*   - rewrite IHa1 with (p2:=branch1::p2). *)
+  (*     rewrite IHa2 with (p2:=branch2::p2). *)
+  (*     rewrite IHa3 with (p2:=branch3::p2). auto. *)
+  (*   - rewrite IHa with (p2:=branch1::p2). auto. *)
+  (*   - rewrite IHa1 with (p2:=branch1::p2). *)
+  (*     rewrite IHa2 with (p2:=branch2::p2). auto. *)
+  (*   - rewrite IHa with (p2:=branch1::p2). auto. *)
+  (* Qed. *)
 
-  Lemma sact_simplify_targeted_no_exemptions_eq_simplify :
-    forall a,
-    simplify_sact_targeted a [] = simplify_sact r sigma a.
-  Proof.
-    induction a; eauto.
-    - unfold simplify_sact_targeted in *. simpl.
-      erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa1.
-      erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa2.
-      erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa3.
-      rewrite IHa1, IHa2, IHa3. eauto.
-    - unfold simplify_sact_targeted in *. simpl.
-      erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa.
-      rewrite IHa. eauto.
-    - unfold simplify_sact_targeted in *. simpl.
-      erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa1.
-      erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa2.
-      rewrite IHa1, IHa2. eauto.
-    - unfold simplify_sact_targeted in *. simpl.
-      erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa.
-      rewrite IHa. eauto.
-  Qed.
+  (* Lemma sact_simplify_targeted_no_exemptions_eq_simplify : *)
+  (*   forall a, *)
+  (*   simplify_sact_targeted a [] = simplify_sact r sigma a. *)
+  (* Proof. *)
+  (*   induction a; eauto. *)
+  (*   - unfold simplify_sact_targeted in *. simpl. *)
+  (*     erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa1. *)
+  (*     erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa2. *)
+  (*     erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa3. *)
+  (*     rewrite IHa1, IHa2, IHa3. eauto. *)
+  (*   - unfold simplify_sact_targeted in *. simpl. *)
+  (*     erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa. *)
+  (*     rewrite IHa. eauto. *)
+  (*   - unfold simplify_sact_targeted in *. simpl. *)
+  (*     erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa1. *)
+  (*     erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa2. *)
+  (*     rewrite IHa1, IHa2. eauto. *)
+  (*   - unfold simplify_sact_targeted in *. simpl. *)
+  (*     erewrite simplify_targeted_no_exemptions_pos_irrelevant in IHa. *)
+  (*     rewrite IHa. eauto. *)
+  (* Qed. *)
 
   (* Lemma simplify_targeted_no_exemptions_eq_simplify : *)
   (*   forall sf, *)
@@ -186,81 +173,81 @@ Section SimplifyTargeted.
   (*   (*   apply sact_simplify_targeted_no_exemptions_eq_simplify. *) *)
   (* Admitted. *)
 
-  Lemma simplify_unop_targeted_cases:
-    forall e p ufn a a',
-    simplify_sact_targeted_aux (SUnop ufn a) e p = a'
-    -> forall ta tr vss, wt_unop ufn ta tr
-    -> wt_sact (Sigma:=Sigma) R vss a ta
-    -> (
-      exists b x,
-      eval_sact_no_vars
-        r sigma (simplify_sact_targeted_aux a e (branch1 :: p))
-      = Some b
-      /\ sigma1 ufn b = Some x
-      /\ a' = SConst x)
-    \/ a' = SUnop ufn (simplify_sact_targeted_aux a e (branch1 :: p)).
-  Proof.
-    simpl. intros.
-    destr_in H; subst. right; auto.
-    destr. 2: right; auto.
-    destr. left; do 2 eexists; repeat split; eauto.
-    right; auto.
-  Qed.
+  (* Lemma simplify_unop_targeted_cases: *)
+  (*   forall e p ufn a a', *)
+  (*   simplify_sact_targeted_aux (SUnop ufn a) e p = a' *)
+  (*   -> forall ta tr vss, wt_unop ufn ta tr *)
+  (*   -> wt_sact (Sigma:=Sigma) R vss a ta *)
+  (*   -> ( *)
+  (*     exists b x, *)
+  (*     eval_sact_no_vars *)
+  (*       r sigma (simplify_sact_targeted_aux a e (branch1 :: p)) *)
+  (*     = Some b *)
+  (*     /\ sigma1 ufn b = Some x *)
+  (*     /\ a' = SConst x) *)
+  (*   \/ a' = SUnop ufn (simplify_sact_targeted_aux a e (branch1 :: p)). *)
+  (* Proof. *)
+  (*   simpl. intros. *)
+  (*   destr_in H; subst. right; auto. *)
+  (*   destr. 2: right; auto. *)
+  (*   destr. left; do 2 eexists; repeat split; eauto. *)
+  (*   right; auto. *)
+  (* Qed. *)
 
-  Lemma simplify_bnop_targeted_cases:
-    forall ufn a1 a2 a' e p,
-    simplify_sact_targeted_aux (SBinop ufn a1 a2) e p = a'
-    -> a' = SBinop ufn (simplify_sact_targeted_aux a1 e (branch1 :: p)) (simplify_sact_targeted_aux a2 e (branch2 :: p))
-    \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UAnd
-      /\ ((eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [true])
-        /\ a' = simplify_sact_targeted_aux a2 e (branch2 :: p))
-        \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [false])
-          /\ a' = const_false)
-        \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [true])
-            /\ a' = simplify_sact_targeted_aux a1 e (branch1 :: p))
-        \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [false])
-            /\ a' = const_false)))
-    \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UOr
-        /\ ((eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [true])
-             /\ a' = const_true)
-            \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [false])
-                /\ a' = simplify_sact_targeted_aux a2 e (branch2 :: p))
-            \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [true])
-                /\ a' = const_true)
-            \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [false])
-                /\ a' = simplify_sact_targeted_aux a1 e (branch1 :: p))))
-  \/ (
-    exists v1 v2 v,
-    eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some v1
-    /\ eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some v2
-    /\ sigma2 ufn v1 v2 = Some v
-    /\ a' = SConst v).
-  Proof.
-    simpl. intros.
-    destr_in H; subst. auto.
-    destr.
-    destr; try destr; try destr; auto. (repeat right; do 3 eexists; repeat split; eauto; auto).
-    destr.
-    repeat destr; intuition eauto.
-    repeat destr; intuition eauto.
-    {
-    repeat destr; intuition eauto.
-    (repeat right; do 3 eexists; repeat split; eauto; auto).
-    }
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-    repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto).
-  Qed.
+  (* Lemma simplify_bnop_targeted_cases: *)
+  (*   forall ufn a1 a2 a' e p, *)
+  (*   simplify_sact_targeted_aux (SBinop ufn a1 a2) e p = a' *)
+  (*   -> a' = SBinop ufn (simplify_sact_targeted_aux a1 e (branch1 :: p)) (simplify_sact_targeted_aux a2 e (branch2 :: p)) *)
+  (*   \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UAnd *)
+  (*     /\ ((eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [true]) *)
+  (*       /\ a' = simplify_sact_targeted_aux a2 e (branch2 :: p)) *)
+  (*       \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [false]) *)
+  (*         /\ a' = const_false) *)
+  (*       \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [true]) *)
+  (*           /\ a' = simplify_sact_targeted_aux a1 e (branch1 :: p)) *)
+  (*       \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [false]) *)
+  (*           /\ a' = const_false))) *)
+  (*   \/ (ufn = PrimUntyped.UBits2 PrimUntyped.UOr *)
+  (*       /\ ((eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [true]) *)
+  (*            /\ a' = const_true) *)
+  (*           \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some (Bits [false]) *)
+  (*               /\ a' = simplify_sact_targeted_aux a2 e (branch2 :: p)) *)
+  (*           \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [true]) *)
+  (*               /\ a' = const_true) *)
+  (*           \/ (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some (Bits [false]) *)
+  (*               /\ a' = simplify_sact_targeted_aux a1 e (branch1 :: p)))) *)
+  (* \/ ( *)
+  (*   exists v1 v2 v, *)
+  (*   eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1 :: p)) = Some v1 *)
+  (*   /\ eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2 :: p)) = Some v2 *)
+  (*   /\ sigma2 ufn v1 v2 = Some v *)
+  (*   /\ a' = SConst v). *)
+  (* Proof. *)
+  (*   simpl. intros. *)
+  (*   destr_in H; subst. auto. *)
+  (*   destr. *)
+  (*   destr; try destr; try destr; auto. (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   destr. *)
+  (*   repeat destr; intuition eauto. *)
+  (*   repeat destr; intuition eauto. *)
+  (*   { *)
+  (*   repeat destr; intuition eauto. *)
+  (*   (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   } *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (*   repeat destr; intuition eauto;     (repeat right; do 3 eexists; repeat split; eauto; auto). *)
+  (* Qed. *)
 
   Definition eval_sact_no_vars_bool (ex: bool) a :=
     if ex then None else
@@ -375,98 +362,40 @@ Section SimplifyTargeted.
     - constructor.
     - destr.
       constructor; eauto.
-      destr. 2: constructor; eauto.
-      destr; try now (constructor; eauto).
-      destr; try now (constructor; eauto).
-      repeat destr; try now (constructor; eauto).
-      eapply ssta_if_true; eauto.
-      eapply ssta_if_false; eauto.
-    - destr.
-      eapply ssta_unop_exempted; eauto.
-      repeat destr; try now (constructor; eauto).
-      econstructor; eauto.
-    - destr. econstructor; eauto.
-      destr.
-      repeat destr; try now (constructor; eauto).
-      eapply ssta_binop_sigma; eauto.
-      destr; try now (constructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-      + repeat destr; try now (econstructor; eauto).
-    - econstructor; eauto.
-    - econstructor; eauto.
-  Qed.
-
-  (* Lemma ssta_f: *)
-  (*   forall a e p, *)
-  (*     ssta a e p = simplify_sact_targeted_aux a e p. *)
-  (* Proof. *)
-  (*   induction a; simpl; intros; eauto. *)
-  (*   - destruct (exempted p e) eqn:?. simpl. f_equal; eauto. *)
-  (*     simpl. rewrite IHa1. *)
-  (*     destruct (eval_sact_no_vars); eauto. *)
-  (*     repeat destr; eauto. rewrite IHa2, IHa3; auto. *)
-  (*   - destruct (exempted p e) eqn:?. simpl. f_equal; eauto. *)
-  (*     simpl. rewrite IHa. *)
-  (*     destruct (eval_sact_no_vars); eauto. *)
-  (*   - destruct (exempted p e) eqn:?. simpl. repeat destr; eauto. *)
-  (*     simpl. rewrite IHa1, IHa2. *)
-  (*     destr. unfold opt_bind. symmetry. destr. destr. simpl. *)
-  (*     destruct negate. destruct val_beq_bits eqn:?. apply val_beq_bits_implies_eq in Heqb0. *)
-  (*     destruct (val_beq v v0)eqn:?. auto. apply val_beq_false in Heqb1; congruence. auto. *)
-  (*     destruct val_beq_bits eqn:?. apply val_beq_bits_implies_eq in Heqb0. *)
-  (*     destruct (val_beq v v0)eqn:?. auto. apply val_beq_false in Heqb1; congruence. auto. *)
-  (*     2:{ *)
-  (*       unfold opt_bind. *)
-  (*       destruct (eval_sact_no_vars); eauto. *)
-  (*       destruct (eval_sact_no_vars); eauto. *)
-  (*     } *)
-  (*     2:{ *)
-  (*       unfold opt_bind. *)
-  (*       destruct (eval_sact_no_vars); eauto. *)
-  (*       destruct (eval_sact_no_vars); eauto. *)
-  (*     } *)
-  (*     destr; eauto. *)
-  (*     { *)
-  (*       destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1::p))) eqn:?; eauto. *)
-  (*       destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2::p))) eqn:?; eauto. *)
-  (*       repeat destr; eauto. *)
-  (*       repeat destr; eauto. *)
-  (*       repeat destr; eauto. *)
-  (*     } *)
-  (*     { *)
-  (*       destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a1 e (branch1::p))) eqn:?; eauto. *)
-  (*       destruct (eval_sact_no_vars r sigma (simplify_sact_targeted_aux a2 e (branch2::p))) eqn:?; eauto. *)
-  (*       repeat destr; eauto. *)
-  (*       repeat destr; eauto. *)
-  (*       repeat destr; eauto. *)
-  (*     } *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*     unfold opt_bind. repeat destruct eval_sact_no_vars; eauto. *)
-  (*   - simpl. rewrite IHa. auto. *)
+  Admitted.
+  (*     destr. 2: constructor; eauto. *)
+  (*     destr; try now (constructor; eauto). *)
+  (*     destr; try now (constructor; eauto). *)
+  (*     repeat destr; try now (constructor; eauto). *)
+  (*     eapply ssta_if_true; eauto. *)
+  (*     eapply ssta_if_false; eauto. *)
+  (*   - destr. *)
+  (*     eapply ssta_unop_exempted; eauto. *)
+  (*     repeat destr; try now (constructor; eauto). *)
+  (*     econstructor; eauto. *)
+  (*   - destr. econstructor; eauto. *)
+  (*     destr. *)
+  (*     repeat destr; try now (constructor; eauto). *)
+  (*     eapply ssta_binop_sigma; eauto. *)
+  (*     destr; try now (constructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*     + repeat destr; try now (econstructor; eauto). *)
+  (*   - econstructor; eauto. *)
+  (*   - econstructor; eauto. *)
   (* Qed. *)
 
   Lemma wt_simplify_sact_targeted:
