@@ -5,6 +5,7 @@ Require Export Koika.KoikaForm.Untyped.UntypedLogs.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Export Koika.Utils.Tactics.
+Require Import Coq.Program.Equality.
 
 Lemma ubits_of_value_len:
   forall {tau} (v: type_denote tau) bs,
@@ -75,13 +76,7 @@ Fixpoint take_drop {A: Type} (n: nat) (l: list A) : option (list A * list A) :=
 
 (* take_drop is a weird name for a function that splits a list *)
 Definition take_drop' {A: Type} n (l: list A) :=
-  match take_drop n l with
-  | None => (l,[])
-  | Some (l1, l2) => (l1, l2)
-  end.
-
-(* take_drop' is equivalent to (List.firstn n l, List.skipn n l). *)
-(* TODO replace *)
+  (List.firstn n l, List.skipn n l).
 
 Fixpoint bits_splitn (nb sz_elt: nat) (bs: list bool)
 : option (list (list bool)) :=
@@ -333,8 +328,7 @@ Fixpoint uvalue_of_bits {tau: type} (bs: list bool) {struct tau}: option val :=
   match tau with
   | bits_t _ => Some (Bits bs)
   | enum_t sig =>
-    let/opt2 b0, b1 := take_drop (enum_bitsize sig) bs in
-    (* TODO check b1 is empty ? *)
+    let/opt2 b0, _ := take_drop (enum_bitsize sig) bs in
     Some (Enum sig b0)
   | struct_t sig =>
     let/opt lv := uvalue_of_struct_bits (fields:=struct_fields sig) bs in
@@ -523,9 +517,7 @@ Proof.
   rewrite vect_to_list_cons.
   rewrite IHs.
   destruct v. simpl.
-  cbn. unfold take_drop'. simpl. unfold vect_to_list.
-  destr. destruct p. simpl. reflexivity.
-  simpl. reflexivity.
+  cbn. reflexivity.
 Qed.
 
 Lemma vect_skipn_to_list:
@@ -538,8 +530,7 @@ Proof.
   unfold take_drop'.
   destruct v. simpl.
   cbn. unfold vect_to_list.
-  destr. destruct p. simpl. reflexivity.
-  simpl. reflexivity.
+  reflexivity.
 Qed.
 
 Lemma take_drop'_spec2:
@@ -695,29 +686,6 @@ Definition
   | a1::l1, a2::l2 => Aeq a1 a2 && list_eqb l1 l2
   end.
 
-(* Fixpoint val_eq_dec (v1 v2: val) : {v1 = v2} + {v1 <> v2}. *)
-(* Proof. *)
-(*   destruct v1, v2; try (right; simpl; discriminate). *)
-(*   - destruct (eq_dec v v0). *)
-(*     + left. subst. reflexivity. *)
-(*     + right. intro. inv H. destruct n. reflexivity. *)
-(*   - destruct (eq_dec v v0). *)
-(*     + subst. destruct (enum_sig_eq_dec sig sig0). *)
-(*       * left. subst. reflexivity. *)
-(*       * right. intro. inv H. destruct n. reflexivity. *)
-(*     + right. intro. inv H. destruct n. reflexivity. *)
-(*   - destruct (list_eq_dec (val_eq_dec) v v0). *)
-(*     + subst. destruct (eq_dec sig sig0). *)
-(*       * left. subst. reflexivity. *)
-(*       * right. intro. inv H. destruct n. reflexivity. *)
-(*     + right. intro. inv H. destruct n. reflexivity. *)
-(*   - destruct (list_eq_dec (val_eq_dec) v v0). *)
-(*     + subst. destruct (eq_dec sig sig0). *)
-(*       * left. subst. reflexivity. *)
-(*       * right. intro. inv H. destruct n. reflexivity. *)
-(*     + right. intro. inv H. destruct n. reflexivity. *)
-(* Defined. *)
-
 Fixpoint val_beq (v1 v2: val) {struct v1}: bool :=
   match v1, v2 with
   | Bits l1, Bits l2 =>
@@ -738,9 +706,10 @@ Fixpoint val_beq (v1 v2: val) {struct v1}: bool :=
   end.
 
 Lemma list_eqb_correct:
-  forall {A:Type} (eqb: A -> A -> bool) (eqb_correct: forall a b, eqb a b = true <-> a = b)
-         (l1 l2: list A),
-    list_eqb eqb l1 l2 = true <-> l1 = l2.
+  forall
+    {A:Type} (eqb: A -> A -> bool)
+    (eqb_correct: forall a b, eqb a b = true <-> a = b) (l1 l2: list A),
+  list_eqb eqb l1 l2 = true <-> l1 = l2.
 Proof.
   induction l1; destruct l2; simpl; intros; eauto.
   - tauto.
@@ -751,13 +720,11 @@ Proof.
     inversion 1; intuition congruence.
 Qed.
 
-
 Lemma list_eqb_correct2:
-  forall {A:Type}
-         (l1 l2: list A)
-         (eqb: A -> A -> bool) (eqb_correct: forall a b, In a l1 -> eqb a b = true <-> a = b)
-         ,
-    list_eqb eqb l1 l2 = true <-> l1 = l2.
+  forall
+    {A:Type} (l1 l2: list A) (eqb: A -> A -> bool)
+    (eqb_correct: forall a b, In a l1 -> eqb a b = true <-> a = b),
+  list_eqb eqb l1 l2 = true <-> l1 = l2.
 Proof.
   induction l1; destruct l2; simpl; intros; eauto.
   - tauto.
@@ -769,10 +736,7 @@ Proof.
     intros; eauto. auto.
 Qed.
 
-
-Lemma val_beq_correct:
-  forall v1 v2,
-    val_beq v1 v2 = true <-> v1 = v2.
+Lemma val_beq_correct: forall v1 v2, val_beq v1 v2 = true <-> v1 = v2.
 Proof.
   intro v1; pattern v1. eapply val_ind'.
   + intros bs v2.
@@ -813,21 +777,7 @@ Definition enum_sig_eqb (s1 s2: enum_sig) :=
   && list_eqb
      (fun l1 l2 => list_eqb  Bool.eqb l1 l2)
      (map vect_to_list (vect_to_list (enum_bitpatterns s1)))
-     (map vect_to_list (vect_to_list (enum_bitpatterns s2)))
-     .
-
-(* Lemma list_eqb_correct: *)
-(*   forall *)
-(*     {A: Type} (eqb: A -> A -> bool) *)
-(*     (eqb_correct: forall a1 a2, eqb a1 a2 = true <-> a1 = a2) l1 l2, *)
-(*   list_eqb l1 l2 eqb = true <-> l1 = l2. *)
-(* Proof. *)
-(*   induction l1; simpl; intros; eauto. *)
-(*   - destruct l2. tauto. intuition congruence. *)
-(*   - destruct l2. intuition congruence. *)
-(*     rewrite andb_true_iff. rewrite eqb_correct, IHl1. *)
-(*     intuition congruence. *)
-(* Qed. *)
+     (map vect_to_list (vect_to_list (enum_bitpatterns s2))).
 
 Lemma map_inj:
   forall
@@ -842,8 +792,6 @@ Proof.
   apply finj in H0. apply IHl1 in H1. congruence.
 Qed.
 
-Require Import Coq.Program.Equality.
-
 Lemma list_eqb_refl:
   forall {A: Type} (eqb: A -> A -> bool) (eqb_refl: forall a, eqb a a = true) l,
   list_eqb eqb l l = true.
@@ -851,34 +799,6 @@ Proof.
   induction l; simpl; intros; eauto.
   rewrite eqb_refl, IHl; auto.
 Qed.
-
-(* Lemma enum_sig_eqb_correct: *)
-(*   forall s1 s2, enum_sig_eqb s1 s2 = true <-> s1 = s2. *)
-(* Proof. *)
-(*   intros. *)
-(*   unfold enum_sig_eqb. destruct s1, s2; simpl. *)
-(*   rewrite ! andb_true_iff. *)
-(*   split. *)
-(*   - intros ((((A & B) & C) & D) & E). *)
-(*     apply eqb_eq in A. *)
-(*     apply Nat.eqb_eq in B. *)
-(*     apply Nat.eqb_eq in C. *)
-(*     apply list_eqb_correct in D. 2: apply eqb_eq. *)
-(*     apply list_eqb_correct in E. *)
-(*     2: apply list_eqb_correct. 2: apply eqb_true_iff. *)
-(*     subst. apply vect_to_list_inj in D. subst. *)
-(*     apply map_inj in E. *)
-(*     2: apply vect_to_list_inj. *)
-(*     apply vect_to_list_inj in E. subst. reflexivity. *)
-(*   - intro A. *)
-(*     dependent destruction A. *)
-(*     repeat refine (conj _ _). *)
-(*     apply eqb_refl. *)
-(*     apply Nat.eqb_refl. *)
-(*     apply Nat.eqb_refl. *)
-(*     apply list_eqb_refl. apply eqb_refl. *)
-(*     apply list_eqb_refl. apply list_eqb_refl. apply eqb_reflx. *)
-(* Qed. *)
 
 Lemma val_eq_dec_bits:
   forall {T: Type} (A1 A2: T) b1 b2,
@@ -1105,8 +1025,7 @@ Proof.
   rewrite vect_firstn_to_list.
   rewrite vect_skipn_to_list.
   rewrite <- repeat_bits_const.
-  destr. simpl. destr. simpl.
-  f_equal.
+  destr. simpl. reflexivity.
 Qed.
 
 Lemma vect_to_list_eq:
