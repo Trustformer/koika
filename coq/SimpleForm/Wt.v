@@ -520,13 +520,9 @@ Section WT.
     - inv WTv. simpl in *.
       repeat destr_in SIG.
       unfold opt_bind in SIG; repeat destr_in SIG; inv SIG.
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp0).
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
-      apply wt_val_bits; auto.
+      constructor.
       rewrite app_length.
-      rewrite repeat_length. lia.
+      rewrite repeat_length. rewrite firstn_length, skipn_length. lia.
     - inv WTv. simpl in *.
       unfold PrimTypeInference.find_field in H. unfold opt_result in H.
       destr_in H; inv H.
@@ -548,12 +544,9 @@ Section WT.
       intros. unfold opt_bind in SIG.
       repeat destr_in SIG; inv SIG.
       apply wt_val_bits; auto.
-      generalize (take_drop'_spec2 _ _ _ _ Heqp1).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp2).
-      generalize (take_drop'_spec _ _ _ _ Heqp1).
-      generalize (take_drop'_spec _ _ _ _ Heqp2). intuition.
-      rewrite app_length, repeat_length, H7, H10, H8, H1.
-      clear H H4 H0 H7 H2 H8 H3 H9 H5 H10 Heqp1 Heqp2.
+      simpl. rewrite firstn_length, skipn_length.
+      rewrite app_length, repeat_length.
+      simpl. rewrite firstn_length, skipn_length. 
       unfold struct_sz. simpl. transitivity n0. 2: lia.
       revert idx Heqo Heqo0. generalize (struct_fields sg). clear.
       induction l; simpl; intros; eauto. easy.
@@ -568,11 +561,8 @@ Section WT.
       unfold opt_bind in SIG.
       repeat destr_in SIG; inv SIG.
       eapply wt_val_bits; eauto.
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp0).
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
-      rewrite app_length, repeat_length. lia.
+      simpl.
+      repeat rewrite ?firstn_length, ?skipn_length, ?app_length, ?repeat_length. lia.
   Qed.
 
 
@@ -643,23 +633,9 @@ Section WT.
       rewrite app_length; simpl. lia.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
-      destr. destr. unfold fst. destr.
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp0).
-      generalize (take_drop'_spec _ _ _ _ Heqp1).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp0).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
-      rewrite H6. rewrite ! app_length.
-      rewrite H13. lia.
+      repeat rewrite ?firstn_length, ?skipn_length, ?app_length, ?repeat_length. lia.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
-      destr. destr.
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp0).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp0).
-      intuition.
-      rewrite app_length, repeat_length. lia.
+      repeat rewrite ?firstn_length, ?skipn_length, ?app_length, ?repeat_length. lia.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
       rewrite vect_to_list_length. auto.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
@@ -689,15 +665,8 @@ Section WT.
       unfold PrimTypeInference.find_field in H.
       unfold opt_result in H. destr_in H; inv H.
       rewrite <- H1.
-      unfold fst. destr.
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp2).
-      generalize (take_drop'_spec _ _ _ _ Heqp1).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp2).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
-      rewrite H10, ! app_length.
-      rewrite H8, H15, H9.
+      unfold fst.
+      repeat rewrite ?firstn_length, ?skipn_length, ?app_length, ?repeat_length. 
       cut (n0 = List.length bs0). lia.
       rewrite H2. clear - Heqo Heqo0.
       revert idx Heqo Heqo0.
@@ -723,15 +692,7 @@ Section WT.
       rewrite Forall_app in H1 |- *. destruct H1; split; auto.
       inv H1; constructor; auto.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits. auto.
-      destr. destr. unfold fst. destr.
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp0).
-      generalize (take_drop'_spec _ _ _ _ Heqp1).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp0).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
-      rewrite H9, ! app_length.
-      rewrite H11, H16. lia.
+      repeat rewrite ?firstn_length, ?skipn_length, ?app_length, ?repeat_length. lia.
   Qed.
 
   Lemma Forall2_impl:

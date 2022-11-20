@@ -3178,11 +3178,7 @@ Section Operations.
   Lemma take_drop'_firstn_skipn:
     forall {A:Type} n (l: list A),
     take_drop' n l = (List.firstn n l, List.skipn n l).
-  Proof.
-    induction n; simpl; intros; eauto.
-    destruct l. reflexivity.
-    erewrite take_drop'_cons. 2: eauto. reflexivity.
-  Qed.
+  Proof. reflexivity. Qed.
 
   Lemma skipn_add:
     forall {A: Type} n2 n1 (l: list A),

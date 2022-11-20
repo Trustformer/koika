@@ -194,17 +194,11 @@ Proof.
       rewrite vect_to_list_app.
       rewrite vect_firstn_to_list.
       rewrite vect_skipn_to_list.
-      rewrite Heq1. simpl. rewrite Heq2. simpl.
+      unfold take_drop' in Heq1. inv Heq1. inv Heq2.
+      simpl.
       rewrite <- repeat_bits_const.
-      f_equal. f_equal. f_equal.
-      apply take_drop'_spec2 in Heq2. destruct Heq2 as (Heq21 & Heq22).
-      rewrite Heq22. f_equal.
-      apply take_drop'_spec2 in Heq1. destruct Heq1 as (Heq11 & Heq12).
-      cut (List.length l2 = s - List.length l1). intro A; rewrite A.
-      rewrite Heq12.
-      rewrite vect_to_list_length. lia.
-      erewrite <- (vect_to_list_length (sz:=s)). rewrite Heq11.
-      rewrite app_length. lia.
+      f_equal. f_equal. f_equal. rewrite firstn_length. rewrite skipn_length. rewrite vect_to_list_length.
+      reflexivity.
     + inv H.
   - destr_in H.
     + repeat destr_in H; inv H.
@@ -224,15 +218,8 @@ Proof.
       erewrite IHstruct_fields; eauto. reflexivity.
     + destr_in H; inv H.
       simpl PrimSpecs.sigma1. simpl.
-      erewrite find_field_offset_right_spec; eauto. simpl. destr. destr. simpl.
-      f_equal. unfold take_drop' in Heqp.
-      edestruct (@take_drop_succeeds) as (la & lb & EQ).
-      2: rewrite EQ in Heqp.
-      rewrite vect_to_list_length.
-      apply field_offset_right_le. f_equal.
-      (* rewrite app_length. rewrite repeat_length. *)
-      (* cut (List.length l1 <= field_sz sig s). lia. *)
-      (* apply take_drop'_spec in Heqp0. intuition. *)
+      erewrite find_field_offset_right_spec; eauto. simpl.
+      f_equal.
       unfold Bits.slice. rewrite vect_extend_end_firstn.
       unfold Bits.extend_end.
       rewrite vect_to_list_eq_rect.
@@ -240,12 +227,8 @@ Proof.
       rewrite vect_firstn_to_list.
       rewrite vect_skipn_to_list.
       rewrite <- repeat_bits_const.
-      unfold take_drop' at 2. rewrite EQ. simpl.
-      inv Heqp. rewrite Heqp0. simpl. f_equal. f_equal.
-      eapply take_drop'_spec2 in Heqp0. destruct Heqp0.
-      rewrite H0. clear H0.
-      eapply take_drop_spec in EQ. intuition.
-      rewrite H3. rewrite vect_to_list_length. reflexivity.
+      simpl. f_equal. f_equal. f_equal. rewrite firstn_length. rewrite skipn_length.
+      rewrite vect_to_list_length. reflexivity.
   - destr_in H.
     + repeat destr_in H; inv H. simpl in *.
       rewrite <- vect_nth_map. rewrite <- vect_to_list_map.
@@ -253,31 +236,13 @@ Proof.
       unfold PrimTypeInference.check_index in Heqr0.
       unfold opt_result in Heqr0. destr_in Heqr0; inv Heqr0.
       symmetry; apply index_to_nat_of_nat. auto.
-    + destr_in H; inv H. simpl in *. destr. destr. simpl.
+    + destr_in H; inv H. simpl in *.
+      f_equal. f_equal.
       unfold PrimTypeInference.check_index in Heqr.
       unfold opt_result in Heqr. destr_in Heqr; inv Heqr.
       apply index_to_nat_of_nat in Heqo. subst.
-      unfold take_drop' in *.
-      edestruct @take_drop_succeeds as (la & lb & EQ). 2: rewrite EQ in Heqp.
+      rewrite firstn_length, skipn_length.
       rewrite vect_to_list_length. unfold array_sz. simpl.
-      rewrite Bits.rmul_correct.
-      rewrite Nat.mul_comm. unfold element_sz. apply Nat.mul_le_mono_r.
-      cut (index_to_nat s < array_len sig). lia. eapply lt_le_trans.
-      apply index_to_nat_bounded. lia.
-      inv Heqp.
-      generalize EQ; intro EQs.
-      apply take_drop_spec in EQ. intuition.
-      edestruct @take_drop_succeeds as (la & lb & EQ'). 2: rewrite EQ' in Heqp0.
-      rewrite H2, vect_to_list_length. unfold array_sz. simpl.
-      rewrite Bits.rmul_correct.
-      unfold element_sz.
-      cut (index_to_nat s < array_len sig). nia.
-      apply index_to_nat_bounded.
-      f_equal. f_equal.
-      (* rewrite app_length, repeat_length. *)
-      (* inv Heqp0. *)
-      (* apply take_drop_spec in EQ'. intuition. *)
-      inv Heqp0.
       unfold Bits.slice. rewrite vect_extend_end_firstn.
       unfold Bits.extend_end.
       rewrite vect_to_list_eq_rect.
@@ -285,17 +250,10 @@ Proof.
       rewrite vect_firstn_to_list.
       rewrite vect_skipn_to_list.
       rewrite <- repeat_bits_const.
-      unfold take_drop' at 2.
-      unfold element_offset_right. rewrite Bits.rmul_correct.
-      rewrite Nat.mul_comm. rewrite EQs. simpl.
-      unfold take_drop'; rewrite EQ'; simpl. f_equal. f_equal.
-      eapply take_drop_spec in EQ'. intuition. rewrite H4.
-      rewrite Nat.min_l. auto.
-      unfold element_sz. unfold array_sz. simpl.
-      rewrite Bits.rmul_correct. rewrite Nat.mul_comm.
-      rewrite <- Nat.mul_sub_distr_l.
-      cut (1 <= array_len sig - (array_len sig - S (index_to_nat s))). nia.
-      generalize (index_to_nat_bounded s). lia.
+      simpl.
+      unfold element_offset_right. f_equal. f_equal. f_equal. rewrite Bits.rmul_correct.
+      rewrite Nat.mul_comm. auto. f_equal. f_equal. f_equal. f_equal.
+      rewrite Bits.rmul_correct. rewrite Nat.mul_comm. lia.
 Qed.
 
 Definition ubits2_sigma (ub: ubits2) (v1 v2: list bool) : list bool :=
@@ -426,8 +384,8 @@ Proof.
   - rewrite vect_to_list_length.
     rewrite slice_subst. reflexivity.
   - rewrite slice.
-    rewrite vect_of_list_to_list. unfold Bits.to_nat; rewrite Bits.to_N_rew.
-    destr. destr. f_equal. f_equal. rewrite vect_to_list_length. reflexivity.
+    rewrite vect_of_list_to_list. unfold Bits.to_nat; rewrite Bits.to_N_rew. simpl.
+    rewrite vect_to_list_length. reflexivity.
   - unfold Bits.plus.
     rewrite ! vect_of_list_to_list.
     rewrite ! Bits.to_N_rew.
