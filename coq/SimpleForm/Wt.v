@@ -296,12 +296,6 @@ Section WT.
     rewrite getenv_map2. rewrite in_app_iff. intros [?|?]; eauto.
   Qed.
 
-  (* Instance reg_eq : EqDec reg_t. *)
-  (* Proof. *)
-  (*   eapply EqDec_FiniteType. Unshelve. *)
-  (*   apply finite_keys. auto. *)
-  (* Qed. *)
-
   Instance eq_dec_env {A: Type} `{Env A} : EqDec A.
   Proof.
     destruct Env0. apply EqDec_FiniteType.
@@ -319,7 +313,6 @@ Section WT.
     rewrite get_put_eq. simpl; intros; eauto. destruct H1; subst; simpl in *. eauto. eauto.
     rewrite get_put_neq. eauto. auto.
   Qed.
-
 
   Fixpoint typsz (t: type) : nat :=
     match t with
@@ -518,15 +511,12 @@ Section WT.
       rewrite Forall_forall; intros x IN.
       apply repeat_spec in IN. subst. auto.
     - inv WTv. simpl in *.
-      repeat destr_in SIG.
       unfold opt_bind in SIG; repeat destr_in SIG; inv SIG.
-      generalize (take_drop'_spec2 _ _ _ _ Heqp).
-      generalize (take_drop'_spec2 _ _ _ _ Heqp0).
-      generalize (take_drop'_spec _ _ _ _ Heqp).
-      generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
       apply wt_val_bits; auto.
       rewrite app_length.
-      rewrite repeat_length. lia.
+      rewrite repeat_length. rewrite vect_extend_end_cast.
+      rewrite Max.max_r; eauto.
+      apply firstn_le_length.
     - inv WTv. simpl in *.
       unfold PrimTypeInference.find_field in H. unfold opt_result in H.
       destr_in H; inv H.
@@ -548,12 +538,15 @@ Section WT.
       intros. unfold opt_bind in SIG.
       repeat destr_in SIG; inv SIG.
       apply wt_val_bits; auto.
+      destruct (take_drop' n bs) eqn:Heqp1.
+      destruct (take_drop' n0 l0) eqn:Heqp2.
       generalize (take_drop'_spec2 _ _ _ _ Heqp1).
       generalize (take_drop'_spec2 _ _ _ _ Heqp2).
       generalize (take_drop'_spec _ _ _ _ Heqp1).
       generalize (take_drop'_spec _ _ _ _ Heqp2). intuition.
-      rewrite app_length, repeat_length, H7, H10, H8, H1.
-      clear H H4 H0 H7 H2 H8 H3 H9 H5 H10 Heqp1 Heqp2.
+      rewrite app_length, repeat_length.
+      inversion Heqp1. inversion Heqp2.
+      rewrite H12, H13, H7, H10, H8, H1.
       unfold struct_sz. simpl. transitivity n0. 2: lia.
       revert idx Heqo Heqo0. generalize (struct_fields sg). clear.
       induction l; simpl; intros; eauto. easy.
@@ -567,6 +560,12 @@ Section WT.
     - inv WTv. simpl in *.
       unfold opt_bind in SIG.
       repeat destr_in SIG; inv SIG.
+      destruct (
+        take_drop' (element_sz sg * (array_len sg - S idx)) bs
+      ) eqn:Heqp.
+      destruct (take_drop' (element_sz sg) l0) eqn:Heqp0.
+      inversion Heqp. inversion Heqp0.
+      rewrite H3, H4.
       eapply wt_val_bits; eauto.
       generalize (take_drop'_spec2 _ _ _ _ Heqp).
       generalize (take_drop'_spec2 _ _ _ _ Heqp0).
@@ -574,7 +573,6 @@ Section WT.
       generalize (take_drop'_spec _ _ _ _ Heqp0). intuition.
       rewrite app_length, repeat_length. lia.
   Qed.
-
 
   Lemma bitwise_length:
     forall f a b, List.length a = List.length b
@@ -643,17 +641,24 @@ Section WT.
       rewrite app_length; simpl. lia.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
-      destr. destr. unfold fst. destr.
+      destruct (take_drop' ofs bs) eqn:Heqp.
+      destruct (take_drop' (ofs + Datatypes.length bs0) bs) eqn:Heqp0.
+      destruct (take_drop' (Datatypes.length bs) (l ++ bs0 ++ l2)) eqn:Heqp1.
+      inversion Heqp. inversion Heqp0. inversion Heqp1.
+      rewrite H0, H3, H4.
       generalize (take_drop'_spec _ _ _ _ Heqp).
       generalize (take_drop'_spec _ _ _ _ Heqp0).
       generalize (take_drop'_spec _ _ _ _ Heqp1).
       generalize (take_drop'_spec2 _ _ _ _ Heqp).
       generalize (take_drop'_spec2 _ _ _ _ Heqp0).
       generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
-      rewrite H6. rewrite ! app_length.
-      rewrite H13. lia.
+      rewrite H12. rewrite ! app_length.
+      rewrite H19. lia.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits; auto.
-      destr. destr.
+      destruct (take_drop' (Bits.to_nat (Bits.of_list bs0)) bs) eqn:Heqp.
+      destruct (take_drop' w l0) eqn:Heqp0.
+      inversion Heqp. inversion Heqp0.
+      rewrite H2, H3.
       generalize (take_drop'_spec _ _ _ _ Heqp).
       generalize (take_drop'_spec _ _ _ _ Heqp0).
       generalize (take_drop'_spec2 _ _ _ _ Heqp).
@@ -685,24 +690,29 @@ Section WT.
       unfold opt_bind in H0. destr_in H0; inv H0.
       destr_in H2; inv H2. inv H1; constructor; eauto.
     - inv WTv1. inv WTv2.
-      unfold opt_bind in SIG. repeat destr_in SIG; inv SIG. apply wt_val_bits; auto.
+      unfold opt_bind in SIG. repeat destr_in SIG; inv SIG.
+      destruct (take_drop' n bs) eqn:Heqp1.
+      destruct (take_drop' (n + n0) bs) eqn:Heqp2.
+      apply wt_val_bits; auto.
       unfold PrimTypeInference.find_field in H.
       unfold opt_result in H. destr_in H; inv H.
       rewrite <- H1.
-      unfold fst. destr.
+      destruct (take_drop' (Datatypes.length bs) (l ++ bs0 ++ l2)) eqn:Heqp.
       generalize (take_drop'_spec _ _ _ _ Heqp).
       generalize (take_drop'_spec _ _ _ _ Heqp2).
       generalize (take_drop'_spec _ _ _ _ Heqp1).
       generalize (take_drop'_spec2 _ _ _ _ Heqp).
       generalize (take_drop'_spec2 _ _ _ _ Heqp2).
       generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
+      inversion Heqp. inversion Heqp1. inversion Heqp2.
+      rewrite H19, H22, H17.
       rewrite H10, ! app_length.
       rewrite H8, H15, H9.
       cut (n0 = List.length bs0). lia.
       rewrite H2. clear - Heqo Heqo0.
       revert idx Heqo Heqo0.
-      unfold field_sz, field_type. generalize (struct_fields sg). induction l; simpl; intros; eauto.
-      easy.
+      unfold field_sz, field_type. generalize (struct_fields sg).
+      induction l; simpl; intros; eauto. easy.
       repeat destr_in Heqo; inv Heqo; simpl in *;
         rewrite Heqs0 in Heqo0; inv Heqo0. reflexivity.
       destr_in H1; inv H1; eauto.
@@ -723,13 +733,21 @@ Section WT.
       rewrite Forall_app in H1 |- *. destruct H1; split; auto.
       inv H1; constructor; auto.
     - inv WTv1. inv WTv2. inv SIG. apply wt_val_bits. auto.
-      destr. destr. unfold fst. destr.
+      destruct (
+        take_drop' ((array_len sg - S idx) * element_sz sg) bs
+      ) eqn:Heqp.
+      destruct (
+        take_drop' ((array_len sg - S idx) * element_sz sg + element_sz sg) bs
+      ) eqn:Heqp0.
+      destruct (take_drop' (Datatypes.length bs) (l ++ bs0 ++ l2)) eqn:Heqp1.
       generalize (take_drop'_spec _ _ _ _ Heqp).
       generalize (take_drop'_spec _ _ _ _ Heqp0).
       generalize (take_drop'_spec _ _ _ _ Heqp1).
       generalize (take_drop'_spec2 _ _ _ _ Heqp).
       generalize (take_drop'_spec2 _ _ _ _ Heqp0).
       generalize (take_drop'_spec2 _ _ _ _ Heqp1). intuition.
+      inversion Heqp. inversion Heqp0. inversion Heqp1.
+      rewrite H21, H18, H22.
       rewrite H9, ! app_length.
       rewrite H11, H16. lia.
   Qed.
@@ -807,7 +825,6 @@ Section WT.
     induction 1; simpl; intros; eauto.
     f_equal. eauto.
   Qed.
-
 
   Lemma forall2_map_l:
     forall {A B C: Type} (f: A -> B) (P: B -> C -> Prop) l1 (l2: list C),
@@ -911,7 +928,6 @@ Section WT.
     induction l1; simpl; intros; eauto. inv H. inv H0. constructor; eauto.
   Qed.
 
-
   Lemma fold_subst_none:
     forall (vals: list val),
       fold_left
@@ -966,7 +982,6 @@ Section WT.
     constructor; eauto.
     eapply Forall_impl; eauto. simpl. intros. decompose [ex and] H1; eauto.
   Qed.
-
 
   Fixpoint size_daction
     {pos_t var_t fn_name_t reg_t ext_fn_t: Type}

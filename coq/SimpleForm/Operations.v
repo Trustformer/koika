@@ -13,8 +13,11 @@ Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Tactics.
 Require Import Koika.SimpleForm.SimpleForm.
 Require Import Coq.Lists.List.
+Scheme Equality for list.
 Require Import Coq.Sorting.Sorted.
 Require Import Coq.Sorting.Mergesort.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section Operations.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -33,6 +36,7 @@ Section Operations.
 
   Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Definition simple_form := simple_form (ext_fn_t := ext_fn_t) (reg_t := reg_t).
+  Instance etaSimpleForm : Settable _ := @etaSimpleForm reg_t ext_fn_t.
   Definition var_value_map :=
     var_value_map (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Definition useful_vars := useful_vars (ext_fn_t := ext_fn_t) (reg_t := reg_t).
@@ -47,8 +51,8 @@ Section Operations.
     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
   }.
 
-  Definition remove_vars (sf: simple_form) : simple_form := {|
-      final_values := final_values sf;
+  Definition remove_vars (sf: simple_form) : simple_form :=
+    sf <|
       vars :=
         fold_left
           (fun t n =>
@@ -57,7 +61,8 @@ Section Operations.
             | _ => t
             end)
           (useful_vars sf)
-          (PTree.empty _); |}.
+          (PTree.empty _)
+    |>.
 
   Definition filter_ptree (vvs t2: var_value_map) (l: list positive) :=
     (fold_left
@@ -219,15 +224,10 @@ Section Operations.
       (fun _ '(t, ua) => (t, replace_all_occurrences_in_sact ua from to))
       vars.
 
-  (* TODO simplify as well: initial simpl pass then whenever change *)
   Definition replace_all_occurrences
     (sf: simple_form) (from: positive) (to: val)
-  : simple_form := {|
-    final_values := final_values sf;
-    vars := replace_all_occurrences_in_vars (vars sf) from to |}.
-
-  (* TODO use coq record update here as well *)
-  (* TODO variable in environment instead of inlining *)
+  : simple_form :=
+    sf <| vars := replace_all_occurrences_in_vars (vars sf) from to |>.
 
   Definition max_var (vars: var_value_map) :=
     PTree.fold (fun acc k _ => Pos.max acc k) vars xH.
@@ -464,8 +464,6 @@ Section Operations.
     forall vvs a v, do_eval_sact vvs a = Some v
     -> interp_sact (sigma:=sigma) REnv r vvs a v.
   Proof. intros; eapply eval_sact_interp_sact; eauto. Qed.
-
-  Scheme Equality for list.
 
   Definition val_beq_bits (v1 v2: val) : bool :=
     match v1, v2 with
@@ -1424,8 +1422,6 @@ Section Operations.
      Note that we don't need our simplifications to be exhaustive: for instance
      we choose to ignore that an and can be short-circuited based on its right
      operand. *)
-  (* Lemma val_eq_dec_refl: forall v, exists x, val_eq_dec v v = left x. *)
-  (* Proof. intros. destruct (val_eq_dec v v); eauto. congruence. Qed. *)
 
   Lemma eval_sact_eval_sact_no_vars:
     forall vvs n a res res2,
@@ -1620,16 +1616,16 @@ Section Operations.
     forall sf (VSV: vvs_smaller_variables (vars sf)),
     wt_vvs (Sigma:=Sigma) R (vars sf)
     -> wt_vvs (Sigma:=Sigma) R (vars (remove_vars sf)).
-  Proof.
-    red; intros.
-    simpl in *.
-    fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)) in H0.
-    apply filter_ptree_inv in H0. rewrite PTree.gempty in H0.
-    destruct H0 as [|(IN & GET)]. inv H0.
-    eapply wt_sact_remove_vars; eauto.
-    eapply nodup_useful_vars; eauto.
-    intros; apply PTree.gempty.
-  Qed.
+      Proof.
+        red; intros.
+        simpl in *.
+        fold (filter_ptree (vars sf) (PTree.empty _) (useful_vars sf)) in H0.
+        apply filter_ptree_inv in H0. rewrite PTree.gempty in H0.
+        destruct H0 as [|(IN & GET)]. inv H0.
+        eapply wt_sact_remove_vars; eauto.
+        eapply nodup_useful_vars; eauto.
+        intros; apply PTree.gempty.
+      Qed.
 
   Lemma vsv_remove_vars:
     forall sf,
@@ -1746,9 +1742,11 @@ Section Operations.
     auto. auto.
   Qed.
 
-  Definition simplify_sifs_sf sf := {|
-    final_values := final_values sf;
-    vars := Maps.PTree.map (fun _ '(t, a) => (t, simplify_sif a)) (vars sf) |}.
+  Definition simplify_sifs_sf sf :=
+    sf
+      <| vars :=
+        Maps.PTree.map (fun _ '(t, a) => (t, simplify_sif a)) (vars sf)
+       |>.
 
   Lemma bits_Bits:
     forall vvs a sz (WTA : wt_sact (Sigma := Sigma) R vvs a (bits_t sz))
@@ -2414,44 +2412,6 @@ Section Operations.
       econstructor. eauto.
   Qed.
 
-  (* Lemma f_interp_sact_ok'i': *)
-  (*   forall f *)
-  (*          vvs *)
-  (*          (WTVVS: wt_vvs (Sigma := Sigma) R vvs) *)
-  (*          (VVSSV: vvs_smaller_variables vvs) *)
-  (*          (SPEC: forall k (a : SimpleForm.sact) (v : val), *)
-  (*              forall t : type, *)
-  (*                wt_sact (Sigma:=Sigma) R vvs a t -> *)
-  (*                interp_sact (sigma:=sigma) REnv r vvs a v -> *)
-  (*                interp_sact (sigma:=sigma) REnv r vvs (f k a) v *)
-  (*          ) *)
-  (*          (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type), *)
-  (*              wt_sact (Sigma:=Sigma) R vvs a0 t0 -> *)
-  (*              wt_sact (Sigma:=Sigma) R vvs (f k a0) t0) *)
-  (*          (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v') *)
-  (*          a v (EV_INIT: interp_sact (sigma := sigma) REnv r vvs a v) *)
-  (*          t (WTa: wt_sact (Sigma:=Sigma) R vvs a t), *)
-  (*   interp_sact (sigma := sigma) REnv r (PTree.map (fun k '(t,a) => (t, f k a)) vvs) a v. *)
-  (* Proof. *)
-  (*   intros f vvs WTVVS VVSSV SPEC FWT VIS. *)
-  (*   induction 1; try (econstructor; eauto; fail). *)
-  (*   econstructor. *)
-  (*   - setoid_rewrite Maps.PTree.gmap. *)
-  (*     unfold option_map. setoid_rewrite H. *)
-  (*     f_equal. *)
-  (*   - eapply SPEC; eauto. *)
-  (*     eapply f_wtvvs_ok'i; eauto. *)
-  (*     eapply f_wt_sact_ok'i; eauto. *)
-  (*     eapply vsv_fi; eauto. *)
-  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
-  (*     eapply IHEV_INIT2. destr; eauto. *)
-  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
-  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
-  (*   - intros t0 WT; inv WT. econstructor; eauto. *)
-  (* Qed. *)
-
-
-
   Lemma sf_eq_mapi':
     forall sf f
            (SPEC: forall (a : SimpleForm.sact) (v : val),
@@ -3079,15 +3039,6 @@ Section Operations.
     red; tauto.
   Qed.
 
-  Lemma take_drop'_firstn_skipn:
-    forall {A:Type} n (l: list A),
-    take_drop' n l = (List.firstn n l, List.skipn n l).
-  Proof.
-    induction n; simpl; intros; eauto.
-    destruct l. reflexivity.
-    erewrite take_drop'_cons. 2: eauto. reflexivity.
-  Qed.
-
   Lemma skipn_add:
     forall {A: Type} n2 n1 (l: list A),
     skipn n1 (skipn n2 l) = skipn (n1 + n2) l.
@@ -3126,7 +3077,6 @@ Section Operations.
     eapply eval_sact_no_vars_interp; eauto.
   Qed.
 
-  (* TODO nodup reg_id in sf *)
   Lemma getenv_interp:
     forall reg reg_id reg_act x sf (WF: wf_sf sf)
       (REG_ID: list_assoc (final_values sf) reg = Some reg_id)

@@ -4,8 +4,6 @@ Require Import Koika.KoikaForm.TypeInference.
 Require Import Koika.KoikaForm.Untyped.UntypedSemantics.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.BitsToLists.
-From RecordUpdate Require Import RecordSet.
-Import RecordSetNotations.
 Require Import Sact.
 Require Import Coq.Sorting.Sorted.
 Require Import Coq.Sorting.Mergesort.

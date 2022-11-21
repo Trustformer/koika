@@ -42,6 +42,8 @@ Installing dependencies and building from source
 
     opam install base core stdio parsexp hashcons zarith
 
+* `coq-record-update <https://github.com/tchajed/coq-record-update>` 0.3.x
+
 * To run the tests of our RISCV core, a `RISCV compilation toolchain <https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/>`_.
 
 * To run C++ simulations: a recent C++ compiler (clang or gcc) and
