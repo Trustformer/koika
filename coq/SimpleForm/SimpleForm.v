@@ -982,8 +982,6 @@ Section SimpleForm.
        next_ids *)
     : option (sact) * list (string * positive) * r2vtype
       * (PTree.t (type * sact)) * sact * rule_information_raw * positive * type
-    (* TODO remove redundancies with rule_information_raw (failure_cond,
-         var_values) *)
     :=
     match ua with
     | DBind var val body =>
