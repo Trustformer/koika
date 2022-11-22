@@ -289,3 +289,308 @@ Ltac crusher_c strength :=
   | _ => fail "max strength = 20"
   end;
   finish.
+
+Section SAP.
+  Variables reg_t ext_fn_t: Type.
+Lemma subact_at_pos_refl: forall (x: sact (reg_t:=reg_t) (ext_fn_t:=ext_fn_t)),
+    subact_at_position x [] = Some x.
+Proof.
+  induction x; simpl; intros; reflexivity.
+Qed.
+
+Lemma subact_at_pos_rev_refl: forall (x: sact (reg_t:=reg_t) (ext_fn_t:=ext_fn_t)),
+    subact_at_position x (List.rev []) = Some x.
+Proof.
+  intros; simpl; eapply subact_at_pos_refl.
+Qed.
+
+
+Lemma subact_at_pos_trans:
+  forall (s: sact (reg_t:=reg_t) (ext_fn_t:=ext_fn_t)) p1 s1 p2 s2,
+    subact_at_position s p1 = Some s1 ->
+    subact_at_position s1 p2 = Some s2 ->
+    subact_at_position s (p1 ++ p2) = Some s2.
+Proof.
+  induction s; simpl; intros;
+    repeat destr_in H; inv H; simpl in *; eauto.
+Qed.
+
+Lemma subact_at_pos_unop1:
+  forall (s: @sact reg_t ext_fn_t) pos ufn a,
+    subact_at_position s (List.rev pos) = Some (SUnop ufn a) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_extcall1:
+  forall (s: @sact reg_t ext_fn_t) pos ufn a,
+    subact_at_position s (List.rev pos) = Some (SExternalCall ufn a) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_binop1:
+  forall (s: @sact reg_t ext_fn_t) pos ufn a1 a2,
+    subact_at_position s (List.rev pos) = Some (SBinop ufn a1 a2) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a1.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_binop2:
+  forall (s: @sact reg_t ext_fn_t) pos ufn a1 a2,
+    subact_at_position s (List.rev pos) = Some (SBinop ufn a1 a2) ->
+    subact_at_position s (List.rev (branch2 :: pos)) = Some a2.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+
+Lemma subact_at_pos_if1:
+  forall (s: @sact reg_t ext_fn_t) pos a1 a2 a3,
+    subact_at_position s (List.rev pos) = Some (SIf a1 a2 a3) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a1.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_if2:
+  forall (s: @sact reg_t ext_fn_t) pos a1 a2 a3,
+    subact_at_position s (List.rev pos) = Some (SIf a1 a2 a3) ->
+    subact_at_position s (List.rev (branch2 :: pos)) = Some a2.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_if3:
+  forall (s: @sact reg_t ext_fn_t) pos a1 a2 a3,
+    subact_at_position s (List.rev pos) = Some (SIf a1 a2 a3) ->
+    subact_at_position s (List.rev (branch3 :: pos)) = Some a3.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+
+Ltac search_subterm needle haystack pos orig_haystack Ppos :=
+  match haystack with
+  | ?x => match needle with
+            x => eval vm_compute in
+              (existT _ [pos] (Forall_cons pos Ppos (@Forall_nil _ (fun v => subact_at_position orig_haystack (List.rev v) = Some needle))))
+          end
+  | SVar ?x => eval vm_compute in
+      (existT _ _ (@Forall_nil _ (fun v => subact_at_position orig_haystack (List.rev v) = Some needle)))
+  | SConst ?x =>  eval vm_compute in
+      (existT _ _ (@Forall_nil _ (fun v => subact_at_position orig_haystack (List.rev v) = Some needle)))
+  | SReg ?x =>  eval vm_compute in
+      (existT _ _ (@Forall_nil _ (fun v => subact_at_position orig_haystack (List.rev v) = Some needle)))
+  | SUnop ?ufn ?a =>
+      search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_unop1 _ _ _ _ Ppos)
+  | SExternalCall ?ufn ?a =>
+      search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_extcall1 _ _ _ _ Ppos)
+  | SBinop ?ufn ?a ?b =>
+      let p1 := search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_binop1 _ _ _ _ _ Ppos) in
+      let p2 := search_subterm needle b (Direction.branch2 :: pos) orig_haystack (subact_at_pos_binop2 _ _ _ _ _ Ppos) in
+      eval vm_compute in (existT _ _ (proj2 (@Forall_app _ _ _ _) (conj (projT2 p1) (projT2 p2))))
+  | SIf ?a ?b ?c =>
+      let p1 := search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_if1 _ _ _ _ _ Ppos) in
+      let p2 := search_subterm needle b (Direction.branch2 :: pos) orig_haystack (subact_at_pos_if2 _ _ _ _ _ Ppos) in
+      let p3 := search_subterm needle c (Direction.branch3 :: pos) orig_haystack (subact_at_pos_if3 _ _ _ _ _ Ppos) in
+      eval vm_compute in
+        (existT _ _ (proj2 (@Forall_app _ _ _ _) (conj (projT2 p1) (proj2 (@Forall_app _ _ _ _) (conj (projT2 p2) (projT2 p3))))))
+  end.
+
+
+Ltac ssearch needle haystack :=
+  let hs := eval vm_compute in haystack in
+  let res :=
+    search_subterm needle hs ([]: list Direction.direction) hs (subact_at_pos_rev_refl hs) in
+  res.
+
+Definition ptree_forall {A: Type} (P: positive -> A -> Prop) (t: Maps.PTree.t A) :=
+  forall k v, Maps.PTree.get k t = Some v -> P k v.
+
+Lemma ptree_set_prop {A: Type} (t: Maps.PTree.t A) P
+  (FA: ptree_forall P t)
+  k v
+  (PKV: P k v):
+  ptree_forall P (Maps.PTree.set k v t).
+Proof.
+  unfold ptree_forall in *.
+  intros.
+  rewrite Maps.PTree.gsspec in H. destr_in H; eauto. inv H. auto.
+Qed.
+
+Lemma ptree_forall_empty {A: Type} P:
+  ptree_forall P (Maps.PTree.empty A).
+Proof.
+  unfold ptree_forall. intros. rewrite Maps.PTree.gempty in H. congruence.
+Qed.
+
+Ltac ssearch_in_elems needle l :=
+  lazymatch l with
+  | [] => eval vm_compute in (existT (A:=list (positive * list position))
+                                (fun v =>
+                                   Forall2 (fun '(k, (t, a)) '(k1, ps) =>
+                                              k = k1 /\
+                                              Forall (fun p => subact_at_position a (rev p) = Some needle) ps
+                                     ) l v
+                                ) _ (Forall2_nil _)
+                             )
+  | (?kk, (?tt, ?x))::?r =>
+      let ps := ssearch needle x in
+      let pss := ssearch_in_elems needle r in
+      eval vm_compute in
+        (existT (A:=list (positive * list position))
+           _ _ (@Forall2_cons _ _ (fun '(k, (t, a)) '(k1,Ps) =>
+                                     k = k1 /\
+                                       Forall (fun p => subact_at_position a (rev p) = Some needle) Ps
+                                     ) (kk,(tt,x)) (kk,(projT1 ps)) _ _ (conj eq_refl (projT2 ps)) (projT2 pss)))
+  end.
+
+Fixpoint ptree_of_elements {A: Type} (l: list (positive * A)) :=
+  match l with
+    [] => Maps.PTree.empty A
+  | (k,v)::r => Maps.PTree.set k v (ptree_of_elements r)
+  end.
+
+
+Lemma forall2_elems:
+  forall {A B: Type}
+         (l1: list (positive * A))
+         (l2: list (positive * B)) P,
+    Forall2 (fun '(k, a) '(k1,v) => k = k1 /\ P a v) l1 l2 ->
+    NoDup (List.map fst l1) ->
+    let res := ptree_of_elements l2 in
+    forall k ps a,
+      In (k, a) l1 ->
+      Maps.PTree.get k res = Some ps ->
+      P a ps.
+Proof.
+  induction 1; simpl; intros; eauto. easy.
+  destr_in H3.
+  rewrite Maps.PTree.gsspec in H3.
+  destruct x. destruct H. subst. simpl in H1. inv H1.
+  destr_in H3.
+  - inv H3. destruct H2 as [C|C]. inv C. auto.
+    elim H6. change p with (fst (p, a)). apply in_map. auto.
+  - destruct H2. inv H. congruence.
+    eauto.
+Qed.
+
+
+Lemma forall2_elems':
+  forall {A B: Type}
+         (l1: Maps.PTree.t A)
+         (l2: list (positive * B)) P,
+    Forall2 (fun '(k, a) '(k1,v) => k = k1 /\ P a v) (Maps.PTree.elements l1) l2 ->
+    let res := ptree_of_elements l2 in
+    forall k ps a,
+      Maps.PTree.get k l1 = Some a ->
+      Maps.PTree.get k res = Some ps ->
+      P a ps.
+Proof.
+  intros.
+  eapply forall2_elems; eauto.
+  apply Maps.PTree.elements_keys_norepet.
+  apply Maps.PTree.elements_correct; auto.
+Qed.
+
+
+Lemma forall2_elems'':
+  forall {A B C: Type}
+         (l1: Maps.PTree.t (C * A))
+         (l2: list (positive * B)) P,
+    Forall2 (fun '(k, (t, a)) '(k1,v) => k = k1 /\ P a v) (Maps.PTree.elements l1) l2 ->
+    let res := ptree_of_elements l2 in
+    forall k ps t a,
+      Maps.PTree.get k l1 = Some (t, a) ->
+      Maps.PTree.get k res = Some ps ->
+      P a ps.
+Proof.
+  intros.
+  eapply forall2_elems' with (P0:=fun '(t,a) v => P a v) in H0. eauto.
+  2: eauto.
+  eapply Forall2_impl. eauto. simpl. intros. destruct x. destruct p0,y. destruct H4. subst. split; auto.
+Qed.
+
+
+Ltac ssearch_in_vars needle t :=
+  let vars := eval vm_compute in (Maps.PTree.elements t) in
+    let res := ssearch_in_elems needle vars in
+    let res := eval vm_compute in res in
+      let x := eval vm_compute in (projT1 res) in
+        let P := eval vm_compute in (projT2 res) in
+          let H := fresh in
+          assert (H: Forall2 (fun '(k, (ty,a)) '(k1,ps) =>
+                             k = k1 /\
+                               (fun '(_,a) ps => Forall (fun p => subact_at_position a (rev p) = Some needle) ps) (ty,a) ps
+                    )
+                       (Maps.PTree.elements t) x) by (exact P);
+          let H2 := fresh in
+          assert (H2 := forall2_elems'' _ _ _ H); clear H.
+
+
+Goal False.
+    set (k0:= true: bool).
+    Import PrimUntyped.
+
+    set (vars :=
+           Maps.PTree.set 1%positive (bits_t 1, SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+             (Maps.PTree.set 2%positive (bits_t 1, SUnop (UBits1 UNot) (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true])))
+                (Maps.PTree.set 3%positive (bits_t 1, SBinop (UBits2 UAnd)
+           (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+           (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+                   ) (Maps.PTree.empty _))
+             )
+        ).
+
+    Set Ltac Backtrace.
+
+    ssearch_in_vars (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+              vars.
+
+    let l := ssearch (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+               (SConst (Bits [true]) : (@sact reg_t ext_fn_t)) in idtac l.
+
+    let l :=
+      ssearch_in_elems (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+                       ([(1%positive, (bits_t 1, SConst (Bits [true])))] : list (prod positive (prod type (@sact reg_t ext_fn_t))))
+    in idtac l.
+
+
+    set (hs := (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))).
+
+    let l := ssearch
+      (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+        hs in idtac l.
+
+    set (hs2 := (SUnop (UBits1 UNot) (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true])))).
+    let l := ssearch
+      (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+        hs2 in idtac l.
+
+    set (hs3 := (SBinop (UBits2 UAnd)
+           (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+           (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+        )).
+    let l := ssearch
+      (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true])) hs3
+    in idtac l.
+
+    let x := ssearch
+               (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [k0]))
+                 (SVar (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (12%positive))
+    in
+    idtac x.
+Abort.
+
+End SAP.

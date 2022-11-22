@@ -27,10 +27,10 @@ Section ReplaceSubact.
   Local Definition wf_sf := wf_sf R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
-    wt_sigma:
-    forall ufn vc, wt_val (arg1Sig (Sigma ufn)) vc
-    -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
-  }.
+      wt_sigma:
+      forall ufn vc, wt_val (arg1Sig (Sigma ufn)) vc
+                     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
+    }.
 
   Fixpoint subact_at_position
     (s: sact) (p: position) : option sact :=
@@ -100,444 +100,462 @@ Section ReplaceSubact.
          (t, replace_at_positions ua poss v))
       vars.
 
-    Definition replace_subact (sf: simple_form) (positions: PTree.t (list position))
+  Definition replace_subact (sf: simple_form) (positions: PTree.t (list position))
     (v: sact) : simple_form :=
     {|
       final_values := final_values sf;
       vars := replace_subact_in_vars (vars sf) positions v
     |}.
 
-    Lemma wt_unop_determ:
-      forall u t t1,
-        wt_unop u t t1 ->
-        forall t2,
+  Lemma wt_unop_determ:
+    forall u t t1,
+      wt_unop u t t1 ->
+      forall t2,
         wt_unop u t t2 ->
         t1 = t2.
-    Proof.
-      intros.
-      inv H; inv H0; auto. congruence. congruence.
-    Qed.
+  Proof.
+    intros.
+    inv H; inv H0; auto. congruence. congruence.
+  Qed.
 
-    Lemma wt_binop_determ:
-      forall u t t' t1,
-        wt_binop u t t' t1 ->
-        forall t2,
+  Lemma wt_binop_determ:
+    forall u t t' t1,
+      wt_binop u t t' t1 ->
+      forall t2,
         wt_binop u t t' t2 ->
         t1 = t2.
-    Proof.
-      intros.
-      inv H; inv H0; auto.
-    Qed.
+  Proof.
+    intros.
+    inv H; inv H0; auto.
+  Qed.
 
-    Lemma wt_sact_determ:
-      forall vvs s t1,
-        wt_sact vvs s t1 ->
-        forall t2,
+  Lemma wt_sact_determ:
+    forall vvs s t1,
+      wt_sact vvs s t1 ->
+      forall t2,
         wt_sact vvs s t2 ->
         t1 = t2.
-    Proof.
-      induction 1; simpl; intros; eauto.
-      - inv H0. congruence.
-      - inv H0. eapply wt_val_determ; eauto.
-      - inv H2. eauto.
-      - inv H1; eauto. apply IHwt_sact in H4. subst.
-        eapply wt_unop_determ; eauto.
-      - inv H2; eauto.
-        apply IHwt_sact1 in H6.
-        apply IHwt_sact2 in H8.
-        subst. eapply wt_binop_determ; eauto.
-      - inv H0. auto.
-      - inv H. auto.
-    Qed.
+  Proof.
+    induction 1; simpl; intros; eauto.
+    - inv H0. congruence.
+    - inv H0. eapply wt_val_determ; eauto.
+    - inv H2. eauto.
+    - inv H1; eauto. apply IHwt_sact in H4. subst.
+      eapply wt_unop_determ; eauto.
+    - inv H2; eauto.
+      apply IHwt_sact1 in H6.
+      apply IHwt_sact2 in H8.
+      subst. eapply wt_binop_determ; eauto.
+    - inv H0. auto.
+    - inv H. auto.
+  Qed.
 
-    Lemma wt_sact_replace_at_position:
-      forall vvs s p subact
-             (SAP: subact_at_position s p = Some subact)
-             t (WT: wt_sact vvs s t) rep tn,
+  Lemma wt_sact_replace_at_position:
+    forall vvs s p subact
+           (SAP: subact_at_position s p = Some subact)
+           t (WT: wt_sact vvs s t) rep tn,
+      wt_sact vvs subact tn ->
+      wt_sact vvs rep tn ->
+      wt_sact vvs (replace_at_position s p rep) t.
+  Proof.
+    induction s; simpl; intros; eauto.
+    -  repeat destr_in SAP; inv SAP.
+       exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
+    - repeat destr_in SAP; inv SAP.
+      exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
+    - repeat destr_in SAP; inv SAP.
+      + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
+      + inv WT. econstructor; eauto. eapply IHs1; eauto.
+      + inv WT. econstructor; eauto. eapply IHs2; eauto.
+      + inv WT. econstructor; eauto. eapply IHs3; eauto.
+    - repeat destr_in SAP; inv SAP.
+      + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
+      + inv WT. econstructor; eauto. eapply IHs; eauto.
+    - repeat destr_in SAP; inv SAP.
+      + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
+      + inv WT. econstructor; eauto. eapply IHs1; eauto.
+      + inv WT. econstructor; eauto. eapply IHs2; eauto.
+    - repeat destr_in SAP; inv SAP.
+      + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
+      + inv WT. econstructor; eauto. eapply IHs; eauto.
+    - repeat destr_in SAP; inv SAP.
+      exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
+  Qed.
+
+  Inductive prefix {A:Type}: list A -> list A -> Prop :=
+  | prefix_nil_l: forall l, prefix [] l
+  | prefix_cons: forall d l1 l2,
+      prefix l1 l2 ->
+      prefix (d::l1) (d::l2).
+
+  Inductive no_prefix : list position -> Prop :=
+  | no_prefix_nil: no_prefix []
+  | no_prefix_cons:
+    forall p l,
+      (forall p', In p' l -> ~ prefix p p' /\ ~ prefix p' p) ->
+      no_prefix l ->
+      no_prefix (p::l).
+
+
+  Lemma no_prefix_subact_at_position_same:
+    forall p s v p',
+      ~ prefix p p' ->
+      ~ prefix p' p ->
+      subact_at_position (replace_at_position s p v) p' = subact_at_position s p'.
+  Proof.
+    induction p; simpl; intros; eauto.
+    elim H. constructor.
+    destruct p'. elim H0. constructor.
+    destruct s; simpl.
+    - repeat destr; simpl; auto.
+    - repeat destr; simpl; auto.
+    - repeat destr; simpl; auto.
+      eapply IHp.
+      intro P; apply H; constructor; auto.
+      intro P; apply H0; constructor; auto.
+      eapply IHp.
+      intro P; apply H; constructor; auto.
+      intro P; apply H0; constructor; auto.
+      eapply IHp.
+      intro P; apply H; constructor; auto.
+      intro P; apply H0; constructor; auto.
+    - repeat destr; simpl; auto.
+      eapply IHp.
+      intro P; apply H; constructor; auto.
+      intro P; apply H0; constructor; auto.
+    - repeat destr; simpl; auto.
+      eapply IHp.
+      intro P; apply H; constructor; auto.
+      intro P; apply H0; constructor; auto.
+      eapply IHp.
+      intro P; apply H; constructor; auto.
+      intro P; apply H0; constructor; auto.
+    - repeat destr; simpl; auto.
+      eapply IHp.
+      intro P; apply H; constructor; auto.
+      intro P; apply H0; constructor; auto.
+    - repeat destr; simpl; auto.
+  Qed.
+
+  Lemma wt_sact_replace_at_positions:
+    forall vvs ps (NP: no_prefix ps) s tn subact
+           (POSOK: forall
+               p (IN: In p ps),
+               subact_at_position s p = Some subact)
+           (WWT: wt_sact vvs subact tn)
+           t
+           (WT: wt_sact vvs s t) rep
+           (WTrep: wt_sact vvs rep tn),
+      wt_sact vvs (replace_at_positions s ps rep) t.
+  Proof.
+    induction 1; simpl; intros; eauto.
+    eapply IHNP.
+    - intros.
+      erewrite no_prefix_subact_at_position_same. eauto.
+      eapply H; eauto.
+      eapply H; eauto.
+    - eauto.
+    - eapply wt_sact_replace_at_position; eauto.
+    - eauto.
+  Qed.
+
+  Lemma wt_sact_replace_at_positions_in_vars:
+    forall vvs positions
+           (NP: forall k ps, positions ! k = Some ps -> no_prefix ps)
+           subact
+           (POSOK: forall k t s ps,
+               positions ! k = Some ps ->
+               vvs ! k = Some (t, s) ->
+               forall p (IN: In p ps),
+                 subact_at_position s p = Some subact)
+           tn (WWT: wt_sact vvs subact tn)
+           rep (WTrep: wt_sact vvs rep tn)
+           s t
+           (WT: wt_sact vvs s t),
+      wt_sact (replace_subact_in_vars vvs positions rep) s t.
+  Proof.
+    intros vvs positions NP subact POSOK tn WWT rep WTrep.
+    induction 1; simpl; intros; eauto.
+    - econstructor.
+      setoid_rewrite PTree.gmap. setoid_rewrite H. simpl. eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+    - econstructor; eauto.
+  Qed.
+
+  Lemma interp_sact_replace_at_position:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall a0 p subact tn rep,
+        subact_at_position a0 p = Some subact ->
         wt_sact vvs subact tn ->
         wt_sact vvs rep tn ->
-        wt_sact vvs (replace_at_position s p rep) t.
-    Proof.
-      induction s; simpl; intros; eauto.
-      -  repeat destr_in SAP; inv SAP.
-         exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
-      - repeat destr_in SAP; inv SAP.
-        exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
-      - repeat destr_in SAP; inv SAP.
-        + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
-        + inv WT. econstructor; eauto. eapply IHs1; eauto.
-        + inv WT. econstructor; eauto. eapply IHs2; eauto.
-        + inv WT. econstructor; eauto. eapply IHs3; eauto.
-      - repeat destr_in SAP; inv SAP.
-        + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
-        + inv WT. econstructor; eauto. eapply IHs; eauto.
-      - repeat destr_in SAP; inv SAP.
-        + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
-        + inv WT. econstructor; eauto. eapply IHs1; eauto.
-        + inv WT. econstructor; eauto. eapply IHs2; eauto.
-      - repeat destr_in SAP; inv SAP.
-        + exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
-        + inv WT. econstructor; eauto. eapply IHs; eauto.
-      - repeat destr_in SAP; inv SAP.
-        exploit wt_sact_determ. apply WT. apply H. intros ->. auto.
-    Qed.
-
-    Inductive prefix {A:Type}: list A -> list A -> Prop :=
-    | prefix_nil_l: forall l, prefix [] l
-    | prefix_cons: forall d l1 l2,
-        prefix l1 l2 ->
-        prefix (d::l1) (d::l2).
-
-    Inductive no_prefix : list position -> Prop :=
-    | no_prefix_nil: no_prefix []
-    | no_prefix_cons:
-      forall p l,
-        (forall p', In p' l -> ~ prefix p p' /\ ~ prefix p' p) ->
-        no_prefix l ->
-        no_prefix (p::l).
+        (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
+        forall t v,
+          wt_sact vvs a0 t ->
+          interp_sact vvs a0 v ->
+          interp_sact vvs (replace_at_position a0 p rep) v.
+  Proof.
+    induction a0; simpl; intros; eauto.
+    - repeat destr_in H1; inv H1. apply H4; auto.
+    - repeat destr_in H1; inv H1. apply H4; auto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
+      + inv H6. econstructor; eauto. destr. eapply IHa0_2; eauto.
+      + inv H6; econstructor; eauto. destr. eapply IHa0_3; eauto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0; eauto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
+      + inv H6. econstructor; eauto. eapply IHa0_2; eauto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0; eauto.
+    - inv H5. repeat destr_in H1; inv H1. apply H4; auto.
+  Qed.
 
 
-    Lemma no_prefix_subact_at_position_same:
-      forall p s v p',
-        ~ prefix p p' ->
-        ~ prefix p' p ->
-        subact_at_position (replace_at_position s p v) p' = subact_at_position s p'.
-    Proof.
-      induction p; simpl; intros; eauto.
-      elim H. constructor.
-      destruct p'. elim H0. constructor.
-      destruct s; simpl.
-      - repeat destr; simpl; auto.
-      - repeat destr; simpl; auto.
-      - repeat destr; simpl; auto.
-        eapply IHp.
-        intro P; apply H; constructor; auto.
-        intro P; apply H0; constructor; auto.
-        eapply IHp.
-        intro P; apply H; constructor; auto.
-        intro P; apply H0; constructor; auto.
-        eapply IHp.
-        intro P; apply H; constructor; auto.
-        intro P; apply H0; constructor; auto.
-      - repeat destr; simpl; auto.
-        eapply IHp.
-        intro P; apply H; constructor; auto.
-        intro P; apply H0; constructor; auto.
-      - repeat destr; simpl; auto.
-        eapply IHp.
-        intro P; apply H; constructor; auto.
-        intro P; apply H0; constructor; auto.
-        eapply IHp.
-        intro P; apply H; constructor; auto.
-        intro P; apply H0; constructor; auto.
-      - repeat destr; simpl; auto.
-        eapply IHp.
-        intro P; apply H; constructor; auto.
-        intro P; apply H0; constructor; auto.
-      - repeat destr; simpl; auto.
-    Qed.
-
-    Lemma wt_sact_replace_at_positions:
-      forall vvs ps (NP: no_prefix ps) s tn subact
-             (POSOK: forall
-                 p (IN: In p ps),
-                 subact_at_position s p = Some subact)
-             (WWT: wt_sact vvs subact tn)
-             t
-             (WT: wt_sact vvs s t) rep
-             (WTrep: wt_sact vvs rep tn),
-        wt_sact vvs (replace_at_positions s ps rep) t.
-    Proof.
-      induction 1; simpl; intros; eauto.
-      eapply IHNP.
-      - intros.
-        erewrite no_prefix_subact_at_position_same. eauto.
-        eapply H; eauto.
-        eapply H; eauto.
-      - eauto.
-      - eapply wt_sact_replace_at_position; eauto.
-      - eauto.
-    Qed.
-
-    Lemma wt_sact_replace_at_positions_in_vars:
-      forall vvs positions
-             (NP: forall k ps, positions ! k = Some ps -> no_prefix ps)
-             subact
-             (POSOK: forall k t s ps,
-                 positions ! k = Some ps ->
-                 vvs ! k = Some (t, s) ->
-                 forall p (IN: In p ps),
-                   subact_at_position s p = Some subact)
-             tn (WWT: wt_sact vvs subact tn)
-             rep (WTrep: wt_sact vvs rep tn)
-             s t
-             (WT: wt_sact vvs s t),
-        wt_sact (replace_subact_in_vars vvs positions rep) s t.
-    Proof.
-      intros vvs positions NP subact POSOK tn WWT rep WTrep.
-      induction 1; simpl; intros; eauto.
-      - econstructor.
-        setoid_rewrite PTree.gmap. setoid_rewrite H. simpl. eauto.
-      - econstructor; eauto.
-      - econstructor; eauto.
-      - econstructor; eauto.
-      - econstructor; eauto.
-      - econstructor; eauto.
-      - econstructor; eauto.
-    Qed.
-
-    Lemma interp_sact_replace_at_position:
-      forall vvs,
-        wt_vvs (Sigma:=Sigma) R vvs ->
-        vvs_smaller_variables vvs ->
-        forall a0 p subact tn rep,
-          subact_at_position a0 p = Some subact ->
-          wt_sact vvs subact tn ->
-          wt_sact vvs rep tn ->
-          (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
-      forall t v,
-        wt_sact vvs a0 t ->
-        interp_sact vvs a0 v ->
-        interp_sact vvs (replace_at_position a0 p rep) v.
-    Proof.
-      induction a0; simpl; intros; eauto.
-      - repeat destr_in H1; inv H1. apply H4; auto.
-      - repeat destr_in H1; inv H1. apply H4; auto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
-        + inv H6. econstructor; eauto. destr. eapply IHa0_2; eauto.
-        + inv H6; econstructor; eauto. destr. eapply IHa0_3; eauto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0; eauto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
-        + inv H6. econstructor; eauto. eapply IHa0_2; eauto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0; eauto.
-      - inv H5. repeat destr_in H1; inv H1. apply H4; auto.
-    Qed.
+  Lemma interp_sact_replace_at_position':
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall a0 p subact tn rep,
+        subact_at_position a0 p = Some subact ->
+        wt_sact vvs subact tn ->
+        wt_sact vvs rep tn ->
+        (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
+        forall t v,
+          wt_sact vvs a0 t ->
+          interp_sact vvs (replace_at_position a0 p rep) v ->
+          interp_sact vvs a0 v.
+  Proof.
+    induction a0; simpl; intros; eauto.
+    - repeat destr_in H1; inv H1. apply H4; auto.
+    - repeat destr_in H1; inv H1. apply H4; auto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
+      + inv H6. econstructor; eauto. destr. eapply IHa0_2; eauto.
+      + inv H6; econstructor; eauto. destr. eapply IHa0_3; eauto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0; eauto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
+      + inv H6. econstructor; eauto. eapply IHa0_2; eauto.
+    - inv H5. repeat destr_in H1; inv H1.
+      + apply H4; auto.
+      + inv H6; econstructor; eauto. eapply IHa0; eauto.
+    - inv H5. repeat destr_in H1; inv H1. apply H4; auto.
+  Qed.
 
 
-    Lemma interp_sact_replace_at_position':
-      forall vvs,
-        wt_vvs (Sigma:=Sigma) R vvs ->
-        vvs_smaller_variables vvs ->
-        forall a0 p subact tn rep,
-          subact_at_position a0 p = Some subact ->
-          wt_sact vvs subact tn ->
-          wt_sact vvs rep tn ->
-          (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
-      forall t v,
-        wt_sact vvs a0 t ->
-        interp_sact vvs (replace_at_position a0 p rep) v ->
-        interp_sact vvs a0 v.
-    Proof.
-      induction a0; simpl; intros; eauto.
-      - repeat destr_in H1; inv H1. apply H4; auto.
-      - repeat destr_in H1; inv H1. apply H4; auto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
-        + inv H6. econstructor; eauto. destr. eapply IHa0_2; eauto.
-        + inv H6; econstructor; eauto. destr. eapply IHa0_3; eauto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0; eauto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0_1; eauto.
-        + inv H6. econstructor; eauto. eapply IHa0_2; eauto.
-      - inv H5. repeat destr_in H1; inv H1.
-        + apply H4; auto.
-        + inv H6; econstructor; eauto. eapply IHa0; eauto.
-      - inv H5. repeat destr_in H1; inv H1. apply H4; auto.
-    Qed.
+  Lemma interp_sact_replace_at_position_iff:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall a0 p subact tn rep,
+        subact_at_position a0 p = Some subact ->
+        wt_sact vvs subact tn ->
+        wt_sact vvs rep tn ->
+        (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
+        forall t v,
+          wt_sact vvs a0 t ->
+          interp_sact vvs (replace_at_position a0 p rep) v <->
+            interp_sact vvs a0 v.
+  Proof.
+    split; intros.
+    eapply interp_sact_replace_at_position'; eauto.
+    eapply interp_sact_replace_at_position; eauto.
+  Qed.
 
 
-    Lemma interp_sact_replace_at_position_iff:
-      forall vvs,
-        wt_vvs (Sigma:=Sigma) R vvs ->
-        vvs_smaller_variables vvs ->
-        forall a0 p subact tn rep,
-          subact_at_position a0 p = Some subact ->
-          wt_sact vvs subact tn ->
-          wt_sact vvs rep tn ->
-          (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
-      forall t v,
-        wt_sact vvs a0 t ->
-        interp_sact vvs (replace_at_position a0 p rep) v <->
-        interp_sact vvs a0 v.
-    Proof.
-      split; intros.
-      eapply interp_sact_replace_at_position'; eauto.
-      eapply interp_sact_replace_at_position; eauto.
-    Qed.
-
-
-    Lemma interp_sact_replace_at_positions:
-      forall vvs,
-        wt_vvs (Sigma:=Sigma) R vvs ->
-        vvs_smaller_variables vvs ->
-        forall subact tn rep,
-          wt_sact vvs subact tn ->
-          wt_sact vvs rep tn ->
-          (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
-      forall ps a0 t v,
-        wt_sact vvs a0 t ->
-        (forall p : position, In p ps -> subact_at_position a0 p = Some subact) ->
-        no_prefix ps ->
-        interp_sact vvs a0 v <->
-          interp_sact vvs (replace_at_positions a0 ps rep) v.
-    Proof.
-      induction ps; simpl; intros; eauto. tauto.
-      rewrite <- IHps.
-      rewrite interp_sact_replace_at_position_iff; eauto. tauto.
-      eapply wt_sact_replace_at_position; eauto.
-      - inv H6.
-        intros.
-        rewrite no_prefix_subact_at_position_same. eauto. apply H9. auto.
-        apply H9; auto.
-      - inv H6; auto.
-    Qed.
-
-    Lemma wt_vvs_replace_subact_in_vars:
-      forall vvs positions v
-             (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
-             tt subact
-             (OLDTYPE: wt_sact  vvs subact tt)
-             (NEWTYPE: wt_sact  vvs v tt)
-             (SUBACT: forall ps p k t a,
-                 vvs ! k = Some (t, a) ->
-                 positions ! k = Some ps ->
-                 In p ps ->
-                 subact_at_position a p = Some subact
-             )
-             (NP: forall ps k, positions ! k = Some ps -> no_prefix ps)
-      ,
-        wt_vvs (Sigma:=Sigma) R (replace_subact_in_vars vvs positions v).
-    Proof.
+  Lemma interp_sact_replace_at_positions:
+    forall vvs,
+      wt_vvs (Sigma:=Sigma) R vvs ->
+      vvs_smaller_variables vvs ->
+      forall subact tn rep,
+        wt_sact vvs subact tn ->
+        wt_sact vvs rep tn ->
+        (forall ov : val, interp_sact vvs subact ov <-> interp_sact vvs rep ov) ->
+        forall ps a0 t v,
+          wt_sact vvs a0 t ->
+          (forall p : position, In p ps -> subact_at_position a0 p = Some subact) ->
+          no_prefix ps ->
+          interp_sact vvs a0 v <->
+            interp_sact vvs (replace_at_positions a0 ps rep) v.
+  Proof.
+    induction ps; simpl; intros; eauto. tauto.
+    rewrite <- IHps.
+    rewrite interp_sact_replace_at_position_iff; eauto. tauto.
+    eapply wt_sact_replace_at_position; eauto.
+    - inv H6.
       intros.
-      unfold wt_vvs. intros.
-      setoid_rewrite Maps.PTree.gmap in H. unfold option_map in H.
-      destr_in H. 2: inv H. destr_in H. inv H.
-      destr.
-      intros; eapply wt_sact_replace_at_positions; eauto.
-      eapply wt_sact_replace_at_positions_in_vars; eauto.
-      eapply wt_sact_replace_at_positions_in_vars; eauto.
-      eapply WTVVS; eauto.
-      eapply wt_sact_replace_at_positions_in_vars; eauto.
-      simpl.
-      eapply wt_sact_replace_at_positions_in_vars; eauto.
-      eapply WTVVS; eauto.
-    Qed.
+      rewrite no_prefix_subact_at_position_same. eauto. apply H9. auto.
+      apply H9; auto.
+    - inv H6; auto.
+  Qed.
 
-    Lemma var_in_sact_replace_at_position:
-      forall a p b v,
-        var_in_sact (replace_at_position a p b) v ->
-        var_in_sact a v \/ var_in_sact b v.
-    Proof.
-      induction a; simpl; intros; eauto.
-      - repeat destr_in H; eauto.
-      - repeat destr_in H; eauto.
-      - repeat destr_in H; eauto.
-        inv H.
-        edestruct IHa1; eauto. left; eapply var_in_if_cond; eauto.
-        left; eapply var_in_if_true; eauto.
-        left; eapply var_in_if_false; eauto.
-        inv H.
-        left; eapply var_in_if_cond; eauto.
-        edestruct IHa2; eauto. left; eapply var_in_if_true; eauto.
-        left; eapply var_in_if_false; eauto.
-        inv H.
-        left; eapply var_in_if_cond; eauto.
-        left; eapply var_in_if_true; eauto.
-        edestruct IHa3; eauto. left; eapply var_in_if_false; eauto.
-      - repeat destr_in H; eauto.
-        inv H.
-        edestruct IHa; eauto. left; eapply var_in_sact_unop; eauto.
-      - repeat destr_in H; eauto.
-        inv H.
-        edestruct IHa1; eauto. left; eapply var_in_sact_binop_1; eauto.
-        left; eapply var_in_sact_binop_2; eauto.
-        inv H.
-        left; eapply var_in_sact_binop_1; eauto.
-        edestruct IHa2; eauto. left; eapply var_in_sact_binop_2; eauto.
-      - repeat destr_in H; eauto.
-        inv H.
-        edestruct IHa; eauto. left; eapply var_in_sact_external; eauto.
-      - repeat destr_in H; eauto.
-    Qed.
+  Lemma wt_vvs_replace_subact_in_vars:
+    forall vvs positions v
+           (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
+           tt subact
+           (OLDTYPE: wt_sact  vvs subact tt)
+           (NEWTYPE: wt_sact  vvs v tt)
+           (SUBACT: forall ps p k t a,
+               vvs ! k = Some (t, a) ->
+               positions ! k = Some ps ->
+               In p ps ->
+               subact_at_position a p = Some subact
+           )
+           (NP: forall ps k, positions ! k = Some ps -> no_prefix ps)
+    ,
+      wt_vvs (Sigma:=Sigma) R (replace_subact_in_vars vvs positions v).
+  Proof.
+    intros.
+    unfold wt_vvs. intros.
+    setoid_rewrite Maps.PTree.gmap in H. unfold option_map in H.
+    destr_in H. 2: inv H. destr_in H. inv H.
+    destr.
+    intros; eapply wt_sact_replace_at_positions; eauto.
+    eapply wt_sact_replace_at_positions_in_vars; eauto.
+    eapply wt_sact_replace_at_positions_in_vars; eauto.
+    eapply WTVVS; eauto.
+    eapply wt_sact_replace_at_positions_in_vars; eauto.
+    simpl.
+    eapply wt_sact_replace_at_positions_in_vars; eauto.
+    eapply WTVVS; eauto.
+  Qed.
 
-    Lemma var_in_sact_replace_at_positions:
-      forall ps a b v,
-        var_in_sact (replace_at_positions a ps b) v ->
-        var_in_sact a v \/ var_in_sact b v.
-    Proof.
-      induction ps; simpl; intros; eauto.
-      eapply IHps in H. destruct H; auto.
-      edestruct var_in_sact_replace_at_position; eauto.
-    Qed.
+  Lemma var_in_sact_replace_at_position:
+    forall a p b v,
+      var_in_sact (replace_at_position a p b) v ->
+      var_in_sact a v \/ var_in_sact b v.
+  Proof.
+    induction a; simpl; intros; eauto.
+    - repeat destr_in H; eauto.
+    - repeat destr_in H; eauto.
+    - repeat destr_in H; eauto.
+      inv H.
+      edestruct IHa1; eauto. left; eapply var_in_if_cond; eauto.
+      left; eapply var_in_if_true; eauto.
+      left; eapply var_in_if_false; eauto.
+      inv H.
+      left; eapply var_in_if_cond; eauto.
+      edestruct IHa2; eauto. left; eapply var_in_if_true; eauto.
+      left; eapply var_in_if_false; eauto.
+      inv H.
+      left; eapply var_in_if_cond; eauto.
+      left; eapply var_in_if_true; eauto.
+      edestruct IHa3; eauto. left; eapply var_in_if_false; eauto.
+    - repeat destr_in H; eauto.
+      inv H.
+      edestruct IHa; eauto. left; eapply var_in_sact_unop; eauto.
+    - repeat destr_in H; eauto.
+      inv H.
+      edestruct IHa1; eauto. left; eapply var_in_sact_binop_1; eauto.
+      left; eapply var_in_sact_binop_2; eauto.
+      inv H.
+      left; eapply var_in_sact_binop_1; eauto.
+      edestruct IHa2; eauto. left; eapply var_in_sact_binop_2; eauto.
+    - repeat destr_in H; eauto.
+      inv H.
+      edestruct IHa; eauto. left; eapply var_in_sact_external; eauto.
+    - repeat destr_in H; eauto.
+  Qed.
 
-    Lemma vsv_replace_subact_in_vars:
-      forall vvs positions v
-             (VSV: vvs_smaller_variables vvs)
-             tt subact
-             (OLDTYPE: wt_sact  vvs subact tt)
-             (NEWTYPE: wt_sact  vvs v tt)
-             (SUBACT: forall ps p k t a,
-                 vvs ! k = Some (t, a) ->
-                 positions ! k = Some ps ->
-                 In p ps ->
-                 subact_at_position a p = Some subact
-             )
-             (SMALLER: forall var, var_in_sact v var -> var_in_sact subact var)
-      ,
-        vvs_smaller_variables (replace_subact_in_vars vvs positions v).
-    Proof.
-      intros.
-      red. intros.
-      setoid_rewrite Maps.PTree.gmap in H. unfold option_map in H.
-      destr_in H. 2: inv H. inv H. destr_in H2. inv H2.
-      edestruct var_in_sact_replace_at_positions. eauto. eapply VSV; eauto.
-      eapply SMALLER in H.
-      destr_in H0.
-      2:{
-        simpl in *. eauto.
-      }
-      destruct l. simpl in H0; eauto.
-      exploit SUBACT; eauto. left; reflexivity. intro EQ.
+  Lemma var_in_sact_replace_at_positions:
+    forall ps a b v,
+      var_in_sact (replace_at_positions a ps b) v ->
+      var_in_sact a v \/ var_in_sact b v.
+  Proof.
+    induction ps; simpl; intros; eauto.
+    eapply IHps in H. destruct H; auto.
+    edestruct var_in_sact_replace_at_position; eauto.
+  Qed.
 
-      Lemma subact_at_position_var_in_sact:
-        forall s p s' v,
-          subact_at_position s p = Some s' ->
-          var_in_sact s' v ->
-          var_in_sact s v.
-      Proof.
-        induction s; simpl; intros; eauto; repeat destr_in H; inv H; eauto.
-        eapply var_in_if_cond; eauto.
-        eapply var_in_if_true; eauto.
-        eapply var_in_if_false; eauto.
-        eapply var_in_sact_unop; eauto.
-        eapply var_in_sact_binop_1; eauto.
-        eapply var_in_sact_binop_2; eauto.
-        eapply var_in_sact_external; eauto.
-      Qed.
-      eapply subact_at_position_var_in_sact in EQ. eapply VSV in EQ. 2: eauto. apply EQ. auto.
-    Qed.
+  Lemma subact_at_position_var_in_sact:
+    forall s p s' v,
+      subact_at_position s p = Some s' ->
+      var_in_sact s' v ->
+      var_in_sact s v.
+  Proof.
+    induction s; simpl; intros; eauto; repeat destr_in H; inv H; eauto.
+    eapply var_in_if_cond; eauto.
+    eapply var_in_if_true; eauto.
+    eapply var_in_if_false; eauto.
+    eapply var_in_sact_unop; eauto.
+    eapply var_in_sact_binop_1; eauto.
+    eapply var_in_sact_binop_2; eauto.
+    eapply var_in_sact_external; eauto.
+  Qed.
 
-    Lemma interp_sact_var_iff:
-      forall vvs var vv t s,
-        vvs ! var = Some (t,s) ->
-        interp_sact vvs (SVar var) vv <-> interp_sact vvs s vv.
-    Proof.
-      split.
-      intro A; inv A. rewrite H in H1; inv H1. apply H2.
-      intros; econstructor; eauto.
-    Qed.
+  Lemma vsv_replace_subact_in_vars:
+    forall vvs positions v
+           (VSV: vvs_smaller_variables vvs)
+           tt subact
+           (OLDTYPE: wt_sact  vvs subact tt)
+           (NEWTYPE: wt_sact  vvs v tt)
+           (SUBACT: forall ps p k t a,
+               vvs ! k = Some (t, a) ->
+               positions ! k = Some ps ->
+               In p ps ->
+               subact_at_position a p = Some subact
+           )
+           (SMALLER: forall var, var_in_sact v var -> var_in_sact subact var)
+    ,
+      vvs_smaller_variables (replace_subact_in_vars vvs positions v).
+  Proof.
+    intros.
+    red. intros.
+    setoid_rewrite Maps.PTree.gmap in H. unfold option_map in H.
+    destr_in H. 2: inv H. inv H. destr_in H2. inv H2.
+    edestruct var_in_sact_replace_at_positions. eauto. eapply VSV; eauto.
+    eapply SMALLER in H.
+    destr_in H0.
+    2:{
+      simpl in *. eauto.
+    }
+    destruct l. simpl in H0; eauto.
+    exploit SUBACT; eauto. left; reflexivity. intro EQ.
+    eapply subact_at_position_var_in_sact in EQ. eapply VSV in EQ. 2: eauto. apply EQ. auto.
+  Qed.
+
+  Lemma interp_sact_var_iff:
+    forall vvs var vv t s,
+      vvs ! var = Some (t,s) ->
+      interp_sact vvs (SVar var) vv <-> interp_sact vvs s vv.
+  Proof.
+    split.
+    intro A; inv A. rewrite H in H1; inv H1. apply H2.
+    intros; econstructor; eauto.
+  Qed.
+
+  Lemma sap_reach:
+    forall (vvs: PTree.t (type * sact)) a1 a2,
+    forall v, reachable_var vvs a1 v -> 
+              (forall v, var_in_sact a1 v -> var_in_sact a2 v) ->
+              reachable_var vvs a2 v.
+  Proof.
+    induction 1; simpl; intros; eauto.
+    - eapply var_in_sact_reachable; eauto. apply H. constructor.
+    - trim (H1 x). constructor. eapply reachable_vars_in_sact2. 2: eauto. auto. auto.
+    - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_if_cond; eauto.
+    - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_if_true; eauto.
+    - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_if_false; eauto.
+    - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_binop_1; eauto.
+    - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_binop_2; eauto.
+    - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_unop; eauto.
+    - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_external; eauto.
+  Qed.
 
   Lemma interp_sact_replace_subact:
     forall vvs positions
@@ -571,17 +589,17 @@ Section ReplaceSubact.
     apply wf_order_sact. clear s.
     intros x IH BELOW t WTs vv.
     assert (
-      IH2:
+        IH2:
         forall a0,
-        size_sact a0 < size_sact (projT2 x)
-        -> (forall v0, reachable_var vvs a0 v0 -> (v0 < projT1 x)%positive)
-        ->
-          forall t
-                 (WT: wt_sact vvs a0 t),
+          size_sact a0 < size_sact (projT2 x)
+          -> (forall v0, reachable_var vvs a0 v0 -> (v0 < projT1 x)%positive)
+          ->
+            forall t
+                   (WT: wt_sact vvs a0 t),
             forall vv,
-      interp_sact  vvs a0 vv <->
-        interp_sact (replace_subact_in_vars vvs positions rep) a0 vv
-    ). {
+              interp_sact  vvs a0 vv <->
+                interp_sact (replace_subact_in_vars vvs positions rep) a0 vv
+      ). {
       intros. eapply (IH (existT _ (projT1 x) a0)).
       red. destruct x. apply Relation_Operators.right_lex. simpl in H.  auto.
       simpl. auto. simpl. auto. simpl. eauto.
@@ -628,24 +646,6 @@ Section ReplaceSubact.
 
       intros.
 
-
-      Lemma sap_reach:
-        forall (vvs: PTree.t (type * sact)) a1 a2,
-          forall v, reachable_var vvs a1 v -> 
-          (forall v, var_in_sact a1 v -> var_in_sact a2 v) ->
-          reachable_var vvs a2 v.
-      Proof.
-        induction 1; simpl; intros; eauto.
-        - eapply var_in_sact_reachable; eauto. apply H. constructor.
-        - trim (H1 x). constructor. eapply reachable_vars_in_sact2. 2: eauto. auto. auto.
-        - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_if_cond; eauto.
-        - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_if_true; eauto.
-        - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_if_false; eauto.
-        - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_binop_1; eauto.
-        - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_binop_2; eauto.
-        - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_unop; eauto.
-        - eapply IHreachable_var.  intros; eapply H0.  eapply var_in_sact_external; eauto.
-      Qed.
 
       eapply sap_reach in H; eauto.
       eapply sap_reach in H; eauto.
@@ -714,120 +714,67 @@ Section ReplaceSubact.
     intros. eapply wt_sact_valid_vars; eauto. apply vvs_range_max_var.
   Qed.
 
-  Lemma interp_sact_replace_subact':
-    forall vvs
-           (WTvvs: wt_vvs R  vvs)
+
+
+  Record subact_ok vvs positions subact rep :=
+    {
+      so_np: forall k ps, positions ! k = Some ps -> no_prefix ps;
+      so_posok: forall k t s ps,
+        positions ! k = Some ps ->
+        vvs ! k = Some (t, s) ->
+        forall p (IN: In p ps),
+          subact_at_position s p = Some subact;
+      so_tn: type;
+      so_wt_subact: wt_sact vvs subact so_tn;
+      so_wt_rep: wt_sact vvs rep so_tn;
+      so_interp: forall ov,
+        interp_sact vvs subact ov <-> interp_sact vvs rep ov;
+      so_smaller: forall var, var_in_sact rep var -> var_in_sact subact var;
+    }.
+
+  Lemma subact_ok_interp_sact_replace_subact:
+    forall vvs positions subact rep
+           (SO: subact_ok vvs positions subact rep)
+           (WTvvs: wt_vvs (Sigma:=Sigma) R  vvs)
            (VSV: vvs_smaller_variables vvs)
-           idx v
-           (SAME1: forall ov,
-               interp_sact (sigma:=sigma) REnv r vvs (SVar idx) ov <->
-                 interp_sact (sigma:=sigma) REnv r vvs v ov
-           )
-           (SMALLER: forall var, reachable_var vvs v var -> (var < idx)%positive)
-           (tt : type)
-           (OLDTYPE : wt_sact R  vvs (SVar idx) tt)
-           (NEWTYPE : wt_sact R  vvs v tt)
-           a t
-           (WT: wt_sact  R vvs a t),
+           a t (WT: wt_sact vvs a t),
     forall vv,
-      interp_sact (sigma:=sigma) REnv r vvs a vv <->
-        interp_sact (sigma:=sigma) REnv r (replace_subact_in_vars vvs idx v) a vv.
+      interp_sact vvs a vv <->
+        interp_sact (replace_subact_in_vars vvs positions rep) a vv.
   Proof.
-    intros.
-    eapply interp_sact_replace_subact; eauto.
-    eapply reachable_var_aux_below. eauto.
-    eapply wt_sact_valid_vars; eauto. apply vvs_range_max_var.
+    intros. inv SO.
+    intros; eapply interp_sact_replace_subact_iff; eauto.
   Qed.
 
 
   Lemma wf_sf_replace_subact':
-    forall reg val sf
-           tt (OLDTYPE: wt_sact  R (vars sf) (SVar reg) tt)
-           (NEWTYPE: wt_sact  R (vars sf) val tt)
-           (SMALLER:   forall var : positive, reachable_var (vars sf) val var -> (var < reg)%positive),
-      wf_sf sf -> wf_sf (replace_subact sf reg val).
+    forall sf positions subact rep,
+      subact_ok (vars sf) positions subact rep ->
+      wf_sf sf -> wf_sf (replace_subact sf positions rep).
   Proof.
-    intros reg val sf tt OLDTYPE NEWTYPE SMALLER WF.
-    destruct WF.
+    intros sf positions subact rep SO WF.
+    destruct WF. destruct SO.
     split.
-    - simpl. eapply wt_vvs_replace_subact_in_vars; eauto.
-    - eapply vsv_replace_subact_in_vars; eauto.
-    - simpl. intros. eapply wt_sact_replace_subact_in_vars; eauto.
-  Qed.
-
-  Lemma interp_sact_change_vvs:
-    forall vvs1 (VSV1: vvs_smaller_variables vvs1)
-           vvs2 (VSV2: vvs_smaller_variables vvs2) a v
-           (IS: interp_sact (sigma:=sigma) REnv r vvs1 a v)
-           t (WT1: wt_sact  R vvs1 a t)
-           (WT2: wt_sact  R vvs2 a t)
-           (SMALLER: forall var, reachable_var vvs1 a var -> vvs1 ! var = vvs2 ! var),
-      interp_sact (sigma:=sigma) REnv r vvs2 a v.
-  Proof.
-    intros.
-    eapply interp_eval. 6: apply IS. all: eauto.
-    exists O; intros. eapply eval_sact_reachable. intros; eapply SMALLER. auto.
-  Qed.
-
-  Lemma replace_subact_interp_rev':
-    forall sf idx v
-           (WFSF: wf_sf sf)
-           (INTERP:
-             forall oldv,
-               interp_sact (sigma:=sigma) REnv r (vars sf) (SVar idx) oldv ->
-               interp_sact (sigma:=sigma) REnv r (vars sf) v oldv
-           )
-           tt (OLDTYPE: wt_sact  R (vars sf) (SVar idx) tt),
-        forall oldv,
-          interp_sact (sigma:=sigma) REnv r (vars sf) v oldv ->
-          interp_sact (sigma:=sigma) REnv r (vars sf) (SVar idx) oldv.
-  Proof.
-    intros.
-    edestruct @wt_sact_interp' as (vv & IS & WTV). 6: apply OLDTYPE. all: eauto. apply WFSF. apply WFSF.
-    eapply wt_sact_valid_vars; eauto. apply vvs_range_max_var.
-    eapply INTERP in IS as IS2.
-    exploit @interp_sact_determ. apply H. apply IS2. intro; subst. congruence.
-  Qed.
-
-  Lemma replace_subact_interp_rev:
-    forall sf idx v
-           (WFSF: wf_sf sf)
-           (INTERP:
-             forall oldv,
-               interp_sact (sigma:=sigma) REnv r (vars sf) (SVar idx) oldv ->
-               interp_sact (sigma:=sigma) REnv r (vars sf) v oldv
-           )
-           tt (OLDTYPE: wt_sact  R (vars sf) (SVar idx) tt),
-        forall oldv,
-          interp_sact (sigma:=sigma) REnv r (vars sf) v oldv <->
-          interp_sact (sigma:=sigma) REnv r (vars sf) (SVar idx) oldv.
-  Proof.
-    intros.
-    split; intros; eauto.
-    eapply replace_subact_interp_rev'; eauto.
+    - simpl. eapply wt_vvs_replace_subact_in_vars; auto. apply so_wt_subact0. all: eauto.
+    - eapply vsv_replace_subact_in_vars; auto. apply so_wt_subact0. all: eauto.
+    - simpl. intros. eapply wt_sact_replace_at_positions_in_vars; eauto.
+      eapply wf_sf_final; eauto.
   Qed.
 
   Lemma sf_eq_replace_subact:
-    forall sf idx v
+    forall sf
            (WFSF: wf_sf sf)
-           (INTERP:
-             forall oldv,
-               interp_sact (sigma:=sigma) REnv r (vars sf) (SVar idx) oldv ->
-               interp_sact (sigma:=sigma) REnv r (vars sf) v oldv
-           )
-           (SMALLER: forall var, reachable_var (vars sf) v var -> (var < idx)%positive)
-           tt (OLDTYPE: wt_sact  R (vars sf) (SVar idx) tt)
-           (NEWTYPE: wt_sact  R (vars sf) v tt),
-      sf_eq R Sigma r sigma sf (replace_subact sf idx v).
+           positions subact rep
+           (SO: subact_ok (vars sf) positions subact rep),
+      sf_eq R Sigma r sigma sf (replace_subact sf positions rep).
   Proof.
     intros.
     split.
     - reflexivity.
-    - intros. eapply interp_sact_replace_subact'; eauto. apply WFSF. apply WFSF.
-      intros; symmetry; eapply replace_subact_interp_rev; eauto.
+    - intros. eapply subact_ok_interp_sact_replace_subact; eauto. apply WFSF.  apply WFSF.
     - simpl. intros.
-      split.
-      intros; eapply wt_sact_replace_subact_in_vars; eauto.
+      split. intro A; inv A. econstructor.
+      setoid_rewrite PTree.gmap. unfold option_map. setoid_rewrite H1. eauto.
       intro A; inv A.
       setoid_rewrite PTree.gmap in H1. unfold option_map in H1.
       destr_in H1; inv H1. destr_in H2. inv H2. econstructor; eauto.
@@ -835,18 +782,12 @@ Section ReplaceSubact.
 
   Lemma replace_subact_interp_cycle_ok':
     forall
-      {reg} {idx} {sf} {v}
+      sf
       (WFSF: wf_sf sf)
-      (INTERP:
-        forall oldv,
-          interp_sact (sigma:=sigma) REnv r (vars sf) (SVar idx) oldv ->
-          interp_sact (sigma:=sigma) REnv r (vars sf) v oldv
-      )
-      (SMALLER: forall var, reachable_var (vars sf) v var -> (var < idx)%positive)
-      tt (OLDTYPE: wt_sact  R (vars sf) (SVar idx) tt)
-      (NEWTYPE: wt_sact  R (vars sf) v tt),
-    getenv REnv (interp_cycle r sigma sf) reg
-    = getenv REnv (interp_cycle r sigma (replace_subact sf idx v)) reg.
+      positions subact rep
+      (SO: subact_ok (vars sf) positions subact rep) reg,
+      getenv REnv (interp_cycle r sigma sf) reg
+      = getenv REnv (interp_cycle r sigma (replace_subact sf positions rep)) reg.
   Proof.
     intros.
     eapply sf_eq_interp_cycle_ok; eauto.
@@ -854,38 +795,17 @@ Section ReplaceSubact.
     - eapply sf_eq_replace_subact; eauto.
   Qed.
 
-  Record var_simpl vvs idx v :=
-    {
-      vs_interp:
-      forall oldv,
-        interp_sact (sigma:=sigma) REnv r vvs (SVar idx) oldv ->
-        interp_sact (sigma:=sigma) REnv r vvs v oldv;
-      vs_smaller:
-      forall var, reachable_var vvs v var -> ((var < idx)%positive);
-      vs_type: type;
-      vs_oldtype: wt_sact  R vvs (SVar idx) vs_type;
-      vs_newtype: wt_sact  R vvs v vs_type
-    }.
-
-  Lemma wf_sf_replace_subact:
-    forall reg val sf
-           (VS: var_simpl (vars sf) reg val),
-      wf_sf sf -> wf_sf (replace_subact sf reg val).
+  Lemma subact_ok_set:
+    forall vvs positions subact rep k ps,
+    subact_ok vvs positions subact rep ->
+    no_prefix ps ->
+    (forall t s, vvs ! k = Some (t, s) -> forall p, In p ps -> subact_at_position s p = Some subact) ->
+    subact_ok vvs (PTree.set k ps positions) subact rep.
   Proof.
-    intros reg val sf VS WFSF; inv VS; eapply wf_sf_replace_subact'; eauto.
+    intros vvs positions subact rep k ps SO NP SAP; inv SO; econstructor; eauto.
+    - intros. rewrite PTree.gsspec in H. destr_in H; eauto. inv H. auto.
+    - intros. rewrite PTree.gsspec in H. destr_in H; eauto. inv H. eauto.
   Qed.
 
-
-  Lemma replace_subact_interp_cycle_ok:
-    forall
-      {reg} {idx} {sf} {v}
-      (WFSF: wf_sf sf)
-      (VS: var_simpl (vars sf) idx v),
-    getenv REnv (interp_cycle r sigma sf) reg
-    = getenv REnv (interp_cycle r sigma (replace_subact sf idx v)) reg.
-  Proof.
-    intros. destruct VS.
-    eapply replace_subact_interp_cycle_ok'; eauto.
-  Qed.
 
 End ReplaceSubact.
