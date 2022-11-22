@@ -125,6 +125,17 @@ Definition sigma1 (fn: PrimUntyped.ufn1) : val -> option val :=
         (USlice (element_sz sig * (array_len sig - S idx)) (element_sz sig)) v
   end.
 
+Lemma take_drop_impl_take_drop':
+  forall {A} (l: list A) n (l1 l2: list A),
+  take_drop n l = Some (l1, l2) -> take_drop' n l = (l1, l2).
+Proof.
+  induction l; intros.
+  - destruct n; inv H; auto.
+  - destruct n; inv H; auto.
+    destruct (take_drop n l) eqn:?; inv H1. destruct p. inv H0.
+    apply take_drop'_cons. auto.
+Qed.
+
 Lemma usigma1_correct:
   forall ufn fn,
   PrimTypeInference.tc1 ufn (arg1Sig (PrimSignatures.Sigma1 fn)) = Success fn
@@ -185,7 +196,8 @@ Proof.
       * induction times; simpl; auto.
         rewrite vect_to_list_app. f_equal. eauto.
     + destruct (take_drop' offset (vect_to_list arg)) as (l1 & l2) eqn:Heq1.
-      destruct (take_drop' width l2) as (l3 & l4) eqn:Heq2. simpl.
+      destruct (take_drop' width l2) as (l3 & l4) eqn:Heq2.
+      inversion Heq1. inversion Heq2. rewrite H2. rewrite H3.
       f_equal. f_equal.
       unfold Bits.slice.
       rewrite vect_extend_end_firstn.
@@ -213,7 +225,7 @@ Proof.
 
       simpl. simpl in Heqo.
       destr_in Heqo. inv Heqo. simpl in *. rewrite Heqs2. auto.
-      destr.  subst. congruence.
+      destr. subst. congruence.
       destr_in Heqo; inv Heqo.
       erewrite IHstruct_fields; eauto. reflexivity.
     + destr_in H; inv H.
@@ -285,10 +297,8 @@ Definition ubits2_sigma (ub: ubits2) (v1 v2: list bool) : list bool :=
     fst (take_drop' (List.length v1) (h ++ v2 ++ t))
   | UIndexedSlice w => (* A slice of v1 from the value of v2 on *)
     let ofs := Bits.to_nat (vect_of_list v2) in (* Value of v2 *)
-    (* take_drop splits a list in two from an index on. *)
-    (* Why use take_drop' in here if they are only used as skipn/lastn? *)
-    let '(_, bs) := take_drop' ofs v1 in (* Skip the first bits of v1 *)
-    let '(bs, _) := take_drop' w bs in (* Keep the first w bits of the result *)
+    let bs := skipn ofs v1 in (* Skip the first bits of v1 *)
+    let bs := firstn w bs in (* Keep the first w bits of the result *)
     (* Append 0s to preserve the length *)
     (bs ++ List.repeat false (w - Nat.min w (List.length v1 - ofs)))
   | UPlus =>

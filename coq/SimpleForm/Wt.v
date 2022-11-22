@@ -296,12 +296,6 @@ Section WT.
     rewrite getenv_map2. rewrite in_app_iff. intros [?|?]; eauto.
   Qed.
 
-  (* Instance reg_eq : EqDec reg_t. *)
-  (* Proof. *)
-  (*   eapply EqDec_FiniteType. Unshelve. *)
-  (*   apply finite_keys. auto. *)
-  (* Qed. *)
-
   Instance eq_dec_env {A: Type} `{Env A} : EqDec A.
   Proof.
     destruct Env0. apply EqDec_FiniteType.
@@ -319,7 +313,6 @@ Section WT.
     rewrite get_put_eq. simpl; intros; eauto. destruct H1; subst; simpl in *. eauto. eauto.
     rewrite get_put_neq. eauto. auto.
   Qed.
-
 
   Fixpoint typsz (t: type) : nat :=
     match t with
@@ -518,7 +511,6 @@ Section WT.
       rewrite Forall_forall; intros x IN.
       apply repeat_spec in IN. subst. auto.
     - inv WTv. simpl in *.
-      repeat destr_in SIG.
       unfold opt_bind in SIG; repeat destr_in SIG; inv SIG.
       constructor.
       rewrite app_length.
@@ -560,11 +552,17 @@ Section WT.
     - inv WTv. simpl in *.
       unfold opt_bind in SIG.
       repeat destr_in SIG; inv SIG.
+      destruct (
+        take_drop' (element_sz sg * (array_len sg - S idx)) bs
+      ) eqn:Heqp.
+      destruct (take_drop' (element_sz sg) l0) eqn:Heqp0.
+      inversion Heqp. inversion Heqp0.
+      rewrite H3, H4.
       eapply wt_val_bits; eauto.
       simpl.
+      inv Heqp.
       repeat rewrite ?firstn_length, ?skipn_length, ?app_length, ?repeat_length. lia.
   Qed.
-
 
   Lemma bitwise_length:
     forall f a b, List.length a = List.length b
@@ -661,7 +659,10 @@ Section WT.
       unfold opt_bind in H0. destr_in H0; inv H0.
       destr_in H2; inv H2. inv H1; constructor; eauto.
     - inv WTv1. inv WTv2.
-      unfold opt_bind in SIG. repeat destr_in SIG; inv SIG. apply wt_val_bits; auto.
+      unfold opt_bind in SIG. repeat destr_in SIG; inv SIG.
+      destruct (take_drop' n bs) eqn:Heqp1.
+      destruct (take_drop' (n + n0) bs) eqn:Heqp2.
+      apply wt_val_bits; auto.
       unfold PrimTypeInference.find_field in H.
       unfold opt_result in H. destr_in H; inv H.
       rewrite <- H1.
@@ -670,8 +671,8 @@ Section WT.
       cut (n0 = List.length bs0). lia.
       rewrite H2. clear - Heqo Heqo0.
       revert idx Heqo Heqo0.
-      unfold field_sz, field_type. generalize (struct_fields sg). induction l; simpl; intros; eauto.
-      easy.
+      unfold field_sz, field_type. generalize (struct_fields sg).
+      induction l; simpl; intros; eauto. easy.
       repeat destr_in Heqo; inv Heqo; simpl in *;
         rewrite Heqs0 in Heqo0; inv Heqo0. reflexivity.
       destr_in H1; inv H1; eauto.
@@ -768,7 +769,6 @@ Section WT.
     induction 1; simpl; intros; eauto.
     f_equal. eauto.
   Qed.
-
 
   Lemma forall2_map_l:
     forall {A B C: Type} (f: A -> B) (P: B -> C -> Prop) l1 (l2: list C),
@@ -872,7 +872,6 @@ Section WT.
     induction l1; simpl; intros; eauto. inv H. inv H0. constructor; eauto.
   Qed.
 
-
   Lemma fold_subst_none:
     forall (vals: list val),
       fold_left
@@ -927,7 +926,6 @@ Section WT.
     constructor; eauto.
     eapply Forall_impl; eauto. simpl. intros. decompose [ex and] H1; eauto.
   Qed.
-
 
   Fixpoint size_daction
     {pos_t var_t fn_name_t reg_t ext_fn_t: Type}

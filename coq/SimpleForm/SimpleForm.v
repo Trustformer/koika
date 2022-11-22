@@ -28,7 +28,7 @@ Import RecordSetNotations.
    The result of the interpretation of a model before or after its conversion
    to the form defined hereafter should be equal (in terms of the effects of a
    cycle on the final state of the registers and of the emitted extcalls,
-   although the latter are not really considered in Koîka's pure semantics). *)
+   although the latter are not really considered in Kôika's pure semantics). *)
 Open Scope positive.
 Section SimpleForm.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -982,8 +982,6 @@ Section SimpleForm.
        next_ids *)
     : option (sact) * list (string * positive) * r2vtype
       * (PTree.t (type * sact)) * sact * rule_information_raw * positive * type
-    (* TODO remove redundancies with rule_information_raw (failure_cond,
-         var_values) *)
     :=
     match ua with
     | DBind var val body =>
