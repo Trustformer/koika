@@ -764,4 +764,466 @@ Section ReplaceSubact.
     - intros. rewrite PTree.gsspec in H. destr_in H; eauto. inv H. eauto.
   Qed.
 
+Lemma subact_at_pos_refl: forall (x: sact),
+    subact_at_position x [] = Some x.
+Proof.
+  induction x; simpl; intros; reflexivity.
+Qed.
+
+Lemma subact_at_pos_rev_refl: forall (x: sact),
+    subact_at_position x (List.rev []) = Some x.
+Proof.
+  intros; simpl; eapply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_trans:
+  forall (s: sact) p1 s1 p2 s2,
+    subact_at_position s p1 = Some s1 ->
+    subact_at_position s1 p2 = Some s2 ->
+    subact_at_position s (p1 ++ p2) = Some s2.
+Proof.
+  induction s; simpl; intros;
+    repeat destr_in H; inv H; simpl in *; eauto.
+Qed.
+
+Lemma subact_at_pos_unop1:
+  forall s pos ufn a,
+    subact_at_position s (List.rev pos) = Some (SUnop ufn a) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_extcall1:
+  forall s pos ufn a,
+    subact_at_position s (List.rev pos) = Some (SExternalCall ufn a) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_binop1:
+  forall s pos ufn a1 a2,
+    subact_at_position s (List.rev pos) = Some (SBinop ufn a1 a2) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a1.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_binop2:
+  forall s pos ufn a1 a2,
+    subact_at_position s (List.rev pos) = Some (SBinop ufn a1 a2) ->
+    subact_at_position s (List.rev (branch2 :: pos)) = Some a2.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+
+Lemma subact_at_pos_if1:
+  forall s pos a1 a2 a3,
+    subact_at_position s (List.rev pos) = Some (SIf a1 a2 a3) ->
+    subact_at_position s (List.rev (branch1 :: pos)) = Some a1.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_if2:
+  forall s pos a1 a2 a3,
+    subact_at_position s (List.rev pos) = Some (SIf a1 a2 a3) ->
+    subact_at_position s (List.rev (branch2 :: pos)) = Some a2.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma subact_at_pos_if3:
+  forall s pos a1 a2 a3,
+    subact_at_position s (List.rev pos) = Some (SIf a1 a2 a3) ->
+    subact_at_position s (List.rev (branch3 :: pos)) = Some a3.
+Proof.
+  intros. simpl. erewrite subact_at_pos_trans. 2: eauto. eauto. simpl.
+  apply subact_at_pos_refl.
+Qed.
+
+Lemma no_prefix_one a:
+  no_prefix [a].
+Proof.
+  repeat constructor. easy. easy.
+Qed.
+
+Definition search_subterm_propP needle (haystack: sact) pos ps :=
+  no_prefix (List.map (fun l => List.rev l) ps)
+  /\ Forall (fun v => subact_at_position haystack (rev v) = Some needle) ps
+  /\ Forall (fun p => exists x, p = x ++ pos) ps.
+
+Definition search_subterm_prop needle (haystack: sact) pos :=
+  sigT (search_subterm_propP needle haystack pos).
+
+Definition ssprop_one (pos: position) needle (haystack: sact)
+  (Ppos: subact_at_position haystack (rev pos) = Some needle ) : search_subterm_prop needle haystack pos.
+Proof.
+  exists [pos]. split. apply no_prefix_one. split. constructor; auto.
+  constructor; auto. exists nil; reflexivity.
+Defined.
+
+Definition ssprop_nil needle (haystack: sact) pos : search_subterm_prop needle haystack pos.
+Proof.
+  exists []. split. apply no_prefix_nil. constructor; auto.
+Defined.
+
+Lemma prefix_app:
+  forall {A:Type} (l: list A) l1 l2,
+    prefix (l ++ l1) (l ++ l2) -> prefix l1 l2.
+Proof.
+  induction l; simpl; intros; eauto.
+  inv H. eauto.
+Qed.
+
+Lemma no_prefix_app:
+  forall l1,
+    no_prefix l1 ->
+    forall l2,
+      no_prefix l2 ->
+      forall (P1 P2: position -> Prop),
+        (forall x: position, P1 x -> P2 x -> False) ->
+        (forall x y, P1 x -> P2 y -> ~ prefix x y /\ ~ prefix y x) ->
+      Forall P1 l1 ->
+      Forall P2 l2 ->
+      no_prefix (l1 ++ l2).
+Proof.
+  induction 1; simpl; intros l2 NP2 P1 P2 P12 PNP Fl1 Fl2; eauto.
+  inv Fl1. constructor; eauto.
+  intros. apply in_app_iff in H1. destruct H1.
+  edestruct H. apply H1. auto.
+  eapply PNP; eauto.
+  rewrite Forall_forall in Fl2; apply Fl2 in H1. auto.
+Qed.
+
+Lemma no_prefix_app2:
+  forall pos l1,
+    no_prefix l1 ->
+    forall l2,
+      no_prefix l2 ->
+      Forall (fun p => exists x, p = rev pos ++ branch1 :: x) l1 ->
+      Forall (fun p => exists x, p = rev pos ++ branch2 :: x) l2 ->
+      no_prefix (l1 ++ l2).
+Proof.
+  intros. eapply no_prefix_app. auto. auto. 3-4: eauto.
+  all: simpl.
+  intros x (x0 & EQ) (x1 & EQ'). subst. apply app_inv_head in EQ'. congruence.
+  intros x y (x0 & EQ) (x1 & EQ'). subst.
+  split; intro A.
+  apply prefix_app in A. inv A.
+  apply prefix_app in A. inv A.
+Qed.
+
+Lemma no_prefix_app3:
+  forall pos l1,
+    no_prefix l1 ->
+    forall l2,
+      no_prefix l2 ->
+    forall l3,
+      no_prefix l3 ->
+      Forall (fun p => exists x, p = rev pos ++ branch1 :: x) l1 ->
+      Forall (fun p => exists x, p = rev pos ++ branch2 :: x) l2 ->
+      Forall (fun p => exists x, p = rev pos ++ branch3 :: x) l3 ->
+      no_prefix (l1 ++ l2 ++ l3).
+Proof.
+  intros. eapply no_prefix_app. auto.
+  eapply no_prefix_app. auto. auto. 3-4,7: eauto.
+  all: simpl.
+  intros x (x0 & EQ) (x1 & EQ'). subst. apply app_inv_head in EQ'. congruence.
+  intros x y (x0 & EQ) (x1 & EQ'). subst.
+  split; intro A.
+  apply prefix_app in A. inv A.
+  apply prefix_app in A. inv A.
+  instantiate (1:= fun x => exists x0, x = rev pos ++ branch2 :: x0 \/ x = rev pos ++ branch3 :: x0).
+  all: simpl.
+  intros x (x0 & EQ) (x1 & EQ'). subst.
+  destruct EQ' as [EQ'|EQ']; apply app_inv_head in EQ'; congruence.
+  intros x y (x0 & EQ) (x1 & EQ'). subst.
+  destruct EQ' as [EQ'|EQ']; split; intro A; subst;
+    apply prefix_app in A; inv A.
+  apply Forall_app; split; eapply Forall_impl. 2: apply H3. 3: apply H4.
+  intros a (x & EQ); eauto.
+  intros a (x & EQ); eauto.
+Qed.
+
+Definition sprop_unop needle pos a
+  (p1: search_subterm_prop needle a (branch1 :: pos)):
+  search_subterm_prop needle a pos.
+Proof.
+  destruct p1 as (ps1 & d1 & d2 & d3).
+  exists ps1. split;[|split]; auto.
+  eapply Forall_impl. 2: apply d3. simpl. intros aa (x & EQ). subst. exists (x ++ branch1 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
+Defined.
+
+Definition sprop_binop needle pos a
+  (p1: search_subterm_prop needle a (branch1 :: pos))
+  (p2: search_subterm_prop needle a (branch2 :: pos)):
+  search_subterm_prop needle a pos.
+Proof.
+  destruct p1 as (ps1 & d1 & d2 & d3).
+  destruct p2 as (ps2 & e1 & e2 & e3).
+  exists (ps1 ++ ps2). split;[|split].
+  -  rewrite List.map_app. eapply no_prefix_app2. eauto. eauto.
+     rewrite Forall_forall in d3 |- *. intros x IN.
+     rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst.
+     destruct (d3 _ IN) as (x1 & EQ). subst. rewrite rev_app_distr. simpl. rewrite <- app_assoc. simpl. eauto.
+     rewrite Forall_forall in e3 |- *. intros x IN.
+     rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst.
+     destruct (e3 _ IN) as (x1 & EQ). subst. rewrite rev_app_distr. simpl. rewrite <- app_assoc. simpl. eauto.
+  - apply Forall_app. split; eauto.
+  - apply Forall_app. split; eauto.
+    + eapply Forall_impl. 2: apply d3. simpl. intros aa (x & EQ). subst. exists (x ++ branch1 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
+    + eapply Forall_impl. 2: apply e3. simpl. intros aa (x & EQ). subst. exists (x ++ branch2 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
+Defined.
+
+Definition sprop_if needle pos a
+  (p1: search_subterm_prop needle a (branch1 :: pos))
+  (p2: search_subterm_prop needle a (branch2 :: pos))
+  (p3: search_subterm_prop needle a (branch3 :: pos)):
+  search_subterm_prop needle a pos.
+Proof.
+  destruct p1 as (ps1 & d1 & d2 & d3).
+  destruct p2 as (ps2 & e1 & e2 & e3).
+  destruct p3 as (ps3 & f1 & f2 & f3).
+  exists (ps1 ++ ps2 ++ ps3). split;[|split].
+  - rewrite ! List.map_app.
+    eapply no_prefix_app3; eauto.
+    + rewrite Forall_forall in d3 |- *. intros x IN.
+      rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst.
+      destruct (d3 _ IN) as (x1 & EQ). subst. rewrite rev_app_distr. simpl. rewrite <- app_assoc. simpl. eauto.
+    + rewrite Forall_forall in e3 |- *. intros x IN.
+      rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst.
+      destruct (e3 _ IN) as (x1 & EQ). subst. rewrite rev_app_distr. simpl. rewrite <- app_assoc. simpl. eauto.
+    + rewrite Forall_forall in f3 |- *. intros x IN.
+      rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst.
+      destruct (f3 _ IN) as (x1 & EQ). subst. rewrite rev_app_distr. simpl. rewrite <- app_assoc. simpl. eauto.
+  - apply Forall_app; split; auto.
+    apply Forall_app; split; auto.
+  - apply Forall_app; split; auto.
+    2: apply Forall_app; split; auto.
+    + eapply Forall_impl. 2: apply d3. simpl. intros aa (x & EQ). subst. exists (x ++ branch1 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
+    + eapply Forall_impl. 2: apply e3. simpl. intros aa (x & EQ). subst. exists (x ++ branch2 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
+    + eapply Forall_impl. 2: apply f3. simpl. intros aa (x & EQ). subst. exists (x ++ branch3 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
+Defined.
+
+
+Definition ptree_forall {A: Type} (P: positive -> A -> Prop) (t: Maps.PTree.t A) :=
+  forall k v, Maps.PTree.get k t = Some v -> P k v.
+
+Lemma ptree_set_prop {A: Type} (t: Maps.PTree.t A) P
+  (FA: ptree_forall P t)
+  k v
+  (PKV: P k v):
+  ptree_forall P (Maps.PTree.set k v t).
+Proof.
+  unfold ptree_forall in *.
+  intros.
+  rewrite Maps.PTree.gsspec in H. destr_in H; eauto. inv H. auto.
+Qed.
+
+Lemma ptree_forall_empty {A: Type} P:
+  ptree_forall P (Maps.PTree.empty A).
+Proof.
+  unfold ptree_forall. intros. rewrite Maps.PTree.gempty in H. congruence.
+Qed.
+
+Definition ssearch_in_elemsT (needle: sact) (l: list (positive * (type * sact))) :=
+  sigT (fun v : list (positive * list position) =>
+          Forall2 (fun '(k, (t, a)) '(k1, ps) =>
+                     k = k1 /\ search_subterm_propP needle a [] ps
+            ) l v
+    ).
+
+Definition ssearch_in_elemsT_nil  (needle: sact) :
+  ssearch_in_elemsT needle [].
+Proof.
+  exists []. constructor.
+Defined.
+
+
+Lemma search_subterm_prop_to_nil (needle: sact) a pos ps:
+  search_subterm_propP needle a pos ps ->
+  search_subterm_propP needle a [] ps.
+Proof.
+  intros (A & B & C).
+  repeat split; auto.
+  rewrite Forall_forall. intros; eexists; rewrite app_nil_r; eauto.
+Defined.
+
+Definition ssearch_in_elemsT_cons (needle: sact) l k t pos a:
+  ssearch_in_elemsT needle l ->
+  search_subterm_prop needle a pos ->
+  ssearch_in_elemsT needle ((k,(t,a))::l).
+Proof.
+  intros (pss & PSS) (ps & PS).
+  exists ((k,ps)::pss). constructor. split. apply eq_refl.
+  eapply search_subterm_prop_to_nil; eauto. apply PSS.
+Defined.
+
+
+Fixpoint ptree_of_elements {A: Type} (l: list (positive * A)) :=
+  match l with
+    [] => Maps.PTree.empty A
+  | (k,v)::r => Maps.PTree.set k v (ptree_of_elements r)
+  end.
+
+
+Lemma forall2_elems:
+  forall {A B: Type}
+         (l1: list (positive * A))
+         (l2: list (positive * B)) P,
+    Forall2 (fun '(k, a) '(k1,v) => k = k1 /\ P a v) l1 l2 ->
+    NoDup (List.map fst l1) ->
+    let res := ptree_of_elements l2 in
+    forall k ps a,
+      In (k, a) l1 ->
+      Maps.PTree.get k res = Some ps ->
+      P a ps.
+Proof.
+  induction 1; simpl; intros; eauto. easy.
+  destr_in H3.
+  rewrite Maps.PTree.gsspec in H3.
+  destruct x. destruct H. subst. simpl in H1. inv H1.
+  destr_in H3.
+  - inv H3. destruct H2 as [C|C]. inv C. auto.
+    elim H6. change p with (fst (p, a)). apply in_map. auto.
+  - destruct H2. inv H. congruence.
+    eauto.
+Qed.
+
+
+Lemma forall2_elems':
+  forall {A B: Type}
+         (l1: Maps.PTree.t A)
+         (l2: list (positive * B)) P,
+    Forall2 (fun '(k, a) '(k1,v) => k = k1 /\ P a v) (Maps.PTree.elements l1) l2 ->
+    let res := ptree_of_elements l2 in
+    forall k ps a,
+      Maps.PTree.get k l1 = Some a ->
+      Maps.PTree.get k res = Some ps ->
+      P a ps.
+Proof.
+  intros.
+  eapply forall2_elems; eauto.
+  apply Maps.PTree.elements_keys_norepet.
+  apply Maps.PTree.elements_correct; auto.
+Qed.
+
+
+Lemma forall2_elems'':
+  forall {A B C: Type}
+         (l1: Maps.PTree.t (C * A))
+         (l2: list (positive * B)) P,
+    Forall2 (fun '(k, (t, a)) '(k1,v) => k = k1 /\ P a v) (Maps.PTree.elements l1) l2 ->
+    let res := ptree_of_elements l2 in
+    forall k ps t a,
+      Maps.PTree.get k l1 = Some (t, a) ->
+      Maps.PTree.get k res = Some ps ->
+      P a ps.
+Proof.
+  intros.
+  eapply forall2_elems' with (P0:=fun '(t,a) v => P a v) in H0. eauto.
+  2: eauto.
+  eapply Wt.Forall2_impl. eauto. simpl. intros. destruct x. destruct p0,y. destruct H4. subst. split; auto.
+Qed.
+
+
+Lemma ptree_of_elements_get:
+  forall {A: Type} (l: list (positive * A)) k v,
+  (ptree_of_elements l) ! k = Some v ->
+  In (k,v) l.
+Proof.
+  induction l; simpl; intros; eauto.
+  rewrite PTree.gempty in H. congruence.
+  destruct a.
+  rewrite PTree.gsspec in H. destr_in H; auto. inv H. auto.
+Qed.
+
+
+Lemma forall2_in_exr:
+  forall {A B: Type} (P: A -> B -> Prop) l1 l2,
+    Forall2 P l1 l2 -> forall y,
+      In y l2 ->
+      exists x, In x l1 /\ P x y.
+Proof.
+  induction 1; simpl; intros; eauto. easy.
+  destruct H1. subst. eauto.
+  edestruct IHForall2; eauto. destruct H2; eauto.
+Qed.
+
+Lemma forall2_in_exl:
+  forall {A B: Type} (P: A -> B -> Prop) l1 l2,
+    Forall2 P l1 l2 -> forall x,
+      In x l1 ->
+      exists y, In y l2 /\ P x y.
+Proof.
+  induction 1; simpl; intros; eauto. easy.
+  destruct H1. subst. eauto.
+  edestruct IHForall2; eauto. destruct H2; eauto.
+Qed.
+
+Lemma interp_sact_iff_from_implies:
+  forall vvs (WTV: wt_vvs R (Sigma:=Sigma) vvs) (VSV: vvs_smaller_variables vvs),
+  forall t a1 a2,
+    wt_sact vvs a1 t ->
+    (forall ov, interp_sact vvs a1 ov -> interp_sact vvs a2 ov) ->
+    (forall ov, interp_sact vvs a1 ov <-> interp_sact vvs a2 ov).
+Proof.
+  intros.
+  split; auto.
+  intros.
+  edestruct @wt_sact_interp as (x & IS & WTv). eauto. eauto. eauto. eauto. apply vvs_range_max_var. apply H.
+  exploit @interp_sact_determ. apply H1. apply H0. apply IS. intro; subst. auto.
+Qed.
+
+Lemma subact_ok_ltac:
+        forall l1 l2 subact,
+          Forall2
+            (fun '(k, (ty, a)) '(k1, ps) =>
+               k = k1 /\
+                 (fun '(_, a0) (ps0 : list (list Direction.direction)) =>
+                    search_subterm_propP subact a0 [] ps0) (ty, a) ps) (Maps.PTree.elements l1) l2 ->
+          forall rep tn,
+            wt_sact l1 subact tn ->
+            wt_sact l1 rep tn ->
+            (forall ov, interp_sact l1 subact ov <-> interp_sact l1 rep ov) ->
+            (forall v, var_in_sact rep v -> var_in_sact subact v) ->
+            subact_ok l1 (ptree_of_elements (List.map (fun '(k,ps) => (k, List.map (fun l => rev l) ps)) l2))
+              subact rep.
+Proof.
+  intros.
+  econstructor.
+  - intros k ps GET. apply ptree_of_elements_get in GET.
+    apply in_map_iff in GET.
+    destruct GET as (x & EQ & IN). destruct x. inv EQ.
+    edestruct @forall2_in_exr as (x & IN' & PP). apply H. eauto. simpl in PP.
+    destruct x. destruct p0. destruct PP. subst.
+    destruct H5 as (A & B & C).
+    auto.
+  - intros k t s ps GET. apply ptree_of_elements_get in GET.
+    apply in_map_iff in GET.
+    destruct GET as (x & EQ & IN). destruct x. inv EQ.
+    intros GET p INl.
+    edestruct @forall2_in_exr as (x & IN' & PP). apply H. eauto. simpl in PP.
+    destruct x. destruct p1. destruct PP. subst.
+    generalize (PTree.elements_complete _ _ _ IN'). rewrite GET. intro A; inv A.
+    destruct H5 as (A & B & C).
+    apply in_map_iff in INl.
+    destruct INl as (x & EQ & INl).
+    rewrite Forall_forall in B. apply B in INl. subst. auto.
+  - eauto.
+  - eauto.
+  - eauto.
+  - eauto.
+Qed.
+
+
 End ReplaceSubact.
