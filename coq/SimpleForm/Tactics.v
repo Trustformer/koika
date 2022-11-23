@@ -31,6 +31,16 @@ Ltac update_wfsf :=
     assert (wf_sf R ext_Sigma (replace_var sf' var newv)) as wfsf by
     (eapply (wf_sf_replace_var R ext_Sigma ctx ext_sigma var newv sf' VS WFSF'));
     clear WFSF'
+  | SO: subact_ok ?R ?ext_Sigma ?ctx ?ext_sigma (vars ?sf) ?positions ?needle ?rep,
+      WTRENV: Wt.wt_renv ?R ?REnv ?ctx,
+        WFSF': wf_sf ?R ?ext_Sigma ?sf'
+    |-
+      getenv ?REnv (interp_cycle ?ctx ?ext_sigma (replace_subact ?sf' ?positions ?rep)) _
+      = _
+    =>
+    assert (wf_sf R ext_Sigma (replace_subact sf' positions rep)) as wfsf by
+    (eapply (wf_sf_replace_subact' R ext_Sigma ctx ext_sigma sf' positions needle rep SO WFSF'));
+    clear WFSF'
   | FV: get_field (getenv ?REnv ?ctx ?str) ?f = Some ?fv,
     WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WTSIGMA:
@@ -102,7 +112,7 @@ Ltac update_wfsf :=
     by (eapply (wf_sf_prune_irrelevant_aux R ext_Sigma sf' rg l lassoc WFSF'));
     clear WFSF'; clear lassoc
   | |- _ => idtac "update_wf_sf failed"
-  end; move wfsf at top.
+  end; try move wfsf at top.
 
 Ltac exploit_reg H :=
   match goal with
@@ -186,6 +196,22 @@ Ltac exploit_var idx newv :=
                    (wt_sigma:=wt_sigma) _ _ _ _ WTRENV WFSF vs); update_wfsf
         ]
   end.
+
+
+Ltac exploit_subact :=
+  match goal with
+  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+      WFSF: wf_sf ?R ?ext_Sigma ?sf,
+        SO: subact_ok ?R ?ext_Sigma ?ctx ?ext_sigma (vars ?sf) ?positions ?needle ?rep,
+    wt_sigma : (
+      forall (ufn : ?ext_fn_t) (vc : val),
+      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+        rewrite (replace_subact_interp_cycle_ok'
+                   (wt_sigma:=wt_sigma) _ _ _ _ WTRENV _ WFSF _ _ _ SO); update_wfsf
+  end.
+
 
 Goal
   forall
@@ -307,21 +333,21 @@ Ltac search_subterm needle haystack pos orig_haystack Ppos :=
                  eval vm_compute in res
   | SUnop ?ufn ?a =>
       let p := search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_unop1 _ _ _ _ Ppos) in
-      eval vm_compute in (sprop_unop needle pos _ p)
+      eval vm_compute in (existT _ _ (sprop_unop needle pos _ _ (projT2 p)))
   | SExternalCall ?ufn ?a =>
       let p := search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_extcall1 _ _ _ _ Ppos) in
-      eval vm_compute in (sprop_unop needle pos _ p)
+      eval vm_compute in (existT _ _ (sprop_unop needle pos _ _ (projT2 p)))
   | SBinop ?ufn ?a ?b =>
       let p1 := search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_binop1 _ _ _ _ _ Ppos) in
       let p2 := search_subterm needle b (Direction.branch2 :: pos) orig_haystack (subact_at_pos_binop2 _ _ _ _ _ Ppos) in
       eval vm_compute in
-        (sprop_binop needle pos _ p1 p2)
+        (existT _ _ (sprop_binop needle pos _ _ _ (projT2 p1) (projT2 p2)))
   | SIf ?a ?b ?c =>
       let p1 := search_subterm needle a (Direction.branch1 :: pos) orig_haystack (subact_at_pos_if1 _ _ _ _ _ Ppos) in
       let p2 := search_subterm needle b (Direction.branch2 :: pos) orig_haystack (subact_at_pos_if2 _ _ _ _ _ Ppos) in
       let p3 := search_subterm needle c (Direction.branch3 :: pos) orig_haystack (subact_at_pos_if3 _ _ _ _ _ Ppos) in
       eval vm_compute in
-        (sprop_if needle pos _ p1 p2 p3)
+        (existT _ _ (sprop_if needle pos _ _ _ _ (projT2 p1) (projT2 p2) (projT2 p3)))
   end.
 
 
@@ -343,6 +369,16 @@ Goal forall (reg_t ext_fn_t: Type) (uext:ext_fn_t), False.
              (SVar 12%positive : ((@sact reg_t ext_fn_t))) in
   idtac l;
   let t := (type of l) in idtac t.
+
+  let l := ssearch (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
+             (SUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (SVar 12%positive : ((@sact reg_t ext_fn_t)))) in
+  idtac l;
+  let t := (type of l) in idtac t.
+
+
+ (*  Set Ltac Backtrace. *)
+
+ (* let p := search_subterm (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true])) (SVar 12%positive : ((@sact reg_t ext_fn_t))) (Direction.branch1 :: []) (SUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (SVar 12%positive : ((@sact reg_t ext_fn_t)))) (@subact_at_pos_unop1 reg_t ext_fn_t _ _ (PrimUntyped.UBits1 PrimUntyped.UNot) (SVar 12%positive : ((@sact reg_t ext_fn_t))) (subact_at_pos_rev_refl _)) in idtac p. *)
 
   let l := ssearch (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
              (SUnop (PrimUntyped.UBits1 PrimUntyped.UNot) (SVar 12%positive : ((@sact reg_t ext_fn_t)))) in
@@ -410,21 +446,36 @@ Goal forall (reg_t ext_fn_t: Type) (uext:ext_fn_t), False.
 Abort.
 
 
-Ltac ssearch_in_vars needle t :=
+Ltac ssearch_in_vars needle t H :=
   let vars := eval vm_compute in (Maps.PTree.elements t) in
     let res := ssearch_in_elems needle vars in
     let res := eval vm_compute in res in
       let x := eval vm_compute in (projT1 res) in
         let P := eval vm_compute in (projT2 res) in
-          let H := fresh in
-          assert (H: Forall2 (fun '(k, (ty,a)) '(k1,ps) =>
-                             k = k1 /\
-                               (fun '(_,a) ps =>
-                                  search_subterm_propP needle a [] ps) (ty,a) ps
-                    )
-                       (Maps.PTree.elements t) x) by (exact P);
-          let H2 := fresh in
-          assert (H2 := forall2_elems'' _ _ _ H); clear H.
+          let positions := fresh "positions" in
+          set (positions := x);
+          assert
+            (H :
+              Forall2
+                (fun '(k, (ty, a)) '(k1, ps) =>
+                   k = k1 /\ (fun '(_, a) ps => ReplaceSubact.search_subterm_propP needle a [] ps) (ty, a) ps)
+                (Maps.PTree.elements t) positions) by exact P.
+
+
+Ltac get_subact_ok needle vars rep t :=
+  match goal with
+  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+      WFSF: wf_sf ?R ?ext_Sigma ?sf,
+        wt_sigma : (
+                     forall (ufn : ?ext_fn_t) (vc : val),
+                       wt_val (arg1Sig (?ext_Sigma ufn)) vc
+                       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+      let H := fresh in
+      ssearch_in_vars needle vars H;
+      generalize (ReplaceSubact.subact_ok_ltac (REnv:=REnv) R ext_Sigma ctx ext_sigma _ _ _ H rep t); clear H
+  end.
+
 
 
 Goal forall (reg_t ext_fn_t: Type) (uext: ext_fn_t), False.
@@ -457,7 +508,7 @@ Goal forall (reg_t ext_fn_t: Type) (uext: ext_fn_t), False.
 
 
     ssearch_in_vars (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
-              vars.
+              vars A.
 
     let l := ssearch (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
                (SConst (Bits [true]) : ((@sact reg_t ext_fn_t))) in idtac l.
@@ -493,4 +544,5 @@ Goal forall (reg_t ext_fn_t: Type) (uext: ext_fn_t), False.
     in
     idtac x.
 Abort.
+
 

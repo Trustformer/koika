@@ -954,23 +954,23 @@ Proof.
   intros a (x & EQ); eauto.
 Qed.
 
-Definition sprop_unop needle pos a
-  (p1: search_subterm_prop needle a (branch1 :: pos)):
-  search_subterm_prop needle a pos.
+Definition sprop_unop needle pos a ps1
+  (p1: search_subterm_propP needle a (branch1 :: pos) ps1):
+  search_subterm_propP needle a pos ps1.
 Proof.
-  destruct p1 as (ps1 & d1 & d2 & d3).
-  exists ps1. split;[|split]; auto.
+  destruct p1 as (d1 & d2 & d3).
+  split;[|split]; auto.
   eapply Forall_impl. 2: apply d3. simpl. intros aa (x & EQ). subst. exists (x ++ branch1 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
-Defined.
+Qed.
 
-Definition sprop_binop needle pos a
-  (p1: search_subterm_prop needle a (branch1 :: pos))
-  (p2: search_subterm_prop needle a (branch2 :: pos)):
-  search_subterm_prop needle a pos.
+Definition sprop_binop needle pos a ps1 ps2
+  (p1: search_subterm_propP needle a (branch1 :: pos) ps1)
+  (p2: search_subterm_propP needle a (branch2 :: pos) ps2):
+  search_subterm_propP needle a pos (ps1 ++ ps2).
 Proof.
-  destruct p1 as (ps1 & d1 & d2 & d3).
-  destruct p2 as (ps2 & e1 & e2 & e3).
-  exists (ps1 ++ ps2). split;[|split].
+  destruct p1 as (d1 & d2 & d3).
+  destruct p2 as (e1 & e2 & e3).
+  split;[|split].
   -  rewrite List.map_app. eapply no_prefix_app2. eauto. eauto.
      rewrite Forall_forall in d3 |- *. intros x IN.
      rewrite in_map_iff in IN. destruct IN as (x0 & EQ & IN). subst.
@@ -982,18 +982,18 @@ Proof.
   - apply Forall_app. split; eauto.
     + eapply Forall_impl. 2: apply d3. simpl. intros aa (x & EQ). subst. exists (x ++ branch1 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
     + eapply Forall_impl. 2: apply e3. simpl. intros aa (x & EQ). subst. exists (x ++ branch2 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
-Defined.
+Qed.
 
-Definition sprop_if needle pos a
-  (p1: search_subterm_prop needle a (branch1 :: pos))
-  (p2: search_subterm_prop needle a (branch2 :: pos))
-  (p3: search_subterm_prop needle a (branch3 :: pos)):
-  search_subterm_prop needle a pos.
+Definition sprop_if needle pos a ps1 ps2 ps3
+  (p1: search_subterm_propP needle a (branch1 :: pos) ps1)
+  (p2: search_subterm_propP needle a (branch2 :: pos) ps2)
+  (p3: search_subterm_propP needle a (branch3 :: pos) ps3):
+  search_subterm_propP needle a pos (ps1 ++ ps2 ++ ps3).
 Proof.
-  destruct p1 as (ps1 & d1 & d2 & d3).
-  destruct p2 as (ps2 & e1 & e2 & e3).
-  destruct p3 as (ps3 & f1 & f2 & f3).
-  exists (ps1 ++ ps2 ++ ps3). split;[|split].
+  destruct p1 as (d1 & d2 & d3).
+  destruct p2 as (e1 & e2 & e3).
+  destruct p3 as (f1 & f2 & f3).
+  split;[|split].
   - rewrite ! List.map_app.
     eapply no_prefix_app3; eauto.
     + rewrite Forall_forall in d3 |- *. intros x IN.
@@ -1012,7 +1012,7 @@ Proof.
     + eapply Forall_impl. 2: apply d3. simpl. intros aa (x & EQ). subst. exists (x ++ branch1 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
     + eapply Forall_impl. 2: apply e3. simpl. intros aa (x & EQ). subst. exists (x ++ branch2 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
     + eapply Forall_impl. 2: apply f3. simpl. intros aa (x & EQ). subst. exists (x ++ branch3 :: nil); simpl; auto. rewrite <- app_assoc. reflexivity.
-Defined.
+Qed.
 
 
 Definition ptree_forall {A: Type} (P: positive -> A -> Prop) (t: Maps.PTree.t A) :=
@@ -1056,7 +1056,7 @@ Proof.
   intros (A & B & C).
   repeat split; auto.
   rewrite Forall_forall. intros; eexists; rewrite app_nil_r; eauto.
-Defined.
+Qed.
 
 Definition ssearch_in_elemsT_cons (needle: sact) l k t pos a:
   ssearch_in_elemsT needle l ->
