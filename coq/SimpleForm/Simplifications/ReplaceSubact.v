@@ -1226,4 +1226,33 @@ Proof.
 Qed.
 
 
+Lemma subact_ok_ltac_1var:
+  forall l1 subact k t a ps,
+    l1 ! k = Some (t, a) ->
+    search_subterm_propP subact a [] ps ->
+    forall rep tn,
+      wt_sact l1 subact tn ->
+      wt_sact l1 rep tn ->
+      (forall ov, interp_sact l1 subact ov <-> interp_sact l1 rep ov) ->
+      (forall v, var_in_sact rep v -> var_in_sact subact v) ->
+      subact_ok l1 (PTree.set k (List.map (fun v => rev v) ps) (PTree.empty _)) subact rep.
+Proof.
+  intros.
+  econstructor.
+  - intros kk pss GET. rewrite PTree.gsspec, PTree.gempty in GET.
+    destr_in GET; inv GET. destruct H0. auto.
+  - intros k0 t0 s ps0 GET. rewrite PTree.gsspec, PTree.gempty in GET.
+    destr_in GET; inv GET.
+    intros GET p INl. rewrite H in GET. inv GET.
+    destruct H0 as (A & B & C).
+    apply in_map_iff in INl.
+    destruct INl as (x & EQ & INl).
+    rewrite Forall_forall in B. apply B in INl. subst. auto.
+  - eauto.
+  - eauto.
+  - eauto.
+  - eauto.
+Qed.
+
+
 End ReplaceSubact.

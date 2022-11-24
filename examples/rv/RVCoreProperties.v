@@ -471,80 +471,125 @@ Module RVProofs.
           * do 4 destruct rd_5 as [? rd_5]. subst.
             destruct x0; crusher_c 3.
         + do 3 destruct jalr as [? jalr]. subst.
-          destruct (
-            orb
-              (andb
-                (andb
-                  (andb
-                    (andb (Bool.eqb x19 true) (Bool.eqb x20 false))
-                    (Bool.eqb x21 false))
-                  (Bool.eqb x22 false))
-                (Bool.eqb x23 false))
-              (andb
-                (andb
-                  (andb
-                    (andb (Bool.eqb x19 true) (Bool.eqb x20 false))
-                    (Bool.eqb x21 true))
-                  (Bool.eqb x22 false))
-                (Bool.eqb x23 false))
-          ) eqn:eq.
-          * rename eq into rs1_1_or_5.
-            rewrite ! orb_true_iff in rs1_1_or_5.
-            rewrite ! andb_true_iff in rs1_1_or_5.
-            rewrite ! eqb_true_iff in rs1_1_or_5.
-            destruct rs1_1_or_5 as [rs1_1 | rs1_5], rd_1_or_5 as [rd_1 | rd_5].
-            ** do 4 destruct rd_1 as [? rd_1].
-               do 4 destruct rs1_1 as [rs1_1 ?].
-               subst.
-               collapse. full_pass_c. full_pass_c. do 4 full_pass_c.
-               destruct x0; crusher_c 3.
-            ** exfalso. apply not_sstack_pop. intros. clear not_sstack_pop.
-               do 4 destruct rd_5 as [? rd_5].
-               do 4 destruct rs1_1 as [rs1_1 ?].
-               subst.
-               rewrite H6 in H. inv H. inv H0. inv H2.
-               rewrite Bits.of_N_to_N.
-               unfold is_ret_instruction.
-               simpl. reflexivity.
-            ** exfalso. apply not_sstack_pop. intros. clear not_sstack_pop.
-               do 4 destruct rd_1 as [? rd_1].
-               do 4 destruct rs1_5 as [rs1_5 ?].
-               subst.
-               rewrite H6 in H. inv H. inv H0. inv H2.
-               rewrite Bits.of_N_to_N.
-               unfold is_ret_instruction.
-               simpl. reflexivity.
-            ** do 4 destruct rd_5 as [? rd_5].
-               do 4 destruct rs1_5 as [rs1_5 ?].
-               subst.
-               collapse. full_pass_c. full_pass_c. do 4 full_pass_c.
-               destruct x0; crusher_c 3.
-          * clear not_sstack_pop.
-            exploit_var 992%positive uconstr:(SConst (Bits [true])).
-            {
-              econstructor.
-              intros. inv H. vm_compute in H2. inv H2.
-              inv H5. inv H9. inv H2. vm_compute in H0. inv H0. inv H5. simpl in H10. inv H10.
-              inv H11. vm_compute in H0. inv H0. inv H2. simpl in H12. inv H12.
-              destr. constructor. rewrite andb_false_iff in Heqb. destruct Heqb. 2: congruence.
-              rewrite eqb_reflx in H. congruence.
-              intros. inv H. econstructor. vm_compute. reflexivity. repeat constructor.
-            }
-            destruct rd_1_or_5 as [rd_1 | rd_5].
-            ** do 4 destruct rd_1 as [? rd_1]. subst.
-               collapse. full_pass_c. full_pass_c. do 6 full_pass_c.
-               destruct x0.
-               *** do 3 full_pass_c.
-                   destruct x19, x20, x21, x22, x23; simpl in eq;
-                     try (discriminate eq); clear eq; crusher_c 2.
-               *** do 3 full_pass_c.
-                   destruct x19, x20, x21, x22, x23; simpl in eq;
-                     try (discriminate eq); clear eq; crusher_c 2.
-            ** do 4 destruct rd_5 as [? rd_5]. subst.
-               collapse. full_pass_c. full_pass_c. do 6 full_pass_c.
-               destruct x0; do 3 full_pass_c;
-                 destruct x19, x20, x21, x22, x23; simpl in eq;
-                 try (discriminate eq); clear eq; crusher_c 2.
+          assert (x11 = true /\ x12 = false /\ x14 = false /\ x15 = false). destruct rd_1_or_5; intuition. clear rd_1_or_5. destr_and_in H. subst.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          Eval vm_compute in (Maps.PTree.elements (vars sf1)).
+
+          isolate_sf. fold sf0 in wfsf.
+          ssearch_in_var (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+                            (SConst (Bits [x0]))
+                            (SConst (Bits [x0]))
+                         ) (vars sf0) 992%positive
+            (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+
+          intro A. trim A. vm_compute. reflexivity.
+          trim A. repeat econstructor.
+          trim A. repeat econstructor.
+          trim A.
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. apply wfsf. apply wfsf.
+          repeat econstructor.
+          intros. inv H. inv H9. inv H11. simpl in H12. inv H12.
+          rewrite andb_true_r. rewrite eqb_reflx. constructor.
+          trim A. inversion 1.
+          exploit_subact. clear A. isolate_sf. fold sf2 in wfsf0.
+
+          ssearch_in_var (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+                            (SConst (Bits [x0]))
+                            (SConst (Bits [x0]))
+                         ) (vars sf2) 1788%positive
+            (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+
+          intro A. trim A. vm_compute. reflexivity.
+          trim A. repeat econstructor.
+          trim A. repeat econstructor.
+          trim A.
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. apply wfsf0. apply wfsf0.
+          repeat econstructor.
+          intros. inv H. inv H9. inv H11. simpl in H12. inv H12.
+          rewrite andb_true_r. rewrite eqb_reflx. constructor.
+          trim A. inversion 1.
+          exploit_subact. clear A. isolate_sf. fold sf3 in wfsf.
+
+          Eval vm_compute in (Maps.PTree.elements (vars sf1)).
+
+
+          get_subact_ok ((@SBinop RV32I.reg_t RV32I.ext_fn_t (UBits2 UOr)
+                     (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false]))
+                        (SConst (Bits [true; false; false; false; false])))
+                     (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false]))
+                        (SConst (Bits [true; false; true; false; false])))))
+            (vars sf3)
+            (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1)
+          .
+          intro A.
+          trim A. repeat econstructor.
+          trim A. repeat econstructor.
+          trim A.
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. apply wfsf. apply wfsf.
+          repeat econstructor.
+          intros. inv H. inv H9. inv H11. inv H5. inv H13. inv H9. inv H15. simpl in H14, H16. inv H14; inv H16.
+          simpl in H12. inv H12.
+          clear. destruct x13; cbn [Bool.eqb andb]; constructor.
+          trim A. inversion 1.
+          exploit_subact. clear A. isolate_sf. fold sf4 in wfsf0.
+
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+
+          Eval vm_compute in (Maps.PTree.elements (vars sf1)).
+          exploit_var 1459%positive uconstr:(SConst (Bits [true])).
+          {
+            econstructor.
+            intros. inv H. vm_compute in H2. inv H2.
+            inv H5. destruct b; inv H11; econstructor.
+            inversion 1.
+            econstructor. vm_compute. reflexivity. repeat constructor.
+          }
+          clear VS.
+          isolate_sf. fold sf2 in wfsf.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+
+          Eval vm_compute in (Maps.PTree.elements (vars sf6)).
+
+          exploit_var 1788%positive uconstr:(SConst (Bits [false])).
+          {
+            econstructor.
+            intros.
+            eapply interp_sact_do_eval_sact in H.
+            vm_compute in H.
+            assert (OF: oldv = Bits [false]).
+            clear -H. inv H. destruct x13, x19, x20, x21, x22, x23; auto.
+            clear H.
+            subst; constructor. apply wfsf.
+            econstructor. vm_compute. reflexivity. inversion 1.
+            econstructor. vm_compute. reflexivity.
+            repeat constructor.
+          }
+          clear VS.
+          isolate_sf. fold sf4 in wfsf0.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          full_pass_c.
+          crusher_c 1.
+
       - destruct violation as (no_mispred & not_empty & pop & address_neq).
         clear no_mispred.
         unfold sstack_empty in not_empty. simpl in not_empty.
@@ -558,19 +603,9 @@ Module RVProofs.
         rewrite SIZE in not_empty.
         vm_compute in not_empty.
 
-
         exploit_reg SIZE.
         collapse.
         full_pass_c.
-
-        remember
-          (SBinop (UEq false) (SVar 164) (SConst (Bits [false; true; true; true; true]))).
-
-
-        Set Printing Depth 100000.
-        Eval vm_compute in Maps.PTree.get 1788 (vars sf1).
-        
-
 
         unfold sstack_pop in pop.
         inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].

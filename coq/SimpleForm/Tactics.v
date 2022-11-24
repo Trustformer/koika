@@ -477,6 +477,60 @@ Ltac get_subact_ok needle vars rep t :=
   end.
 
 
+Ltac ssearch_in_var needle t k rep ty :=
+  match goal with
+  | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
+      WFSF: wf_sf ?R ?ext_Sigma ?sf,
+        wt_sigma : (
+                     forall (ufn : ?ext_fn_t) (vc : val),
+                       wt_val (arg1Sig (?ext_Sigma ufn)) vc
+                       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
+    |- _ =>
+      let res := eval vm_compute in (Maps.PTree.get k t) in
+        match res with
+          Some (?itt, ?ix) =>
+            let res := ssearch needle ix in
+            let x := eval vm_compute in (projT1 res) in
+              let P := eval vm_compute in (projT2 res) in
+                let positions := fresh "positions" in
+                set (positions := x);
+                set (HP := P);
+                (* let H := fresh in *)
+                (* assert *)
+                (*   (H : ReplaceSubact.search_subterm_propP needle x [] positions) by exact P; *)
+                generalize (fun pf =>
+                              ReplaceSubact.subact_ok_ltac_1var
+                                (REnv:=REnv) R ext_Sigma ctx ext_sigma
+                                t _ k itt _ positions pf HP rep ty); clear HP
+        end
+  end.
+
+
+(* match goal with *)
+(*   | WTRENV:Wt.wt_renv ?R ?REnv ?ctx, *)
+(*     WFSF:wf_sf ?R ?ext_Sigma ?sf, *)
+(*     wt_sigma:forall (ufn : ?ext_fn_t) (vc : val), *)
+(*              wt_val (arg1Sig (?ext_Sigma ufn)) vc -> *)
+(*              wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc) *)
+(*     |- _ => *)
+(*       let res := eval vm_compute in (Maps.PTree.get 1788%positive (vars sf1)) in *)
+(*         match res with *)
+(*         | Some (?itt, ?ix) => *)
+(*             let res := ssearch (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false) *)
+(*                              (SConst (Bits [x0])) *)
+(*                              (SConst (Bits [x0])) *)
+(*                            ) ix in *)
+(*             let x := eval vm_compute in (projT1 res) in *)
+(*             let P := eval vm_compute in (projT2 res) in *)
+(*             let positions := fresh "positions" in *)
+(*             set (positions := x); *)
+(*             set (HP := P); *)
+(*                generalize *)
+(*                 (fun pf => *)
+(*                  ReplaceSubact.subact_ok_ltac_1var R ext_Sigma ctx ext_sigma *)
+(*                    (vars sf1) _ 1788%positive itt _ positions pf HP) *)
+(*         end *)
+(* end. *)
 
 Goal forall (reg_t ext_fn_t: Type) (uext: ext_fn_t), False.
   intros.
@@ -509,6 +563,10 @@ Goal forall (reg_t ext_fn_t: Type) (uext: ext_fn_t), False.
 
     ssearch_in_vars (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
               vars A.
+
+    (* ssearch_in_var  (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true])) *)
+    (*   vars 2%positive *)
+    (*   (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true])) (bits_t 1). *)
 
     let l := ssearch (SConst (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (Bits [true]))
                (SConst (Bits [true]) : ((@sact reg_t ext_fn_t))) in idtac l.
