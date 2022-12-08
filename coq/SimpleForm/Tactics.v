@@ -179,9 +179,8 @@ Ltac prune :=
     try (unfold prune_irrelevant; vm_compute list_assoc); eauto; update_wfsf.
 Ltac collapse := erewrite collapse_interp_cycle_ok; eauto; update_wfsf.
 
-
 Ltac exploit_var idx newv :=
-  match goal with
+  lazymatch goal with
   | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
     WFSF: wf_sf ?R ?ext_Sigma ?sf,
     wt_sigma : (
@@ -189,29 +188,30 @@ Ltac exploit_var idx newv :=
       wt_val (arg1Sig (?ext_Sigma ufn)) vc
       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
     |- _ =>
-      let vs := fresh "VS" in
-      assert (vs: var_simpl R ext_Sigma ctx ext_sigma (vars sf) idx newv);
-      [|
-        rewrite (replace_var_interp_cycle_ok
-                   (wt_sigma:=wt_sigma) _ _ _ _ WTRENV WFSF vs); update_wfsf
-        ]
+    let vs := fresh "VS" in
+    assert (vs: var_simpl R ext_Sigma ctx ext_sigma (vars sf) idx newv);
+    [| rewrite (
+         replace_var_interp_cycle_ok (wt_sigma:=wt_sigma) _ _ _ _ WTRENV WFSF vs
+       );
+       update_wfsf ]
   end.
-
 
 Ltac exploit_subact :=
   match goal with
   | WTRENV : Wt.wt_renv ?R ?REnv ?ctx,
-      WFSF: wf_sf ?R ?ext_Sigma ?sf,
-        SO: subact_ok ?R ?ext_Sigma ?ctx ?ext_sigma (vars ?sf) ?positions ?needle ?rep,
+    WFSF: wf_sf ?R ?ext_Sigma ?sf,
+    SO: subact_ok
+        ?R ?ext_Sigma ?ctx ?ext_sigma (vars ?sf) ?positions ?needle ?rep,
     wt_sigma : (
       forall (ufn : ?ext_fn_t) (vc : val),
       wt_val (arg1Sig (?ext_Sigma ufn)) vc
       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc))
     |- _ =>
-        rewrite (replace_subact_interp_cycle_ok'
-                   (wt_sigma:=wt_sigma) _ _ _ _ WTRENV _ WFSF _ _ _ SO); update_wfsf
+      rewrite (
+        replace_subact_interp_cycle_ok'
+          (wt_sigma:=wt_sigma) _ _ _ _ WTRENV _ WFSF _ _ _ SO
+      ); update_wfsf
   end.
-
 
 Goal
   forall
@@ -226,10 +226,6 @@ Proof.
   intros.
   exploit_var 1%positive uconstr:(SConst (Bits [])).
 Abort.
-
-
-
-(* Ltac auto_destr_next *)
 
 Ltac finish :=
   simplify; eapply getenv_interp;
@@ -315,9 +311,6 @@ Ltac crusher_c strength :=
   | _ => fail "max strength = 20"
   end;
   finish.
-
-
-
 
 Ltac search_subterm needle haystack pos orig_haystack Ppos :=
   match haystack with

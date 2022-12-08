@@ -1,3 +1,14 @@
+(* We used to have an explosion problem when simplifying non-ground
+   terms of the siple form. This was due to the fact that functions
+   implementing SBinops and SUnops were unfolded even when they should not have
+   been. SimplifyCareful remedies to this issue by probing whether simplifications
+   lead to this issue or not before applying them.
+
+   It is closely related to SimplifyTargeted (which defines a simplification
+   function which avoids simplifying at some locations which are passed as
+   input). In fact, this file does not define simplification functions: it only
+   contains Ltac definitions.  In particular, probe_simplifications does not
+   modify the proof context. *)
 Require Import Koika.BitsToLists.
 Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.SimpleForm.Direction.
@@ -5,7 +16,7 @@ Require Import Koika.SimpleForm.Operations.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.SimpleForm.Simplifications.SimplifyTargeted.
 
-(* returns val, [exempted] *)
+(* returns val, [positions of explosions] *)
 Ltac probe_simplifications r sigma H pos :=
   lazymatch H with
   | @SIf ?rt ?eft ?c ?t ?f =>
@@ -39,6 +50,9 @@ Ltac probe_simplifications r sigma H pos :=
       eval vm_compute in (eval_sact_no_vars r sigma (SUnop fn new_a))
     ) in
     match res with
+    | Some (Bits (cons (match _ with _ => _ end) _)) =>
+      eval vm_compute in
+        (SUnop (reg_t := rt) (ext_fn_t := eft) fn new_a, pos :: ea)
     | Some ?x =>
       (eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea))
     | None =>
@@ -60,6 +74,10 @@ Ltac probe_simplifications r sigma H pos :=
           r sigma (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2))
     ) in
     lazymatch res with
+    | Some (Bits (cons (match _ with _ => _ end) _)) =>
+      eval vm_compute in
+        (SBinop (reg_t := rt) (ext_fn_t := eft) fn new_a1 new_a2,
+         pos :: ea1 ++ ea2)
     | Some ?x =>
       eval vm_compute in (SConst (reg_t := rt) (ext_fn_t := eft) x, ea1 ++ ea2)
     | None =>
