@@ -128,7 +128,6 @@ Proof.
       reflexivity.
 Qed.
 
-(* Local Set Primitive Projections. *)
 Inductive vect_nil_t {T: Type} := _vect_nil.
 Record vect_cons_t {A B: Type} := _vect_cons { vhd: A; vtl: B }.
 Arguments vect_nil_t : clear implicits.
@@ -159,7 +158,7 @@ Definition vect_cons {T n} (t: T) (v: vect T n) : vect T (S n) :=
 
 Lemma vect_cons_hd_tl {T sz}:
   forall (v: vect T (S sz)), vect_cons (vect_hd v) (vect_tl v) = v.
-Proof. unfold vect_hd, vect_tl. destruct v; reflexivity. Qed.
+Proof. unfold vect_hd, vect_tl. intros. destruct v. reflexivity. Qed.
 
 Fixpoint vect_const {T} sz (t: T) : vect T sz :=
   match sz with
@@ -973,7 +972,7 @@ Module Bits.
     induction n; cbn; intros.
     - destruct bss; reflexivity.
     - rewrite vect_split_app, IHn.
-      destruct bss; reflexivity.
+      destruct bss. reflexivity.
   Qed.
 
   Lemma appn_splitn {n sz} :
