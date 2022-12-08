@@ -154,11 +154,14 @@ Module RVProofs.
           in
           match inst with
           | Some inst_val =>
-            let bits :=
-              Bits.to_N (vect_of_list (
-                (List.firstn 20 (ubits_of_value rs1_val))
-                ++ ((List.skipn 21 (ubits_of_value inst_val)) ++ [false])
-            )) in
+              let bits :=
+                Bits.to_N (
+                    Bits.and
+                      (Bits.of_N (Datatypes.length ((ubits_of_value rs1_val)))
+                         (Bits.to_N (Bits.of_list (ubits_of_value rs1_val)) +
+                            Bits.to_N (Bits.of_list (List.skipn 20 (ubits_of_value inst_val)))))
+                      (Vect.Bits.neg (Bits.of_N (Datatypes.length (ubits_of_value rs1_val)) 1))
+                ) in
             Some (Bits.of_N 32 bits)
           | None => None
           end
@@ -626,29 +629,10 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
         intro A. inv A.
         rewrite <- H0 in address_neq. simpl in address_neq.
         unfold ret_address in address_neq.
-        rewrite H6 in address_neq. Opaque List.firstn. simpl in address_neq.
-        assert (
-          bs
-          <> (
-            firstn 20 (ubits_of_value y3)
-            ++ [x25; x26; x27; x28; x29; x30; x31; x32; x33; x34; x35; false]
-          )
-        ) as address_neq'. {
-          destruct (
-            list_beq _ Bool.eqb
-              bs 
-              (firstn 20 (ubits_of_value y3)
-               ++ [x25; x26; x27; x28; x29; x30; x31; x32; x33; x34; x35; false]
-              )
-          ) eqn:eq.
-          + apply internal_list_dec_bl in eq.
-            rewrite eq in address_neq. exfalso. apply address_neq. reflexivity.
-            intros. apply eqb_true_iff. assumption.
-          + intro. rewrite <- H in eq. rewrite list_eqb_refl in eq.
-            discriminate eq.
-            apply eqb_reflx.
-        }
-        clear address_neq. rename address_neq' into address_neq.
+        rewrite H6 in address_neq. Opaque List.firstn.
+        simpl get_field_struct in address_neq.
+        Opaque Bits.of_N Bits.to_N Bits.and Bits.neg.
+        simpl in address_neq.
         move not_empty at bottom.
         move ret_instr at bottom.
 
@@ -680,8 +664,6 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
         exploit_subact. clear A. isolate_sf. fold sf2 in wfsf0.
         subst sf0. subst sf1.
         full_pass_c.
-        Eval vm_compute in (Maps.PTree.get 1128 (vars sf0)).
-        
 
         destruct ret_instr as [ret_instr1 | ret_instr2].
         + destruct ret_instr1 as ((rd_1_or_5 & rd_neq_rs1) & rs1_1_or_5).
@@ -718,6 +700,8 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                    simpl in address_neq.
                    collapse.
                    isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
+                   rewrite ! Bits.of_N_to_N in address_neq.
+                   TODO
 
                   exploit_var
                     1128%positive
@@ -747,7 +731,7 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                       clear VS. full_pass_c. full_pass_c.
                       Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
                       Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-
+                      
                       exploit_var
                         1375%positive
                         (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
@@ -758,8 +742,8 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                           unfold UntypedSemantics.sigma2 in H10.
                           unfold val_beq in H10.
                           destr_in H10.
-                          { apply list_eqb_correct in Heqb.
-
+                          { apply list_eqb_correct in Heqb. 
+                            inv Heqb.
                             TODO
                             destruct (address_neq Heqb). }
                         }
