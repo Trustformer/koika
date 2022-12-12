@@ -3,10 +3,8 @@
     which returns the set of instructions present in a given RISC-V
     implementation.
 !*)
-
 Require Import List.
 Import ListNotations.
-
 Require Import rv.ISA rv.Instructions.
 
 Definition RV32I_instructions := [

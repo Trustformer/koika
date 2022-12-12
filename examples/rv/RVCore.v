@@ -203,8 +203,7 @@ Section RVHelpers.
                   | opc_OP_IMM_32 => {{ enum imm_type {ImmI} }}
                   | opc_LOAD_FP   => {{ enum imm_type {ImmI} }}
                   | opc_STORE_FP  => {{ enum imm_type {ImmS} }}
-                  (* This case is never used *)
-                  (* TODO do something cleaner *)
+                  (* Default value *)
                   | _             => {{ enum imm_type {ImmI} }}
                   end
       ))]))) opcodes)))

@@ -1,7 +1,8 @@
 (*! Proofs about our RISC-V implementation !*)
 Require Import Coq.Program.Equality.
 Require Import Koika.Frontend.
-Require Export rv.Instructions rv.ShadowStack rv.RVCore rv.rv32 rv.rv32i.
+Require Export rv.Decode rv.Instructions rv.ShadowStack rv.RVCore rv.rv32
+  rv.rv32i.
 Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.SimpleForm.Interpretation.
 Require Import Koika.SimpleForm.Operations.
@@ -24,7 +25,7 @@ Module RVProofs.
   Instance eq_dec_reg: EqDec RV32I.reg_t := EqDec_FiniteType.
   Existing Instance etaRuleInformationRaw.
 
-  Section test1.
+  Section proof.
   Variable REnv: Env RV32I.reg_t.
   Variable ctx : env_t REnv (fun _ => val).
   Hypothesis WTRENV: Wt.wt_renv RV32I.R REnv ctx.
@@ -248,7 +249,6 @@ Module RVProofs.
       do 32 eexists. do 32 f_equal. destruct bs. eauto. inv H.
     Qed.
 
-
     Lemma extract_bits_3:
       forall {A: Type} bs,
       Datatypes.length (A := A) bs = 3
@@ -280,7 +280,7 @@ Module RVProofs.
     end.
 
     Ltac extract_bits_info H :=
-unfold eql in H; rewrite Bits.of_N_to_N in H;
+      unfold eql in H; rewrite Bits.of_N_to_N in H;
       simpl in H;
       rewrite ! andb_true_r in H;
       repeat (
@@ -288,6 +288,22 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
         try rewrite ! orb_true_iff in H
       );
       rewrite ! eqb_true_iff in H.
+
+    Definition imm_coherent
+      v imm_v inst_v (DecodeDInst:
+        get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "dInst"
+        = Some v)
+      (imm_v: get_field v "immediateType" = Some imm_v)
+      (inst_v: get_field v "inst" = Some inst_v)
+    :=
+      match get_opcode_i_type inst_v with
+      | SType  => ImmS
+      | BType  => ImmB
+      | UType  => ImmU
+      | JType  => ImmJ
+      | IType  => ImmI
+      | _ => ImmI
+      end.
 
     Lemma sstack_violation_results_in_halt:
       forall
@@ -687,8 +703,11 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                destruct x0.
                do 2 full_pass_c.
                do 2 full_pass_c.
+               Eval vm_compute in (Maps.PTree.get 1128 (vars sf0)).
+               Eval vm_compute in (Maps.PTree.get 1038 (vars sf0)).
                destruct k3, k4, k5.
                *** full_pass_c. destruct x2. full_pass_c.
+
                    apply extract_bits_32 in H1.
                    do 32 destruct H1 as [? H1].
                    subst bs.
@@ -701,7 +720,12 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                    collapse.
                    isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
                    rewrite ! Bits.of_N_to_N in address_neq.
-                   TODO
+
+                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
+                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
+                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
+                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
+                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
 
                   exploit_var
                     1128%positive
@@ -728,7 +752,9 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                       { econstructor. econstructor. auto. }
                     }
                     {
-                      clear VS. full_pass_c. full_pass_c.
+                      clear VS.
+                      Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
+                      full_pass_c. full_pass_c.
                       Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
                       Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
                       
@@ -743,6 +769,7 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                           unfold val_beq in H10.
                           destr_in H10.
                           { apply list_eqb_correct in Heqb. 
+                            Show Proof.
                             inv Heqb.
                             TODO
                             destruct (address_neq Heqb). }
@@ -759,7 +786,6 @@ unfold eql in H; rewrite Bits.of_N_to_N in H;
                     econstructor. vm_compute.
                   
 
-          Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
 
                    ssearch_in_var (
                      @SBinop

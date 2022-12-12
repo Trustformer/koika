@@ -1,5 +1,4 @@
 (*! Definition of the instructions introduced in the RISC-V specification !*)
-
 Require Import rv.ISA.
 
 (* As the semantics of instructions of the same name can vary depending on the
