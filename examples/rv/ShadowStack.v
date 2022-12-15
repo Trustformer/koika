@@ -62,12 +62,13 @@ Module ShadowStackF <: ShadowStackInterface.
   Definition pop : UInternalFunction reg_t empty_ext_fn_t := {{
     fun pop (address : bits_t 32) : bits_t 1 =>
       let s0 := read0(size) in
+      let loc := s0 - |index_sz`d1| in
       if s0 == |index_sz`d0| then (* underflow *)
         Ob~1
       else if (`read_vect_sequential "loc"` != address) then (* wrong address *)
         Ob~1
       else (
-        write0(size, s0);
+        write0(size, s0 - |index_sz`d1|);
         Ob~0
       )
   }}.
