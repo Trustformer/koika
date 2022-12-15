@@ -159,52 +159,16 @@ Definition bits_to_opcode (bs: list bool) : option opcode_name :=
   | _ => None
   end.
 
-Definition get_imm (b : list bool) : option (list bool) :=
+Require Import Coq.Strings.String.
+
+Definition get_imm_name (b : list bool) : option string :=
   let opcode := bits_to_opcode (get_field opcode b) in
   let type   := option_map get_i_type_from_opcode opcode in
   match type with
-  | Some IType  => Some (get_field immI b)
-  | Some SType  => Some (get_field immS b)
-  | Some BType  => Some (get_field immB b)
-  | Some UType  => Some (get_field immU b)
-  | Some JType  => Some (get_field immJ b)
+  | Some IType  => Some "ImmI"%string
+  | Some SType  => Some "ImmS"%string
+  | Some BType  => Some "ImmB"%string
+  | Some UType  => Some "ImmU"%string
+  | Some JType  => Some "ImmJ"%string
   | _           => None
   end.
-
-(* Definition decode_helper (b : list bool) (instrs : list instruction) *)
-(*   : list instruction *)
-(* := *)
-(*   let opc      := get_opcode b in *)
-(*   let fct2     := get_fct2 b in *)
-(*   let fct3     := get_fct3 b in *)
-(*   let fct7     := get_fct7 b in *)
-(*   let instrs_0 := match o *)
-(*   let type     := get_opcode_i_type opc in *)
-(*   let instrs_1 := filter_by_opcode opc instrs in *)
-(*   let instrs_2 := *)
-(*     if (has_fct3 type) then *)
-(*       filter_by_fct3_decode fct3 instrs_1 *)
-(*     else instrs_1 *)
-(*   in *)
-(*   let instrs_3 := *)
-(*     if (has_fct7 type) then filter_by_fct7_decode fct7 instrs_2 else instrs_2 *)
-(*   in *)
-(*   if (has_fct2 type) then filter_by_fct2_decode fct2 instrs_3 else instrs_3. *)
-
-(* Definition filter_by_opcode (o : opcode_name) (instrs : list instruction) *)
-(*   : list instruction *)
-(* := List.filter (fun i => opcode_name_beq o (instruction_opcode i)) instrs. *)
-
-(* Definition decode_helper (b : list bool) (instrs : list instruction) *)
-(*   : list instruction *)
-(* := *)
-(*   let opc      := get_opcode b in *)
-(*   let type     := get_opcode_i_type opc in *)
-(*   let instrs_1 := filter_by_opcode opc instrs in *)
-(*   let type     := get_i_type_from_opcode opc in *)
-(*   let instrs_2 := if (has_fct3) then filter_by_fct3 b instrs_1 else instrs_1 in *)
-(*   let instrs_3 := if (has_fct7) then filter_by_fct7 b instrs_2 else instrs_2 in *)
-(*   if (has_fct2) then filter_by_fct2 b instrs_3 else instrs_3. *)
-
-(* Definition decode (b : bits_t 32) (instrs : list instruction) : instruction := *)
-(*   let bits := vect_to_list b in. *)

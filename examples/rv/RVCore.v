@@ -203,7 +203,7 @@ Section RVHelpers.
                   | opc_OP_IMM_32 => {{ enum imm_type {ImmI} }}
                   | opc_LOAD_FP   => {{ enum imm_type {ImmI} }}
                   | opc_STORE_FP  => {{ enum imm_type {ImmS} }}
-                  (* Default value *)
+                  (* Default value, TODO doesn't use invalid *)
                   | _             => {{ enum imm_type {ImmI} }}
                   end
       ))]))) opcodes)))
@@ -283,8 +283,7 @@ Section RVHelpers.
       }
   }}.
 
-  Definition getImmediate
-    `{finite_reg: FiniteType reg_t}
+  Definition getImmediate `{finite_reg: FiniteType reg_t}
   : UInternalFunction reg_t empty_ext_fn_t := {|
     int_name := "getImmediate";
     int_argspec := [prod_of_argsig
@@ -315,7 +314,7 @@ Section RVHelpers.
                         ({{ enum imm_type {ImmU} }}, {{ get(fields, immU) }})
                       | immJ =>
                         ({{ enum imm_type {ImmJ} }}, {{ get(fields, immJ) }})
-                      (* should never happen TODO make function dependent *)
+                      (* should never happen *)
                       | _ => ({{ Ob~0 }}, {{ Ob~0 }})
                       end
                     )
@@ -837,7 +836,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in
     let isUnsigned := Ob~0 in
     let size       := funct3[|2`d0| :+ 2] in
-    let addr       := rs1_val + imm in
+    let addr       := ((rs1_val + imm) && !|32`d1|) in
     let offset     := addr[|5`d0| :+ 2] in
     if isMemoryInst(dInst) then
       let shift_amount := offset ++ |3`d0| in
@@ -858,7 +857,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
         byte_en := byte_en; addr := addr; data := data
       })
     else if (isControlInst(dInst)) then
-      (* See table 2.1. of the unpriviledged ISA specification for details *)
+      (* See table 2.1. of the unprivileged ISA specification for details *)
       set data := (pc + |32`d4|); (* For jump and link *)
       `
         (* if (HAS_SHADOW_STACK) then *) ({{
