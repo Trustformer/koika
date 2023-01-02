@@ -298,6 +298,18 @@ Module RVProofs.
       );
       rewrite ! eqb_true_iff in H.
 
+    Ltac inv_interp_sact :=
+      match goal with
+      | H: interp_sact _ _ _ (SVar _) _ |- _ => inv H
+      | H: interp_sact _ _ _ (SReg _) _ |- _ => inv H
+      | H: interp_sact _ _ _ (SIf _ _ _) _ |- _ => inv H
+      | H: interp_sact _ _ _ (SBinop _ _ _) _ |- _ => inv H
+      | H: interp_sact _ _ _ (SUnop _ _) _ |- _ => inv H
+      | H: interp_sact _ _ _ (SExternalCall _ _) _ |- _ => inv H
+      | H: interp_sact _ _ _ (SConst _) _ |- _ => inv H
+      | H: Maps.PTree.get _ _ = _ |- _ => vm_compute in H; inv H
+      end.
+
     Lemma sstack_violation_results_in_halt:
       forall
         (NoHalt: getenv REnv ctx RV32I.halt = Bits [false])
@@ -383,7 +395,7 @@ Module RVProofs.
       }
       subst. clear H5.
       destruct H as [under | [over | violation]].
-      - admit. (* red in under.
+      - red in under.
         destruct under as [no_mispred [sstack_empty sstack_pop]].
         red in no_mispred, sstack_empty, sstack_pop. simpl in *.
         vm_compute vect_to_list in sstack_empty.
@@ -474,8 +486,7 @@ Module RVProofs.
               crusher_c 3; intuition congruence.
           * do 3 full_pass_c.
             destruct x11, x12, x13, x14, x15, x21;
-              crusher_c 3; intuition congruence.*)
-      (* - admit. *)
+              crusher_c 3; intuition congruence.
       - destruct over as [
           no_mispred [sstack_full [not_sstack_pop sstack_push]]
         ].
@@ -592,19 +603,21 @@ Module RVProofs.
           full_pass_c.
           full_pass_c.
           full_pass_c.
-          Eval vm_compute in (Maps.PTree.elements (vars sf6)).
+          isolate_sf. fold sf6 in sf4. fold sf4 in wfsf. subst sf6.
+          Eval vm_compute in (Maps.PTree.elements (vars sf4)).
           exploit_var 1788%positive uconstr:(SConst (Bits [false])).
           {
             econstructor.
             intros.
-            eapply interp_sact_do_eval_sact in H.
+            eapply interp_sact_do_eval_sact
+              with (R := RV32I.R) (Sigma := ext_Sigma) in H.
             vm_compute in H.
             assert (OF: oldv = Bits [false]).
             clear -H. inv H. destruct x13, x19, x20, x21, x22, x23; auto.
             clear H.
             subst; constructor. apply wfsf.
             econstructor. vm_compute. reflexivity. inversion 1.
-            econstructor. vm_compute. reflexivity.
+            econstructor. vm_compute. eauto.
             repeat constructor.
           }
           clear VS.
@@ -667,4685 +680,902 @@ Module RVProofs.
         simpl in address_neq.
         move not_empty at bottom.
         move ret_instr at bottom.
-        isolate_sf. fold sf0 in wfsf. vm_compute in sf0.
-        Eval vm_compute in (Maps.PTree.get 1375 (vars sf0)).
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+
+        exploit_var
+          1374%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
+        {
+          econstructor; intros.
+          {
+            repeat inv_interp_sact.
+            unfold UntypedSemantics.sigma2 in H15. inv H15.
+            assert (b=false).
+            {
+              clear - not_empty H14.
+              destruct k0, k1, k2; vm_compute in H14; try congruence.
+            }
+            subst. clear H14.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;true;true]).
+            inv H15. clear -H14.
+            destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H14, H15. inv H14; inv H15.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [false;true;true]).
+            inv H16. clear -H15.
+            destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H15, H16. inv H15; inv H16.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;false;true]).
+            inv H17. clear -H16.
+            destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H17, H16. inv H17; inv H16.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [false;false;true]).
+            inv H18. clear -H17.
+            destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H17, H18. inv H17; inv H18.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;true;false]).
+            inv H19. clear -H18.
+            destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H19, H18. inv H19; inv H18.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [false; true; false]).
+            inv H20. clear -H19.
+            destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H19, H20. inv H19; inv H20.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;false;false]).
+            inv H21. clear -H20.
+            destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H21, H20. inv H21; inv H20.
+            repeat inv_interp_sact.
+            clear - H2 H5 H9 H10 H11 H12 H13 not_empty.
+            destruct k0,k1,k2; vm_compute in *; try congruence.
+          }
+          inv H.
+          econstructor. vm_compute. eauto.
+          econstructor. constructor. auto.
+        }
+        clear VS.
+
+        isolate_sf. fold sf1 in wfsf0. vm_compute in sf1. subst sf0.
+
+        exploit_var
+          1527%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
+        {
+          econstructor; intros.
+          {
+            repeat inv_interp_sact.
+            unfold UntypedSemantics.sigma2 in H15. inv H15.
+            assert (b=false).
+            {
+              clear - not_empty H14.
+              destruct k0, k1, k2; vm_compute in H14; try congruence.
+            }
+            subst. clear H14.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;true;true]).
+            inv H15. clear -H14.
+            destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H14, H15. inv H14; inv H15.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [false;true;true]).
+            inv H16. clear -H15.
+            destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H15, H16. inv H15; inv H16.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;false;true]).
+            inv H17. clear -H16.
+            destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H17, H16. inv H17; inv H16.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [false;false;true]).
+            inv H18. clear -H17.
+            destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H17, H18. inv H17; inv H18.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;true;false]).
+            inv H19. clear -H18.
+            destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H19, H18. inv H19; inv H18.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [false; true; false]).
+            inv H20. clear -H19.
+            destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H19, H20. inv H19; inv H20.
+            repeat inv_interp_sact.
+            destruct b.
+            assert ([k0;k1;k2] = [true;false;false]).
+            inv H21. clear -H20.
+            destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21.
+            inv H.
+            repeat inv_interp_sact.
+            vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+            simpl in H21, H20. inv H21; inv H20.
+            repeat inv_interp_sact.
+            clear - H2 H5 H9 H10 H11 H12 H13 not_empty.
+            destruct k0,k1,k2; vm_compute in *; try congruence.
+          }
+          inv H.
+          econstructor. vm_compute. eauto.
+          econstructor. constructor. auto.
+        }
+        clear VS.
+
+        Eval vm_compute in (Maps.PTree.get 1527 (vars sf1)).
+        Eval vm_compute in (Maps.PTree.get 1528 (vars sf1)).
+        Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
+
+        full_pass_c. full_pass_c.
+
+        isolate_sf. fold sf0 in wfsf. subst sf1.
+        vm_compute in InstV. inv InstV.
+        vm_compute get_imm_name in imm_coherent.
+        simpl in imm_coherent.
+        inv ImmV.
+        vm_compute Bool.eqb in imm_coherent.
+        destruct k3, k4, k5; try discriminate imm_coherent.
+        clear imm_coherent.
+
+      assert (
+        forall n (v1 v2: vect bool n),
+          bitwise andb (vect_to_list v1) (vect_to_list v2)
+          = vect_to_list (Bits.and v1 v2)
+        ) as and_equiv. {
+          clear.
+          induction n; intros.
+          - reflexivity.
+          - destruct v1, v2. simpl.
+            specialize (IHn vtl vtl0).
+            unfold vect_to_list. simpl.
+            unfold vect_to_list in IHn. rewrite IHn.
+            f_equal.
+        }
+
         Eval vm_compute in (Maps.PTree.get 1128 (vars sf0)).
-
-         exploit_var
-            1374%positive
-              (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
+        Eval vm_compute in (Maps.PTree.get 1375 (vars sf0)).
+        exploit_var
+          1375%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
+        {
+          econstructor; intros.
           {
-            econstructor; intros.
-            {
-              Ltac inv_interp_sact :=
-                match goal with
-                | H: interp_sact _ _ _ (SVar _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SReg _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SIf _ _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SBinop _ _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SUnop _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SExternalCall _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SConst _) _ |- _ => inv H
-                | H: Maps.PTree.get _ _ = _ |- _ => vm_compute in H; inv H
-                end.
-              repeat inv_interp_sact.
-              unfold UntypedSemantics.sigma2 in H15. inv H15.
-              assert (b=false).
-              {
-                clear - not_empty H14.
-                destruct k0, k1, k2; vm_compute in H14; try congruence.
-              }
-              subst. clear H14.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;true;true]).
-              inv H15. clear -H14.
-              destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H14, H15. inv H14; inv H15.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [false;true;true]).
-              inv H16. clear -H15.
-              destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H15, H16. inv H15; inv H16.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;false;true]).
-              inv H17. clear -H16.
-              destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H17, H16. inv H17; inv H16.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [false;false;true]).
-              inv H18. clear -H17.
-              destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H17, H18. inv H17; inv H18.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;true;false]).
-              inv H19. clear -H18.
-              destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H19, H18. inv H19; inv H18.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [false; true; false]).
-              inv H20. clear -H19.
-              destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H19, H20. inv H19; inv H20.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;false;false]).
-              inv H21. clear -H20.
-              destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H21, H20. inv H21; inv H20.
-              repeat inv_interp_sact.
-              clear - H2 H5 H9 H10 H11 H12 H13 not_empty.
-              destruct k0,k1,k2; vm_compute in *; try congruence.
-            }
             inv H.
-            econstructor. vm_compute. eauto.
-            econstructor. constructor. auto.
-          }
-          clear VS.
 
-          isolate_sf. fold sf1 in wfsf0. vm_compute in sf1. subst sf0.
-          exploit_var
-            1375%positive
-              (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-          {
-            econstructor; intros.
-            {
-              inv H.
-              BLAAAAAAA
-              vm_compute in H5; inv H5. inv H9. inv H12. vm_compute in H2. inv H2.
-              inv H5. unfold UntypedSemantics.sigma2 in H13. destr_in H13; inv H13. 2: now constructor.
-              exfalso.
-              apply address_neq.
-              f_equal.
-              apply extract_bits_32 in H1.
-              do 32 destruct H1 as [? H1].
-              subst bs.
-              inv H7.
-              apply extract_bits_32 in H1.
-              do 32 destruct H1 as [? H1].
-              subst bs.
-              inv H10.
-              inv H14. inv H15. inv H11. inv H10. inv H7.
-              unfold UntypedSemantics.sigma2 in H12.
-              unfold UntypedSemantics.ubits2_sigma in H12. vm_compute Datatypes.length in H12.
-              unfold Bits.of_list in H12.
-              inv H12.
-              assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. { clear.
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                vm_compute Datatypes.length. simpl Bits.of_list. 
-                  remember ([
-                             false; true; true; true; true; true; true; true; true;
-                             true; true; true; true; true; true; true; true; true;
-                             true; true; true; true; true; true; true; true; true;
-                             true; true; true; true; true
-                         ]) as CONST.
-                remember (
-                    Bits.of_N 32 (Bits.to_N
-                                    Ob~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52
-                                  + Bits.to_N
-                                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                  ) as PLUS.
-                remember (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                  ) as CONST'.
-                f_equal. f_equal.
+            vm_compute in H5; inv H5. inv H9. inv H12. vm_compute in H2. inv H2.
+            inv H5. unfold UntypedSemantics.sigma2 in H13.
+            destr_in H13; inv H13.
+            2: now constructor.
+            exfalso. apply address_neq. clear address_neq.
+            f_equal. f_equal.
+            inv H11. inv H9. inv H13.
+            inv H14. inv H15.
+            inv H16.
+            clear ret_instr.
+            inv H7. apply extract_bits_32 in H12. do 32 destruct H12 as [? H12].
+            subst.
 
-                replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
-                apply Some_inj in H1. rewrite <- H1 in Heqb. clear H1.
-                unfold val_beq in Heqb. clear address_neq.
-                apply list_eqb_correct in Heqb.
-                2: apply eqb_true_iff.
-                apply vect_to_list_inj.
-                vm_compute vect_to_list at 1.
-                rewrite Heqb.
-                assert (CONST = vect_to_list CONST'). {
-                  rewrite HeqCONST, HeqCONST'. reflexivity.
-                }
-                rewrite H.
-                apply and_equiv.
+            apply val_beq_correct in Heqb. subst v1.
+            inv H10.
+            apply extract_bits_32 in H1. do 32 destruct H1 as [? H1]. subst bs.
+
+            vm_compute Datatypes.length in *.
+
+            vm_compute in H2. inv H2.
+            inv H5. inv H10. inv H5. inv H13. inv H14.
+
+            inv H12. inv H7.
+            inv H14.
+
+            inv H13. inv H5.
+            vm_compute val_beq in H10.
+            inv H10.
+            inv H7.
+            inv H13. inv H5.
+            inv H14.
+            inv H12. inv H7. inv H13. inv H5. inv H14.
+            inv H10. inv H7. inv H13. inv H5. inv H14.
+            inv H12. inv H7. inv H13. inv H5. inv H14.
+            inv H10.
+            inv H11.
+            apply Some_inj in H9.
+            simpl Bits.of_list.
+            remember ([
+              false; true; true; true; true; true; true; true; true;
+              true; true; true; true; true; true; true; true; true;
+              true; true; true; true; true; true; true; true; true;
+              true; true; true; true; true
+            ]) as CONST.
+            remember (
+              Bits.of_N 32 (Bits.to_N
+                Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2
+                + Bits.to_N
+                Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
+            ) as PLUS.
+            remember (
+              Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
+            ) as CONST'.
+            assert (CONST = vect_to_list CONST'). {
+              rewrite HeqCONST, HeqCONST'. reflexivity.
             }
-            inv H.
-            econstructor. vm_compute. eauto. constructor. constructor. auto.
+            replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
+            f_equal.
+            apply val_beq_correct in H9. unfold val_beq in H9.
+            apply list_eqb_correct in H9.
+            2: apply Bool.eqb_true_iff.
+            rewrite H in H9.
+            rewrite and_equiv in H9.
+            replace
+              [x60; x61; x62; x63; x64; x65; x66; x67; x68; x69; x70; x71; x72;
+               x73; x74; x75; x76; x77; x78; x79; x80; x81; x82; x83; x84; x85;
+               x86; x87; x88; x89; x90; x91]
+            with
+              (vect_to_list Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60
+            ) in H9. 2: auto.
+            apply vect_to_list_inj in H9.
+            symmetry. apply H9.
           }
-          clear VS.
+        inv H.
+        econstructor. vm_compute. eauto. constructor. constructor. auto.
+      }
+      clear VS.
 
+      isolate_sf. fold sf1 in wfsf0. subst sf0. vm_compute in sf1.
 
+      Eval vm_compute in (Maps.PTree.get 1788 (vars sf1)).
+      Time ssearch_in_var (
+        (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
+          (SConst (Bits bs)) (SVar 1128))
+      ) (vars sf1) 1788%positive
+      (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+      intro A.
+      apply extract_bits_32 in H1. do 32 destruct H1 as [? H1]. subst bs.
+      trim A. { vm_compute. reflexivity. }
+      trim A.
+      {
+        econstructor.
+        - econstructor. econstructor. auto.
+        - econstructor. vm_compute. auto.
+        - econstructor.
+      }
+      trim A. { repeat econstructor. }
+      trim A.
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf0.
+        - apply wfsf0.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. vm_compute in H1. inv H1.
+          inv H9. inv H2. inv H9. inv H14. vm_compute in H1. inv H1.
+          inv H2. inv H14.
+          inv H9. inv H17. inv H18.
+          inv H16. inv H10. inv H9. inv H17. inv H18.
+          inv H14. inv H10. inv H9. inv H17. inv H18.
+          inv H16. inv H10. inv H9. inv H17. inv H18.
+          inv H14. inv H10. inv H9. inv H17. inv H18.
+          inv H16. inv H10. inv H9. inv H17. inv H18.
+          inv H11. inv H14.
+          inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1].
+          subst bs. inv H5. inv H15.
+          unfold UntypedSemantics.sigma2 in H13. apply Some_inj in H13.
+          subst v2.
+          unfold UntypedSemantics.sigma2 in H12. apply Some_inj in H12.
+          subst ov.
+          destr. 2: econstructor. exfalso. apply address_neq. clear address_neq.
+          f_equal. f_equal. f_equal.
+          apply val_beq_correct in Heqb.
+          vm_compute Datatypes.length.
+          simpl Bits.of_list at 2.
+          remember ((Bits.of_N 32
+            (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60
+            + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
+          )) as PLUS.
+          remember ([
+            false; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true
+          ]) as CONST.
+          remember (
+            Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
+          ) as CONST'.
+          replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
+          unfold UntypedSemantics.ubits2_sigma in Heqb.
+          assert (CONST = vect_to_list CONST'). {
+            rewrite HeqCONST, HeqCONST'. reflexivity.
+          }
+          rewrite H in Heqb. rewrite and_equiv in Heqb.
+          replace
+            [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42;
+             x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55;
+             x56; x57; x58; x59]
+          with
+            (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2)
+          in Heqb. 2: auto.
+          apply val_beq_correct in Heqb. unfold val_beq in Heqb.
+          apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff.
+          apply vect_to_list_inj in Heqb.
+          symmetry. rewrite <- Heqb. reflexivity.
+      }
+      trim A. inversion 1.
+      exploit_subact. clear A. isolate_sf.
+      fold sf1 in wfsf. subst sf0.
 
+      isolate_sf. fold sf0 in wfsf. subst sf1. vm_compute in sf0.
+      Time ssearch_in_var (
+        (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
+          (SConst (Bits
+            [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39;
+             x40; x41; x42; x43; x44; x45; x46; x47; x48; x49; x50;
+             x51; x52; x53; x54; x55; x56; x57; x58; x59]))
+        (SVar 1128))
+      ) (vars sf0) 1536%positive
+      (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+      intro A.
+      trim A. { vm_compute. reflexivity. }
+      trim A.
+      {
+        econstructor.
+        - econstructor. econstructor. vm_compute. eauto.
+        - econstructor. vm_compute. auto.
+        - econstructor.
+      }
+      trim A. { repeat econstructor. }
+      trim A.
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. vm_compute in H1. inv H1.
+          inv H9. inv H2. inv H9. inv H5. inv H14.
+          vm_compute in H1. inv H1. inv H2.
+          inv H10. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10. inv H9. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10. inv H9. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10.
+          inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1].
+          subst bs. inv H11. inv H15. unfold UntypedSemantics.sigma2 in H13.
+          apply Some_inj in H13. subst v2.
+          apply Some_inj in H12. subst ov.
+          destr. 2: constructor. exfalso. apply address_neq.
+          f_equal. f_equal. f_equal.
+          apply val_beq_correct in Heqb.
+          vm_compute Datatypes.length.
+          simpl Bits.of_list at 2.
+          remember ((Bits.of_N 32
+            (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60
+            + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
+          )) as PLUS.
+          remember ([
+            false; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true
+          ]) as CONST.
+          remember (
+            Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
+          ) as CONST'.
+          replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
+          unfold UntypedSemantics.ubits2_sigma in Heqb.
+          assert (CONST = vect_to_list CONST'). {
+            rewrite HeqCONST, HeqCONST'. reflexivity.
+          }
+          rewrite H in Heqb. rewrite and_equiv in Heqb.
+          replace
+            [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42;
+             x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55;
+             x56; x57; x58; x59]
+          with
+            (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2)
+          in Heqb. 2: auto.
+          apply val_beq_correct in Heqb. unfold val_beq in Heqb.
+          apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff.
+          apply vect_to_list_inj in Heqb.
+          symmetry. rewrite <- Heqb. reflexivity.
+      }
+      trim A. inversion 1.
+      exploit_subact. clear A. isolate_sf.
+      fold sf1 in wfsf0. subst sf0.
 
+      Eval vm_compute in (Maps.PTree.get 1528 (vars sf1)).
+      isolate_sf. fold sf0 in wfsf0. subst sf1. vm_compute in sf0.
+      Time ssearch_in_var (
+        (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
+          (SConst (Bits
+            [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39;
+             x40; x41; x42; x43; x44; x45; x46; x47; x48; x49; x50;
+             x51; x52; x53; x54; x55; x56; x57; x58; x59]))
+        (SVar 1128))
+      ) (vars sf0) 1528%positive
+      (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+      intro A.
+      trim A. { vm_compute. reflexivity. }
+      trim A.
+      {
+        econstructor.
+        - econstructor. econstructor. vm_compute. eauto.
+        - econstructor. vm_compute. auto.
+        - econstructor.
+      }
+      trim A. { repeat econstructor. }
+      trim A.
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf0.
+        - apply wfsf0.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. vm_compute in H1. inv H1.
+          inv H9. inv H2. inv H9. inv H5. inv H14.
+          vm_compute in H1. inv H1. inv H2.
+          inv H10. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10. inv H9. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10. inv H9. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10.
+          inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1].
+          subst bs. inv H11. inv H15. unfold UntypedSemantics.sigma2 in H13.
+          apply Some_inj in H13. subst v2.
+          apply Some_inj in H12. subst ov.
+          destr. 2: constructor. exfalso. apply address_neq.
+          f_equal. f_equal. f_equal.
+          apply val_beq_correct in Heqb.
+          vm_compute Datatypes.length.
+          simpl Bits.of_list at 2.
+          remember ((Bits.of_N 32
+            (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60
+            + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
+          )) as PLUS.
+          remember ([
+            false; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true
+          ]) as CONST.
+          remember (
+            Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
+          ) as CONST'.
+          replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
+          unfold UntypedSemantics.ubits2_sigma in Heqb.
+          assert (CONST = vect_to_list CONST'). {
+            rewrite HeqCONST, HeqCONST'. reflexivity.
+          }
+          rewrite H in Heqb. rewrite and_equiv in Heqb.
+          replace
+            [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42;
+             x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55;
+             x56; x57; x58; x59]
+          with
+            (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2)
+          in Heqb. 2: auto.
+          apply val_beq_correct in Heqb. unfold val_beq in Heqb.
+          apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff.
+          apply vect_to_list_inj in Heqb.
+          symmetry. rewrite <- Heqb. reflexivity.
+      }
+      trim A. inversion 1.
+      exploit_subact. clear A. isolate_sf.
+      fold sf1 in wfsf. subst sf0.
 
+      Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
+      isolate_sf. fold sf0 in wfsf. subst sf1. vm_compute in sf0.
+      Time ssearch_in_var (
+        (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
+          (SConst (Bits
+            [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39;
+             x40; x41; x42; x43; x44; x45; x46; x47; x48; x49; x50;
+             x51; x52; x53; x54; x55; x56; x57; x58; x59]))
+        (SVar 1128))
+      ) (vars sf0) 1383%positive
+      (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+      intro A.
+      trim A. { vm_compute. reflexivity. }
+      trim A.
+      {
+        econstructor.
+        - econstructor. econstructor. vm_compute. eauto.
+        - econstructor. vm_compute. auto.
+        - econstructor.
+      }
+      trim A. { repeat econstructor. }
+      trim A.
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. vm_compute in H1. inv H1.
+          inv H9. inv H2. inv H9. inv H5. inv H14.
+          vm_compute in H1. inv H1. inv H2.
+          inv H10. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10. inv H9. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10. inv H9. inv H5. inv H16. inv H17.
+          inv H14. inv H9. inv H5. inv H16. inv H17.
+          inv H10.
+          inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1].
+          subst bs. inv H11. inv H15. unfold UntypedSemantics.sigma2 in H13.
+          apply Some_inj in H13. subst v2.
+          apply Some_inj in H12. subst ov.
+          destr. 2: constructor. exfalso. apply address_neq.
+          f_equal. f_equal. f_equal.
+          apply val_beq_correct in Heqb.
+          vm_compute Datatypes.length.
+          simpl Bits.of_list at 2.
+          remember ((Bits.of_N 32
+            (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60
+            + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
+          )) as PLUS.
+          remember ([
+            false; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true; true; true; true; true;
+            true; true; true; true; true
+          ]) as CONST.
+          remember (
+            Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
+          ) as CONST'.
+          replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
+          unfold UntypedSemantics.ubits2_sigma in Heqb.
+          assert (CONST = vect_to_list CONST'). {
+            rewrite HeqCONST, HeqCONST'. reflexivity.
+          }
+          rewrite H in Heqb. rewrite and_equiv in Heqb.
+          replace
+            [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42;
+             x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55;
+             x56; x57; x58; x59]
+          with
+            (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2)
+          in Heqb. 2: auto.
+          apply val_beq_correct in Heqb. unfold val_beq in Heqb.
+          apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff.
+          apply vect_to_list_inj in Heqb.
+          symmetry. rewrite <- Heqb. reflexivity.
+      }
+      trim A. inversion 1.
+      exploit_subact. clear A. isolate_sf.
+      fold sf1 in wfsf0. subst sf0.
+      full_pass_c.
+      full_pass_c.
+      full_pass_c.
+      clear and_equiv.
+      clear positions.
+      clear positions0.
+      clear positions1.
+      clear positions2.
 
-        
-        full_pass_c.
-        full_pass_c.
-        full_pass_c.
-        full_pass_c.
-        full_pass_c.
-        full_pass_c.
-        full_pass_c.
-
-        isolate_sf. fold sf0 in wfsf.
-        ssearch_in_var (
-          @SBinop
-            RV32I.reg_t RV32I.ext_fn_t (UEq false)
-            (SConst (Bits [x0])) (SConst (Bits [x0]))
-        ) (vars sf0) 1788%positive
-        (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-        intro A. trim A. vm_compute. reflexivity.
-        trim A. repeat econstructor.
-        trim A. repeat econstructor.
+      destruct ret_instr as [ret_instr1 | ret_instr2].
+      + destruct ret_instr1 as ((rd_1_or_5 & rd_neq_rs1) & rs1_1_or_5).
+        assert (x11 = true /\ x12 = false /\ x14 = false /\ x15 = false)
+          as rd_1_or_5' by (clear - rd_1_or_5; intuition). clear rd_1_or_5.
+        assert (x19 = true /\ x20 = false /\ x22 = false /\ x23 = false)
+          as rs1_1_or_5' by (clear - rs1_1_or_5; intuition). clear rs1_1_or_5.
+        destr_and_in rd_1_or_5'; destr_and_in rs1_1_or_5'; subst.
+        assert (x13 <> x21) as rd_neq_rs1' by intuition; clear rd_neq_rs1.
+        destruct x13, x21; try congruence; clear rd_neq_rs1'.
+        * full_pass_c. full_pass_c. full_pass_c. full_pass_c.
+          full_pass_c. full_pass_c.
+          destruct k0, k1, k2; try (exfalso; apply not_empty; reflexivity);
+          simpl in EQ; vm_compute in EQ; inv EQ; symmetry in H0; exploit_reg H0;
+          do 2 full_pass_c; destruct x0; crusher_c 3.
+        * full_pass_c. full_pass_c. full_pass_c. full_pass_c.
+          full_pass_c. full_pass_c.
+          destruct k0, k1, k2; try (exfalso; apply not_empty; reflexivity);
+          simpl in EQ; vm_compute in EQ; inv EQ; symmetry in H0; exploit_reg H0;
+          do 2 full_pass_c; destruct x0; crusher_c 3.
+      + destruct ret_instr2 as ((rd_neq_1 & rd_neq_5) & rs1_1_or_5).
+        assert (x19 = true /\ x20 = false /\ x22 = false /\ x23 = false)
+          as rs1_1_or_5' by (clear - rs1_1_or_5; intuition). clear rs1_1_or_5.
+        destr_and_in rs1_1_or_5'; subst.
+        Eval vm_compute in (Maps.PTree.get 1788 (vars sf0)).
+        isolate_sf. fold sf0 in wfsf0. subst sf1. vm_compute in sf0.
+        Time ssearch_in_var
+          (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+            (SConst (Bits [x11; x12; x13; x14; x15]))
+            (SConst (Bits [true; false; true; false; false])))
+          (vars sf0) 1788%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [false])) (bits_t 1).
+        intro A.
+        trim A. { vm_compute. reflexivity. }
         trim A.
-        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. apply wfsf.
-        apply wfsf. repeat econstructor.
-        intros. inv H. inv H10. inv H12. inv H13.
-        rewrite Bool.eqb_reflx. unfold andb.
-        clear. constructor.
+        {
+          econstructor.
+          - econstructor. econstructor. eauto.
+          - econstructor. econstructor. eauto.
+          - econstructor.
+        }
+        trim A. { repeat econstructor. }
+        trim A.
+        {
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+          - apply wfsf0.
+          - apply wfsf0.
+          - repeat econstructor.
+          - intros.
+            inv H. inv H11. inv H9. inv H12.
+            destr. 2: econstructor. exfalso.
+            rewrite ! andb_true_iff in Heqb.
+            rewrite ! Bool.eqb_true_iff in Heqb.
+            repeat destruct Heqb as (? & Heqb).
+            subst.
+            repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+            now apply rd_neq_5.
+        }
         trim A. inversion 1.
-        exploit_subact. clear A. isolate_sf. fold sf2 in wfsf0.
-        subst sf0. subst sf1.
-        full_pass_c.
+        exploit_subact. clear A. isolate_sf.
+        fold sf1 in wfsf. subst sf0. vm_compute in sf1.
 
-        destruct ret_instr as [ret_instr1 | ret_instr2].
-        + destruct ret_instr1 as ((rd_1_or_5 & rd_neq_rs1) & rs1_1_or_5).
-          assert (x11 = true /\ x12 = false /\ x14 = false /\ x15 = false)
-            as rd_1_or_5' by (clear - rd_1_or_5; intuition). clear rd_1_or_5.
-          assert (x19 = true /\ x20 = false /\ x22 = false /\ x23 = false)
-            as rs1_1_or_5' by (clear - rs1_1_or_5; intuition). clear rs1_1_or_5.
-          destr_and_in rd_1_or_5'; destr_and_in rs1_1_or_5'; subst.
-          assert (x13 <> x21) as rd_neq_rs1' by intuition; clear rd_neq_rs1.
-          simpl in InstV. inv InstV. vm_compute get_imm_name in imm_coherent. simpl in imm_coherent.
-          simpl in ImmV. inv ImmV.
-          vm_compute Bits.hd in imm_coherent.
-          rewrite ! andb_true_iff in imm_coherent.
-          rewrite ! Bool.eqb_true_iff in imm_coherent.
-          do 3 destruct imm_coherent as [? imm_coherent]. subst.
-          full_pass_c.
-          exploit_var
-            1374%positive
-              (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
-          {
-            econstructor; intros.
-            {
-              Ltac inv_interp_sact :=
-                match goal with
-                | H: interp_sact _ _ _ (SVar _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SReg _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SIf _ _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SBinop _ _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SUnop _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SExternalCall _ _) _ |- _ => inv H
-                | H: interp_sact _ _ _ (SConst _) _ |- _ => inv H
-                | H: Maps.PTree.get _ _ = _ |- _ => vm_compute in H; inv H
-                end.
-              repeat inv_interp_sact.
-              unfold UntypedSemantics.sigma2 in H15. inv H15.
-              assert (b=false).
-              {
-                clear - not_empty H14.
-                destruct k0, k1, k2; vm_compute in H14; try congruence.
-              }
-              subst. clear H14.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;true;true]).
-              inv H15. clear -H14.
-              destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H14, H15. inv H14; inv H15.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [false;true;true]).
-              inv H16. clear -H15.
-              destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H15, H16. inv H15; inv H16.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;false;true]).
-              inv H17. clear -H16.
-              destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H17, H16. inv H17; inv H16.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [false;false;true]).
-              inv H18. clear -H17.
-              destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H17, H18. inv H17; inv H18.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;true;false]).
-              inv H19. clear -H18.
-              destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H19, H18. inv H19; inv H18.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [false; true; false]).
-              inv H20. clear -H19.
-              destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H19, H20. inv H19; inv H20.
-              repeat inv_interp_sact.
-              destruct b.
-              assert ([k0;k1;k2] = [true;false;false]).
-              inv H21. clear -H20.
-              destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21. inv H.
-              repeat inv_interp_sact.
-              vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-              simpl in H21, H20. inv H21; inv H20.
-              repeat inv_interp_sact.
-              clear - H2 H5 H9 H10 H11 H12 H13 not_empty.
-              destruct k0,k1,k2; vm_compute in *; try congruence.
-            }
-            inv H.
-            econstructor. vm_compute. eauto.
-            econstructor. constructor. auto.
-          }
-          clear VS.
-          isolate_sf.
-          fold sf1 in wfsf. subst sf0. vm_compute in sf1.
-          collapse.
-          isolate_sf.
-          fold sf0 in wfsf0. subst sf1. vm_compute in sf0.
-          
+        Eval vm_compute in (Maps.PTree.get 1788 (vars sf1)).
+        isolate_sf. fold sf0 in wfsf. subst sf1. vm_compute in sf0.
+        Time ssearch_in_var
+          (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+            (SConst (Bits [x11; x12; x13; x14; x15]))
+            (SConst (Bits [true; false; false; false; false])))
+          (vars sf0) 1788%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [false])) (bits_t 1).
+        intro A.
+        trim A. { vm_compute. reflexivity. }
+        trim A.
+        {
+          econstructor.
+          - econstructor. econstructor. eauto.
+          - econstructor. econstructor. eauto.
+          - econstructor.
+        }
+        trim A. { repeat econstructor. }
+        trim A.
+        {
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+          - apply wfsf.
+          - apply wfsf.
+          - repeat econstructor.
+          - intros.
+            inv H. inv H11. inv H9. inv H12.
+            destr. 2: econstructor. exfalso.
+            rewrite ! andb_true_iff in Heqb.
+            rewrite ! Bool.eqb_true_iff in Heqb.
+            repeat destruct Heqb as (? & Heqb).
+            subst.
+            repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong.
+            now apply rd_neq_1.
+        }
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        fold sf1 in wfsf0. subst sf0. vm_compute in sf1.
 
-          Eval vm_compute in (Maps.PTree.get 1375 (vars sf0)).
-          Eval vm_compute in (Maps.PTree.get 1128 (vars sf0)).
+        Eval vm_compute in (Maps.PTree.get 1247 (vars sf1)).
+        isolate_sf. fold sf0 in wfsf0. subst sf1. vm_compute in sf0.
+        Time ssearch_in_var
+          (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+            (SConst (Bits [x11; x12; x13; x14; x15]))
+            (SConst (Bits [true; false; true; false; false])))
+          (vars sf0) 1247%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [false])) (bits_t 1).
+        intro A.
+        trim A. { vm_compute. reflexivity. }
+        trim A.
+        {
+          econstructor.
+          - econstructor. econstructor. eauto.
+          - econstructor. econstructor. eauto.
+          - econstructor.
+        }
+        trim A. { repeat econstructor. }
+        trim A.
+        {
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+          - apply wfsf0.
+          - apply wfsf0.
+          - repeat econstructor.
+          - intros.
+            inv H. inv H11. inv H9. inv H12.
+            destr. 2: econstructor. exfalso.
+            rewrite ! andb_true_iff in Heqb.
+            rewrite ! Bool.eqb_true_iff in Heqb.
+            repeat destruct Heqb as (? & Heqb).
+            subst.
+            repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+            now apply rd_neq_5.
+        }
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        fold sf1 in wfsf. subst sf0. vm_compute in sf1.
 
-          exploit_var
-            1375%positive
-              (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-          {
-            econstructor; intros.
-            {
+        Eval vm_compute in (Maps.PTree.get 1247 (vars sf1)).
+        isolate_sf. fold sf0 in wfsf. subst sf1. vm_compute in sf0.
+        Time ssearch_in_var
+          (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+            (SConst (Bits [x11; x12; x13; x14; x15]))
+            (SConst (Bits [true; false; false; false; false])))
+          (vars sf0) 1247%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [false])) (bits_t 1).
+        intro A.
+        trim A. { vm_compute. reflexivity. }
+        trim A.
+        {
+          econstructor.
+          - econstructor. econstructor. eauto.
+          - econstructor. econstructor. eauto.
+          - econstructor.
+        }
+        trim A. { repeat econstructor. }
+        trim A.
+        {
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+          - apply wfsf.
+          - apply wfsf.
+          - repeat econstructor.
+          - intros.
+            inv H. inv H11. inv H9. inv H12.
+            destr. 2: econstructor. exfalso.
+            rewrite ! andb_true_iff in Heqb.
+            rewrite ! Bool.eqb_true_iff in Heqb.
+            repeat destruct Heqb as (? & Heqb).
+            subst.
+            repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong.
+            now apply rd_neq_1.
+        }
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        fold sf1 in wfsf0. subst sf0. vm_compute in sf1.
 
-              inv H. vm_compute in H5; inv H5. inv H9. inv H12. vm_compute in H2. inv H2.
-              inv H5. unfold UntypedSemantics.sigma2 in H13. destr_in H13; inv H13. 2: now constructor.
-              exfalso.
-              apply address_neq.
-              f_equal.
-              apply extract_bits_32 in H1.
-              do 32 destruct H1 as [? H1].
-              subst bs.
-              inv H7.
-              apply extract_bits_32 in H1.
-              do 32 destruct H1 as [? H1].
-              subst bs.
-              inv H10.
-              inv H14. inv H15. inv H11. inv H10. inv H7.
-              unfold UntypedSemantics.sigma2 in H12.
-              unfold UntypedSemantics.ubits2_sigma in H12. vm_compute Datatypes.length in H12.
-              unfold Bits.of_list in H12.
-              inv H12.
-              assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. { clear.
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                vm_compute Datatypes.length. simpl Bits.of_list. 
-                  remember ([
-                             false; true; true; true; true; true; true; true; true;
-                             true; true; true; true; true; true; true; true; true;
-                             true; true; true; true; true; true; true; true; true;
-                             true; true; true; true; true
-                         ]) as CONST.
-                remember (
-                    Bits.of_N 32 (Bits.to_N
-                                    Ob~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52
-                                  + Bits.to_N
-                                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                  ) as PLUS.
-                remember (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                  ) as CONST'.
-                f_equal. f_equal.
-
-                replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
-                apply Some_inj in H1. rewrite <- H1 in Heqb. clear H1.
-                unfold val_beq in Heqb. clear address_neq.
-                apply list_eqb_correct in Heqb.
-                2: apply eqb_true_iff.
-                apply vect_to_list_inj.
-                vm_compute vect_to_list at 1.
-                rewrite Heqb.
-                assert (CONST = vect_to_list CONST'). {
-                  rewrite HeqCONST, HeqCONST'. reflexivity.
-                }
-                rewrite H.
-                apply and_equiv.
-            }
-            inv H.
-            econstructor. vm_compute. eauto. constructor. constructor. auto.
-          }
-          clear VS.
-
-          isolate_sf.
-          fold sf1 in wfsf. subst sf0. vm_compute in sf1.
-          collapse.
-          isolate_sf.
-          fold sf0 in wfsf0. subst sf1. vm_compute in sf0.
-
-          Eval vm_compute in (Maps.PTree.get 1789 (vars sf0)).
-          Eval vm_compute in (Maps.PTree.get 1383 (vars sf0)).
-          apply extract_bits_32 in H1.
-          do 32 destruct H1 as [? H1].
-          subst bs.
-          inv H7.
-          apply extract_bits_32 in H1.
-          do 32 destruct H1 as [? H1].
-          subst bs.
-          
-
-          ssearch_in_var (
-              (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                 (SConst (Bits [x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x14; x15; x19; x20; x22; x23; x36; x37; x38; x39; x40; x41; x42; x43; x44; x45; x46; x47; x48; x49; x50; x51])) 
-                 (SVar 1128))
-            ) (vars sf0) 1383%positive
-            (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-          intro A.
-          trim A. { vm_compute. reflexivity. }
-          trim A. { repeat econstructor. }
-          trim A. { repeat econstructor. }
-          trim A.
-          {
-            eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-            - apply wfsf0.
-            - apply wfsf0.
-            - repeat econstructor.
-            - intros. inv H. repeat inv_interp_sact.
-              clear A.
-              
-              (* inv H1. inv H9. inv H5. inv H2. inv H9. inv H12. *)
-              unfold UntypedSemantics.sigma2 in H14.
-              unfold UntypedSemantics.ubits2_sigma in H14.
-              simpl Bits.of_list in H14.
-              simpl Datatypes.length in H14. inv H14.
-              unfold UntypedSemantics.sigma2 in H11.
-              apply Some_inj in H11.
-              destr_in H11; subst ov. 2: now constructor.
-              exfalso. apply address_neq.
-              unfold UntypedSemantics.sigma2 in H12.
-              apply Some_inj in H12. subst v2.
-              simpl Datatypes.length.
-              simpl ubits_of_value. unfold Bits.of_list.
-              f_equal. f_equal. f_equal.
-              remember (
-                  Bits.of_N 32 (Bits.to_N
-                                  Ob~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52
-                                + Bits.to_N
-                                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                ) as PLUS.
-              setoid_rewrite <- HeqPLUS.
-              remember ([
-                           false; true; true; true; true; true; true; true; true;
-                           true; true; true; true; true; true; true; true; true;
-                           true; true; true; true; true; true; true; true; true;
-                           true; true; true; true; true
-                       ]) as CONST.
-              remember (
-                  Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                ) as CONST'. clear address_neq.
-              progress replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
-              unfold val_beq in Heqb.
-              apply list_eqb_correct in Heqb.
-              2: apply eqb_true_iff.
-              apply vect_to_list_inj.
-              vm_compute vect_to_list at 1.
-              rewrite Heqb.
-              assert (CONST = vect_to_list CONST'). {
-                rewrite HeqCONST, HeqCONST'. reflexivity.
-              }
-              rewrite H. unfold UntypedSemantics.ubits2_sigma.
-              assert (
-                  forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                ) as and_equiv. { clear.
-                                  induction n; intros.
-                                  - reflexivity.
-                                  - destruct v1, v2. simpl.
-                                    specialize (IHn vtl vtl0).
-                                    unfold vect_to_list. simpl.
-                                    unfold vect_to_list in IHn. rewrite IHn.
-                                    f_equal.
-              }
-              apply and_equiv.
-
-          }
-          trim A. inversion 1.
-          exploit_subact. clear A. isolate_sf.
-          fold sf1 in wfsf. subst sf0.
-          vm_compute in sf1.
-          prune.
-
-          Eval vm_compute in (Maps.PTree.get 1788 (vars sf1)).
-          isolate_sf. fold sf0 in wfsf0. vm_compute in sf0. subst sf1.
-          Eval vm_compute in (Maps.PTree.get 1788 (vars sf0)).
-          destruct x13, x21; try congruence.
-          destruct k0,k1,k2; try congruence.
-          Eval vm_compute in (Maps.PTree.get 1128 (vars sf0)).
-          full_pass_c.
-          
-          
-          ssearch_in_vars
-            (@SBinop RV32I.reg_t RV32I.ext_fn_t (UBits2 UOr) (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false])) (SConst (Bits [true; false; false; false; false])))
-               (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false])) (SConst (Bits [true; false; true; false; false]))))
-              (vars sf0) HH.
-          
-          destruct x13, x21; try congruence.
-
-          full_pass_c.
-          full_pass_c.
-          full_pass_c.
-          crusher_c 1.
-
-
-          
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-
-
-          BLAAAA
-
-          destruct x13, x21; try congruence; clear rd_neq_rs1'.
-          * full_pass_c. full_pass_c. full_pass_c. full_pass_c. full_pass_c.
-            full_pass_c. full_pass_c.
-            destruct k0, k1, k2;
-              try (exfalso; apply not_empty; reflexivity).
-              (* ; clear not_empty. *)
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c. full_pass_c.
-               Eval vm_compute in (Maps.PTree.get 1789 (vars sf0)).
-               Eval vm_compute in (Maps.PTree.get 1758 (vars sf0)).
-               Eval vm_compute in (Maps.PTree.get 992 (vars sf0)).
-               destruct x0.
-               *** crusher_c 3.
-               *** crusher_c 3.
-
-          * full_pass_c. full_pass_c. full_pass_c. full_pass_c. full_pass_c.
-            full_pass_c. full_pass_c.
-            destruct k0, k1, k2;
-              try (exfalso; apply not_empty; reflexivity).
-              (* ; clear not_empty. *)
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c.
-               full_pass_c. full_pass_c. do 3 full_pass_c.
-               destruct x0.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-               *** do 4 full_pass_c.
-                   simpl in ImmV. inv ImmV.
-                   simpl in InstV. inv InstV.
-                   vm_compute get_imm_name in imm_coherent.
-                   simpl in imm_coherent.
-                   vm_compute Bits.hd in imm_coherent.
-                   rewrite ! andb_true_iff in imm_coherent.
-                   rewrite ! Bool.eqb_true_iff in imm_coherent.
-                   do 3 destruct imm_coherent as [? imm_coherent]. subst.
-                   clear imm_coherent.
-                   full_pass_c.
-                   apply extract_bits_32 in H1.
-                   do 32 destruct H1 as [? H1].
-                   subst bs.
-                   inv H7.
-                   apply extract_bits_32 in H0.
-                   do 32 destruct H0 as [? H0].
-                   subst bs.
-                   simpl in address_neq.
-                   collapse.
-                   isolate_sf. subst sf0. fold sf1 in wfsf0. vm_compute in sf1.
-                   rewrite ! Bits.of_N_to_N in address_neq.
-                  Eval vm_compute in (Maps.PTree.get 1789 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1377 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                    = Bits.neg (Bits.of_N 32 1)
-                  ). { reflexivity. } rewrite <- H in address_neq. clear H.
-                  Eval vm_compute in (Maps.PTree.get 1375 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1383 (vars sf1)).
-                  Eval vm_compute in (Maps.PTree.get 1128 (vars sf1)).
-                  assert (
-                    forall n (v1 v2: vect bool n),
-                    bitwise andb (vect_to_list v1) (vect_to_list v2)
-                    = vect_to_list (Bits.and v1 v2)
-                  ) as and_equiv. {
-                    induction n; intros.
-                    - reflexivity.
-                    - destruct v1, v2. simpl.
-                      specialize (IHn vtl vtl0).
-                      unfold vect_to_list. simpl.
-                      unfold vect_to_list in IHn. rewrite IHn.
-                      f_equal.
-                  }
-                  exploit_var
-                    1375%positive
-                    (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-                    {
-                      econstructor; intros.
-                      {
-                        inv H. vm_compute in H1. inv H1.
-                        inv H2. inv H9.
-                        vm_compute in H0. inv H0. inv H1.
-                        unfold UntypedSemantics.sigma2 in H10.
-                        destr_in H10.
-                        - exfalso. apply address_neq.
-                          f_equal.
-                          inv H5. inv H11. inv H12. inv H7. inv H10.
-                          inv H5. inv H11.
-                          unfold UntypedSemantics.sigma2 in H12.
-                          unfold UntypedSemantics.ubits2_sigma in H12.
-                          vm_compute Datatypes.length in H12.
-                          unfold Bits.of_list in H12.
-                          inv H12.
-                        remember ([
-                          false; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true; true; true; true; true;
-                          true; true; true; true; true
-                        ]) as CONST.
-                        remember (
-                          Bits.of_N 32 (Bits.to_N
-                            Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                            + Bits.to_N
-                      Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                        ) as PLUS.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'.
-                        apply Some_inj in H0. rewrite <- H0 in Heqb. clear H0.
-                        unfold val_beq in Heqb. clear address_neq.
-                        apply list_eqb_correct in Heqb.
-                        2: apply eqb_true_iff.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      - inv H10. constructor.
-                    }
-                    { inv H. }
-                    { econstructor. reflexivity. }
-                    { econstructor. econstructor. eauto. }
-                  }
-                  isolate_sf. fold sf0 in wfsf. unfold sf1 in sf0. clear VS.
-                  clear sf1.
-                  vm_compute in sf0.
-                  ssearch_in_var (
-                    (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq true)
-                      (SConst (Bits
-                        [x0; x2; x4; x5; x6; x7; x8; x9; x10; x11; x12; x13;
-                         x14; x15; x19; x20; x21; x22; x23; x36; x37; x38; x39;
-                         x40; x41; x42; x43; x44; x45; x46; x47; x48])) 
-                      (SVar 1128))
-                  ) (vars sf0) 1383%positive
-                  (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
-                  intro A.
-                  trim A. { vm_compute. reflexivity. }
-                  trim A. { repeat econstructor. }
-                  trim A. { repeat econstructor. }
-                  trim A.
-                  {
-                    eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-                    - apply wfsf.
-                    - apply wfsf.
-                    - repeat econstructor.
-                    - intros. inv H. inv H9. inv H5. vm_compute in H0. inv H0.
-                      inv H1. inv H9. inv H5. inv H2. inv H9. inv H12.
-                      remember (
-                        Bits.of_N 32 (Bits.to_N
-                          Ob~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49
-                          + Bits.to_N
-                    Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-                      ) as PLUS.
-                      remember ([
-                        false; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true; true; true; true; true;
-                        true; true; true; true; true
-                      ]) as CONST.
-                      unfold UntypedSemantics.sigma2 in H11.
-                      apply Some_inj in H11. subst v2.
-                      unfold UntypedSemantics.sigma2 in H10.
-                      apply Some_inj in H10.
-                      destr_in H10.
-                      + exfalso. apply address_neq.
-                        remember (
-                          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-                        ) as CONST'. clear address_neq.
-                        f_equal.
-                        apply val_beq_correct in Heqb.
-                        subst ov.
-                        apply vect_to_list_inj.
-                        vm_compute vect_to_list at 1.
-                        assert (forall x y, Bits x = Bits y -> x = y).
-                        { intros. injection H. auto. }
-                        apply H in Heqb. clear H.
-                        rewrite Heqb.
-                        assert (CONST = vect_to_list CONST'). {
-                          rewrite HeqCONST, HeqCONST'. reflexivity.
-                        }
-                        rewrite H.
-                        apply and_equiv.
-                      + inv H10. constructor.
-                  }
-                  trim A. inversion 1.
-                  exploit_subact. clear A. isolate_sf.
-                  fold sf1 in wfsf0. subst sf0.
-                  vm_compute in sf1.
-                  prune.
-                  full_pass_c.
-                  full_pass_c.
-                  full_pass_c.
-                  crusher_c 1.
-            ** simpl in EQ. vm_compute in EQ. inv EQ.
-               symmetry in H0. exploit_reg H0. clear H0.
-               full_pass_c. full_pass_c.
-               Eval vm_compute in (Maps.PTree.get 1789 (vars sf0)).
-               Eval vm_compute in (Maps.PTree.get 1758 (vars sf0)).
-               Eval vm_compute in (Maps.PTree.get 992 (vars sf0)).
-               destruct x0.
-               *** crusher_c 3.
-               *** crusher_c 3.
-        + 
-
-
-               TODO
-        rewrite Bits.of_N_to_N in ret_instr.
-        collapse.
+        Eval vm_compute in (Maps.PTree.get 1250 (vars sf1)).
+        isolate_sf. fold sf0 in wfsf0. subst sf1. vm_compute in sf0.
+        Time ssearch_in_var
+          (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+            (SConst (Bits [x11; x12; x13; x14; x15]))
+            (SConst (Bits [true; false; true; false; false])))
+          (vars sf0) 1250%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [false])) (bits_t 1).
+        intro A.
+        trim A. { vm_compute. reflexivity. }
+        trim A.
+        {
+          econstructor.
+          - econstructor. econstructor. eauto.
+          - econstructor. econstructor. eauto.
+          - econstructor.
+        }
+        trim A. { repeat econstructor. }
+        trim A.
+        {
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+          - apply wfsf0.
+          - apply wfsf0.
+          - repeat econstructor.
+          - intros.
+            inv H. inv H11. inv H9. inv H12.
+            destr. 2: econstructor. exfalso.
+            rewrite ! andb_true_iff in Heqb.
+            rewrite ! Bool.eqb_true_iff in Heqb.
+            repeat destruct Heqb as (? & Heqb).
+            subst.
+            repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+            now apply rd_neq_5.
+        }
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        fold sf1 in wfsf. subst sf0. vm_compute in sf1.
         full_pass_c. full_pass_c.
         full_pass_c. full_pass_c.
-        do 4 full_pass_c.
+        full_pass_c. full_pass_c.
+
+        Eval vm_compute in (Maps.PTree.get 1788 (vars sf0)).
+        isolate_sf. fold sf0 in wfsf. subst sf1. vm_compute in sf0.
+        Time ssearch_in_var
+          (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+            (SConst (Bits [x11; x12; x13; x14; x15]))
+            (SConst (Bits [true; false; x21; false; false])))
+          (vars sf0) 1788%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [false])) (bits_t 1).
+        intro A.
+        trim A. { vm_compute. reflexivity. }
+        trim A.
+        {
+          econstructor.
+          - econstructor. econstructor. eauto.
+          - econstructor. econstructor. eauto.
+          - econstructor.
+        }
+        trim A. { repeat econstructor. }
+        trim A.
+        {
+          eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+          - apply wfsf.
+          - apply wfsf.
+          - repeat econstructor.
+          - intros.
+            inv H. inv H11. inv H9. inv H12.
+            destr. 2: econstructor. exfalso.
+            rewrite ! andb_true_iff in Heqb.
+            rewrite ! Bool.eqb_true_iff in Heqb.
+            repeat destruct Heqb as (? & Heqb).
+            subst.
+            destruct x21.
+            repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+            now apply rd_neq_5.
+            repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong.
+            now apply rd_neq_1.
+        }
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        fold sf1 in wfsf0. subst sf0. vm_compute in sf1.
+
+        destruct k0, k1, k2; try (exfalso; apply not_empty; reflexivity);
+          do 3 full_pass_c; destruct x0, x21; crusher_c 3.
   Qed.
 
   Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
