@@ -665,7 +665,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     | cycle_count      => Bits.zero
     | instr_count      => Bits.zero
     | epoch            => Bits.zero
-    | sstack_activated => Bits.zero
+    | sstack_activated => if (HAS_SHADOW_STACK) then Bits.one else Bits.zero
     | on_off           => Bits.zero
     | halt             => Bits.zero
     end.
