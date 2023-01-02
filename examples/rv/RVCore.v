@@ -614,60 +614,60 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   | d2e (state: fromDecode.reg_t)
   | e2w (state: fromExecute.reg_t)
   | rf (state: Rf.reg_t)
-  | stack (state: ShadowStack.reg_t)
+  | sstack (state: ShadowStack.reg_t)
   | scoreboard (state: Scoreboard.reg_t)
   | cycle_count
   | instr_count
   | pc
   | epoch
-  | debug
+  | sstack_activated
   | on_off
   | halt.
 
   (* State type *)
   Definition R idx :=
     match idx with
-    | toIMem r     => MemReq.R r
-    | fromIMem r   => MemResp.R r
-    | toDMem r     => MemReq.R r
-    | fromDMem r   => MemResp.R r
-    | f2d r        => fromFetch.R r
-    | f2dprim r    => waitFromFetch.R r
-    | d2e r        => fromDecode.R r
-    | e2w r        => fromExecute.R r
-    | rf r         => Rf.R r
-    | scoreboard r => Scoreboard.R r
-    | stack r      => ShadowStack.R r
-    | pc           => bits_t 32
-    | cycle_count  => bits_t 32
-    | instr_count  => bits_t 32
-    | epoch        => bits_t 1
-    | debug        => bits_t 1
-    | on_off       => bits_t 1
-    | halt         => bits_t 1
+    | toIMem r         => MemReq.R r
+    | fromIMem r       => MemResp.R r
+    | toDMem r         => MemReq.R r
+    | fromDMem r       => MemResp.R r
+    | f2d r            => fromFetch.R r
+    | f2dprim r        => waitFromFetch.R r
+    | d2e r            => fromDecode.R r
+    | e2w r            => fromExecute.R r
+    | rf r             => Rf.R r
+    | scoreboard r     => Scoreboard.R r
+    | sstack r         => ShadowStack.R r
+    | pc               => bits_t 32
+    | cycle_count      => bits_t 32
+    | instr_count      => bits_t 32
+    | epoch            => bits_t 1
+    | sstack_activated => bits_t 1
+    | on_off           => bits_t 1
+    | halt             => bits_t 1
     end.
 
   (* Initial values *)
   Definition r idx : R idx :=
     match idx with
-    | rf s         => Rf.r s
-    | toIMem s     => MemReq.r s
-    | fromIMem s   => MemResp.r s
-    | toDMem s     => MemReq.r s
-    | fromDMem s   => MemResp.r s
-    | f2d s        => fromFetch.r s
-    | f2dprim s    => waitFromFetch.r s
-    | d2e s        => fromDecode.r s
-    | e2w s        => fromExecute.r s
-    | scoreboard s => Scoreboard.r s
-    | stack s      => ShadowStack.r s
-    | pc           => Bits.zero
-    | cycle_count  => Bits.zero
-    | instr_count  => Bits.zero
-    | epoch        => Bits.zero
-    | debug        => Bits.zero
-    | on_off       => Bits.zero
-    | halt         => Bits.zero
+    | rf s             => Rf.r s
+    | toIMem s         => MemReq.r s
+    | fromIMem s       => MemResp.r s
+    | toDMem s         => MemReq.r s
+    | fromDMem s       => MemResp.r s
+    | f2d s            => fromFetch.r s
+    | f2dprim s        => waitFromFetch.r s
+    | d2e s            => fromDecode.r s
+    | e2w s            => fromExecute.r s
+    | scoreboard s     => Scoreboard.r s
+    | sstack s         => ShadowStack.r s
+    | pc               => Bits.zero
+    | cycle_count      => Bits.zero
+    | instr_count      => Bits.zero
+    | epoch            => Bits.zero
+    | sstack_activated => Bits.zero
+    | on_off           => Bits.zero
+    | halt             => Bits.zero
     end.
 
   (* External functions, used to model memory *)
@@ -731,7 +731,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   Definition end_execution : uaction reg_t ext_fn_t := {{
     let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
       valid := read0(halt); data := |8`d1|
-    }) in write0(debug, res)
+    }) in pass
   }}.
 
   Definition fetch : uaction reg_t ext_fn_t := {{
@@ -769,7 +769,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
      changes anything. *)
   Definition decode
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+    `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let instr               := fromIMem.(MemResp.deq)() in
@@ -824,7 +824,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
 
   Definition execute_1
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+    `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{(
     let fInst      := get(dInst, inst) in
     let funct3     := get(getFields(fInst), funct3) in
@@ -859,40 +859,32 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     else if (isControlInst(dInst)) then
       (* See table 2.1. of the unprivileged ISA specification for details *)
       set data := (pc + |32`d4|); (* For jump and link *)
-      `
-        (* if (HAS_SHADOW_STACK) then *) ({{
-          (
-            let res := Ob~0 in
-            let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
-            (
-              if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1) (* JAL with rd = x1 (ra) or x5 (t0) *)
-                && (rd_val == |5`d1| || rd_val == |5`d5|))
-              then set res := stack.(ShadowStack.push)(data)
-              else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then ( (* JALR *)
-                if (rd_val == |5`d1| || rd_val == |5`d5|) then
-                  if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
-                    set res := stack.(ShadowStack.push)(data)
-                  ) else (
-                    set res := stack.(ShadowStack.pop)(addr);
-                    set res := res || stack.(ShadowStack.push)(data)
-                  )
-                else if (rs1 == |5`d1| || rs1 == |5`d5|) then
-                  set res := stack.(ShadowStack.pop)(addr)
-                else pass
+      let has_sstack := read0(sstack_activated) in
+      if (has_sstack) then (
+        let res := Ob~0 in
+        let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
+        (
+          if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1) (* JAL with rd = x1 (ra) or x5 (t0) *)
+            && (rd_val == |5`d1| || rd_val == |5`d5|))
+          then set res := sstack.(ShadowStack.push)(data)
+          else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then ( (* JALR *)
+            if (rd_val == |5`d1| || rd_val == |5`d5|) then
+              if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
+                set res := sstack.(ShadowStack.push)(data)
+              ) else (
+                set res := sstack.(ShadowStack.pop)(addr);
+                set res := res || sstack.(ShadowStack.push)(data)
               )
-              else pass
-            );
-            write0(halt, res)
+            else if (rs1 == |5`d1| || rs1 == |5`d5|) then
+              set res := sstack.(ShadowStack.pop)(addr)
+            else pass
           )
-        }})
-
-        (* else ( *)
-        (*   {{ pass }} *)
-        (* ) *)
-    `
-    else
-      pass
-    ;
+          else pass
+        );
+        write0(halt, res)
+      )
+      else pass
+    else pass;
     let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
     let nextPc        := get(controlResult,nextPC) in
     if nextPc != get(decoded_bookkeeping, ppc) then
@@ -912,7 +904,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
 
   Definition execute
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+    `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let decoded_bookkeeping := d2e.(fromDecode.deq)() in
@@ -930,7 +922,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
 
   Definition writeback
     `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+    `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let execute_bookkeeping := e2w.(fromExecute.deq)() in
@@ -1081,7 +1073,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
 
   Definition mem
     (m: memory) `{finite_reg: FiniteType reg_t}
-    `{finite_reg_stack: FiniteType ShadowStack.reg_t}
+    `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t :=
     let fromMem :=
       match m with
