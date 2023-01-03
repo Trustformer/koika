@@ -1783,6 +1783,130 @@ Proof.
   eapply sstack_address_violation_results_in_halt; eassumption.
 Qed.
 
+Definition non_sstack_vars_eq (ctx ctx' : env_t REnv (fun _ => val)) :=
+  (forall r, getenv REnv ctx (RV32I.toIMem r) = getenv REnv ctx' (RV32I.toIMem r))
+  /\ (forall r, getenv REnv ctx (RV32I.fromIMem r) = getenv REnv ctx' (RV32I.fromIMem r))
+  /\ (forall r, getenv REnv ctx (RV32I.toDMem r) = getenv REnv ctx' (RV32I.toDMem r))
+  /\ (forall r, getenv REnv ctx (RV32I.fromDMem r) = getenv REnv ctx' (RV32I.fromDMem r))
+  /\ (forall r, getenv REnv ctx (RV32I.f2d r) = getenv REnv ctx' (RV32I.f2d r))
+  /\ (forall r, getenv REnv ctx (RV32I.f2dprim r) = getenv REnv ctx' (RV32I.f2dprim r))
+  /\ (forall r, getenv REnv ctx (RV32I.d2e r) = getenv REnv ctx' (RV32I.d2e r))
+  /\ (forall r, getenv REnv ctx (RV32I.e2w r) = getenv REnv ctx' (RV32I.e2w r))
+  /\ (forall r, getenv REnv ctx (RV32I.rf r) = getenv REnv ctx' (RV32I.rf r))
+  /\ (forall r, getenv REnv ctx (RV32I.scoreboard r) = getenv REnv ctx' (RV32I.scoreboard r))
+  /\ (getenv REnv ctx RV32I.pc = getenv REnv ctx' RV32I.pc)
+  /\ (getenv REnv ctx RV32I.cycle_count = getenv REnv ctx' RV32I.cycle_count)
+  /\ (getenv REnv ctx RV32I.instr_count = getenv REnv ctx' RV32I.instr_count)
+  /\ (getenv REnv ctx RV32I.epoch = getenv REnv ctx' RV32I.epoch)
+  /\ (getenv REnv ctx RV32I.on_off = getenv REnv ctx' RV32I.on_off)
+  /\ (getenv REnv ctx RV32I.halt = getenv REnv ctx' RV32I.halt).
+
+Lemma sstack_deactivated_impl_sstack_values_preserved :
+  forall
+    (ctx : env_t REnv (fun _ => val)) (WTRENV : Wt.wt_renv RV32I.R REnv ctx),
+  getenv REnv ctx RV32I.sstack_activated = Bits [false]
+  -> forall r,
+     getenv REnv (interp_cycle ctx ext_sigma sf) (RV32I.sstack r)
+     = getenv REnv ctx (RV32I.sstack r).
+Proof.
+  intros. assert (wfsf := sf_wf).
+  destruct r.
+  - destruct (getenv REnv ctx0 (RV32I.sstack RV32I.ShadowStack.size)) eqn:?;
+    try (
+      red in WTRENV0;
+      specialize WTRENV0 with (RV32I.sstack RV32I.ShadowStack.size);
+      rewrite Heqv in WTRENV0; vm_compute in WTRENV0; inv WTRENV0; fail
+    ).
+    generalize (WTRENV0 (RV32I.sstack RV32I.ShadowStack.size)). intro.
+    rewrite Heqv in H0. inv H0. replace (log2 5) with 3 in H3. 2: eauto.
+    apply extract_bits_3 in H3. do 3 destruct H3 as [? H3]. subst.
+    prune.
+    full_pass_c.
+    exploit_regs.
+    full_pass_c.
+    Eval vm_compute in (Maps.PTree.get 94%positive (vars sf1)).
+    full_pass_c.
+    Eval vm_compute in (Maps.PTree.get 94%positive (vars sf1)).
+    full_pass_c.
+    full_pass_c.
+    Eval vm_compute in (Maps.PTree.get 1835%positive (vars sf1)).
+    Eval vm_compute in (Maps.PTree.get 1812%positive (vars sf1)).
+    Eval vm_compute in (Maps.PTree.get 1135%positive (vars sf1)).
+    full_pass_c.
+    full_pass_c.
+    applky
+    crusher_c 2. 3: eauto.
+
+(*         step
+    c1 ------------> c1'
+    |                |
+ eq |                | eq
+    |                |
+    c2 ------------> c2'
+           step
+ *)
+
+Lemma step_preserves_non_sstack_vars_eq_when_no_sstack_violation:
+  forall (ctx': env_t REnv (fun _ => val)),
+  getenv REnv ctx RV32I.sstack_activated = Bits [true]
+  -> getenv REnv ctx' RV32I.sstack_activated = Bits [false]
+  -> non_sstack_vars_eq ctx ctx'
+  -> non_sstack_vars_eq
+       (interp_cycle ctx ext_sigma sf) (interp_cycle ctx' ext_sigma sf).
+Proof.
+  intros. assert (wfsf := sf_wf).
+  destruct 
+
+  exploit_regs.
+  do 4 collapse.
+  prune.
+
+  generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro.
+  inv H0. rewrite <- H2 in DecodeDInst.
+  simpl in H3.
+
+  inv H3. inv H6. inv H7. inv H8. inv H9. inv H10. inv H11.
+  inv H6. inv H2. inv H1. inv H11. inv H12. inv H13. inv H14. inv H15.
+  inv H16.
+  inv H13. inv H1. inv H16. inv H17.
+  inv H13. simpl in H1.
+  inv H9. inv H5. inv H10. inv H11. inv H2.
+
+  apply extract_bits_1 in H13. destruct H13.
+  apply extract_bits_1 in H9. destruct H9.
+  apply extract_bits_1 in H5. destruct H5.
+  apply extract_bits_1 in H10. destruct H10.
+  apply extract_bits_1 in H11. destruct H11.
+  subst.
+
+  simpl in DecodeDInst.
+  inv DecodeDInst.
+  simpl in LegalOk.
+  inv LegalOk.
+  inv H14.
+  eapply extract_bits_1 in H2. destruct H2. subst.
+  symmetry in H6. exploit_reg H6.
+Qed.
+
+Lemma non_sstack_vars_eq_sym :
+  forall c1 c2, non_sstack_vars_eq c1 c2 <-> non_sstack_vars_eq c2 c1.
+Proof.
+  intros. split; intro;
+  red in H; repeat destruct H as (? & H);
+  repeat split; try intro; symmetry; auto.
+Qed.
+
+Lemma step_preserves_non_sstack_vars_eq_when_no_sstack_violation:
+  forall (ctx': env_t REnv (fun _ => val)) b,
+  (getenv REnv ctx RV32I.sstack_activated = Bits [b])
+  -> (getenv REnv ctx' RV32I.sstack_activated = Bits [negb b])
+  -> non_sstack_vars_eq ctx ctx'
+  -> non_sstack_vars_eq
+       (interp_cycle ctx ext_sigma sf) (interp_cycle ctx' ext_sigma sf).
+Proof.
+  (* TODO *)
+Admitted.
+
 Definition cycle (r: env_t ContextEnv (fun _ : RV32I.reg_t => val)) :=
   UntypedSemantics.interp_dcycle drules r ext_sigma rv_schedule.
 
