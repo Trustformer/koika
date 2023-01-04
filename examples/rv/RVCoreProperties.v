@@ -486,220 +486,221 @@ Module RVProofs.
 (*             crusher_c 3; intuition congruence. *)
 (*     Time Qed. (1* ~= 95s *1) (1* ~= 110s *1) *)
 
-(*     Lemma sstack_overflow_results_in_halt: *)
-(*       forall *)
-(*         (SstackActivated: getenv REnv ctx RV32I.sstack_activated = Bits [true]) *)
-(*         (NoHalt: getenv REnv ctx RV32I.halt = Bits [false]) *)
-(*         (Valid: *)
-(*           getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true]) *)
-(*         v2 *)
-(*         (DecodeDInst: *)
-(*           get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "dInst" *)
-(*           = Some v2) *)
-(*         (LegalOk: get_field v2 "legal" = Some (Bits [true])) *)
-(*         (CanEnq: *)
-(*           getenv REnv ctx (RV32I.e2w RV32I.fromExecute.valid0) = Bits [false]) *)
-(*         imm_v *)
-(*         (ImmV: *)
-(*           get_field v2 "immediateType" *)
-(*           = Some *)
-(*               (Struct *)
-(*                 (Std.Maybe (enum_t imm_type)) *)
-(*                 [Bits [true]; Enum imm_type imm_v]) *)
-(*         ) *)
-(*         inst_v (InstV: get_field v2 "inst" = Some (Bits inst_v)) *)
-(*         (imm_coherent: *)
-(*           match get_imm_name inst_v with *)
-(*           | None => False *)
-(*           | Some name => *)
-(*             match vect_index name imm_type.(enum_members) with *)
-(*             | Some idx => *)
-(*               list_beq bool Bool.eqb *)
-(*                 (vect_to_list (vect_nth imm_type.(enum_bitpatterns) idx)) *)
-(*                 imm_v *)
-(*               = true *)
-(*             | None => False *)
-(*             end *)
-(*           end *)
-(*         ), *)
-(*       sstack_overflow ctx -> halt_set ctx. *)
-(*     Proof. *)
-(*       intros. assert (wfsf := sf_wf). *)
-(*       unfold halt_set. *)
-(*       prune. *)
-(*       exploit_regs. *)
-(*       do 4 collapse. *)
-(*       prune. *)
-(*       generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro. *)
-(*       inv H0. rewrite <- H2 in DecodeDInst. *)
-(*       simpl in H3. *)
-(*       inv H3. inv H6. inv H7. inv H8. inv H9. inv H10. inv H11. *)
-(*       inv H6. inv H2. inv H1. inv H11. inv H12. inv H13. inv H14. inv H15. *)
-(*       inv H16. *)
-(*       inv H13. inv H1. inv H16. inv H17. *)
-(*       inv H13. simpl in H1. *)
-(*       inv H9. inv H5. inv H10. inv H11. inv H2. *)
-(*       apply extract_bits_1 in H13. destruct H13. *)
-(*       apply extract_bits_1 in H9. destruct H9. *)
-(*       apply extract_bits_1 in H5. destruct H5. *)
-(*       apply extract_bits_1 in H10. destruct H10. *)
-(*       apply extract_bits_1 in H11. destruct H11. *)
-(*       subst. *)
-(*       simpl in DecodeDInst. *)
-(*       inv DecodeDInst. *)
-(*       simpl in LegalOk. *)
-(*       inv LegalOk. *)
-(*       inv H14. *)
-(*       eapply extract_bits_1 in H2. destruct H2. subst. *)
-(*       symmetry in H6. exploit_reg H6. *)
-(*       generalize (WTRENV (RV32I.epoch)). intro. *)
-(*       inv H0. *)
-(*       eapply extract_bits_1 in H9. destruct H9. subst. *)
-(*       symmetry in H5. exploit_reg H5. *)
-(*       red in H. *)
-(*       assert (x4 = x0). { *)
-(*         destruct H. red in H. eapply H in H6. inv H6. congruence. *)
-(*       } *)
-(*       subst. clear H5. *)
-(*       rename H into over. *)
-(*       destruct over as [ *)
-(*         no_mispred [sstack_full [not_sstack_pop sstack_push]] *)
-(*       ]. *)
-(*       clear no_mispred. *)
-(*       red in sstack_full, sstack_push. *)
-(*       unfold sstack_pop in not_sstack_pop. *)
-(*       simpl in *. *)
-(*       exploit_reg sstack_full. clear sstack_full. *)
-(*       inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0]. *)
-(*       subst. *)
-(*       eapply sstack_push in H6 as push_instr. 2-3: reflexivity. *)
-(*       clear sstack_push. *)
-(*       unfold is_call_instruction in push_instr. *)
-(*       extract_bits_info push_instr. *)
-(*       destruct push_instr as [opc_ctrl call_or_ret]. *)
-(*       do 2 destruct opc_ctrl as [? opc_ctrl]. *)
-(*       subst. *)
-(*       red in not_sstack_pop. *)
-(*       destruct call_or_ret as [[jal rd_1_or_5] | [jalr rd_1_or_5]]. *)
-(*       + clear not_sstack_pop. *)
-(*         do 3 destruct jal as [? jal]. subst. *)
-(*         collapse. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         do 4 full_pass_c. *)
-(*         destruct rd_1_or_5 as [rd_1 | rd_5]. *)
-(*         * do 4 destruct rd_1 as [? rd_1]. subst. *)
-(*           destruct x0; crusher_c 3. *)
-(*         * do 4 destruct rd_5 as [? rd_5]. subst. *)
-(*           destruct x0; crusher_c 3. *)
-(*       + do 3 destruct jalr as [? jalr]. subst. *)
-(*         assert (x11 = true /\ x12 = false /\ x14 = false /\ x15 = false). *)
-(*         destruct rd_1_or_5; intuition. clear rd_1_or_5. destr_and_in H. subst. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         ssearch_in_var (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false) *)
-(*                           (SConst (Bits [x0])) *)
-(*                           (SConst (Bits [x0])) *)
-(*                        ) (vars sf0) 992%positive *)
-(*           (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1). *)
-(*         intro A. trim A. vm_compute. reflexivity. *)
-(*         trim A. repeat econstructor. *)
-(*         trim A. repeat econstructor. *)
-(*         trim A. *)
-(*         eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-(*         apply wfsf. apply wfsf. *)
-(*         repeat econstructor. *)
-(*         intros. inv H. inv H9. inv H11. simpl in H12. inv H12. *)
-(*         rewrite andb_true_r. rewrite eqb_reflx. constructor. *)
-(*         trim A. inversion 1. *)
-(*         exploit_subact. clear A. isolate_sf. *)
-(*         ssearch_in_var (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false) *)
-(*                           (SConst (Bits [x0])) *)
-(*                           (SConst (Bits [x0])) *)
-(*                        ) (vars sf0) 1812%positive *)
-(*           (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1). *)
-(*         intro A. trim A. vm_compute. reflexivity. *)
-(*         trim A. repeat econstructor. *)
-(*         trim A. repeat econstructor. *)
-(*         trim A. *)
-(*         eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-(*         apply wfsf. apply wfsf. *)
-(*         repeat econstructor. *)
-(*         intros. inv H. inv H9. inv H11. simpl in H12. inv H12. *)
-(*         rewrite andb_true_r. rewrite eqb_reflx. constructor. *)
-(*         trim A. inversion 1. *)
-(*         exploit_subact. clear A. isolate_sf. *)
-(*         get_subact_ok ((@SBinop RV32I.reg_t RV32I.ext_fn_t (UBits2 UOr) *)
-(*                    (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false])) *)
-(*                       (SConst (Bits [true; false; false; false; false]))) *)
-(*                    (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false])) *)
-(*                       (SConst (Bits [true; false; true; false; false]))))) *)
-(*           (vars sf0) *)
-(*           (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1) *)
-(*         . *)
-(*         intro A. *)
-(*         trim A. repeat econstructor. *)
-(*         trim A. repeat econstructor. *)
-(*         trim A. *)
-(*         eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-(*         apply wfsf. apply wfsf. *)
-(*         repeat econstructor. *)
-(*         intros. inv H. inv H9. inv H11. inv H5. inv H13. inv H9. inv H15. *)
-(*         simpl in H14, H16. inv H14; inv H16. *)
-(*         simpl in H12. inv H12. *)
-(*         clear. destruct x13; cbn [Bool.eqb andb]; constructor. *)
-(*         trim A. inversion 1. *)
-(*         exploit_subact. clear A. isolate_sf. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         exploit_var 1463%positive uconstr:(SConst (Bits [true])). *)
-(*         { *)
-(*           econstructor. *)
-(*           intros. inv H. vm_compute in H2. inv H2. *)
-(*           inv H5. destruct b; inv H11; econstructor. *)
-(*           inversion 1. *)
-(*           econstructor. vm_compute. reflexivity. repeat constructor. *)
-(*         } *)
-(*         clear VS. *)
-(*         isolate_sf. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         exploit_var 1812%positive uconstr:(SConst (Bits [false])). *)
-(*         { *)
-(*           econstructor. *)
-(*           intros. *)
-(*           eapply interp_sact_do_eval_sact *)
-(*             with (R := RV32I.R) (Sigma := ext_Sigma) in H. *)
-(*           assert (OF: oldv = Bits [false]). *)
-(*           clear -H. inv H. destruct x13, x19, x20, x21, x22, x23; auto. *)
-(*           clear H. *)
-(*           subst; constructor. apply wfsf. *)
-(*           econstructor. vm_compute. reflexivity. inversion 1. *)
-(*           econstructor. vm_compute. eauto. *)
-(*           repeat constructor. *)
-(*         } *)
-(*         clear VS. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         full_pass_c. *)
-(*         crusher_c 1. *)
-(*       Time Qed. (1* ~265s *1) *)
+    Lemma sstack_overflow_results_in_halt:
+      forall
+        (SstackActivated: getenv REnv ctx RV32I.sstack_activated = Bits [true])
+        (NoHalt: getenv REnv ctx RV32I.halt = Bits [false])
+        (Valid:
+          getenv REnv ctx (RV32I.d2e RV32I.fromDecode.valid0) = Bits [true])
+        v2
+        (DecodeDInst:
+          get_field (getenv REnv ctx (RV32I.d2e RV32I.fromDecode.data0)) "dInst"
+          = Some v2)
+        (LegalOk: get_field v2 "legal" = Some (Bits [true]))
+        (CanEnq:
+          getenv REnv ctx (RV32I.e2w RV32I.fromExecute.valid0) = Bits [false])
+        imm_v
+        (ImmV:
+          get_field v2 "immediateType"
+          = Some
+              (Struct
+                (Std.Maybe (enum_t imm_type))
+                [Bits [true]; Enum imm_type imm_v])
+        )
+        inst_v (InstV: get_field v2 "inst" = Some (Bits inst_v))
+        (imm_coherent:
+          match get_imm_name inst_v with
+          | None => False
+          | Some name =>
+            match vect_index name imm_type.(enum_members) with
+            | Some idx =>
+              list_beq bool Bool.eqb
+                (vect_to_list (vect_nth imm_type.(enum_bitpatterns) idx))
+                imm_v
+              = true
+            | None => False
+            end
+          end
+        ),
+      sstack_overflow ctx -> halt_set ctx.
+    Proof.
+      intros. assert (wfsf := sf_wf).
+      unfold halt_set.
+      prune.
+      exploit_regs.
+      do 4 collapse.
+      prune.
+      generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro.
+      inv H0. rewrite <- H2 in DecodeDInst.
+      simpl in H3.
+      inv H3. inv H6. inv H7. inv H8. inv H9. inv H10. inv H11.
+      inv H6. inv H2. inv H1. inv H11. inv H12. inv H13. inv H14. inv H15.
+      inv H16.
+      inv H13. inv H1. inv H16. inv H17.
+      inv H13. simpl in H1.
+      inv H9. inv H5. inv H10. inv H11. inv H2.
+      apply extract_bits_1 in H13. destruct H13.
+      apply extract_bits_1 in H9. destruct H9.
+      apply extract_bits_1 in H5. destruct H5.
+      apply extract_bits_1 in H10. destruct H10.
+      apply extract_bits_1 in H11. destruct H11.
+      subst.
+      simpl in DecodeDInst.
+      inv DecodeDInst.
+      simpl in LegalOk.
+      inv LegalOk.
+      inv H14.
+      eapply extract_bits_1 in H2. destruct H2. subst.
+      symmetry in H6. exploit_reg H6.
+      generalize (WTRENV (RV32I.epoch)). intro.
+      inv H0.
+      eapply extract_bits_1 in H9. destruct H9. subst.
+      symmetry in H5. exploit_reg H5.
+      red in H.
+      assert (x4 = x0). {
+        destruct H. red in H. eapply H in H6. inv H6. congruence.
+      }
+      subst. clear H5.
+      rename H into over.
+      destruct over as [
+        no_mispred [sstack_full [not_sstack_pop sstack_push]]
+      ].
+      clear no_mispred.
+      red in sstack_full, sstack_push.
+      unfold sstack_pop in not_sstack_pop.
+      simpl in *.
+      exploit_reg sstack_full. clear sstack_full.
+      inv H12. apply extract_bits_32 in H0. do 32 destruct H0 as [? H0].
+      subst.
+      eapply sstack_push in H6 as push_instr. 2-3: reflexivity.
+      clear sstack_push.
+      unfold is_call_instruction in push_instr.
+      extract_bits_info push_instr.
+      destruct push_instr as [opc_ctrl call_or_ret].
+      do 2 destruct opc_ctrl as [? opc_ctrl].
+      subst.
+      red in not_sstack_pop.
+      destruct call_or_ret as [[jal rd_1_or_5] | [jalr rd_1_or_5]].
+      + clear not_sstack_pop.
+        do 3 destruct jal as [? jal]. subst.
+        collapse.
+        full_pass_c.
+        full_pass_c.
+        do 4 full_pass_c.
+        destruct rd_1_or_5 as [rd_1 | rd_5].
+        * do 4 destruct rd_1 as [? rd_1]. subst.
+          destruct x0; crusher_c 3.
+        * do 4 destruct rd_5 as [? rd_5]. subst.
+          destruct x0; crusher_c 3.
+      + do 3 destruct jalr as [? jalr]. subst.
+        assert (x11 = true /\ x12 = false /\ x14 = false /\ x15 = false).
+        destruct rd_1_or_5; intuition. clear rd_1_or_5. destr_and_in H. subst.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        Time ssearch_in_var (
+          @SBinop RV32I.reg_t RV32I.ext_fn_t
+            (UEq false) (SConst (Bits [x0])) (SConst (Bits [x0]))
+        )
+        (vars sf0) 992%positive
+        (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+        intro A. trim A. vm_compute. reflexivity.
+        trim A. repeat econstructor.
+        trim A. repeat econstructor.
+        trim A.
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        apply wfsf. apply wfsf.
+        repeat econstructor.
+        intros. inv H. inv H9. inv H11. simpl in H12. inv H12.
+        rewrite andb_true_r. rewrite eqb_reflx. constructor.
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        ssearch_in_var (@SBinop RV32I.reg_t RV32I.ext_fn_t (UEq false)
+                          (SConst (Bits [x0]))
+                          (SConst (Bits [x0]))
+                       ) (vars sf0) 1812%positive
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1).
+        intro A. trim A. vm_compute. reflexivity.
+        trim A. repeat econstructor.
+        trim A. repeat econstructor.
+        trim A.
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        apply wfsf. apply wfsf.
+        repeat econstructor.
+        intros. inv H. inv H9. inv H11. simpl in H12. inv H12.
+        rewrite andb_true_r. rewrite eqb_reflx. constructor.
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        get_subact_ok ((@SBinop RV32I.reg_t RV32I.ext_fn_t (UBits2 UOr)
+                   (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false]))
+                      (SConst (Bits [true; false; false; false; false])))
+                   (SBinop (UEq false) (SConst (Bits [true; false; x13; false; false]))
+                      (SConst (Bits [true; false; true; false; false])))))
+          (vars sf0)
+          (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])) (bits_t 1)
+        .
+        intro A.
+        trim A. repeat econstructor.
+        trim A. repeat econstructor.
+        trim A.
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        apply wfsf. apply wfsf.
+        repeat econstructor.
+        intros. inv H. inv H9. inv H11. inv H5. inv H13. inv H9. inv H15.
+        simpl in H14, H16. inv H14; inv H16.
+        simpl in H12. inv H12.
+        clear. destruct x13; cbn [Bool.eqb andb]; constructor.
+        trim A. inversion 1.
+        exploit_subact. clear A. isolate_sf.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        exploit_var 1463%positive uconstr:(SConst (Bits [true])).
+        {
+          econstructor.
+          intros. inv H. vm_compute in H2. inv H2.
+          inv H5. destruct b; inv H11; econstructor.
+          inversion 1.
+          econstructor. vm_compute. reflexivity. repeat constructor.
+        }
+        clear VS.
+        isolate_sf.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        exploit_var 1812%positive uconstr:(SConst (Bits [false])).
+        {
+          econstructor.
+          intros.
+          eapply interp_sact_do_eval_sact
+            with (R := RV32I.R) (Sigma := ext_Sigma) in H.
+          assert (OF: oldv = Bits [false]).
+          clear -H. inv H. destruct x13, x19, x20, x21, x22, x23; auto.
+          clear H.
+          subst; constructor. apply wfsf.
+          econstructor. vm_compute. reflexivity. inversion 1.
+          econstructor. vm_compute. eauto.
+          repeat constructor.
+        }
+        clear VS.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        full_pass_c.
+        crusher_c 1.
+      Time Qed. (* ~265s *)
 
     Axiom CHEAT : False.
     Ltac cheat := destruct CHEAT.
@@ -838,89 +839,89 @@ Module RVProofs.
         1378%positive
         (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
 
-      (* cheat. *)
-      {
-        econstructor; intros.
-        {
-          repeat inv_interp_sact.
-          unfold UntypedSemantics.sigma2 in H15. inv H15.
-          assert (b=false).
-          {
-            clear - not_empty H14.
-            destruct k0, k1, k2; vm_compute in H14; try congruence.
-          }
-          subst. clear H14.
-          repeat inv_interp_sact.
-          destruct b.
-          assert ([k0;k1;k2] = [true;true;true]).
-          inv H15. clear -H14.
-          destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15.
-          inv H.
-          repeat inv_interp_sact.
-          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-          simpl in H14, H15. inv H14; inv H15.
-          repeat inv_interp_sact.
-          destruct b.
-          assert ([k0;k1;k2] = [false;true;true]).
-          inv H16. clear -H15.
-          destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16.
-          inv H.
-          repeat inv_interp_sact.
-          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-          simpl in H15, H16. inv H15; inv H16.
-          repeat inv_interp_sact.
-          destruct b.
-          assert ([k0;k1;k2] = [true;false;true]).
-          inv H17. clear -H16.
-          destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17.
-          inv H.
-          repeat inv_interp_sact.
-          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-          simpl in H17, H16. inv H17; inv H16.
-          repeat inv_interp_sact.
-          destruct b.
-          assert ([k0;k1;k2] = [false;false;true]).
-          inv H18. clear -H17.
-          destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18.
-          inv H.
-          repeat inv_interp_sact.
-          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-          simpl in H17, H18. inv H17; inv H18.
-          repeat inv_interp_sact.
-          destruct b.
-          assert ([k0;k1;k2] = [true;true;false]).
-          inv H19. clear -H18.
-          destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19.
-          inv H.
-          repeat inv_interp_sact.
-          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-          simpl in H19, H18. inv H19; inv H18.
-          repeat inv_interp_sact.
-          destruct b.
-          assert ([k0;k1;k2] = [false; true; false]).
-          inv H20. clear -H19.
-          destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20.
-          inv H.
-          repeat inv_interp_sact.
-          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-          simpl in H19, H20. inv H19; inv H20.
-          repeat inv_interp_sact.
-          destruct b.
-          assert ([k0;k1;k2] = [true;false;false]).
-          inv H21. clear -H20.
-          destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21.
-          inv H.
-          repeat inv_interp_sact.
-          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
-          simpl in H21, H20. inv H21; inv H20.
-          repeat inv_interp_sact.
-          clear - H2 H5 H9 H10 H11 H12 H13 not_empty.
-          destruct k0,k1,k2; vm_compute in *; try congruence.
-        }
-        inv H.
-        econstructor. vm_compute. eauto.
-        econstructor. constructor. auto.
-      }
+      cheat.
+      (* { *)
+      (*   econstructor; intros. *)
+      (*   { *)
+      (*     repeat inv_interp_sact. *)
+      (*     unfold UntypedSemantics.sigma2 in H15. inv H15. *)
+      (*     assert (b=false). *)
+      (*     { *)
+      (*       clear - not_empty H14. *)
+      (*       destruct k0, k1, k2; vm_compute in H14; try congruence. *)
+      (*     } *)
+      (*     subst. clear H14. *)
+      (*     repeat inv_interp_sact. *)
+      (*     destruct b. *)
+      (*     assert ([k0;k1;k2] = [true;true;true]). *)
+      (*     inv H15. clear -H14. *)
+      (*     destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15. *)
+      (*     inv H. *)
+      (*     repeat inv_interp_sact. *)
+      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
+      (*     simpl in H14, H15. inv H14; inv H15. *)
+      (*     repeat inv_interp_sact. *)
+      (*     destruct b. *)
+      (*     assert ([k0;k1;k2] = [false;true;true]). *)
+      (*     inv H16. clear -H15. *)
+      (*     destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16. *)
+      (*     inv H. *)
+      (*     repeat inv_interp_sact. *)
+      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
+      (*     simpl in H15, H16. inv H15; inv H16. *)
+      (*     repeat inv_interp_sact. *)
+      (*     destruct b. *)
+      (*     assert ([k0;k1;k2] = [true;false;true]). *)
+      (*     inv H17. clear -H16. *)
+      (*     destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17. *)
+      (*     inv H. *)
+      (*     repeat inv_interp_sact. *)
+      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
+      (*     simpl in H17, H16. inv H17; inv H16. *)
+      (*     repeat inv_interp_sact. *)
+      (*     destruct b. *)
+      (*     assert ([k0;k1;k2] = [false;false;true]). *)
+      (*     inv H18. clear -H17. *)
+      (*     destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18. *)
+      (*     inv H. *)
+      (*     repeat inv_interp_sact. *)
+      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
+      (*     simpl in H17, H18. inv H17; inv H18. *)
+      (*     repeat inv_interp_sact. *)
+      (*     destruct b. *)
+      (*     assert ([k0;k1;k2] = [true;true;false]). *)
+      (*     inv H19. clear -H18. *)
+      (*     destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19. *)
+      (*     inv H. *)
+      (*     repeat inv_interp_sact. *)
+      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
+      (*     simpl in H19, H18. inv H19; inv H18. *)
+      (*     repeat inv_interp_sact. *)
+      (*     destruct b. *)
+      (*     assert ([k0;k1;k2] = [false; true; false]). *)
+      (*     inv H20. clear -H19. *)
+      (*     destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20. *)
+      (*     inv H. *)
+      (*     repeat inv_interp_sact. *)
+      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
+      (*     simpl in H19, H20. inv H19; inv H20. *)
+      (*     repeat inv_interp_sact. *)
+      (*     destruct b. *)
+      (*     assert ([k0;k1;k2] = [true;false;false]). *)
+      (*     inv H21. clear -H20. *)
+      (*     destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21. *)
+      (*     inv H. *)
+      (*     repeat inv_interp_sact. *)
+      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
+      (*     simpl in H21, H20. inv H21; inv H20. *)
+      (*     repeat inv_interp_sact. *)
+      (*     clear - H2 H5 H9 H10 H11 H12 H13 not_empty. *)
+      (*     destruct k0,k1,k2; vm_compute in *; try congruence. *)
+      (*   } *)
+      (*   inv H. *)
+      (*   econstructor. vm_compute. eauto. *)
+      (*   econstructor. constructor. auto. *)
+      (* } *)
 
       clear VS.
       exploit_var

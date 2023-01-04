@@ -273,36 +273,9 @@ Ltac crusher_c strength :=
   finish.
 
 Ltac search_subterm needle haystack pos orig_haystack Ppos :=
-  match haystack with
-  | ?x =>
-    match needle with
-    | x =>
-      let res := constr:(ssprop_one pos needle orig_haystack Ppos) in
-      eval vm_compute in res
-    end
-  | SVar ?x =>
-    let res := constr:(ssprop_nil needle orig_haystack pos) in
-    eval vm_compute in res
-  | SConst ?x =>
-    let res := constr:(ssprop_nil needle orig_haystack pos) in
-    eval vm_compute in res
-  | SReg ?x =>
-    let res := constr:(ssprop_nil needle orig_haystack pos) in
-    eval vm_compute in res
-  | SUnop ?ufn ?a =>
-    let p :=
-      search_subterm
-        needle a (Direction.branch1 :: pos) orig_haystack
-        (subact_at_pos_unop1 _ _ _ _ Ppos)
-    in
-    eval vm_compute in (existT _ _ (sprop_unop needle pos _ _ (projT2 p)))
-  | SExternalCall ?ufn ?a =>
-    let p :=
-      search_subterm needle a (Direction.branch1 :: pos) orig_haystack
-      (subact_at_pos_extcall1 _ _ _ _ Ppos)
-    in
-    eval vm_compute in (existT _ _ (sprop_unop needle pos _ _ (projT2 p)))
-  | SBinop ?ufn ?a ?b =>
+  lazymatch haystack with
+  | needle => eval vm_compute in (ssprop_one pos needle orig_haystack Ppos)
+  | SBinop _ ?a ?b =>
     let p1 :=
       search_subterm needle a (Direction.branch1 :: pos) orig_haystack
       (subact_at_pos_binop1 _ _ _ _ _ Ppos)
@@ -313,6 +286,15 @@ Ltac search_subterm needle haystack pos orig_haystack Ppos :=
     in
     eval vm_compute in
       (existT _ _ (sprop_binop needle pos _ _ _ (projT2 p1) (projT2 p2)))
+  | SConst _ => eval vm_compute in (ssprop_nil needle orig_haystack pos)
+  | SUnop _ ?a =>
+    let p :=
+      search_subterm
+        needle a (Direction.branch1 :: pos) orig_haystack
+        (subact_at_pos_unop1 _ _ _ _ Ppos)
+    in
+    eval vm_compute in (existT _ _ (sprop_unop needle pos _ _ (projT2 p)))
+  | SVar _ => eval vm_compute in (ssprop_nil needle orig_haystack pos)
   | SIf ?a ?b ?c =>
     let p1 :=
       search_subterm needle a (Direction.branch1 :: pos) orig_haystack
@@ -329,6 +311,13 @@ Ltac search_subterm needle haystack pos orig_haystack Ppos :=
     eval vm_compute in
       (existT _ _
         (sprop_if needle pos _ _ _ _ (projT2 p1) (projT2 p2) (projT2 p3)))
+  | SReg _ => eval vm_compute in (ssprop_nil needle orig_haystack pos)
+  | SExternalCall _ ?a =>
+    let p :=
+      search_subterm needle a (Direction.branch1 :: pos) orig_haystack
+      (subact_at_pos_extcall1 _ _ _ _ Ppos)
+    in
+    eval vm_compute in (existT _ _ (sprop_unop needle pos _ _ (projT2 p)))
   end.
 
 Ltac ssearch needle haystack :=
