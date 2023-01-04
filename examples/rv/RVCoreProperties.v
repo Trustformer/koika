@@ -837,8 +837,8 @@ Module RVProofs.
       exploit_var
         1378%positive
         (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
-      cheat.
 
+      cheat.
       (* { *)
       (*   econstructor; intros. *)
       (*   { *)
@@ -926,6 +926,7 @@ Module RVProofs.
       exploit_var
         1531%positive
         (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
+
       cheat.
       (* { *)
       (*   econstructor; intros. *)
@@ -1036,8 +1037,8 @@ Module RVProofs.
       exploit_var
         1379%positive
         (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits [true])).
-      cheat.
 
+      cheat.
       (* { *)
       (*   econstructor; intros. *)
       (*   { *)
@@ -1133,8 +1134,8 @@ Module RVProofs.
     }
     trim A. { repeat econstructor. }
     trim A.
-    cheat.
 
+    cheat.
     (* { *)
     (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
     (*   - apply wfsf. *)
@@ -1217,8 +1218,8 @@ Module RVProofs.
     }
     trim A. { repeat econstructor. }
     trim A.
-    cheat.
 
+    cheat.
     (* { *)
     (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
     (*   - apply wfsf. *)
@@ -1299,8 +1300,8 @@ Module RVProofs.
     }
     trim A. { repeat econstructor. }
     trim A.
-    cheat.
 
+    cheat.
     (* { *)
     (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
     (*   - apply wfsf. *)
@@ -1382,64 +1383,65 @@ Module RVProofs.
     trim A. { repeat econstructor. }
     trim A.
 
-    (* { *)
-    (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-    (*   - apply wfsf. *)
-    (*   - apply wfsf. *)
-    (*   - repeat econstructor. *)
-    (*   - intros. *)
-    (*     inv H. inv H11. vm_compute in H1. inv H1. *)
-    (*     inv H9. inv H2. inv H9. inv H5. inv H14. *)
-    (*     vm_compute in H1. inv H1. inv H2. *)
-    (*     inv H10. inv H5. inv H16. inv H17. *)
-    (*     inv H14. inv H9. inv H5. inv H16. inv H17. *)
-    (*     inv H10. inv H9. inv H5. inv H16. inv H17. *)
-    (*     inv H14. inv H9. inv H5. inv H16. inv H17. *)
-    (*     inv H10. inv H9. inv H5. inv H16. inv H17. *)
-    (*     inv H14. inv H9. inv H5. inv H16. inv H17. *)
-    (*     inv H10. *)
-    (*     inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1]. *)
-    (*     subst bs. inv H11. inv H15. unfold UntypedSemantics.sigma2 in H13. *)
-    (*     apply Some_inj in H13. subst v2. *)
-    (*     apply Some_inj in H12. subst ov. *)
-    (*     destr. 2: constructor. exfalso. apply address_neq. *)
-    (*     f_equal. f_equal. f_equal. *)
-    (*     apply val_beq_correct in Heqb. *)
-    (*     vm_compute Datatypes.length. *)
-    (*     simpl Bits.of_list at 2. *)
-    (*     remember ((Bits.of_N 32 *)
-    (*       (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60 *)
-    (*       + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24) *)
-    (*     )) as PLUS. *)
-    (*     remember ([ *)
-    (*       false; true; true; true; true; true; true; true; true; *)
-    (*       true; true; true; true; true; true; true; true; true; *)
-    (*       true; true; true; true; true; true; true; true; true; *)
-    (*       true; true; true; true; true *)
-    (*     ]) as CONST. *)
-    (*     remember ( *)
-    (*       Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0 *)
-    (*     ) as CONST'. *)
-    (*     replace (Bits.neg (Bits.of_N 32 1)) with (CONST'). *)
-    (*     unfold UntypedSemantics.ubits2_sigma in Heqb. *)
-    (*     assert (CONST = vect_to_list CONST'). { *)
-    (*       rewrite HeqCONST, HeqCONST'. reflexivity. *)
-    (*     } *)
-    (*     rewrite H in Heqb. rewrite and_equiv in Heqb. *)
-    (*     replace *)
-    (*       [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42; *)
-    (*        x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55; *)
-    (*        x56; x57; x58; x59] *)
-    (*     with *)
-    (*       (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2) *)
-    (*     in Heqb. 2: auto. *)
-    (*     apply val_beq_correct in Heqb. unfold val_beq in Heqb. *)
-    (*     apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff. *)
-    (*     apply vect_to_list_inj in Heqb. *)
-    (*     symmetry. rewrite <- Heqb. reflexivity. *)
-    (* } *)
+    (* B *)
+    (* cheat. *)
+    {
+      eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+      - apply wfsf.
+      - apply wfsf.
+      - repeat econstructor.
+      - intros.
+        inv H. inv H11. vm_compute in H1. inv H1.
+        inv H9. inv H2. inv H9. inv H5. inv H14.
+        vm_compute in H1. inv H1. inv H2.
+        inv H10. inv H5. inv H16. inv H17.
+        inv H14. inv H9. inv H5. inv H16. inv H17.
+        inv H10. inv H9. inv H5. inv H16. inv H17.
+        inv H14. inv H9. inv H5. inv H16. inv H17.
+        inv H10. inv H9. inv H5. inv H16. inv H17.
+        inv H14. inv H9. inv H5. inv H16. inv H17.
+        inv H10.
+        inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1].
+        subst bs. inv H11. inv H15. unfold UntypedSemantics.sigma2 in H13.
+        apply Some_inj in H13. subst v2.
+        apply Some_inj in H12. subst ov.
+        destr. 2: constructor. exfalso. apply address_neq.
+        f_equal. f_equal. f_equal.
+        apply val_beq_correct in Heqb.
+        vm_compute Datatypes.length.
+        simpl Bits.of_list at 2.
+        remember ((Bits.of_N 32
+          (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60
+          + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
+        )) as PLUS.
+        remember ([
+          false; true; true; true; true; true; true; true; true;
+          true; true; true; true; true; true; true; true; true;
+          true; true; true; true; true; true; true; true; true;
+          true; true; true; true; true
+        ]) as CONST.
+        remember (
+          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
+        ) as CONST'.
+        replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
+        unfold UntypedSemantics.ubits2_sigma in Heqb.
+        assert (CONST = vect_to_list CONST'). {
+          rewrite HeqCONST, HeqCONST'. reflexivity.
+        }
+        rewrite H in Heqb. rewrite and_equiv in Heqb.
+        replace
+          [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42;
+           x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55;
+           x56; x57; x58; x59]
+        with
+          (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2)
+        in Heqb. 2: auto.
+        apply val_beq_correct in Heqb. unfold val_beq in Heqb.
+        apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff.
+        apply vect_to_list_inj in Heqb.
+        symmetry. rewrite <- Heqb. reflexivity.
+    }
 
-    cheat.
     trim A. inversion 1.
     exploit_subact. clear A. isolate_sf.
     full_pass_c.
@@ -1492,22 +1494,22 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
-      cheat.
-      (* { *)
-      (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-      (*   - apply wfsf. *)
-      (*   - apply wfsf. *)
-      (*   - repeat econstructor. *)
-      (*   - intros. *)
-      (*     inv H. inv H11. inv H9. inv H12. *)
-      (*     destr. 2: econstructor. exfalso. *)
-      (*     rewrite ! andb_true_iff in Heqb. *)
-      (*     rewrite ! Bool.eqb_true_iff in Heqb. *)
-      (*     repeat destruct Heqb as (? & Heqb). *)
-      (*     subst. *)
-      (*     repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong. *)
-      (*     now apply rd_neq_5. *)
-      (* } *)
+      (* cheat. *)
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. inv H9. inv H12.
+          destr. 2: econstructor. exfalso.
+          rewrite ! andb_true_iff in Heqb.
+          rewrite ! Bool.eqb_true_iff in Heqb.
+          repeat destruct Heqb as (? & Heqb).
+          subst.
+          repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+          now apply rd_neq_5.
+      }
 
       trim A. inversion 1.
       exploit_subact. clear A. isolate_sf.
@@ -1529,22 +1531,23 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
-      cheat.
-      (* { *)
-      (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-      (*   - apply wfsf. *)
-      (*   - apply wfsf. *)
-      (*   - repeat econstructor. *)
-      (*   - intros. *)
-      (*     inv H. inv H11. inv H9. inv H12. *)
-      (*     destr. 2: econstructor. exfalso. *)
-      (*     rewrite ! andb_true_iff in Heqb. *)
-      (*     rewrite ! Bool.eqb_true_iff in Heqb. *)
-      (*     repeat destruct Heqb as (? & Heqb). *)
-      (*     subst. *)
-      (*     repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong. *)
-      (*     now apply rd_neq_1. *)
-      (* } *)
+      (* A *)
+      (* cheat. *)
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. inv H9. inv H12.
+          destr. 2: econstructor. exfalso.
+          rewrite ! andb_true_iff in Heqb.
+          rewrite ! Bool.eqb_true_iff in Heqb.
+          repeat destruct Heqb as (? & Heqb).
+          subst.
+          repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong.
+          now apply rd_neq_1.
+      }
 
       trim A. inversion 1.
       exploit_subact. clear A. isolate_sf.
@@ -1566,22 +1569,22 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
-      cheat.
-      (* { *)
-      (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-      (*   - apply wfsf. *)
-      (*   - apply wfsf. *)
-      (*   - repeat econstructor. *)
-      (*   - intros. *)
-      (*     inv H. inv H11. inv H9. inv H12. *)
-      (*     destr. 2: econstructor. exfalso. *)
-      (*     rewrite ! andb_true_iff in Heqb. *)
-      (*     rewrite ! Bool.eqb_true_iff in Heqb. *)
-      (*     repeat destruct Heqb as (? & Heqb). *)
-      (*     subst. *)
-      (*     repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong. *)
-      (*     now apply rd_neq_5. *)
-      (* } *)
+      (* cheat. *)
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. inv H9. inv H12.
+          destr. 2: econstructor. exfalso.
+          rewrite ! andb_true_iff in Heqb.
+          rewrite ! Bool.eqb_true_iff in Heqb.
+          repeat destruct Heqb as (? & Heqb).
+          subst.
+          repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+          now apply rd_neq_5.
+      }
 
       trim A. inversion 1.
       exploit_subact. clear A. isolate_sf.
@@ -1603,22 +1606,22 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
-      cheat.
-      (* { *)
-      (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-      (*   - apply wfsf. *)
-      (*   - apply wfsf. *)
-      (*   - repeat econstructor. *)
-      (*   - intros. *)
-      (*     inv H. inv H11. inv H9. inv H12. *)
-      (*     destr. 2: econstructor. exfalso. *)
-      (*     rewrite ! andb_true_iff in Heqb. *)
-      (*     rewrite ! Bool.eqb_true_iff in Heqb. *)
-      (*     repeat destruct Heqb as (? & Heqb). *)
-      (*     subst. *)
-      (*     repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong. *)
-      (*     now apply rd_neq_1. *)
-      (* } *)
+      (* cheat. *)
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. inv H9. inv H12.
+          destr. 2: econstructor. exfalso.
+          rewrite ! andb_true_iff in Heqb.
+          rewrite ! Bool.eqb_true_iff in Heqb.
+          repeat destruct Heqb as (? & Heqb).
+          subst.
+          repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong.
+          now apply rd_neq_1.
+      }
 
       trim A. inversion 1.
       exploit_subact. clear A. isolate_sf.
@@ -1640,22 +1643,22 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
-      cheat.
-      (* { *)
-      (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-      (*   - apply wfsf. *)
-      (*   - apply wfsf. *)
-      (*   - repeat econstructor. *)
-      (*   - intros. *)
-      (*     inv H. inv H11. inv H9. inv H12. *)
-      (*     destr. 2: econstructor. exfalso. *)
-      (*     rewrite ! andb_true_iff in Heqb. *)
-      (*     rewrite ! Bool.eqb_true_iff in Heqb. *)
-      (*     repeat destruct Heqb as (? & Heqb). *)
-      (*     subst. *)
-      (*     repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong. *)
-      (*     now apply rd_neq_5. *)
-      (* } *)
+      (* cheat. *)
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. inv H9. inv H12.
+          destr. 2: econstructor. exfalso.
+          rewrite ! andb_true_iff in Heqb.
+          rewrite ! Bool.eqb_true_iff in Heqb.
+          repeat destruct Heqb as (? & Heqb).
+          subst.
+          repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+          now apply rd_neq_5.
+      }
 
       trim A. inversion 1.
       exploit_subact. clear A. isolate_sf.
@@ -1681,31 +1684,31 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
-      cheat.
-      (* { *)
-      (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
-      (*   - apply wfsf. *)
-      (*   - apply wfsf. *)
-      (*   - repeat econstructor. *)
-      (*   - intros. *)
-      (*     inv H. inv H11. inv H9. inv H12. *)
-      (*     destr. 2: econstructor. exfalso. *)
-      (*     rewrite ! andb_true_iff in Heqb. *)
-      (*     rewrite ! Bool.eqb_true_iff in Heqb. *)
-      (*     repeat destruct Heqb as (? & Heqb). *)
-      (*     subst. *)
-      (*     destruct x21. *)
-      (*     repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong. *)
-      (*     now apply rd_neq_5. *)
-      (*     repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong. *)
-      (*     now apply rd_neq_1. *)
-      (* } *)
+      (* cheat. *)
+      {
+        eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
+        - apply wfsf.
+        - apply wfsf.
+        - repeat econstructor.
+        - intros.
+          inv H. inv H11. inv H9. inv H12.
+          destr. 2: econstructor. exfalso.
+          rewrite ! andb_true_iff in Heqb.
+          rewrite ! Bool.eqb_true_iff in Heqb.
+          repeat destruct Heqb as (? & Heqb).
+          subst.
+          destruct x21.
+          repeat destruct rd_neq_5 as [wrong | rd_neq_5]; try now apply wrong.
+          now apply rd_neq_5.
+          repeat destruct rd_neq_1 as [wrong | rd_neq_1]; try now apply wrong.
+          now apply rd_neq_1.
+      }
 
       trim A. inversion 1.
       exploit_subact. clear A. isolate_sf.
       destruct k0, k1, k2; try (exfalso; apply not_empty; reflexivity);
         do 3 full_pass_c; destruct x0, x21; crusher_c 3.
-Time Qed.
+Time Qed. (* ~95s *) (* 99s A *)
 (* Qed blows up *)
 (* Admitted. *)
 
