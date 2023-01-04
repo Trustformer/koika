@@ -838,89 +838,89 @@ Module RVProofs.
         1378%positive
         (@SConst RV32I.reg_t RV32I.ext_fn_t (Bits bs)).
 
-      cheat.
-      (* { *)
-      (*   econstructor; intros. *)
-      (*   { *)
-      (*     repeat inv_interp_sact. *)
-      (*     unfold UntypedSemantics.sigma2 in H15. inv H15. *)
-      (*     assert (b=false). *)
-      (*     { *)
-      (*       clear - not_empty H14. *)
-      (*       destruct k0, k1, k2; vm_compute in H14; try congruence. *)
-      (*     } *)
-      (*     subst. clear H14. *)
-      (*     repeat inv_interp_sact. *)
-      (*     destruct b. *)
-      (*     assert ([k0;k1;k2] = [true;true;true]). *)
-      (*     inv H15. clear -H14. *)
-      (*     destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15. *)
-      (*     inv H. *)
-      (*     repeat inv_interp_sact. *)
-      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
-      (*     simpl in H14, H15. inv H14; inv H15. *)
-      (*     repeat inv_interp_sact. *)
-      (*     destruct b. *)
-      (*     assert ([k0;k1;k2] = [false;true;true]). *)
-      (*     inv H16. clear -H15. *)
-      (*     destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16. *)
-      (*     inv H. *)
-      (*     repeat inv_interp_sact. *)
-      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
-      (*     simpl in H15, H16. inv H15; inv H16. *)
-      (*     repeat inv_interp_sact. *)
-      (*     destruct b. *)
-      (*     assert ([k0;k1;k2] = [true;false;true]). *)
-      (*     inv H17. clear -H16. *)
-      (*     destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17. *)
-      (*     inv H. *)
-      (*     repeat inv_interp_sact. *)
-      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
-      (*     simpl in H17, H16. inv H17; inv H16. *)
-      (*     repeat inv_interp_sact. *)
-      (*     destruct b. *)
-      (*     assert ([k0;k1;k2] = [false;false;true]). *)
-      (*     inv H18. clear -H17. *)
-      (*     destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18. *)
-      (*     inv H. *)
-      (*     repeat inv_interp_sact. *)
-      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
-      (*     simpl in H17, H18. inv H17; inv H18. *)
-      (*     repeat inv_interp_sact. *)
-      (*     destruct b. *)
-      (*     assert ([k0;k1;k2] = [true;true;false]). *)
-      (*     inv H19. clear -H18. *)
-      (*     destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19. *)
-      (*     inv H. *)
-      (*     repeat inv_interp_sact. *)
-      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
-      (*     simpl in H19, H18. inv H19; inv H18. *)
-      (*     repeat inv_interp_sact. *)
-      (*     destruct b. *)
-      (*     assert ([k0;k1;k2] = [false; true; false]). *)
-      (*     inv H20. clear -H19. *)
-      (*     destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20. *)
-      (*     inv H. *)
-      (*     repeat inv_interp_sact. *)
-      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
-      (*     simpl in H19, H20. inv H19; inv H20. *)
-      (*     repeat inv_interp_sact. *)
-      (*     destruct b. *)
-      (*     assert ([k0;k1;k2] = [true;false;false]). *)
-      (*     inv H21. clear -H20. *)
-      (*     destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21. *)
-      (*     inv H. *)
-      (*     repeat inv_interp_sact. *)
-      (*     vm_compute in EQ. inv EQ. rewrite <- H0. constructor. *)
-      (*     simpl in H21, H20. inv H21; inv H20. *)
-      (*     repeat inv_interp_sact. *)
-      (*     clear - H2 H5 H9 H10 H11 H12 H13 not_empty. *)
-      (*     destruct k0,k1,k2; vm_compute in *; try congruence. *)
-      (*   } *)
-      (*   inv H. *)
-      (*   econstructor. vm_compute. eauto. *)
-      (*   econstructor. constructor. auto. *)
-      (* } *)
+      (* cheat. *)
+      {
+        econstructor; intros.
+        {
+          repeat inv_interp_sact.
+          unfold UntypedSemantics.sigma2 in H15. inv H15.
+          assert (b=false).
+          {
+            clear - not_empty H14.
+            destruct k0, k1, k2; vm_compute in H14; try congruence.
+          }
+          subst. clear H14.
+          repeat inv_interp_sact.
+          destruct b.
+          assert ([k0;k1;k2] = [true;true;true]).
+          inv H15. clear -H14.
+          destruct k0,k1,k2; vm_compute in H14; try congruence. clear H14 H15.
+          inv H.
+          repeat inv_interp_sact.
+          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+          simpl in H14, H15. inv H14; inv H15.
+          repeat inv_interp_sact.
+          destruct b.
+          assert ([k0;k1;k2] = [false;true;true]).
+          inv H16. clear -H15.
+          destruct k0,k1,k2; vm_compute in H15; try congruence. clear H15 H16.
+          inv H.
+          repeat inv_interp_sact.
+          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+          simpl in H15, H16. inv H15; inv H16.
+          repeat inv_interp_sact.
+          destruct b.
+          assert ([k0;k1;k2] = [true;false;true]).
+          inv H17. clear -H16.
+          destruct k0,k1,k2; vm_compute in H16; try congruence. clear H16 H17.
+          inv H.
+          repeat inv_interp_sact.
+          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+          simpl in H17, H16. inv H17; inv H16.
+          repeat inv_interp_sact.
+          destruct b.
+          assert ([k0;k1;k2] = [false;false;true]).
+          inv H18. clear -H17.
+          destruct k0,k1,k2; vm_compute in H17; try congruence. clear H17 H18.
+          inv H.
+          repeat inv_interp_sact.
+          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+          simpl in H17, H18. inv H17; inv H18.
+          repeat inv_interp_sact.
+          destruct b.
+          assert ([k0;k1;k2] = [true;true;false]).
+          inv H19. clear -H18.
+          destruct k0,k1,k2; vm_compute in H18; try congruence. clear H18 H19.
+          inv H.
+          repeat inv_interp_sact.
+          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+          simpl in H19, H18. inv H19; inv H18.
+          repeat inv_interp_sact.
+          destruct b.
+          assert ([k0;k1;k2] = [false; true; false]).
+          inv H20. clear -H19.
+          destruct k0,k1,k2; vm_compute in H19; try congruence. clear H19 H20.
+          inv H.
+          repeat inv_interp_sact.
+          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+          simpl in H19, H20. inv H19; inv H20.
+          repeat inv_interp_sact.
+          destruct b.
+          assert ([k0;k1;k2] = [true;false;false]).
+          inv H21. clear -H20.
+          destruct k0,k1,k2; vm_compute in H20; try congruence. clear H20 H21.
+          inv H.
+          repeat inv_interp_sact.
+          vm_compute in EQ. inv EQ. rewrite <- H0. constructor.
+          simpl in H21, H20. inv H21; inv H20.
+          repeat inv_interp_sact.
+          clear - H2 H5 H9 H10 H11 H12 H13 not_empty.
+          destruct k0,k1,k2; vm_compute in *; try congruence.
+        }
+        inv H.
+        econstructor. vm_compute. eauto.
+        econstructor. constructor. auto.
+      }
 
       clear VS.
       exploit_var
@@ -1383,64 +1383,63 @@ Module RVProofs.
     trim A. { repeat econstructor. }
     trim A.
 
-    (* B *)
-    (* cheat. *)
-    {
-      eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
-      - apply wfsf.
-      - apply wfsf.
-      - repeat econstructor.
-      - intros.
-        inv H. inv H11. vm_compute in H1. inv H1.
-        inv H9. inv H2. inv H9. inv H5. inv H14.
-        vm_compute in H1. inv H1. inv H2.
-        inv H10. inv H5. inv H16. inv H17.
-        inv H14. inv H9. inv H5. inv H16. inv H17.
-        inv H10. inv H9. inv H5. inv H16. inv H17.
-        inv H14. inv H9. inv H5. inv H16. inv H17.
-        inv H10. inv H9. inv H5. inv H16. inv H17.
-        inv H14. inv H9. inv H5. inv H16. inv H17.
-        inv H10.
-        inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1].
-        subst bs. inv H11. inv H15. unfold UntypedSemantics.sigma2 in H13.
-        apply Some_inj in H13. subst v2.
-        apply Some_inj in H12. subst ov.
-        destr. 2: constructor. exfalso. apply address_neq.
-        f_equal. f_equal. f_equal.
-        apply val_beq_correct in Heqb.
-        vm_compute Datatypes.length.
-        simpl Bits.of_list at 2.
-        remember ((Bits.of_N 32
-          (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60
-          + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24)
-        )) as PLUS.
-        remember ([
-          false; true; true; true; true; true; true; true; true;
-          true; true; true; true; true; true; true; true; true;
-          true; true; true; true; true; true; true; true; true;
-          true; true; true; true; true
-        ]) as CONST.
-        remember (
-          Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0
-        ) as CONST'.
-        replace (Bits.neg (Bits.of_N 32 1)) with (CONST').
-        unfold UntypedSemantics.ubits2_sigma in Heqb.
-        assert (CONST = vect_to_list CONST'). {
-          rewrite HeqCONST, HeqCONST'. reflexivity.
-        }
-        rewrite H in Heqb. rewrite and_equiv in Heqb.
-        replace
-          [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42;
-           x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55;
-           x56; x57; x58; x59]
-        with
-          (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2)
-        in Heqb. 2: auto.
-        apply val_beq_correct in Heqb. unfold val_beq in Heqb.
-        apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff.
-        apply vect_to_list_inj in Heqb.
-        symmetry. rewrite <- Heqb. reflexivity.
-    }
+    cheat.
+    (* { *)
+    (*   eapply ReplaceSubact.interp_sact_iff_from_implies; eauto. *)
+    (*   - apply wfsf. *)
+    (*   - apply wfsf. *)
+    (*   - repeat econstructor. *)
+    (*   - intros. *)
+    (*     inv H. inv H11. vm_compute in H1. inv H1. *)
+    (*     inv H9. inv H2. inv H9. inv H5. inv H14. *)
+    (*     vm_compute in H1. inv H1. inv H2. *)
+    (*     inv H10. inv H5. inv H16. inv H17. *)
+    (*     inv H14. inv H9. inv H5. inv H16. inv H17. *)
+    (*     inv H10. inv H9. inv H5. inv H16. inv H17. *)
+    (*     inv H14. inv H9. inv H5. inv H16. inv H17. *)
+    (*     inv H10. inv H9. inv H5. inv H16. inv H17. *)
+    (*     inv H14. inv H9. inv H5. inv H16. inv H17. *)
+    (*     inv H10. *)
+    (*     inv H7. apply extract_bits_32 in H1. do 32 destruct H1 as [? H1]. *)
+    (*     subst bs. inv H11. inv H15. unfold UntypedSemantics.sigma2 in H13. *)
+    (*     apply Some_inj in H13. subst v2. *)
+    (*     apply Some_inj in H12. subst ov. *)
+    (*     destr. 2: constructor. exfalso. apply address_neq. *)
+    (*     f_equal. f_equal. f_equal. *)
+    (*     apply val_beq_correct in Heqb. *)
+    (*     vm_compute Datatypes.length. *)
+    (*     simpl Bits.of_list at 2. *)
+    (*     remember ((Bits.of_N 32 *)
+    (*       (Bits.to_N Ob~x91~x90~x89~x88~x87~x86~x85~x84~x83~x82~x81~x80~x79~x78~x77~x76~x75~x74~x73~x72~x71~x70~x69~x68~x67~x66~x65~x64~x63~x62~x61~x60 *)
+    (*       + Bits.to_N Ob~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x35~x34~x33~x32~x31~x30~x29~x28~x27~x26~x25~x24) *)
+    (*     )) as PLUS. *)
+    (*     remember ([ *)
+    (*       false; true; true; true; true; true; true; true; true; *)
+    (*       true; true; true; true; true; true; true; true; true; *)
+    (*       true; true; true; true; true; true; true; true; true; *)
+    (*       true; true; true; true; true *)
+    (*     ]) as CONST. *)
+    (*     remember ( *)
+    (*       Ob~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0 *)
+    (*     ) as CONST'. *)
+    (*     replace (Bits.neg (Bits.of_N 32 1)) with (CONST'). *)
+    (*     unfold UntypedSemantics.ubits2_sigma in Heqb. *)
+    (*     assert (CONST = vect_to_list CONST'). { *)
+    (*       rewrite HeqCONST, HeqCONST'. reflexivity. *)
+    (*     } *)
+    (*     rewrite H in Heqb. rewrite and_equiv in Heqb. *)
+    (*     replace *)
+    (*       [x2; x4; x5; x6; x7; x8; x9; x10; x36; x37; x38; x39; x40; x41; x42; *)
+    (*        x43; x44; x45; x46; x47; x48; x49; x50; x51; x52; x53; x54; x55; *)
+    (*        x56; x57; x58; x59] *)
+    (*     with *)
+    (*       (vect_to_list Ob~x59~x58~x57~x56~x55~x54~x53~x52~x51~x50~x49~x48~x47~x46~x45~x44~x43~x42~x41~x40~x39~x38~x37~x36~x10~x9~x8~x7~x6~x5~x4~x2) *)
+    (*     in Heqb. 2: auto. *)
+    (*     apply val_beq_correct in Heqb. unfold val_beq in Heqb. *)
+    (*     apply list_eqb_correct in Heqb. 2: apply Bool.eqb_true_iff. *)
+    (*     apply vect_to_list_inj in Heqb. *)
+    (*     symmetry. rewrite <- Heqb. reflexivity. *)
+    (* } *)
 
     trim A. inversion 1.
     exploit_subact. clear A. isolate_sf.
@@ -1494,6 +1493,7 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
+      (* A *)
       (* cheat. *)
       {
         eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
@@ -1531,7 +1531,6 @@ Module RVProofs.
       trim A. { repeat econstructor. }
       trim A.
 
-      (* A *)
       (* cheat. *)
       {
         eapply ReplaceSubact.interp_sact_iff_from_implies; eauto.
@@ -1708,7 +1707,7 @@ Module RVProofs.
       exploit_subact. clear A. isolate_sf.
       destruct k0, k1, k2; try (exfalso; apply not_empty; reflexivity);
         do 3 full_pass_c; destruct x0, x21; crusher_c 3.
-Time Qed. (* ~95s *) (* 99s A *)
+Time Qed. (* ~95s *) (* 90s A *)
 (* Qed blows up *)
 (* Admitted. *)
 
