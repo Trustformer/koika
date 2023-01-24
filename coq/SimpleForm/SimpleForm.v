@@ -158,7 +158,7 @@ Section SimpleForm.
 
   (* *** Merger of actions *)
   (* Remove Nones from list, turn rest from (Some x) to x. *)
-  Definition list_options_to_list (l: list (option sact)) : list sact :=
+  Definition list_options_to_list {A} (l: list (option A)) : list A :=
     filter_map id l.
 
   Definition merge_failures_list (action_cond: sact) (conds: list sact)
