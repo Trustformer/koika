@@ -43,36 +43,34 @@ final_values := [(reg, v)];
   Fixpoint pos_union_2 (l1 l2 : list positive) : list positive :=
     match l2 with
     | h::t =>
-      if List.existsb (Pos.eqb h) l1 then pos_union_2 l1 t
+      if in_dec Pos.eq_dec h l1 then pos_union_2 l1 t
       else h::(pos_union_2 l1 t)
     | nil => l1
     end.
+
+  Lemma in_l1_in_pos_union_2_l:
+    forall l1 l2 a, In a l1 -> In a (pos_union_2 l1 l2).
+  Proof.
+    induction l2; simpl; intros; eauto.
+    destr; auto. right; eauto.
+  Qed.
 
   Lemma pos_union_2_correct:
     forall l1 l2 a, In a (pos_union_2 l1 l2) <-> In a l1 \/ In a l2.
 Proof.
     intros. split; intro.
-    - induction l2; auto.
-      destruct (Pos.eqb a a0) eqn:?.
-      + rewrite Pos.eqb_eq in Heqb. subst. right. constructor. reflexivity.
-      + simpl in H. destr_in H.
-        * apply IHl2 in H. destruct H; auto.
-          right. simpl. auto.
-        * simpl in H. destruct H.
-          ** subst. apply Pos.eqb_neq in Heqb. contradiction.
-          ** apply IHl2 in H. destruct H; auto.
-             right. simpl. auto.
+    - induction l2; auto. simpl in H. destr_in H.
+      destruct IHl2; auto. right; right; auto.
+      destruct H. subst. right. left; auto.
+      destruct IHl2; auto. right; right; auto.
     - destruct H.
-      + induction l2; auto. simpl. destr. simpl. right. auto.
-      + induction l2; auto.
-        * inv H.
-        * simpl in *. destruct H; subst.
-          ** destr.
-             *** apply existsb_exists in Heqb. destruct Heqb. destruct H.
-                 apply Pos.eqb_eq in H0. subst. clear IHl2.
-                 induction l2; auto. simpl. destr. simpl. right. auto.
-             *** left. auto.
-          ** apply IHl2 in H. destr; try right; auto.
+      + eapply in_l1_in_pos_union_2_l. eauto.
+      + revert H.
+        induction l2; simpl; intros; eauto. easy.
+        destruct H as [EQ | IN]. subst.
+        destr; simpl; auto.
+        eapply in_l1_in_pos_union_2_l; eauto.
+        destr; simpl; auto.
   Qed.
 
   Lemma NoDup_pos_union_2:
@@ -83,17 +81,8 @@ Proof.
     inv H0. apply IHl2 in H4.
     simpl. destr.
     constructor; auto.
-    assert (~In a l1). {
-      clear - Heqb.
-      induction l1; auto.
-      intro. simpl in H. destruct H.
-      - subst. simpl in Heqb. rewrite Pos.eqb_refl in Heqb. discriminate Heqb.
-      - simpl in Heqb. apply orb_false_elim in Heqb. destruct Heqb.
-        apply IHl1 in H1. auto.
-    }
-    induction (pos_union_2 l1 l2) eqn:eq; auto.
-    intro. rewrite <- eq in H1.
-    eapply pos_union_2_correct in H1. destruct H1; auto.
+    intro IN.
+    eapply pos_union_2_correct in IN. destruct IN; auto.
   Qed.
 
   Definition pos_union (l : list (list positive)) : list positive :=
@@ -108,6 +97,26 @@ Proof.
     - inv H. apply NoDup_pos_union_2; auto.
   Qed.
 
+  Lemma pos_union_correct:
+    forall e l, In e (pos_union l) <-> exists ll, In ll l /\ In e ll.
+  Proof.
+    intros. split; intro.
+    - induction l.
+      + simpl in H. destruct H.
+      + simpl in H. apply pos_union_2_correct in H. destruct H.
+        * exists a. split; auto. left. reflexivity.
+        * apply IHl in H. destruct H. exists x. destruct H. split; auto.
+          right. auto.
+    - induction l.
+      + destruct H. destruct H. inv H.
+      + simpl in *. apply pos_union_2_correct.
+        destruct H. destruct H. destruct H.
+        * subst. left. auto.
+        * right.
+          assert (exists ll, In ll l /\ In e ll). { exists x. split; auto. }
+          apply IHl in H1. auto.
+  Qed.
+
   Definition prune_irrelevant_l
     (sf: @simple_form reg_t ext_fn_t) (regs: list reg_t)
   :=
@@ -118,7 +127,7 @@ Proof.
     let reachable_vars := pos_union reachable_vars_list in {|
       final_values :=
         List.filter
-          (fun x => List.existsb (Pos.eqb (snd x)) reg_vars_list)
+          (fun x => if in_dec eq_dec (fst x) regs then true else false)
           (final_values sf);
       vars := filter_ptree (vars sf) (PTree.empty _) reachable_vars
     |}.
@@ -132,86 +141,87 @@ Proof.
     - constructor; auto.
   Qed.
 
-    Definition is_well_structured_acc
-      {A} (f: list A -> A -> list A) (acc: list A)
-    :=
-      forall x x', In x acc -> In x' (f [] x) -> In x' acc.
 
-    Lemma reachable_var_aux_below_preserves_is_well_structured_acc :
-      forall (sf: simple_form) (wfsf: wf_sf sf) acc,
-      is_well_structured_acc
-        (fun acc x => reachable_vars_aux (vars sf) x acc (S (Pos.to_nat x)))
-        acc
-      -> forall n,
-         is_well_structured_acc
-           (fun acc x => reachable_vars_aux (vars sf) x acc (S (Pos.to_nat x)))
-           (reachable_vars_aux (vars sf) n acc (S (Pos.to_nat n))).
-    Proof.
-      intros.
-      eapply (
-        pos_strong_ind
-        (fun n => is_well_structured_acc
-          (fun (acc0 : list positive) (x : positive) =>
-           reachable_vars_aux (vars sf) x acc0 (S (Pos.to_nat x)))
-          (reachable_vars_aux (vars sf) n acc (S (Pos.to_nat n)))
-        )
-      ).
-      ). induction n.
+  (*   Definition is_well_structured_acc *)
+  (*     {A} (f: list A -> A -> list A) (acc: list A) *)
+  (*   := *)
+  (*     forall x x', In x acc -> In x' (f [] x) -> In x' acc. *)
 
-    (* Not a very good name *)
-    Definition is_accumulating {A} (f: list A -> A -> list A) :=
-      forall e acc e',
-      is_well_structured_acc f acc
-      -> In e (acc ++ f [] e') <-> In e (f acc e').
+  (*   Lemma reachable_var_aux_below_preserves_is_well_structured_acc : *)
+  (*     forall (sf: simple_form) (wfsf: wf_sf sf) acc, *)
+  (*     is_well_structured_acc *)
+  (*       (fun acc x => reachable_vars_aux (vars sf) x acc (S (Pos.to_nat x))) *)
+  (*       acc *)
+  (*     -> forall n, *)
+  (*        is_well_structured_acc *)
+  (*          (fun acc x => reachable_vars_aux (vars sf) x acc (S (Pos.to_nat x))) *)
+  (*          (reachable_vars_aux (vars sf) n acc (S (Pos.to_nat n))). *)
+  (*   Proof. *)
+  (*     intros. *)
+  (*     eapply ( *)
+  (*       pos_strong_ind *)
+  (*       (fun n => is_well_structured_acc *)
+  (*         (fun (acc0 : list positive) (x : positive) => *)
+  (*          reachable_vars_aux (vars sf) x acc0 (S (Pos.to_nat x))) *)
+  (*         (reachable_vars_aux (vars sf) n acc (S (Pos.to_nat n))) *)
+  (*       ) *)
+  (*     ). *)
+  (*     ). induction n. *)
 
-    Lemma reachable_vars_aux_is_accumulating_if_acc_ok:
-      forall sf f, wf_sf sf
-      -> is_accumulating (fun acc n =>
-        reachable_vars_aux (vars sf) n acc (S (Pos.to_nat n))
-      ).
-    Proof.
-      intros sf f wfsf.
-      induction f.
-      - unfold is_accumulating. intros. simpl in *. now rewrite app_nil_r.
-      - unfold is_accumulating. intros. simpl.
-        split; intro.
-        + apply in_app_or in H0.
-          destruct H0.
-          * (* e is in acc *)
-            destr. destr.
-            ** right. destruct p.
-               unfold is_accumulating in IHf.
-               unfold is_well_structured_acc in H.
-               apply fold_left_induction; auto.
-               intros. now apply reachable_vars_aux_incr.
-            ** right. auto.
-          * (* e is in the part added by e' *)
-            unfold is_accumulating in IHf.
-            destr.
-            **
+  (*   (* Not a very good name *) *)
+  (*   Definition is_accumulating {A} (f: list A -> A -> list A) := *)
+  (*     forall e acc e', *)
+  (*     is_well_structured_acc f acc *)
+  (*     -> In e (acc ++ f [] e') <-> In e (f acc e'). *)
 
-                 useful_vars_for_var
+  (*   Lemma reachable_vars_aux_is_accumulating_if_acc_ok: *)
+  (*     forall sf f, wf_sf sf *)
+  (*     -> is_accumulating (fun acc n => *)
+  (*       reachable_vars_aux (vars sf) n acc (S (Pos.to_nat n)) *)
+  (*     ). *)
+  (*   Proof. *)
+  (*     intros sf f wfsf. *)
+  (*     induction f. *)
+  (*     - unfold is_accumulating. intros. simpl in *. now rewrite app_nil_r. *)
+  (*     - unfold is_accumulating. intros. simpl. *)
+  (*       split; intro. *)
+  (*       + apply in_app_or in H0. *)
+  (*         destruct H0. *)
+  (*         * (* e is in acc *) *)
+  (*           destr. destr. *)
+  (*           ** right. destruct p. *)
+  (*              unfold is_accumulating in IHf. *)
+  (*              unfold is_well_structured_acc in H. *)
+  (*              apply fold_left_induction; auto. *)
+  (*              intros. now apply reachable_vars_aux_incr. *)
+  (*           ** right. auto. *)
+  (*         * (* e is in the part added by e' *) *)
+  (*           unfold is_accumulating in IHf. *)
+  (*           destr. *)
+  (*           ** *)
 
-  Lemma wf_sf_implies_useful_vars_for_var_smaller:
-    forall sf (wfsf: wf_sf sf) v e x s,
-    In e (useful_vars_for_var sf v)
-    -> (vars sf) ! v = Some (x, s)
-    -> (e <= v)%positive.
-  Proof.
-    intros sf wfsf v.
-    eapply (
-      pos_strong_ind (
-        fun v => forall (e : positive) (x : type) (s : SimpleForm.sact),
-          In e (useful_vars_for_var sf v)
-          -> (vars sf) ! v = Some (x, s)
-          -> (e <= v)%positive
-      )
-    ).
-    - intros. destruct H0. { subst. reflexivity. }
-      rewrite H1 in H0.
-      destruct wfsf. unfold vvs_smaller_variables in wf_sf_vvs.
-      induction (vars_in_sact s). { inv H0. }
-      simpl in H0.
+  (*                useful_vars_for_var *)
+
+  (* Lemma wf_sf_implies_useful_vars_for_var_smaller: *)
+  (*   forall sf (wfsf: wf_sf sf) v e x s, *)
+  (*   In e (useful_vars_for_var sf v) *)
+  (*   -> (vars sf) ! v = Some (x, s) *)
+  (*   -> (e <= v)%positive. *)
+  (* Proof. *)
+  (*   intros sf wfsf v. *)
+  (*   eapply ( *)
+  (*     pos_strong_ind ( *)
+  (*       fun v => forall (e : positive) (x : type) (s : SimpleForm.sact), *)
+  (*         In e (useful_vars_for_var sf v) *)
+  (*         -> (vars sf) ! v = Some (x, s) *)
+  (*         -> (e <= v)%positive *)
+  (*     ) *)
+  (*   ). *)
+  (*   - intros. destruct H0. { subst. reflexivity. } *)
+  (*     rewrite H1 in H0. *)
+  (*     destruct wfsf. unfold vvs_smaller_variables in wf_sf_vvs. *)
+  (*     induction (vars_in_sact s). { inv H0. } *)
+  (*     simpl in H0. *)
 
 (*       Lemma accumulating_fold_left_preserves_acc: *)
 (*         forall A B, forall f, is_accumulating f *)
@@ -233,9 +243,43 @@ Proof.
 (*     ). *)
 (*   Proof. *)
 
-(*   Lemma wf_sf_prune_irrelevant_l: *)
-(*     forall sf regs, wf_sf sf -> wf_sf (prune_irrelevant_l sf regs). *)
-(*   Proof. *)
+  Lemma wf_sf_prune_irrelevant_l:
+    forall sf regs, wf_sf sf -> wf_sf (prune_irrelevant_l sf regs).
+  Proof.
+    intros.
+    eapply wf_sf_filter_ptree. 5: reflexivity.
+    - eapply NoDup_pos_union. apply Forall_map_2.
+      unfold useful_vars_for_var.
+      intros; eapply nodup_reachable_vars_aux; eauto. apply H. constructor.
+    - intros.
+      apply pos_union_correct.
+      apply pos_union_correct in IN.
+      destruct IN as (ll & INll & INv).
+      exists ll; split; auto.
+      apply in_map_iff in INll. destruct INll as (x & EQ & INll).
+      intros; eapply reachable_vars_aux_ok in REACH.
+      eauto.
+      eauto. eauto. 2: subst. 2: reflexivity.
+      apply H. simpl; easy. lia. eauto. eauto.
+    - eauto.
+    - simpl. intros.
+      erewrite list_assoc_filter2 in H0.
+      2: instantiate(1:=fun k => if in_dec eq_dec k regs then true else false); simpl; reflexivity.
+      simpl in H0.
+      destr_in H0. congruence.
+      destr_in Heqb. 2: simpl in Heqb; congruence.
+      clear Heqb.
+      split. auto.
+      apply pos_union_correct.
+
+      eexists; split.
+      rewrite in_map_iff.
+      eexists; split. reflexivity. apply Sact.filter_map_In.
+      eexists; split. reflexivity.
+      rewrite in_map_iff. eexists; split. eauto. auto.
+      unfold useful_vars_for_var.
+      eapply reachable_vars_aux_in. lia.
+  Qed.
 
   Lemma wf_sf_prune_irrelevant_aux:
     forall sf reg v,
@@ -267,6 +311,51 @@ Proof.
     simpl. intros. repeat destr_in H1; inv H1. split; auto.
   Qed.
 
+  Lemma sf_eqf_prune_irrelevant_l:
+    forall sf regs,
+      wf_sf sf
+    -> sf_eq_restricted
+         R Sigma r sigma regs sf (prune_irrelevant_l sf regs).
+  Proof.
+    intros. eapply sf_eqr_filter. 6: reflexivity.
+    - eapply NoDup_pos_union. apply Forall_map_2.
+      unfold useful_vars_for_var.
+      intros; eapply nodup_reachable_vars_aux; eauto. apply H. constructor.
+    - intros.
+      apply pos_union_correct.
+      apply pos_union_correct in IN.
+      destruct IN as (ll & INll & INv).
+      exists ll; split; auto.
+      apply in_map_iff in INll. destruct INll as (x & EQ & INll).
+      intros; eapply reachable_vars_aux_ok in REACH.
+      eauto.
+      eauto. eauto. 2: subst. 2: reflexivity.
+      apply H. simpl; easy. lia. eauto. eauto.
+    - apply H.
+    - simpl. intros.
+      erewrite list_assoc_filter2.
+      2: instantiate(1:=fun k => if in_dec eq_dec k regs then true else false); simpl; reflexivity. simpl.
+      destruct in_dec; try congruence. simpl. auto.
+    - simpl. intros.
+      erewrite list_assoc_filter2 in H0.
+      2: instantiate(1:=fun k => if in_dec eq_dec k regs then true else false); simpl; reflexivity.
+      simpl in H0.
+      destr_in H0. congruence.
+      destr_in Heqb. 2: simpl in Heqb; congruence.
+      clear Heqb.
+      split. auto.
+      apply pos_union_correct.
+
+      eexists; split.
+      rewrite in_map_iff.
+      eexists; split. reflexivity. apply Sact.filter_map_In.
+      eexists; split. reflexivity.
+      rewrite in_map_iff. eexists; split. eauto. auto.
+      unfold useful_vars_for_var.
+      eapply reachable_vars_aux_in. lia.
+  Qed.
+
+
   Lemma prune_irrelevant_interp_cycle_ok:
     forall
       reg sf sf' (WF: wf_sf sf) (PRUNE: prune_irrelevant sf reg = Some sf'),
@@ -280,4 +369,20 @@ Proof.
     - eapply sf_eqf_prune_irrelevant_aux; eauto.
     - simpl; auto.
   Qed.
+
+
+  Lemma prune_irrelevant_l_interp_cycle_ok:
+    forall
+      regs sf sf' (WF: wf_sf sf) (PRUNE: prune_irrelevant_l sf regs = sf'),
+    forall reg,
+      In reg regs ->
+      getenv REnv (interp_cycle r sigma sf) reg
+      = getenv REnv (interp_cycle r sigma sf') reg.
+  Proof.
+    intros. subst.
+    eapply sf_eqr_interp_cycle_ok; eauto.
+    - eapply wf_sf_prune_irrelevant_l; eauto.
+    - eapply sf_eqf_prune_irrelevant_l; eauto.
+  Qed.
+
 End Prune.

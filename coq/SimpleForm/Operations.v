@@ -1291,16 +1291,19 @@ Section Operations.
   Qed.
 
   Lemma list_assoc_filter2:
-    forall {K V: Type} {eqdec: EqDec K} (l: list (K*V)) name k,
-      list_assoc (filter (fun '(n,_) => negb (beq_dec n name)) l) k =
-        if beq_dec k name then None else list_assoc l k.
+    forall {K V: Type} {eqdec: EqDec K}
+           f g (FG: forall k v, f (k, v) = g k)
+           (l: list (K*V)) k,
+      list_assoc (filter f l) k =
+        if negb (g k) then None else list_assoc l k.
   Proof.
     induction l; simpl; intros; eauto.
     repeat destr.
     destruct a.
-    destruct (beq_dec k0 name) eqn:?; simpl. apply beq_dec_iff in Heqb. subst.
-    rewrite IHl. destr. destr. subst. apply beq_dec_false_iff in Heqb. congruence.
-    destr. subst. rewrite Heqb. auto. eauto.
+    destr. simpl. destr. subst. erewrite <- FG. rewrite Heqb. reflexivity. auto.
+    rewrite IHl. destr.
+    destr. subst.
+    erewrite FG in Heqb. rewrite Heqb in Heqb0. simpl in Heqb0. congruence.
   Qed.
 
   Lemma wt_sact_remove_one:
