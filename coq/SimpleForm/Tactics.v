@@ -82,20 +82,22 @@ Ltac update_wfsf :=
     ); eauto); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
-      forall (ufn : ?ext_fn_t) (vc : val),
-      wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      forall (ufn : ?ext_fn_t) (vc : val), wt_val (arg1Sig (?ext_Sigma ufn)) vc
       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
     |- getenv
-          ?REnv
-          (interp_cycle ?ctx ?ext_sigma (simplify_sifs_sf ?ctx ?ext_sigma ?sf'))
-          ?rg
+         ?REnv
+         (interp_cycle
+           ?ctx ?ext_sigma (SyntacticSimplifications.simplify_sifs_sf ?sf')) ?rg
        = _
     =>
-    assert (wf_sf R ext_Sigma (simplify_sifs_sf ctx ext_sigma sf')) as wfsf_tmp
-    by
-      (intros; eapply (
-         wf_sf_simplify_sifs_sf R ext_Sigma ctx ext_sigma WTRENV sf' WFSF'
-      ); eauto); clear WFSF'
+    assert (wf_sf R ext_Sigma (SyntacticSimplifications.simplify_sifs_sf sf'))
+      as wfsf_tmp
+      by (
+        intros; eapply (
+          SyntacticSimplifications.wf_sf_simplify_sifs_sf R ext_Sigma sf' WFSF'
+        ); eauto
+      );
+    clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
       forall (ufn : ?ext_fn_t) (vc : val),
@@ -202,7 +204,8 @@ Ltac exploit_hypotheses := exploit_regs; exploit_fields.
 
 Ltac simplify := erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
 Ltac simplify_sifs :=
-  erewrite simplify_sifs_sf_interp_cycle_ok; eauto; update_wfsf.
+  erewrite SyntacticSimplifications.simplify_sifs_sf_interp_cycle_ok; eauto;
+    update_wfsf.
 Ltac prune :=
   erewrite prune_irrelevant_interp_cycle_ok;
     try (unfold prune_irrelevant; vm_compute list_assoc); eauto; update_wfsf.
