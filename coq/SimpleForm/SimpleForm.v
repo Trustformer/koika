@@ -116,6 +116,15 @@ Section SimpleForm.
       + simpl. rewrite eq_dec_refl. auto.
   Qed.
 
+  Instance EqDec_sact : EqDec sact.
+  Proof.
+    econstructor. intros. destruct (sact_beq t1 t2) eqn:?.
+    - apply sact_beq_iff_eq in Heqb. subst. left. reflexivity.
+    - assert (sact_beq t1 t2 = true -> False).
+      { rewrite Heqb. intro. discriminate H. }
+      rewrite sact_beq_iff_eq in H. right. auto.
+  Qed.
+
   Definition const_nil := SConst (Bits []).
   Definition const_true := SConst (Bits [true]).
   Definition const_false := SConst (Bits [false]).
