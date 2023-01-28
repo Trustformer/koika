@@ -495,26 +495,36 @@ Ltac simplify_bl :=
   update_wfsf_bl.
 Ltac prune_bl :=
   erewrite prune_irrelevant_interp_cycle_ok;
-  try (
-    match goal with
-    | |- prune_irrelevant _ _ = _ =>
-         unfold Prune.prune_irrelevant; vm_compute list_assoc; eauto
-    | |- getenv _ _ _ = _ => idtac
-    | |- _ => eauto
-    end
-  ); symmetry;
+  match goal with
+  | |- prune_irrelevant _ _ = _ =>
+       unfold Prune.prune_irrelevant; vm_compute list_assoc; eauto
+  | |- getenv _ _ _ = _ => idtac
+  | |- _ => eauto
+  end;
+  symmetry;
   erewrite prune_irrelevant_interp_cycle_ok;
-  try (
-    match goal with
-    | |- prune_irrelevant _ _ = _ =>
-         unfold Prune.prune_irrelevant; vm_compute list_assoc; eauto
-    | |- getenv _ _ _ = _ => idtac
-    | |- _ => eauto
-    end
-  ); symmetry; update_wfsf_bl.
+  match goal with
+  | |- prune_irrelevant _ _ = _ =>
+       unfold Prune.prune_irrelevant; vm_compute list_assoc; eauto
+  | |- getenv _ _ _ = _ => idtac
+  | |- _ => eauto
+  end;
+  symmetry; update_wfsf_bl.
 Ltac collapse_bl :=
-  erewrite collapse_interp_cycle_ok; eauto; symmetry;
-  erewrite collapse_interp_cycle_ok; eauto; symmetry;
+  erewrite collapse_interp_cycle_ok;
+  match goal with
+  | WFSF: wf_sf _ _ ?sf |- Collapse.wf_sf _ _ ?sf => apply WFSF
+  | |- getenv _ _ _ = _ => idtac
+  | |- _ => eauto
+  end;
+  symmetry;
+  erewrite collapse_interp_cycle_ok;
+  match goal with
+  | WFSF: wf_sf _ _ ?sf |- Collapse.wf_sf _ _ ?sf => apply WFSF
+  | |- getenv _ _ _ = _ => idtac
+  | |- _ => eauto
+  end;
+  symmetry;
   update_wfsf_bl.
 
 (* Ltac exploit_var_bl idx newv := *)

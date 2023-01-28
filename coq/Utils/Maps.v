@@ -658,17 +658,17 @@ Module PTree <: TREE.
     eapply combine'_commut. auto.
   Qed.
 
-    Fixpoint xelements (A : Type) (m : t A) (i : positive)
-                       (k: list (positive * A)) {struct m}
-                       : list (positive * A) :=
-      match m with
-      | Leaf => k
-      | Node l None r =>
-          xelements l (xO i) (xelements r (xI i) k)
-      | Node l (Some x) r =>
-          xelements l (xO i)
-            ((prev i, x) :: xelements r (xI i) k)
-      end.
+  Fixpoint xelements (A : Type) (m : t A) (i : positive)
+                     (k: list (positive * A)) {struct m}
+                     : list (positive * A) :=
+    match m with
+    | Leaf => k
+    | Node l None r =>
+        xelements l (xO i) (xelements r (xI i) k)
+    | Node l (Some x) r =>
+        xelements l (xO i)
+          ((prev i, x) :: xelements r (xI i) k)
+    end.
 
   Definition elements (A: Type) (m : t A) := xelements m xH nil.
 
