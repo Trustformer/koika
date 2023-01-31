@@ -82,6 +82,24 @@ Ltac update_wfsf :=
     ); eauto); clear WFSF'
   | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
     WT_SIGMA:
+      forall (ufn : ?ext_fn_t) (vc : val), wt_val (arg1Sig (?ext_Sigma ufn)) vc
+      -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
+    |- getenv
+         ?REnv
+         (interp_cycle
+           ?ctx ?ext_sigma (SyntacticSimplifications.simplify_sifs_sf ?sf')) ?rg
+       = _
+    =>
+    assert (wf_sf R ext_Sigma (SyntacticSimplifications.simplify_sifs_sf sf'))
+      as wfsf_tmp
+      by (
+        intros; eapply (
+          SyntacticSimplifications.wf_sf_simplify_sifs_sf R ext_Sigma sf' WFSF'
+        ); eauto
+      );
+    clear WFSF'
+  | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf',
+    WT_SIGMA:
       forall (ufn : ?ext_fn_t) (vc : val),
       wt_val (arg1Sig (?ext_Sigma ufn)) vc
       -> wt_val (retSig (?ext_Sigma ufn)) (?ext_sigma ufn vc)
@@ -115,6 +133,14 @@ Ltac update_wfsf :=
     assert (wf_sf R ext_Sigma (prune_irrelevant_aux sf' rg l)) as wfsf_tmp
     by (eapply (wf_sf_prune_irrelevant_aux R ext_Sigma sf' rg l lassoc WFSF'));
     clear WFSF'; clear lassoc
+  | WTRENV: Wt.wt_renv ?R ?REnv ?ctx, WFSF': wf_sf ?R ?ext_Sigma ?sf'
+    |- getenv ?REnv (interp_cycle ?ctx ?ext_sigma (prune_irrelevant_l ?sf' ?lr))
+         ?rg
+       = _
+    =>
+    assert (wf_sf R ext_Sigma (prune_irrelevant_l sf' lr)) as wfsf_tmp
+      by (eapply (wf_sf_prune_irrelevant_l R ext_Sigma sf' lr WFSF'));
+    clear WFSF'
   end; try move wfsf_tmp at top; try rename wfsf_tmp into wfsf.
 
 Ltac exploit_reg H :=
@@ -177,6 +203,9 @@ Ltac exploit_fields :=
 Ltac exploit_hypotheses := exploit_regs; exploit_fields.
 
 Ltac simplify := erewrite simplify_sf_interp_cycle_ok; eauto; update_wfsf.
+Ltac simplify_sifs :=
+  erewrite SyntacticSimplifications.simplify_sifs_sf_interp_cycle_ok; eauto;
+    update_wfsf.
 Ltac prune :=
   erewrite prune_irrelevant_interp_cycle_ok;
     try (unfold prune_irrelevant; vm_compute list_assoc); eauto; update_wfsf.

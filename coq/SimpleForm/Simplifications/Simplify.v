@@ -485,24 +485,6 @@ Section Simplify.
     unfold option_map. setoid_rewrite H. easy.
   Qed.
 
-  Lemma simplify_vars_get_ok:
-    forall vvs x t a (GET: Maps.PTree.get x (simplify_vars vvs) = Some (t, a)),
-    exists a', Maps.PTree.get x vvs = Some (t, a').
-  Proof.
-    intros. unfold simplify_vars in GET.
-    rewrite Maps.PTree.gmap in GET. unfold option_map in GET.
-    repeat (destr_in GET); inv GET; eauto.
-  Qed.
-
-  Lemma simplify_vars_get_ok':
-    forall vvs x t a (GET: Maps.PTree.get x vvs = Some (t, a)),
-    Maps.PTree.get x (simplify_vars vvs) = Some (t, simplify_sact a).
-  Proof.
-    intros. unfold simplify_vars.
-    rewrite Maps.PTree.gmap. unfold option_map.
-    setoid_rewrite GET. eauto.
-  Qed.
-
   Lemma simplify_vars_wtvvs_ok':
     forall vvs (WTVVS: wt_vvs (Sigma := Sigma) R vvs),
     wt_vvs (Sigma := Sigma) R (simplify_vars vvs).

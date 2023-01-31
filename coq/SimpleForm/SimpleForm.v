@@ -56,6 +56,75 @@ Section SimpleForm.
   | SExternalCall (ufn: ext_fn_t) (arg: sact)
   | SReg (idx: reg_t).
 
+  Definition sumbool_to_bool {A B} (sb: {A} + {B}) : bool :=
+    match sb with
+    | left _ => true
+    | right _ => false
+    end.
+
+  Fixpoint sact_beq (s1 s2: sact) : bool :=
+  match s1, s2 with
+  | SVar v1, SVar v2 => Pos.eqb v1 v2
+  | SConst v1, SConst v2 => val_beq v1 v2
+  | SIf c1 tb1 fb1, SIf c2 tb2 fb2 =>
+    andb (andb (sact_beq c1 c2) (sact_beq tb1 tb2)) (sact_beq fb1 fb2)
+  | SUnop ufn1 a1, SUnop ufn2 a2 =>
+    andb (sact_beq a1 a2) (sumbool_to_bool (eq_dec ufn1 ufn2))
+  | SBinop ufn1 a1 a'1, SBinop ufn2 a2 a'2 =>
+    andb
+      (andb (sact_beq a1 a2) (sumbool_to_bool (eq_dec ufn1 ufn2)))
+      (sact_beq a'1 a'2)
+  | SExternalCall ufn1 a1, SExternalCall ufn2 a2 =>
+    andb (sact_beq a1 a2) (sumbool_to_bool (eq_dec ufn1 ufn2))
+  | SReg idx1, SReg idx2 => sumbool_to_bool (eq_dec idx1 idx2)
+  | _, _ => false
+  end.
+
+  Lemma sact_beq_iff_eq:
+    forall s1 s2, sact_beq s1 s2 = true <-> s1 = s2.
+  Proof.
+    intros.
+    split; intro.
+    - generalize dependent s2. induction s1, s2; try discriminate; intro.
+      + simpl in H. apply Pos.eqb_eq in H. subst. reflexivity.
+      + simpl in H. apply val_beq_correct in H. subst. reflexivity.
+      + simpl in H. rewrite ! andb_true_iff in H. destruct H. destruct H.
+        apply IHs1_1 in H. apply IHs1_2 in H1. apply IHs1_3 in H0.
+        subst. reflexivity.
+      + unfold sact_beq in H.  rewrite ! andb_true_iff in H. destruct H.
+        destruct (eq_dec ufn1 ufn0). 2: discriminate H0.
+        apply IHs1 in H. subst. reflexivity.
+      + unfold sact_beq in H. rewrite ! andb_true_iff in H. destruct H.
+        destruct H.
+        destruct (eq_dec ufn2 ufn0). 2: discriminate H1.
+        apply IHs1_1 in H. apply IHs1_2 in H0. subst. reflexivity.
+      + unfold sact_beq in H.  rewrite ! andb_true_iff in H. destruct H.
+        destruct (eq_dec ufn ufn0). 2: discriminate H0.
+        apply IHs1 in H. subst. reflexivity.
+      + simpl in H. destruct (eq_dec idx idx0). 2: discriminate H.
+        subst. reflexivity.
+    - subst. induction s2.
+      + simpl. rewrite Pos.eqb_eq. reflexivity.
+      + simpl. rewrite val_beq_correct. reflexivity.
+      + simpl. rewrite ! andb_true_iff. repeat split; auto.
+      + unfold sact_beq. rewrite ! andb_true_iff. repeat split; auto.
+        rewrite eq_dec_refl. auto.
+      + unfold sact_beq. rewrite ! andb_true_iff. repeat split; auto.
+        rewrite eq_dec_refl. auto.
+      + unfold sact_beq. rewrite ! andb_true_iff. repeat split; auto.
+        rewrite eq_dec_refl. auto.
+      + simpl. rewrite eq_dec_refl. auto.
+  Qed.
+
+  Instance EqDec_sact : EqDec sact.
+  Proof.
+    econstructor. intros. destruct (sact_beq t1 t2) eqn:?.
+    - apply sact_beq_iff_eq in Heqb. subst. left. reflexivity.
+    - assert (sact_beq t1 t2 = true -> False).
+      { rewrite Heqb. intro. discriminate H. }
+      rewrite sact_beq_iff_eq in H. right. auto.
+  Qed.
+
   Definition const_nil := SConst (Bits []).
   Definition const_true := SConst (Bits [true]).
   Definition const_false := SConst (Bits [false]).

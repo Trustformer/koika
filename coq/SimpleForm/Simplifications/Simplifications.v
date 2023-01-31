@@ -2,6 +2,7 @@ Require Export Koika.SimpleForm.Simplifications.Collapse.
 Require Export Koika.SimpleForm.Simplifications.Simplify.
 Require Export Koika.SimpleForm.Simplifications.SimplifyCareful.
 Require Export Koika.SimpleForm.Simplifications.SimplifyTargeted.
+Require Export Koika.SimpleForm.Simplifications.SyntacticSimplifications.
 Require Export Koika.SimpleForm.Simplifications.ReplaceReg.
 Require Export Koika.SimpleForm.Simplifications.ReplaceVar.
 Require Export Koika.SimpleForm.Simplifications.ReplaceSubact.
