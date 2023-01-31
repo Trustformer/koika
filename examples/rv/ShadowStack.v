@@ -17,7 +17,7 @@ End ShadowStackInterface.
 (* End ShadowStack_sig. *)
 
 Module ShadowStackF <: ShadowStackInterface.
-  Definition capacity := 4.
+  Definition capacity := 4.     (* works with 256 also *)
 
   (* The + 1 is required for situations where capacity = 2^x *)
   Notation index_sz := (log2 (capacity + 1)).
@@ -25,6 +25,31 @@ Module ShadowStackF <: ShadowStackInterface.
   (* TODO in general, pow2 (log2 x) != x *)
   Inductive _reg_t := size | stack (n : Vect.index (pow2 index_sz)).
   Definition reg_t := _reg_t.
+
+  Instance fin_ss_reg: FiniteType reg_t.
+  Proof.
+    unshelve econstructor.
+    - destruct 1; shelve.
+    - shelve.
+    - intros [|].
+      instantiate (1:= 0).
+      instantiate (1:= size::_). reflexivity.
+      instantiate (1:= S _). simpl.
+      apply map_nth_error.
+      apply (@finite_surjective _ (FiniteType_index)).
+    - rewrite map_cons.
+      constructor.
+      2:{
+        apply FinFun.Injective_map_NoDup.
+        red; intros. destruct x,y; try congruence.
+        assert (n = n0). eapply finite_index_injective. lia. congruence.
+        apply FinFun.Injective_map_NoDup.
+        red; intros. congruence.
+        apply finite_nodup.
+      }
+      rewrite map_map, in_map_iff.
+      intros (x & EQ & _); congruence.
+  Defined.
 
   Definition R r :=
     match r with
