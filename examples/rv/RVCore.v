@@ -621,7 +621,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   | pc
   | epoch
   | sstack_activated
-  | on_off
+  | halt_emitted
   | halt.
 
   (* State type *)
@@ -643,7 +643,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     | instr_count      => bits_t 32
     | epoch            => bits_t 1
     | sstack_activated => bits_t 1
-    | on_off           => bits_t 1
+    | halt_emitted     => bits_t 1
     | halt             => bits_t 1
     end.
 
@@ -666,7 +666,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     | instr_count      => Bits.zero
     | epoch            => Bits.zero
     | sstack_activated => if (HAS_SHADOW_STACK) then Bits.one else Bits.zero
-    | on_off           => Bits.zero
+    | halt_emitted     => Bits.zero
     | halt             => Bits.zero
     end.
 
@@ -723,16 +723,6 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     | ext_host_id    => {$ bits_t 1 ~> enum_t host_id $}
     | ext_finish     => {$ finish_input ~> bits_t 1 $}
     end.
-
-  Definition update_on_off : uaction reg_t ext_fn_t := {{
-    write1(on_off, read0(on_off)+Ob~1)
-  }}.
-
-  Definition end_execution : uaction reg_t ext_fn_t := {{
-    let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
-      valid := read0(halt); data := |8`d1|
-    }) in pass
-  }}.
 
   Definition fetch : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
@@ -881,7 +871,12 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
           )
           else pass
         );
-        write0(halt, res)
+        write0(halt, res);
+        if res then
+          let finish_res := extcall ext_finish (struct (Maybe (bits_t 8)) {
+            valid := read0(halt); data := |8`d1|
+          }) in write1(halt_emitted, finish_res)
+        else pass
       )
       else pass
     else pass;
@@ -1139,9 +1134,7 @@ Inductive rv_rules_t :=
 | WaitImem
 | Imem
 | Dmem
-| Tick
-| UpdateOnOff
-| EndExecution.
+| Tick.
 
 Definition rv_external (rl: rv_rules_t) := false.
 

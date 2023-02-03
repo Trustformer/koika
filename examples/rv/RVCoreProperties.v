@@ -1558,7 +1558,7 @@ Definition non_sstack_vars_eq (ctx ctx' : env_t REnv (fun _ => val)) :=
   /\ (getenv REnv ctx RV32I.cycle_count = getenv REnv ctx' RV32I.cycle_count)
   /\ (getenv REnv ctx RV32I.instr_count = getenv REnv ctx' RV32I.instr_count)
   /\ (getenv REnv ctx RV32I.epoch = getenv REnv ctx' RV32I.epoch)
-  /\ (getenv REnv ctx RV32I.on_off = getenv REnv ctx' RV32I.on_off)
+  /\ (getenv REnv ctx RV32I.halt_emitted= getenv REnv ctx' RV32I.halt_emitted)
   /\ (getenv REnv ctx RV32I.halt = getenv REnv ctx' RV32I.halt).
 
 Lemma sstack_deactivated_impl_sstack_values_preserved :

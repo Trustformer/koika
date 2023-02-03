@@ -44,8 +44,6 @@ Module RV32I <: Core.
     | Imem         => (mem imem)
     | Dmem         => (mem dmem)
     | Tick         => tick
-    | UpdateOnOff  => update_on_off
-    | EndExecution => end_execution
     end.
 
   Definition rv_rules (rl: rv_rules_t) : rule R Sigma :=
@@ -58,8 +56,6 @@ Module RV32I <: Core.
     | Imem         => tc_rule R Sigma (mem imem)
     | Dmem         => tc_rule R Sigma (mem dmem)
     | Tick         => tc_rule R Sigma tick
-    | UpdateOnOff  => tc_rule R Sigma update_on_off
-    | EndExecution => tc_rule R Sigma end_execution
     end.
 End RV32I.
 
