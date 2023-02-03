@@ -836,7 +836,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in
     let isUnsigned := Ob~0 in
     let size       := funct3[|2`d0| :+ 2] in
-    let addr       := ((rs1_val + imm) && !|32`d1|) in
+    let addr       := rs1_val + imm in (* ((rs1_val + imm) && !|32`d1|) in *)
     let offset     := addr[|5`d0| :+ 2] in
     if isMemoryInst(dInst) then
       let shift_amount := offset ++ |3`d0| in
