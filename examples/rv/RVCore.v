@@ -871,13 +871,8 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
           )
           else pass
         );
-        write0(halt, res);
-        if res then
-          let finish_res := extcall ext_finish (struct (Maybe (bits_t 8)) {
-            valid := read0(halt); data := |8`d1|
-          }) in write1(halt_emitted, finish_res)
-        else pass
-      )
+        write0(halt, res)
+     )
       else pass
     else pass;
     let controlResult := execControl32(fInst, rs1_val, rs2_val, imm, pc) in
@@ -896,6 +891,12 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     } in
     e2w.(fromExecute.enq)(execute_bookkeeping)
   )}}.
+
+  Definition end_execution : uaction reg_t ext_fn_t := {{
+    let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
+      valid := read0(halt); data := |8`d1|
+    }) in write1(halt_emitted, res)
+  }}.
 
   Definition execute
     `{finite_reg: FiniteType reg_t}
@@ -1134,6 +1135,7 @@ Inductive rv_rules_t :=
 | WaitImem
 | Imem
 | Dmem
+| EndExecution
 | Tick.
 
 Definition rv_external (rl: rv_rules_t) := false.
