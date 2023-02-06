@@ -847,6 +847,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
         byte_en := byte_en; addr := addr; data := data
       })
     else if (isControlInst(dInst)) then
+      let addr2 := addr && !|32`d1| in
       (* See table 2.1. of the unprivileged ISA specification for details *)
       set data := (pc + |32`d4|); (* For jump and link *)
       let has_sstack := read0(sstack_activated) in
@@ -862,11 +863,11 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
               if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
                 set res := sstack.(ShadowStack.push)(data)
               ) else (
-                set res := sstack.(ShadowStack.pop)(addr);
+                set res := sstack.(ShadowStack.pop)(addr2);
                 set res := res || sstack.(ShadowStack.push)(data)
               )
             else if (rs1 == |5`d1| || rs1 == |5`d5|) then
-              set res := sstack.(ShadowStack.pop)(addr)
+              set res := sstack.(ShadowStack.pop)(addr2)
             else pass
           )
           else pass

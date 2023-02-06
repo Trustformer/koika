@@ -17,7 +17,7 @@ End ShadowStackInterface.
 (* End ShadowStack_sig. *)
 
 Module ShadowStackF <: ShadowStackInterface.
-  Definition capacity := 8.
+  Definition capacity := 7.
 
   (* The + 1 is required for situations where capacity = 2^x *)
   Notation index_sz := (log2 (capacity + 1)).
