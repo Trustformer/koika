@@ -33,6 +33,8 @@ Section SimplifySIfs.
   Definition simplify_sif_sact (ua: sact) : sact :=
     match ua with
     | SIf cond (SVar x) (SVar y) => if Pos.eqb x y then (SVar x) else ua
+    | SIf cond (SConst (Bits [x])) (SConst (Bits [y])) =>
+      if Bool.eqb x y then (SConst (Bits [x])) else ua
     | _ => ua
     end.
 
@@ -62,6 +64,16 @@ Section SimplifySIfs.
     destruct v; try (inversion H0; fail).
     simpl in H0.
     destruct b; eapply eval_sact_more_fuel; try eapply le_n_Sn; auto.
+    (* SIf x T T, SIf x F F *)
+    repeat (destruct v; eauto). destruct a3; eauto.
+    repeat (destruct v; eauto). destr.
+    rewrite Bool.eqb_true_iff in Heqb1. subst.
+    destruct n; auto.
+    eapply eval_sact_more_fuel; try eapply le_n_Sn; auto.
+    simpl in H0.
+    destruct (eval_sact vvs a1 n); try (inversion H0; fail).
+    repeat (destruct v; try (inversion H0; fail)).
+    simpl in H0. destruct b; eauto.
   Qed.
 
   Lemma wt_simplify_sif_sact:
@@ -74,6 +86,7 @@ Section SimplifySIfs.
     simpl. destruct a2; auto. destruct a3; auto. destr; auto.
     rewrite Pos.eqb_eq in Heqb. subst.
     inv H. auto.
+    repeat destr. inv H. auto.
   Qed.
 
   Lemma simplify_sif_sact_wt_sact_ok':
@@ -131,6 +144,9 @@ Section SimplifySIfs.
     inv RV.
     - apply reachable_var_if_true. constructor.
     - apply reachable_var_if_true. econstructor; eauto.
+    - repeat (destruct v0; auto). repeat (destruct s3; auto).
+      repeat (destruct v0; auto).
+      simpl in *. destr_in RV; auto. inv RV.
   Qed.
 
   Lemma simplify_sif_sact_interp_sact_ok':
@@ -156,6 +172,9 @@ Section SimplifySIfs.
     destruct s2; auto. destruct s3; auto. simpl in *.
     destr_in VIS; auto.
     apply var_in_if_true. auto.
+    repeat (destruct v0; auto). repeat (destruct s3; auto).
+    repeat (destruct v0; auto).
+    simpl in *. destr_in VIS; auto. inv VIS.
   Qed.
 
   Lemma simplify_sifs_vvssv_ok':
@@ -245,6 +264,12 @@ Section SimplifySIfs.
     eapply wt_sact_interp_bool in H2; eauto.
     2: eapply vvs_range_max_var.
     destruct H2. destruct x; eapply interp_sact_if; eauto.
+    repeat (destruct v0; auto). repeat (destruct a3; auto).
+    repeat (destruct v0; auto).
+    simpl in *. destr_in EV_INIT; auto. rewrite eqb_true_iff in Heqb1. subst.
+    inv WTS. eapply wt_sact_interp_bool in H2; eauto.
+    2: eapply vvs_range_max_var. destruct H2.
+    econstructor; eauto. destruct x; eauto.
   Qed.
 
   Lemma simplify_sifs_interp_sact_ok:
