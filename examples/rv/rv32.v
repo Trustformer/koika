@@ -8,9 +8,9 @@ Definition rv_schedule : scheduler :=
 
 Module Package (C: Core).
   Import C.
-  Existing Instance Show_reg_t.
-  Existing Instance Show_ext_fn_t.
-  Existing Instance FiniteType_reg_t.
+  #[global] Existing Instance Show_reg_t.
+  #[global] Existing Instance Show_ext_fn_t.
+  #[global] Existing Instance FiniteType_reg_t.
 
   Definition circuits := compile_scheduler rv_rules rv_external rv_schedule.
 

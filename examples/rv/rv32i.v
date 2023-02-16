@@ -16,13 +16,13 @@ Module RV32I <: Core.
   Module ShadowStack := ShadowStackF.
   Include (RVCore RVIParams ShadowStack).
 
-  Instance FiniteType_rf : FiniteType Rf.reg_t := _.
-  Instance FiniteType_scoreboard_rf : FiniteType Scoreboard.Rf.reg_t := _.
-  Instance FiniteType_scoreboard : FiniteType Scoreboard.reg_t := _.
-  Instance FiniteType_reg_t : FiniteType reg_t := _.
+  #[global] Instance FiniteType_rf : FiniteType Rf.reg_t := _.
+  #[global] Instance FiniteType_scoreboard_rf : FiniteType Scoreboard.Rf.reg_t := _.
+  #[global] Instance FiniteType_scoreboard : FiniteType Scoreboard.reg_t := _.
+  #[global] Instance FiniteType_reg_t : FiniteType reg_t := _.
   (* TODO generalize: more usable FiniteType instanciation. Does this make a
      difference in practice? *)
-  Instance FiniteType_reg_t2: FiniteType reg_t.
+  #[global] Instance FiniteType_reg_t2: FiniteType reg_t.
   Proof.
     eapply (@Build_FiniteType
       _ (@finite_index _ FiniteType_reg_t) (@finite_elements _ FiniteType_reg_t)

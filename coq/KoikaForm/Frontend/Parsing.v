@@ -60,9 +60,9 @@ Notation "'{{' e '}}'" := (e) (e custom koika at level 200, format "'{{' '[v' '/
 Notation "'fail'" :=
   (UFail (bits_t 0)) (in custom koika, format "'fail'").
 Notation "'fail' '(' t ')'" :=
-  (UFail (bits_t t)) (in custom koika, t constr at level 0 ,format "'fail' '(' t ')'").
+  (UFail (bits_t t)) (in custom koika, t constr at level 0, format "'fail' '(' t ')'").
 Notation "'fail' '@(' t ')'" :=
-  (UFail t) (in custom koika, t constr at level 0 ,format "'fail' '@(' t ')'").
+  (UFail t) (in custom koika, t constr at level 0, format "'fail' '@(' t ')'").
 Notation "'pass'" := (USugar (UConstBits Ob)) (in custom koika).
 Notation "'magic'" := (USugar UErrorInAst) (in custom koika).
 
@@ -217,6 +217,7 @@ Module Type Tests.
   Notation uaction reg_t := (uaction pos_t string fn_name_t reg_t ext_fn_t).
   Definition test_2 : uaction reg_t := {{ yo; yoyo }}.
   Definition test_3 : uaction reg_t := {{ set  yoyo := `UVar "magic" : uaction reg_t`  }}.
+
   Definition test_1 : uaction reg_t := {{ let yoyo := fail(2) in magic }}.
   Definition test_1' : uaction reg_t := {{ let yoyo := fail(2) in yoyo }}.
   Definition test_2' : uaction reg_t := {{ magic; magic }}.

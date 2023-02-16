@@ -28,11 +28,10 @@ Getting started
 Installing dependencies and building from source
 ------------------------------------------------
 
-* OCaml 4.07 through 4.09, `opam <https://opam.ocaml.org/doc/Install.html>`_ 2.0 or later, GNU make.
+* OCaml 4.14
+* Coq 8.14.1:
 
-* Coq 8.11 through 8.13::
-
-    opam install coq=8.12.2
+    opam install coq=8.14.1
 
 * Dune 2.5 or later::
 

@@ -1,7 +1,7 @@
 (*! Stdlib | Standard library !*)
 Require Import Koika.Frontend.
 
-Instance id_injective {A: Type}: Inj (@id A).
+#[global] Instance id_injective {A: Type}: Inj (@id A).
 Proof.
   red. intros. unfold id. auto.
 Defined.
@@ -73,7 +73,7 @@ Module Fifo1 (f: Fifo).
         write0(valid0, Ob~0);
         read0(data0) }}.
 
-  Instance FiniteType_reg_t : FiniteType reg_t := _.
+  #[global] Instance FiniteType_reg_t : FiniteType reg_t := _.
 End Fifo1.
 
 Module Fifo1Bypass (f: Fifo).
@@ -121,7 +121,7 @@ Module Fifo1Bypass (f: Fifo).
        write1(valid0, Ob~0);
        read1(data0) }}.
 
-  Instance FiniteType_reg_t : FiniteType reg_t := _.
+  #[global] Instance FiniteType_reg_t : FiniteType reg_t := _.
 End Fifo1Bypass.
 
 Module Type RfPow2_sig.
@@ -137,7 +137,7 @@ Module RfPow2 (s: RfPow2_sig).
   Inductive reg_t := rData (n: Vect.index sz).
 
 
-  Instance finite_rf_reg: FiniteType reg_t.
+  #[global] Instance finite_rf_reg: FiniteType reg_t.
   Proof.
     destruct (@FiniteType_index (sz)).
     refine

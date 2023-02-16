@@ -826,7 +826,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     let data       := execALU32(fInst, rs1_val, rs2_val, imm, pc) in
     let isUnsigned := Ob~0 in
     let size       := funct3[|2`d0| :+ 2] in
-    let addr       := rs1_val + imm in (* ((rs1_val + imm) && !|32`d1|) in *)
+    let addr       := rs1_val + imm in
     let offset     := addr[|5`d0| :+ 2] in
     if isMemoryInst(dInst) then
       let shift_amount := offset ++ |3`d0| in
@@ -855,10 +855,12 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
         let res := Ob~0 in
         let rs1 := get(dInst, inst)[|5`d15| :+ 5] in
         (
-          if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1) (* JAL with rd = x1 (ra) or x5 (t0) *)
+          (* JAL with rd = x1 (ra) or x5 (t0) *)
+          if ((get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~1~1~1~1)
             && (rd_val == |5`d1| || rd_val == |5`d5|))
           then set res := sstack.(ShadowStack.push)(data)
-          else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then ( (* JALR *)
+          (* JALR *)
+          else if (get(dInst, inst)[|5`d0| :+ 7] == Ob~1~1~0~0~1~1~1) then (
             if (rd_val == |5`d1| || rd_val == |5`d5|) then
               if (rd_val == rs1 || (rs1 != |5`d1| && rs1 != |5`d5|)) then (
                 set res := sstack.(ShadowStack.push)(data)

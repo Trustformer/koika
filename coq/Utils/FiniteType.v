@@ -164,13 +164,12 @@ Module Examples.
   Inductive t''  := A'' | B'' (x': t) | C''.
   Inductive t''' := A''' | B''' (x': t) | C''' | D''' (x' : t').
 
-  Instance t'f : FiniteType t'.
+  #[local] Instance t'f : FiniteType t'.
   Proof. FiniteType_t. Defined.
 
-  Instance t''f: FiniteType t''.
+  #[local] Instance t''f: FiniteType t''.
   Proof. FiniteType_t. Defined.
 
-  Instance t'''f: FiniteType t'''.
+  #[local] Instance t'''f: FiniteType t'''.
   Proof. FiniteType_t. Defined.
-
 End Examples.

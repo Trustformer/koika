@@ -44,7 +44,7 @@ Proof.
   apply all_indices_eqn.
 Defined.
 
-Instance FiniteType_index {n} : FiniteType (Vect.index n).
+#[global] Instance FiniteType_index {n} : FiniteType (Vect.index n).
 Proof.
   refine {| finite_index := index_to_nat;
             finite_elements := vect_to_list (all_indices n) |}.
@@ -148,5 +148,5 @@ Proof.
   - specialize (IHl a0); unfold list_sum, list_sum' in *; cbn; lia.
 Qed.
 
-Instance Show_index (n: nat) : Show (index n) :=
+#[global] Instance Show_index (n: nat) : Show (index n) :=
   { show x := show (index_to_nat x) }.

@@ -331,7 +331,7 @@ Ltac existT_dec :=
 Ltac simple_eq :=
   first [ left; solve[eauto] | right; inversion 1; existT_dec; subst; solve[congruence] ].
 
-Instance EqDec_type : EqDec type.
+#[global] Instance EqDec_type : EqDec type.
 Proof.
   econstructor.
   fix IHtau 1;
@@ -357,7 +357,7 @@ Proof.
     destruct (eq_dec len1 len2); subst; try simple_eq.
 Defined.
 
-Instance EqDec_type_denote {tau: type} : EqDec (type_denote tau).
+#[global] Instance EqDec_type_denote {tau: type} : EqDec (type_denote tau).
 Proof.
   econstructor.
   revert tau; fix eq_dec_td 1;

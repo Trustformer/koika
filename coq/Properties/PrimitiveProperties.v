@@ -5,8 +5,8 @@ Require Import Lia.
 
 Ltac min_t :=
   repeat match goal with
-  | [ |- context[Min.min ?x ?y] ] =>
-    first [rewrite (Min.min_l x y) by min_t | rewrite (Min.min_r x y) by min_t ]
+  | [ |- context[Nat.min ?x ?y] ] =>
+    first [rewrite (Nat.min_l x y) by min_t | rewrite (Nat.min_r x y) by min_t ]
   | _ => lia
   end.
 
@@ -46,7 +46,7 @@ Lemma struct_slice_correct_le :
 Proof.
   intros.
   change (type_sz (snd (List_nth fields idx))) with (struct_fields_sz [List_nth fields idx]).
-  rewrite plus_comm; setoid_rewrite <- list_sum_app; rewrite <- map_app; cbn [List.app].
+  rewrite Nat.add_comm; setoid_rewrite <- list_sum_app; rewrite <- map_app; cbn [List.app].
   rewrite List_nth_skipn_cons_next.
   rewrite <- skipn_map.
   apply list_sum_skipn_le.
@@ -73,7 +73,8 @@ Proof.
   autorewrite with vect_to_list.
   rewrite !firstn_app.
   rewrite firstn_length_le by (rewrite vect_to_list_length; lia).
-  rewrite !minus_plus, vect_to_list_length, Nat.sub_diag; cbn.
+  rewrite vect_skipn_plus_cast.
+  rewrite vect_to_list_length, Nat.sub_diag; cbn.
   rewrite firstn_firstn by lia; min_t.
   rewrite (firstn_all2 (n := sz)) by (rewrite vect_to_list_length; lia).
   rewrite app_nil_r; reflexivity.
@@ -237,7 +238,7 @@ Ltac vect_to_list_t_step :=
   | _ => progress (autounfold with vect_to_list)
   | _ => progress autorewrite with vect_to_list vect_to_list_cleanup
   | [ |- context[match ?x with _ => _ end] ] => destruct x
-  | _ => repeat rewrite ?Min.min_l, ?Min.min_r by lia
+  | _ => repeat rewrite ?Nat.min_l, ?Nat.min_r by lia
   end.
 
 Ltac vect_to_list_t :=
@@ -287,7 +288,6 @@ Proof.
 Qed.
 
 Section Arithmetic.
-
   (* The next lemmas simplify 2 * x *)
   Arguments N.mul / !n !m.
 

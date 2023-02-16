@@ -24,8 +24,8 @@ Definition empty_csigma fn
   : CSig_denote (empty_CSigma fn) := lower_sigma empty_sigma fn.
 Definition empty_ext_fn_props {A} (fn: empty_ext_fn_t) : A := match fn with end.
 
-Instance Lift_empty {A} : Lift empty_ext_fn_t A := fun fn => match fn with end.
-Instance Lift_self {A} : Lift A A := fun fn => fn.
+#[global] Instance Lift_empty {A} : Lift empty_ext_fn_t A := fun fn => match fn with end.
+#[global] Instance Lift_self {A} : Lift A A := fun fn => fn.
 
 Section Packages.
   (** [pos_t]: The type of positions used in actions.

@@ -157,7 +157,7 @@ Fixpoint upto (n: nat) :=
 
 Notation log2 := Nat.log2_up.
 
-Instance EqDec_FiniteType {T} {FT: FiniteType T} : EqDec T | 3.
+#[global] Instance EqDec_FiniteType {T} {FT: FiniteType T} : EqDec T | 3.
 Proof.
   econstructor; intros.
   destruct (PeanoNat.Nat.eq_dec (finite_index t1) (finite_index t2))
@@ -212,8 +212,8 @@ Section Lists.
     induction l; cbn; intros.
     - reflexivity.
     - rewrite IHl.
-      rewrite !Plus.plus_assoc_reverse.
-      rewrite (Plus.plus_comm n a); reflexivity.
+      rewrite <- Nat.add_assoc. rewrite (Nat.add_comm n a).
+      rewrite Nat.add_assoc. reflexivity.
   Qed.
 
   Lemma list_sum_app:

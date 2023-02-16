@@ -730,23 +730,23 @@ Section Conversions.
   Qed.
 End Conversions.
 
-Hint Rewrite @vect_to_list_eq_rect : vect_to_list.
-Hint Rewrite @vect_to_list_eq_rect_fn : vect_to_list.
-Hint Rewrite @vect_to_list_app : vect_to_list.
-Hint Rewrite @vect_to_list_firstn : vect_to_list.
-Hint Rewrite @vect_to_list_skipn : vect_to_list.
-Hint Rewrite @vect_to_list_const : vect_to_list.
-Hint Rewrite @vect_to_list_map : vect_to_list.
-Hint Rewrite @vect_to_list_length : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_eq_rect : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_eq_rect_fn : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_app : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_firstn : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_skipn : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_const : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_map : vect_to_list.
+#[global] Hint Rewrite @vect_to_list_length : vect_to_list.
 
-Hint Rewrite @firstn_firstn : vect_to_list_cleanup.
-Hint Rewrite @List.firstn_app : vect_to_list_cleanup.
-Hint Rewrite @List.skipn_app : vect_to_list.
-Hint Rewrite @List.firstn_nil : vect_to_list_cleanup.
-Hint Rewrite @List.firstn_length : vect_to_list_cleanup.
-Hint Rewrite @Nat.sub_0_r : vect_to_list_cleanup.
-Hint Rewrite @List.app_nil_r : vect_to_list_cleanup.
-Hint Rewrite @Nat.sub_diag : vect_to_list_cleanup.
+#[global] Hint Rewrite @firstn_firstn : vect_to_list_cleanup.
+#[global] Hint Rewrite @List.firstn_app : vect_to_list_cleanup.
+#[global] Hint Rewrite @List.skipn_app : vect_to_list.
+#[global] Hint Rewrite @List.firstn_nil : vect_to_list_cleanup.
+#[global] Hint Rewrite @List.firstn_length : vect_to_list_cleanup.
+#[global] Hint Rewrite @Nat.sub_0_r : vect_to_list_cleanup.
+#[global] Hint Rewrite @List.app_nil_r : vect_to_list_cleanup.
+#[global] Hint Rewrite @Nat.sub_diag : vect_to_list_cleanup.
 
 Definition vect_NoDup {T n} (v: vect T n) : Prop :=
   List.NoDup (vect_to_list v).
@@ -807,9 +807,9 @@ Proof.
     contradiction Heq; reflexivity.
 Qed.
 
-Instance EqDec_vect_nil T `{EqDec T} : EqDec (vect_nil_t T) := _.
-Instance EqDec_vect_cons A B `{EqDec A} `{EqDec B} : EqDec (vect_cons_t A B) := _.
-Instance EqDec_vect T n `{EqDec T} : EqDec (vect T n).
+#[global] Instance EqDec_vect_nil T `{EqDec T} : EqDec (vect_nil_t T) := _.
+#[global] Instance EqDec_vect_cons A B `{EqDec A} `{EqDec B} : EqDec (vect_cons_t A B) := _.
+#[global] Instance EqDec_vect T n `{EqDec T} : EqDec (vect T n).
 Proof. induction n; cbn; eauto using EqDec_vect_nil, EqDec_vect_cons; eassumption. Defined.
 
 Require Import Lia.
@@ -904,7 +904,7 @@ End VectNotations.
 Export VectNotations.
 
 (* https://coq-club.inria.narkive.com/HeWqgvKm/boolean-simplification *)
-Hint Rewrite
+#[global] Hint Rewrite
      andb_diag (** b && b -> b **)
      orb_diag (** b || b -> b **)
      orb_false_r (** b || false -> b *)
@@ -1263,7 +1263,7 @@ Module Bits.
       forall sz width offset,
         Nat.min sz (Nat.min offset sz + (width + (sz - (offset + width)))) = sz.
     Proof.
-      induction sz, width, offset; cbn; auto using Min.min_idempotent.
+      induction sz, width, offset; cbn; auto using Nat.min_id.
       - f_equal; apply (IHsz 0 offset).
       - f_equal; apply (IHsz width 0).
       - f_equal; apply (IHsz (S width) offset).
@@ -1364,7 +1364,7 @@ Module Bits.
   End Binops.
 End Bits.
 
-Hint Rewrite
+#[global] Hint Rewrite
      @Bits.and_diag
      @Bits.or_diag
      @Bits.or_zeroes_r

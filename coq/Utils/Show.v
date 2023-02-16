@@ -1,12 +1,13 @@
 (*! Utilities | Show typeclass (α → string) !*)
 Require Export Coq.Strings.String.
+Import PeanoNat.Nat.
 
 Class Show (A: Type) := { show: A -> string }.
 
 Module Show_nat.
   Lemma digit_lt_base m {n} : not (m + n < m).
   Proof.
-    red; intros; eapply Le.le_Sn_n; eauto using Le.le_trans, Plus.le_plus_l.
+    red; intros; eapply nle_succ_diag_l; eauto using le_trans, le_add_r.
   Qed.
 
   Definition string_of_base10_digit (n: {n | n < 10}) :=
@@ -30,8 +31,8 @@ Module Show_nat.
     string_of_nat_rec (S n) n.
 End Show_nat.
 
-Instance Show_nat : Show nat :=
+#[global] Instance Show_nat : Show nat :=
   { show := Show_nat.string_of_nat }.
 
-Instance Show_string : Show string :=
+#[global] Instance Show_string : Show string :=
   {| show x := x |}.

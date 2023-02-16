@@ -23,16 +23,16 @@ Proof. unfold beq_dec; destruct eq_dec; subst; intuition congruence. Qed.
 #[export] Hint Extern 1 (EqDec _) => econstructor; decide equality : typeclass_instances.
 #[export] Hint Extern 1 ({ _ = _ } + { _ <> _ }) => apply eq_dec : typeclass_instances.
 
-Instance EqDec_bool : EqDec bool := _.
-Instance EqDec_ascii : EqDec Ascii.ascii := _.
-Instance EqDec_string : EqDec string := _.
-Instance EqDec_unit : EqDec unit := _.
-Instance EqDec_nat : EqDec nat := {| eq_dec := PeanoNat.Nat.eq_dec |}.
-Instance EqDec_pair A B `{EqDec A} `{EqDec B} : EqDec (A * B) := _.
-Instance EqDec_option A `{EqDec A} : EqDec (option A) := _.
-Instance EqDec_vector A (sz: nat) {EQ: EqDec A}: EqDec (Vector.t A sz).
+#[global] Instance EqDec_bool : EqDec bool := _.
+#[global] Instance EqDec_ascii : EqDec Ascii.ascii := _.
+#[global] Instance EqDec_string : EqDec string := _.
+#[global] Instance EqDec_unit : EqDec unit := _.
+#[global] Instance EqDec_nat : EqDec nat := {| eq_dec := PeanoNat.Nat.eq_dec |}.
+#[global] Instance EqDec_pair A B `{EqDec A} `{EqDec B} : EqDec (A * B) := _.
+#[global] Instance EqDec_option A `{EqDec A} : EqDec (option A) := _.
+#[global] Instance EqDec_vector A (sz: nat) {EQ: EqDec A}: EqDec (Vector.t A sz).
 Proof. econstructor; intros; eapply Vector.eq_dec; apply beq_dec_iff. Defined.
-Instance EqDec_eq_true {A} (f: A -> bool) (a: A) : EqDec (f a = true).
+#[global] Instance EqDec_eq_true {A} (f: A -> bool) (a: A) : EqDec (f a = true).
 Proof. constructor; left; apply Eqdep_dec.UIP_dec, eq_dec. Defined.
 
 Import EqNotations.
