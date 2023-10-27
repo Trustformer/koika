@@ -1697,3 +1697,6 @@ Definition CEnv := @ContextEnv RV32I.reg_t RV32I.FiniteType_reg_t.
 Definition initial_context_env := CEnv.(create) (RV32I.r).
 
 Definition f_init := fun x => val_of_value (initial_context_env.[x]).
+
+  End proof.
+End RVProofs.
