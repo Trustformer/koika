@@ -3,7 +3,7 @@
 build := _build
 elf2hex := elf2hex/elf2hex
 
-asm_rv32i_sources := $(wildcard riscv_tests/rv32ui/*.S) $(wildcard riscv_tests/rv32um/*.S) $(wildcard unit/*.S)
+asm_rv32i_sources := $(wildcard riscv_tests/rv32ui/*.S) $(wildcard riscv_tests/rv32um/*.S) $(wildcard unit/*.S) integ/tiny.S
 c_rv32i_sources := $(wildcard unit/*.c) $(wildcard integ/*.c)
 c_rv32e_sources := $(filter-out integ/img.c,$(filter-out $(wildcard integ/rvbench_*),$(c_rv32i_sources)))
 
@@ -39,11 +39,21 @@ $(elf2hex):
 $(build)/rv32i/link.ld: link.ld | $(dirs)
 	$(cc) -E -x c $< | grep -v '^#' > $@
 
+$(build)/rv32i/link2.ld: link2.ld | $(dirs)
+	$(cc) -E -x c $< | grep -v '^#' > $@
+
+%.S: %.c
+	$(cc) $< -o $@
+
 $(build)/rv32i/%.rv32: %.S $(build)/rv32i/link.ld | $(dirs)
 	$(cc32i) -march=$(call iarch,$<) $< -o $@
 
 $(build)/rv32i/%.rv32: %.c init.S mmio.c $(build)/rv32i/link.ld | $(dirs)
 	$(cc32i) -march=$(call iarch,$<) init.S mmio.c $< -o $@
+
+$(build)/rv32i/integ/tiny.rv32: integ/tiny.S $(build)/rv32i/link.ld | $(dirs)
+	$(cc) -T$(build)/rv32i/link.ld -mabi=ilp32 -march=$(call iarch,$<) $< -o $@
+
 
 $(build)/%.dump: $(build)/%.rv32
 	$(objdump) $< > $@

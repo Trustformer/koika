@@ -35,7 +35,7 @@ int host_is_fpga() {
 }
 
 int getchar() {
-  return 0;
+  return *UART_ADDR;
 }
 
 void __attribute__((noreturn)) exit(int code) {

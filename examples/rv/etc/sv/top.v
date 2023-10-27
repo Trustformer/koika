@@ -37,8 +37,8 @@ module top(input CLK, input RST_N, output uart_wr_valid, output[7:0] uart_wr_dat
              .ext_led_arg({led_wr_valid, led_wr_data}),
              .ext_led_out(led));
 
-   ext_mem imem(.CLK(CLK), .RST_N(RST_N), .arg(imem_arg), .out(imem_out));
-   ext_mem dmem(.CLK(CLK), .RST_N(RST_N), .arg(dmem_arg), .out(dmem_out));
+  // ext_mem imem(.CLK(CLK), .RST_N(RST_N), .arg(imem_arg), .out(imem_out));
+                ext_mem dmem(.CLK(CLK), .RST_N(RST_N), .arg1(imem_arg), .out1(imem_out), .arg2(dmem_arg), .out2(dmem_out));
 
    always @(posedge CLK)
      if (led_wr_valid)

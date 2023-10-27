@@ -14,7 +14,7 @@ CPPFLAGS ?=
 CXXFLAGS ?=
 CUTTLESIM_DRIVER ?= $(mod).cpp
 CUTTLESIM_OPT_FLAGS ?= __CUTTLEC_CXX_OPT_FLAGS__
-CUTTLESIM_TRACE_FLAGS ?= -DSIM_TRACE $(CUTTLESIM_OPT_FLAGS)
+CUTTLESIM_TRACE_FLAGS ?= -DSIM_TRACE -DSIM_STROBE $(CUTTLESIM_OPT_FLAGS)
 CUTTLESIM_DEBUG_FLAGS ?= -O0 -ggdb3
 CUTTLESIM_PERF_FLAGS ?= $(CUTTLESIM_OPT_FLAGS) -ggdb3
 CUTTLESIM_COV_FLAGS ?= $(CUTTLESIM_DEBUG_FLAGS)
@@ -323,6 +323,39 @@ clean-ecp5:
 	rm -f $(ecp5).config
 	rm -f $(ecp5).bit
 	rm -f $(ecp5).json.v
+
+# ECPIX5
+# ====
+
+ECPIX5_TOP ?= top_ecpix5.v
+ECPIX5_DEVICE ?= 45k
+ECPIX5_PACKAGE ?= CABGA554
+ECPIX5_LPF ?= ecpix5.lpf
+ECPIX5_FREQUENCY ?= 25
+
+ecpix5 := $(basename $(notdir $(ECPIX5_TOP)))
+
+yosys = yosys $(yosys_opts) -l $(2).json.log \
+	-p 'read_verilog $(1); hierarchy $(yosys_libdir_args) -top $(2); $(3) -top $(2) -json $@'
+
+$(ecpix5).json: $(ecpix5).v
+	$(call yosys,$(ECPIX5_TOP),$(ecpix5),synth_ecp5 -abc9)
+
+$(ecpix5).config: $(ecpix5).json
+	nextpnr-ecp5 --$(ECPIX5_DEVICE) --json $(ecpix5).json --freq $(ECPIX5_FREQUENCY) \
+		--package $(ECPIX5_PACKAGE) --lpf $(ECPIX5_LPF) --seed 0 --textcfg $(ecpix5).config
+
+$(ecpix5).bit: $(ecpix5).config
+	ecppack --compress $< --idcode 0x81112043 $@
+
+clean-ecpix5:
+	rm -f $(ecpix5).json
+	rm -f $(ecpix5).json.log
+	rm -f $(ecpix5).config
+	rm -f $(ecpix5).bit
+	rm -f $(ecpix5).json.v
+
+
 
 ###################
 # Default targets #

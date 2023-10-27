@@ -11,9 +11,9 @@
 
 struct bram {
   std::unique_ptr<bits<32>[]> mem;
-  std::optional<struct_mem_req> last;
+  std::optional<struct_mem_req> last1, last2;
 
-  std::optional<struct_mem_resp> get(bool enable) {
+  std::optional<struct_mem_resp> get(bool enable, std::optional<struct_mem_req> &last) {
     if (!enable || !last.has_value())
       return std::nullopt;
 
@@ -34,7 +34,7 @@ struct bram {
       }};
   }
 
-  bool put(std::optional<struct_mem_req> req) {
+  bool put(std::optional<struct_mem_req> req, std::optional<struct_mem_req> &last) {
     if (!req.has_value() || last.has_value())
       return false;
 
@@ -42,9 +42,9 @@ struct bram {
     return true;
   }
 
-  struct_mem_output getput(struct_mem_input req) {
-    std::optional<struct_mem_resp> get_response = get(bool(req.get_ready));
-    bool put_ready = put(req.put_valid ? std::optional<struct_mem_req>{req.put_request} : std::nullopt);
+  struct_mem_output getput(struct_mem_input req, std::optional<struct_mem_req> &last) {
+    std::optional<struct_mem_resp> get_response = get(bool(req.get_ready), last);
+    bool put_ready = put(req.put_valid ? std::optional<struct_mem_req>{req.put_request} : std::nullopt, last);
     return struct_mem_output{
       .get_valid = bits<1>{get_response.has_value()},
       .put_ready = bits<1>{put_ready},
@@ -57,19 +57,19 @@ struct bram {
   }
 
   // Use new … instead of make_unique to avoid 0-initialization
-  bram() : mem{new bits<32>[DMEM_SIZE]}, last{} {}
+  bram() : mem{new bits<32>[DMEM_SIZE]}, last1{}, last2{} {}
 };
 
 struct extfuns_t {
-  bram dmem, imem;
+  bram dmem;
   bits<1> led;
 
   struct_mem_output ext_mem_dmem(struct_mem_input req) {
-    return dmem.getput(req);
+    return dmem.getput(req, dmem.last2);
   }
 
   struct_mem_output ext_mem_imem(struct_mem_input req) {
-    return imem.getput(req);
+    return dmem.getput(req, dmem.last1);
   }
 
   bits<1> ext_uart_write(struct_maybe_bits_8 req) {
@@ -113,80 +113,148 @@ struct extfuns_t {
     return 1'0_b;
   }
 
-  extfuns_t() : dmem{}, imem{}, led{false} {}
+  extfuns_t() : dmem{}, led{false} {}
 };
+
+template<size_t len>
+std::string hexstr (const bits<len>& b){
+  return prims::repr(b, {true, true, prims::hex});
+}
+
+void show_mem_req(prims::bits<1> valid, const struct_mem_req& x){
+  if(bool(valid)){
+    std::cout << "@" << hexstr(x.addr) << "[" <<
+      hexstr(x.byte_en) << "] <- " << hexstr(x.data);
+  } else {
+    std::cout << "invalid";
+  }
+}
+
+
+void show_mem_resp(prims::bits<1> valid, const struct_mem_resp& x){
+  if(bool(valid)){
+    std::cout << "@" << hexstr(x.addr) << "[" <<
+      hexstr(x.byte_en) << "] <- " << hexstr(x.data);
+  } else {
+    std::cout << "invalid";
+  }
+}
 
 class rv_core final : public module_rv32<extfuns_t> {
   void strobe() const {
 #if defined(SIM_STROBE) && !defined(SIM_MINIMAL)
-    std::cout << "# " << ncycles << std::endl;
+    std::cout << "# " << Log.state.cycle_count << std::endl;
     std::cout << "pc = " << Log.state.pc << std::endl;
     std::cout << "epoch = " << Log.state.epoch << std::endl;
-    std::cout << "inst_count = " << Log.state.inst_count << std::endl;
-    std::cout << "rf = {" << std::endl;
-    std::cout << "  " <<
-      "[01] (ra) = " << Log.state.rf_x01_ra << "; " <<
-      "[02] (sp) = " << Log.state.rf_x02_sp << "; " <<
-      "[03] (gp) = " << Log.state.rf_x03_gp << "; " <<
-      "[04] (tp) = " << Log.state.rf_x04_tp << std::endl;
-    std::cout << "  [05-07] (t0-t2)     = " <<
-      Log.state.rf_x05_t0 << "; " <<
-      Log.state.rf_x06_t1 << "; " <<
-      Log.state.rf_x07_t2 << std::endl;
-    std::cout << "  [08-09] (s0_fp, s1) = " <<
-      Log.state.rf_x08_s0_fp << "; " <<
-      Log.state.rf_x09_s1 << std::endl;
-    std::cout << "  [10-17] (a0-a7)     = " <<
-      Log.state.rf_x10_a0 << "; " <<
-      Log.state.rf_x11_a1 << "; " <<
-      Log.state.rf_x12_a2 << "; " <<
-      Log.state.rf_x13_a3 << "; " <<
-      Log.state.rf_x14_a4 << "; " <<
-      Log.state.rf_x15_a5 << "; " <<
-      Log.state.rf_x16_a6 << "; " <<
-      Log.state.rf_x17_a7 << std::endl;
-    std::cout << "  [18-27] (s2-s11)    = " << Log.state.rf_x18_s2 << "; " <<
-      Log.state.rf_x19_s3 << "; " <<
-      Log.state.rf_x20_s4 << "; " <<
-      Log.state.rf_x21_s5 << "; " <<
-      Log.state.rf_x22_s6 << "; " <<
-      Log.state.rf_x23_s7 << "; " <<
-      Log.state.rf_x24_s8 << "; " <<
-      Log.state.rf_x25_s9 << "; " <<
-      Log.state.rf_x26_s10 << "; " <<
-      Log.state.rf_x27_s11 << std::endl;
-    std::cout << "  [28-31] (t3-t6)     = " <<
-      Log.state.rf_x28_t3 << "; " <<
-      Log.state.rf_x29_t4 << "; " <<
-      Log.state.rf_x30_t5 << "; " <<
-      Log.state.rf_x31_t6 << std::endl;
-    std::cout << "}" << std::endl;
+    // std::cout << "inst_count = " << Log.state.instr_count << std::endl;
+    // std::cout << "rf = {" << std::endl;
+    // std::cout << "  " <<
+    //   "[01] (ra) = " << Log.state.rf_rData_1 << "; " <<
+    //   "[02] (sp) = " << Log.state.rf_rData_2 << "; " <<
+    //   "[03] (gp) = " << Log.state.rf_rData_3 << "; " <<
+    //   "[04] (tp) = " << Log.state.rf_rData_4 << std::endl;
+    // std::cout << "  [05-07] (t0-t2)     = " <<
+    //   Log.state.rf_rData_5 << "; " <<
+    //   Log.state.rf_rData_6 << "; " <<
+    //   Log.state.rf_rData_7 << std::endl;
+    // std::cout << "  [08-09] (s0_fp, s1) = " <<
+    //   Log.state.rf_rData_8 << "; " <<
+    //   Log.state.rf_rData_9 << std::endl;
+    // std::cout << "  [10-17] (a0-a7)     = " <<
+    //   Log.state.rf_rData_10 << "; " <<
+    //   Log.state.rf_rData_11 << "; " <<
+    //   Log.state.rf_rData_12 << "; " <<
+    //   Log.state.rf_rData_13 << "; " <<
+    //   Log.state.rf_rData_14 << "; " <<
+    //   Log.state.rf_rData_15 << "; " <<
+    //   Log.state.rf_rData_16 << "; " <<
+    //   Log.state.rf_rData_17 << std::endl;
+    // std::cout << "  [18-27] (s2-s11)    = " << Log.state.rf_rData_18 << "; " <<
+    //   Log.state.rf_rData_19 << "; " <<
+    //   Log.state.rf_rData_20 << "; " <<
+    //   Log.state.rf_rData_21 << "; " <<
+    //   Log.state.rf_rData_22 << "; " <<
+    //   Log.state.rf_rData_23 << "; " <<
+    //   Log.state.rf_rData_24 << "; " <<
+    //   Log.state.rf_rData_25 << "; " <<
+    //   Log.state.rf_rData_26 << "; " <<
+    //   Log.state.rf_rData_27 << std::endl;
+    // std::cout << "  [28-31] (t3-t6)     = " <<
+    //   Log.state.rf_rData_28 << "; " <<
+    //   Log.state.rf_rData_29 << "; " <<
+    //   Log.state.rf_rData_30 << "; " <<
+    //   Log.state.rf_rData_31 << std::endl;
+    // std::cout << "}" << std::endl;
+    std::cout << "toImem = ";
+    show_mem_req(Log.state.toIMem_valid0,
+                 Log.state.toIMem_data0);
+    std::cout << std::endl;
+
+    std::cout << "fromImem = ";
+    show_mem_resp(Log.state.fromIMem_valid0,
+                  Log.state.fromIMem_data0);
+    std::cout << std::endl;
+
+    std::cout << "toDMem = ";
+    show_mem_req(Log.state.toDMem_valid0,
+                 Log.state.toDMem_data0);
+    std::cout << std::endl;
+
+    std::cout << "fromDMem = ";
+    show_mem_resp(Log.state.fromDMem_valid0,
+                  Log.state.fromDMem_data0);
+    std::cout << std::endl;
+
+
+    // std::cout << "toIMem = { valid0 = " << Log.state.toIMem_valid0
+    //           << ", data0 = " << Log.state.toIMem_data0 << " };" <<
+    //   "fromIMem = { valid0 = " << Log.state.fromIMem_valid0
+    //           << ", data0 = " << Log.state.fromIMem_data0 << " }" << std::endl;
+    // std::cout <<
+    //   "toDMem = { valid0 = " << Log.state.toDMem_valid0
+    //           << ", data0 = " << Log.state.toDMem_data0 << " };" <<
+    //   "fromDMem = { valid0 = " << Log.state.fromDMem_valid0
+    //           << ", data0 = " << Log.state.fromDMem_data0 << " }" << std::endl;
     std::cout <<
-      "toIMem = { valid0 = " << Log.state.toIMem_valid0
-              << ", data0 = " << Log.state.toIMem_data0 << " };" <<
-      "fromIMem = { valid0 = " << Log.state.fromIMem_valid0
-              << ", data0 = " << Log.state.fromIMem_data0 << " }" << std::endl;
+      "f2d        = { valid0 = "
+              << bool(Log.state.f2d_valid0)
+              << ", data0 = {.pc = "
+              << hexstr(Log.state.f2d_data0.pc)
+              << ", .ppc = " << hexstr(Log.state.f2d_data0.ppc)
+              << ", .epoch = " << hexstr(Log.state.f2d_data0.epoch)
+              <<  " };" << std::endl <<
+      "f2dprim    = { valid0 = "
+              << bool(Log.state.f2dprim_valid0)
+              << ", data0 = {.pc = "
+              << hexstr(Log.state.f2dprim_data0.pc)
+              << ", .ppc = " << hexstr(Log.state.f2dprim_data0.ppc)
+              << ", .epoch = " << hexstr(Log.state.f2dprim_data0.epoch)
+              <<  " };" << std::endl;
     std::cout <<
-      "toDMem = { valid0 = " << Log.state.toDMem_valid0
-              << ", data0 = " << Log.state.toDMem_data0 << " };" <<
-      "fromDMem = { valid0 = " << Log.state.fromDMem_valid0
-              << ", data0 = " << Log.state.fromDMem_data0 << " }" << std::endl;
-    std::cout <<
-      "f2d    = { valid0 = " << Log.state.f2d_valid0
-              << ", data0 = " << Log.state.f2d_data0 << " };" <<
-      "f2dprim  = { valid0 = " << Log.state.f2dprim_valid0
-              << ", data0 = " << Log.state.f2dprim_data0 << " }" << std::endl;
-    std::cout <<
-      "d2e    = { valid0 = " << Log.state.d2e_valid0
-              << ", data0 = " << Log.state.d2e_data0 << " };" <<
-      "e2w      = { valid0 = " << Log.state.e2w_valid0
-              << ", data0 = " << Log.state.e2w_data0 << " }" << std::endl;
+      "d2e        = { valid0 = "
+              << bool(Log.state.d2e_valid0)
+              << ", data0 = {.pc = "
+              << hexstr(Log.state.d2e_data0.pc)
+              << ", .ppc = " << hexstr(Log.state.d2e_data0.ppc)
+              << ", .epoch = " << hexstr(Log.state.d2e_data0.epoch)
+              << ".dInst = "
+              << hexstr(Log.state.d2e_data0.dInst.inst)
+              << ", .legal = " << bool(Log.state.d2e_data0.dInst.legal)
+              <<  " };" << std::endl;
+    std::cout << "e2w    = { valid0 = "
+      << bool(Log.state.e2w_valid0)
+      << ", data0 = {.inst = "
+      << hexstr(Log.state.e2w_data0.dInst.inst)
+      << ", .legal = " << bool(Log.state.e2w_data0.dInst.legal)
+      <<  " };" << std::endl;
+
+  
 #endif
   }
 
 public:
   explicit rv_core(const std::string& elf_fpath) : module_rv32{} {
-    extfuns.imem.read_elf(elf_fpath);
+    // extfuns.imem.read_elf(elf_fpath);
     extfuns.dmem.read_elf(elf_fpath);
   }
 };

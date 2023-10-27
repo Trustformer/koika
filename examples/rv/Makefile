@@ -43,7 +43,7 @@ $(objects_dir)/%: core .FORCE
 
 binaries: $(tests_build_dut);
 verilator: $(verilator);
-cuttlesim: $(cuttlesim);
+cuttlesim: $(cuttlesim) $(objects_dir)/$(basename $(CUTTLESIM_DRIVER)).trace.opt;
 
 .FORCE:
 

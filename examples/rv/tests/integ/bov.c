@@ -19,6 +19,7 @@ int f(char* s){
 }
 
 int main(int argc, char** argv){
+  putchars("Hello\n");
   int buf[7];
   int pbad = (intptr_t)&bad;
   buf[5] = pbad;
@@ -29,7 +30,7 @@ int main(int argc, char** argv){
 
 
 
-
+ 
 /* void ps(char* s){ */
 /*   char c = *s; */
 /*   if(!c) return; */
