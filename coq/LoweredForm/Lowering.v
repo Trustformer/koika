@@ -49,6 +49,7 @@ Section Lowering.
         | Pack => fun a => a
         | Unpack => fun a => a
         | Ignore => fun a => Syntax.Unop (Lowered (IgnoreBits _)) a
+        | IId => fun a => a
         end a
       | Bits1 fn => fun a => Syntax.Unop fn a
       | Struct1 fn sig f => fun a =>

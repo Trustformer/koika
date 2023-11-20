@@ -743,7 +743,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   }}.
 
   Definition wait_imem : uaction reg_t ext_fn_t := {{
-    if (read0(halt) == Ob~1) then fail else pass;
+    if (read1(halt) == Ob~1) then fail else pass;
     let fetched_bookkeeping := f2d.(fromFetch.deq)() in
     f2dprim.(waitFromFetch.enq)(fetched_bookkeeping)
   }}.
@@ -761,7 +761,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     `{finite_reg: FiniteType reg_t}
     `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
   : uaction reg_t ext_fn_t := {{
-    if (read0(halt) == Ob~1) then fail else pass;
+    if (read1(halt) == Ob~1) then fail else pass;
     let instr               := fromIMem.(MemResp.deq)() in
     let instr               := get(instr,data) in
     let fetched_bookkeeping := f2dprim.(waitFromFetch.deq)() in
@@ -897,7 +897,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
 
   Definition end_execution : uaction reg_t ext_fn_t := {{
     let res := extcall ext_finish (struct (Maybe (bits_t 8)) {
-      valid := read0(halt); data := |8`d1|
+      valid := read1(halt); data := |8`d1|
     }) in write1(halt_emitted, res)
   }}.
 
@@ -1087,7 +1087,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
       end
     in
     {{
-      if (read0(halt) == Ob~1) then fail else pass;
+      if (read1(halt) == Ob~1) then fail else pass;
       let get_ready       := fromMem.(MemResp.can_enq)() in
       let put_request_opt := toMem.(MemReq.peek)() in
       let put_request     := get(put_request_opt, data) in
@@ -1103,9 +1103,9 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     }}.
 
   Definition tick : uaction reg_t ext_fn_t := {{
-    if (read0(halt) == Ob~1) then fail else pass;
+    if (read1(halt) == Ob~1) then fail else pass;
     write0(cycle_count, read0(cycle_count) + |32`d1|)
-  }}.
+    }}.
 
   Existing Instance ShadowStack.Show_reg_t.
   Instance Show_reg_t : Show reg_t := _.

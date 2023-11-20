@@ -223,6 +223,7 @@ and pp_prim_uconv ppf (f: Cuttlebone.Extr.PrimUntyped.uconv) = match f with
   | UPack -> pp_raw ppf "UPack"
   | UUnpack tau -> pp_app ppf "UUnpack" "%a" pp_extr_type tau
   | UIgnore -> pp_raw ppf "UIgnore"
+  | UId s -> pp_app ppf "UId" "%a" pp_coq_quoted s
 and pp_prim_ubits1 ppf (f: Cuttlebone.Extr.PrimUntyped.ubits1) =
   let pp_raw = pp_raw ppf in
   let pp_app fmt = pp_app ppf fmt in

@@ -106,6 +106,7 @@ Definition sigma1 (fn: PrimUntyped.ufn1) : val -> option val :=
         | _ => None
         end
     | PrimUntyped.UIgnore => fun _ => Some (Bits [])
+    | PrimUntyped.UId s => fun bs => Some bs
     end
   | PrimUntyped.UBits1 fn => usigma1 fn
   | PrimUntyped.UStruct1 (PrimUntyped.UGetField f) => fun v => get_field v f
@@ -159,6 +160,7 @@ Proof.
       rewrite uvalue_of_bits_val_of_value. simpl. auto.
     + inv H. revert arg. rewrite <- H2. simpl.
       intros. f_equal.
+    + inv H. revert arg. rewrite <- H2. simpl. auto.
   - subst. destr_in H. inv H. simpl in *. inv Heqr.
     revert arg. rewrite <- H0. simpl. destruct fn; simpl in *; intros.
     + f_equal.

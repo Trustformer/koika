@@ -74,12 +74,12 @@ Module ShadowStackF <: ShadowStackInterface.
 
   Definition push: UInternalFunction reg_t empty_ext_fn_t := {{
     fun push (address: bits_t 32) : bits_t 1 =>
-      let s0 := read0(size) in
+      let s0 := read1(size) in
       if (s0 == #(Bits.of_nat index_sz capacity)) then (* overflow *)
         Ob~1
       else (
         write0_stack(s0, address);
-        write0(size, s0 + |index_sz`d1|);
+        write1(size, s0 + |index_sz`d1|);
         Ob~0
       )
   }}.

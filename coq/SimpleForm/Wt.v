@@ -494,6 +494,7 @@ Section WT.
       inv WTv.
       eapply uvalue_of_bits_wt; eauto.
     - inv SIG; constructor; auto.
+    - inv SIG. auto.
     - inv WTv. simpl in *. inv SIG.
       constructor. apply map_length.
     - inv WTv. simpl in *. inv SIG.

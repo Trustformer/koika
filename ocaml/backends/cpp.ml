@@ -1057,7 +1057,8 @@ them before writing to the registers.\n"
            PureExpr (match fn with
                      | Pack -> sp_packer ~arg:a1 tau
                      | Unpack -> sp_unpacker ~arg:a1 tau
-                     | Ignore -> sprintf "prims::ignore(%s)" a1)
+                     | Ignore -> sprintf "prims::ignore(%s)" a1
+                     | IId -> sprintf "prims::id(%s)" a1)
         | Bits1 fn ->
            PureExpr (sprintf "%s(%s)" (cpp_bits1_fn_name fn) a1)
         | Struct1 (sg, idx) ->

@@ -1259,6 +1259,8 @@ Fixpoint uvalue_of_list_bits {tau} (bs: list (list bool)) : option (list val) :=
       tau
   | wt_unop_uignore tau:
     wt_unop (PrimUntyped.UConv PrimUntyped.UIgnore) tau unit_t
+  | wt_unop_uid tau s:
+    wt_unop (PrimUntyped.UConv (PrimUntyped.UId s)) tau tau
   | wt_unop_unot sz:
     wt_unop (PrimUntyped.UBits1 PrimUntyped.UNot) (bits_t sz) (bits_t sz)
   | wt_unop_usext sz width:
@@ -1358,6 +1360,7 @@ Fixpoint uvalue_of_list_bits {tau} (bs: list (list bool)) : option (list val) :=
     match ufn with
     | PrimUntyped.UConv PrimUntyped.UPack => bits_t (type_sz tau)
     | PrimUntyped.UConv (PrimUntyped.UUnpack tau0) => tau0
+    | PrimUntyped.UConv (PrimUntyped.UId _) => tau
     | PrimUntyped.UBits1 PrimUntyped.UNot => tau
     | PrimUntyped.UBits1 (PrimUntyped.USExt width)
     | PrimUntyped.UBits1 (PrimUntyped.UZExtL width)

@@ -21,7 +21,8 @@ Module PrimUntyped.
   Inductive uconv :=
   | UPack
   | UUnpack (tau: type)
-  | UIgnore.
+  | UIgnore
+  | UId (s: string).
 
   Inductive ubits1 :=
   | UNot
@@ -83,7 +84,7 @@ Module PrimTyped.
   | DisplayValue (tau: type) (opts: display_options).
 
   Inductive fconv :=
-    Pack | Unpack | Ignore.
+    Pack | Unpack | Ignore | IId.
 
   Inductive lowered1 :=
   | IgnoreBits (sz: nat)
@@ -173,6 +174,7 @@ Module PrimTypeInference.
                | UPack => Conv tau1 Pack
                | UUnpack tau => Conv tau Unpack
                | UIgnore => Conv tau1 Ignore
+               | UId s => Conv tau1 IId
                end)
     | UBits1 fn =>
       let/res sz1 := assert_kind kind_bits Arg1 tau1 in
@@ -308,6 +310,7 @@ Module PrimSignatures.
       | Pack => {$ tau ~> bits_t (type_sz tau) $}
       | Unpack => {$ bits_t (type_sz tau) ~> tau $}
       | Ignore => {$ tau ~> unit_t $}
+      | IId => {$ tau ~> tau $}
       end
     | Display fn => DisplaySigma fn
     | Bits1 fn => Sig_of_CSig (CSigma1 fn)
@@ -443,6 +446,7 @@ Module PrimSpecs.
       | Pack => fun v => bits_of_value v
       | Unpack => fun bs => value_of_bits bs
       | Ignore => fun _ => Ob
+      | IId => fun bs => bs
       end
     | Bits1 fn => CircuitPrimSpecs.sigma1 fn
     | Struct1 GetField sig idx => fun s => get_field sig.(struct_fields) s idx
