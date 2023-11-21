@@ -1107,9 +1107,10 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
     write0(cycle_count, read0(cycle_count) + |32`d1|)
     }}.
 
-  Existing Instance ShadowStack.Show_reg_t.
-  Instance Show_reg_t : Show reg_t := _.
-  Instance Show_ext_fn_t : Show ext_fn_t := _.
+
+#[export]  Existing Instance ShadowStack.Show_reg_t.
+#[export]  Instance Show_reg_t : Show reg_t := _.
+#[export]  Instance Show_ext_fn_t : Show ext_fn_t := _.
 
   Definition rv_ext_fn_sim_specs fn := {|
     efs_name := show fn;

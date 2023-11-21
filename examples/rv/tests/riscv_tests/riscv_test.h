@@ -35,7 +35,7 @@ _start:
 
 #define PRINT_INT(arg_reg, tmp_reg)                                     \
         li tmp_reg, 0x40000000;                                         \
-        sw arg_reg, 4(tmp_reg);
+        sw arg_reg, 0(tmp_reg);
 
 //-----------------------------------------------------------------------
 // End Macro (return value in TESTNUM)
