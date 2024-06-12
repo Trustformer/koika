@@ -307,7 +307,7 @@ Section RVProofs.
             end
           end
         ),
-      sstack_overflow ctx -> halt_set ctx.
+      sstack_overflow ctx -> halt_set.
     Proof.
       intros. assert (wfsf := sf_wf).
       unfold halt_set.
