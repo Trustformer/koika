@@ -658,6 +658,11 @@ namespace prims {
     return widen<sz1 + sz2>(x) << sz2 | widen<sz1 + sz2>(y);
   }
 
+  template <bitwidth sz>
+  bits<sz> id(const bits<sz> x) {
+    return bits<sz>::mk(x.v);
+  }
+
   template<bitwidth sz>
   bits<sz> operator~(const bits<sz> data) {
     return mask(bits<sz>::mk(~data.v));

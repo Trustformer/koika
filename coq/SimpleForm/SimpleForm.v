@@ -214,10 +214,11 @@ Section SimpleForm.
         rir_failure_cond >.
   Record simple_form := mkSimpleForm {
     final_values: list (reg_t * positive);
+    read1_values: list (reg_t * positive);
     vars: var_value_map
   }.
-  Instance etaSimpleForm : Settable _ :=
-    settable! mkSimpleForm < final_values; vars >.
+  #[export] Instance etaSimpleForm : Settable _ :=
+    settable! mkSimpleForm < final_values; read1_values; vars >.
 
   (* * rule_information extraction *)
   (* ** Addition of a new action into an existing rule_information *)
@@ -5452,6 +5453,8 @@ Section SimpleForm.
     constructor. eauto.
   Qed.
 
+  Context `{Show_rule: Show rule_name_t}.
+
   Fixpoint get_rir_scheduler'
     (sched_rir: rule_information_raw) r2v (rules: rule_name_t -> uact) nid
     (s: scheduler pos_t rule_name_t) {struct s}
@@ -5460,7 +5463,11 @@ Section SimpleForm.
       let '(rir', r2v', nid) :=
         get_rule_information (rules rl) nid r2v (rir_vars sched_rir) sched_rir
       in
-      let conflict : sact := rir_failure_cond rir' in
+      let conflict : sact :=
+        SUnop
+          (PrimUntyped.UConv (PrimUntyped.UId ("conflict_" ++ show rl)))
+          (rir_failure_cond rir')
+      in
       let conflict_name := nid in
       let vvs := PTree.set conflict_name (bits_t 1, conflict) (rir_vars rir') in
       let nid := nid + 1 in
@@ -5504,7 +5511,7 @@ Section SimpleForm.
   Lemma wf_state_merge_rirs:
     forall (nid: positive) (rir: rule_information_raw) (r2v: r2vtype)
       (n: positive) (r1: rule_information_raw) (l: r2vtype) (n0: positive)
-      (l0: r2vtype) (l1: PTree.t (type * sact))
+      (l0: r2vtype) (l1: PTree.t (type * sact)) i
       (SAMEREGENV:
         Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y)
         r2v l),
@@ -5514,11 +5521,15 @@ Section SimpleForm.
     -> wt_sact (rir_vars r1) (rir_failure_cond r1) (bits_t 1)
     -> merge_reg2vars2
          r2v l n
-         (PTree.set n (bits_t 1, (rir_failure_cond r1)) (rir_vars r1)) (n + 1)
+         (PTree.set n
+           (bits_t 1,
+            SUnop (PrimUntyped.UConv (PrimUntyped.UId i)) (rir_failure_cond r1)
+           )
+           (rir_vars r1)) (n + 1)
        = (l0, l1, n0)
     -> wf_state [] [] l0 l1 (merge_rirs rir r1 n l1) n0.
   Proof.
-    intros nid rir r2v n r1 l n0 l0 l1. intros.
+    intros nid rir r2v n r1 l n0 l0 l1 i. intros.
     exploit merge_reg2var_grows2. 2: eauto. auto.
     2: replace (n+1) with (Pos.succ n) by lia; eapply wf_state_vvs_set; eauto.
     eapply wf_state_vvs_grows. eauto.
@@ -5526,16 +5537,18 @@ Section SimpleForm.
     eapply wf_state_vvs_grows_incr. apply H0.
     eapply rir_grows_set. apply H0. unfold valid_name; lia.
     eapply wt_vvs_set. apply H0. apply H0.
-    eauto. lia.
+    econstructor. eauto. constructor.
+    lia.
     eapply vvs_range_list_assoc_set.
     eapply vvs_range_incr. 2: eapply H0. lia. red; lia.
     eapply vvs_smaller_variables_set. apply H0.
-    { intros. eapply wt_sact_valid_vars in H4. eauto. apply H0. eauto. }
+    { intros. inv H4. eapply wt_sact_valid_vars in H8. eauto. apply H0. eauto. }
     eapply wf_rir_grows; eauto. apply H0.
     eapply vvs_grows_set; eauto.
-    apply H0. lia.
-    lia. lia.
-    { intros. eapply wt_sact_valid_vars in H4. eauto. apply H0. eauto. } lia.
+    apply H0. lia. lia.
+    econstructor. eauto. constructor. lia.
+    { intros. inv H4. eapply wt_sact_valid_vars in H8. eauto. apply H0. eauto. }
+    lia.
     eapply wf_rir_grows. apply H0. eapply vvs_grows_set; eauto. apply H0.
     lia. red; lia.
     econstructor. rewrite PTree.gss. eauto.
@@ -5869,10 +5882,16 @@ Section SimpleForm.
   Proof. tauto. Qed.
 
   Lemma match_logs_merge:
-    forall r2v l r1 n l0 l1 n0 sched_rir nid l2
+    forall r2v l r1 n l0 l1 n0 sched_rir nid l2 i
       (Heqp1:
          merge_reg2vars2 r2v l n
-         (PTree.set n (bits_t 1, rir_failure_cond r1) (rir_vars r1))
+         (PTree.set
+           n
+           (bits_t 1,
+            SUnop (PrimUntyped.UConv (PrimUntyped.UId i)) (rir_failure_cond r1)
+           )
+           (rir_vars r1)
+         )
          (n + 1) = (l0, l1, n0))
       (SAMEREGENV:
          Forall2
@@ -5900,9 +5919,9 @@ Section SimpleForm.
     apply vvs_range_list_assoc_set. 2: red; lia.
     eapply vvs_range_incr. 2: apply WFS1. lia.
     eapply wt_vvs_set. apply WFS1. apply WFS1.
-    apply WFS1. lia.
+    econstructor. apply WFS1. constructor. lia.
     eapply vvs_smaller_variables_set. apply WFS1.
-    eapply wt_sact_below. eauto. apply WFS1.
+    eapply wt_sact_below. eauto. econstructor. apply WFS1. constructor.
     {
       intros x y IN.
       edestruct wfs_r2v_vvs as (? & GET1 & ? & GET2). apply WFS.
@@ -5942,6 +5961,7 @@ Section SimpleForm.
       econstructor. rewrite PTree.gss; eauto.
       eapply vvs_grows_interp_sact. 2: eauto.
       eapply vvs_grows_set. apply WFS1. lia.
+      econstructor. eauto. reflexivity.
     }
     clear EVAL.
     rename RV2 into RV.
@@ -5984,6 +6004,7 @@ Section SimpleForm.
       econstructor. rewrite PTree.gss. eauto.
       eapply vvs_grows_interp_sact. 2: eauto.
       eapply vvs_grows_set. apply WFS1. lia.
+      econstructor. eauto. reflexivity.
     }
     assert (WTn: wt_sact l1 (SVar n) (bits_t 1)).
     {
@@ -6046,10 +6067,16 @@ Section SimpleForm.
   Qed.
 
   Lemma match_logs_merge_false:
-    forall r2v l r1 n l0 l1 n0 sched_rir nid l2
+    forall r2v l r1 n l0 l1 n0 sched_rir nid l2 i
       (Heqp1:
         merge_reg2vars2
-          r2v l n (PTree.set n (bits_t 1, rir_failure_cond r1) (rir_vars r1))
+          r2v l n
+          (PTree.set
+            n
+            (bits_t 1,
+             SUnop (PrimUntyped.UConv (PrimUntyped.UId i))(rir_failure_cond r1))
+            (rir_vars r1)
+          )
           (n + 1) = (l0, l1, n0))
       (F2:
         Forall2 (fun x y : reg_t * (Port + unit) * positive => fst x = fst y)
@@ -6086,11 +6113,17 @@ Section SimpleForm.
   Qed.
 
   Lemma match_logs_merge_true:
-    forall r2v l r1 n l0 l1 n0 sched_rir nid
+    forall r2v l r1 n l0 l1 n0 sched_rir nid i
       (Heqp1:
         merge_reg2vars2
           r2v l n
-          (PTree.set n (bits_t 1, rir_failure_cond r1) (rir_vars r1))
+          (PTree.set n
+            (bits_t 1,
+             SUnop
+              (PrimUntyped.UConv (PrimUntyped.UId i))
+              (rir_failure_cond r1)
+             )
+             (rir_vars r1))
           (n + 1)
         = (l0, l1, n0))
       (F2:
@@ -6389,6 +6422,14 @@ Section SimpleForm.
              match p with
              | inr tt => Some (r,n)
              | inl _ => None
+             end)
+          r2v;
+      read1_values :=
+        filter_map
+          (fun '(r,p,n) =>
+             match p with
+             | inl P1 => Some (r,n)
+             | _ => None
              end)
           r2v;
       vars := rir_vars rir;

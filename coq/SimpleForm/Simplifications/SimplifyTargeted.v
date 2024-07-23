@@ -12,6 +12,8 @@ Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Operations.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section SimplifyTargeted.
   Context {reg_t ext_fn_t: Type}.
@@ -805,19 +807,19 @@ Section SimplifyTargeted.
 
   Definition simplify_sf_targeted
     (sf: simple_form) (exemptions: PTree.t (list position))
-  := {|
-    final_values := final_values sf;
-    vars :=
-      PTree.map (fun k '(t, s) =>
-                   let exs :=
-                     match PTree.get k exemptions with
-                       Some l => l
-                     | _ => []
-                     end in
-                   (t, simplify_sact_targeted s exs)
-        )
-        (vars sf)
-    |}.
+  :=
+    sf <|
+      vars :=
+        PTree.map (fun k '(t, s) =>
+                     let exs :=
+                       match PTree.get k exemptions with
+                         Some l => l
+                       | _ => []
+                       end in
+                     (t, simplify_sact_targeted s exs)
+          )
+          (vars sf)
+    |>.
 
   Lemma sf_eq_simplify_sf_targeted sf:
     forall e,

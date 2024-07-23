@@ -15,6 +15,12 @@ Declare Custom Entry koika_types.
 Declare Custom Entry koika_branches.
 Declare Custom Entry koika_consts.
 
+Definition uid
+  {pos_t var_t fn_name_t reg_t ext_fn_t: Type}
+  (d: string) (b: @uaction pos_t var_t fn_name_t reg_t ext_fn_t)
+: @uaction pos_t var_t fn_name_t reg_t ext_fn_t :=
+  UUnop (PrimUntyped.UConv (PrimUntyped.UId d)) b.
+
 (* Koika_consts *)
 Notation "'1'" :=
   (Ob~1)
@@ -67,6 +73,8 @@ Notation "'pass'" := (USugar (UConstBits Ob)) (in custom koika).
 Notation "'magic'" := (USugar UErrorInAst) (in custom koika).
 
 Notation "'let' a ':=' b 'in' c" := (UBind a b c) (in custom koika at level 91, a custom koika_var at level 1, right associativity, format "'[v' 'let'  a  ':='  b  'in' '/' c ']'").
+Notation "'let' a 'as' d ':=' b 'in' c" := (UBind a (uid d b) c) (in custom koika at level 91, a custom koika_var at level 1, d constr, right associativity, only parsing).
+
 Notation "a ';' b" := (USeq a b) (in custom koika at level 90, format "'[v' a ';' '/' b ']'" ).
 Notation "'set' a ':=' b" := (UAssign a b) (in custom koika at level 89, a custom koika_var at level 1, format "'set'  a  ':='  b").
 Notation "'(' a ')'" := (a) (in custom koika at level 1, a custom koika, format "'[v' '(' a ')' ']'").
@@ -217,6 +225,8 @@ Module Type Tests.
   Notation uaction reg_t := (uaction pos_t string fn_name_t reg_t ext_fn_t).
   Definition test_2 : uaction reg_t := {{ yo; yoyo }}.
   Definition test_3 : uaction reg_t := {{ set  yoyo := `UVar "magic" : uaction reg_t`  }}.
+
+  Definition test_uid : uaction reg_t := {{ let yoyo  as "youyou" := fail(2) in yoyo }}.
 
   Definition test_1 : uaction reg_t := {{ let yoyo := fail(2) in magic }}.
   Definition test_1' : uaction reg_t := {{ let yoyo := fail(2) in yoyo }}.

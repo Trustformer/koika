@@ -15,6 +15,8 @@ Require Import Koika.SimpleForm.Direction.
 Require Import Koika.SimpleForm.Operations.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.SimpleForm.Simplifications.SimplifyTargeted.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 (* returns val, [positions of explosions] *)
 Ltac probe_simplifications r sigma H pos :=

@@ -7,6 +7,8 @@ Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section ReplaceVar.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -37,10 +39,8 @@ Section ReplaceVar.
       vars.
 
   Definition replace_var (sf: simple_form) (from: positive) (to: sact)
-  : simple_form := {|
-    final_values := final_values sf;
-    vars := replace_var_in_vars (vars sf) from to
-  |}.
+  : simple_form :=
+    sf <| vars := replace_var_in_vars (vars sf) from to |>.
 
   Lemma wt_sact_replace_var_in_vars:
     forall vvs a i v t tv,

@@ -7,6 +7,8 @@ Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section ReplaceField.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -62,14 +64,14 @@ Section ReplaceField.
 
   Definition replace_field
     (str: reg_t) (sf: simple_form) (field: string) (value: val)
-  : simple_form := {|
-      final_values := final_values sf;
+  : simple_form :=
+    sf <|
       vars :=
         PTree.map
           (fun _ '(t, ua) =>
             (t, replace_field_in_sact (vars sf) ua str field value))
           (vars sf)
-    |}.
+    |>.
 
   Lemma replace_field_interp_inv:
     forall str field (vvs : PTree.t (type * SimpleForm.sact)) field_v,

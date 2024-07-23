@@ -274,7 +274,11 @@ ICE40_FREQUENCY ?= 48
 ice40 := $(basename $(notdir $(ICE40_TOP)))
 
 $(ice40).json: $(ICE40_TOP)
+ifeq ($(MEM_NAME),)
+	$(error Missing memory file. Use 'MEM_NAME=...')
+else
 	yosys $(yosys_opts) -l $(ice40).json.log -p 'read_verilog $(ICE40_TOP); hierarchy $(yosys_libdir_args) -top $(ice40); synth_ice40 -retime -top $(ice40) -json $@'
+endif
 
 $(ice40).asc: $(ICE40_PCF) $(ice40).json
 	nextpnr-ice40 --$(ICE40_DEVICE) --freq $(ICE40_FREQUENCY) --opt-timing --timing-allow-fail --package $(ICE40_PACKAGE) --pcf $(ICE40_PCF) --seed 0 --asc $@ --json $(ice40).json
@@ -308,7 +312,11 @@ yosys = yosys $(yosys_opts) -l $(2).json.log \
 	-p 'read_verilog $(1); hierarchy $(yosys_libdir_args) -top $(2); $(3) -top $(2) -json $@'
 
 $(ecp5).json: $(ecp5).v
+ifeq ($(MEM_NAME),)
+	$(error Missing memory file. Use 'MEM_NAME=...')
+else
 	$(call yosys,$(ECP5_TOP),$(ecp5),synth_ecp5 -abc9)
+endif
 
 $(ecp5).config: $(ecp5).json
 	nextpnr-ecp5 --$(ECP5_DEVICE) --json $(ecp5).json --freq $(ECP5_FREQUENCY) \
@@ -339,7 +347,11 @@ yosys = yosys $(yosys_opts) -l $(2).json.log \
 	-p 'read_verilog $(1); hierarchy $(yosys_libdir_args) -top $(2); $(3) -top $(2) -json $@'
 
 $(ecpix5).json: $(ecpix5).v
+ifeq ($(MEM_NAME),)
+	$(error Missing memory file. Use 'MEM_NAME=...')
+else
 	$(call yosys,$(ECPIX5_TOP),$(ecpix5),synth_ecp5 -abc9)
+endif
 
 $(ecpix5).config: $(ecpix5).json
 	nextpnr-ecp5 --$(ECPIX5_DEVICE) --json $(ecpix5).json --freq $(ECPIX5_FREQUENCY) \

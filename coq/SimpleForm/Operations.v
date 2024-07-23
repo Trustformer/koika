@@ -1649,8 +1649,9 @@ Section Operations.
 
   Lemma simple_form_ok:
     forall
-      {finreg: FiniteType reg_t} (rules: rule_name_t -> daction) (s: schedule)
-      (GS: good_scheduler s) (WTr: Wt.wt_renv R REnv r)
+      {Show_rule: Show rule_name_t} {finreg: FiniteType reg_t}
+      (rules: rule_name_t -> daction) (s: schedule) (GS: good_scheduler s)
+      (WTr: Wt.wt_renv R REnv r)
       (TA:
         forall rule, exists t,
         wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules rule) t),
@@ -1696,8 +1697,9 @@ Section Operations.
 
   Lemma getenv_interp_cycle:
     forall
-      {finreg: FiniteType reg_t} (rules: rule_name_t -> daction) (s: schedule)
-      (GS: good_scheduler s) (WTr: Wt.wt_renv R REnv r)
+      {Show_rule: Show rule_name_t} {finreg: FiniteType reg_t}
+      (rules: rule_name_t -> daction) (s: schedule) (GS: good_scheduler s)
+      (WTr: Wt.wt_renv R REnv r)
       (TA:
         forall rule, exists t,
         wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules rule) t)
@@ -1777,9 +1779,11 @@ Section Operations.
   Qed.
 
   Lemma schedule_to_simple_form_wf:
-    forall `{finite: FiniteType reg_t} (rules: rule_name_t -> SimpleForm.uact)
-           sched (GS: good_scheduler sched)
-           (WTrules: forall r0 : rule_name_t, exists tret : type, wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules r0) tret)
+    forall
+      {Show_rule: Show rule_name_t} `{finite: FiniteType reg_t}
+      (rules: rule_name_t -> SimpleForm.uact)
+      sched (GS: good_scheduler sched)
+      (WTrules: forall r0 : rule_name_t, exists tret : type, wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules r0) tret)
     ,
       wf_sf (schedule_to_simple_form (pos_t := pos_t) R (Sigma:=Sigma) rules sched).
   Proof.
@@ -2148,12 +2152,19 @@ Section Operations.
   Qed.
 
   Lemma wf_f:
-    forall sf f
-           (FWT: forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
-               wt_sact (Sigma := Sigma) R vvs (f a) t)
-           (FVIS: forall s v', var_in_sact (f s) v' -> var_in_sact s v'),
-      wf_sf sf ->
-      wf_sf {| final_values := final_values sf; vars := PTree.map (fun _ '(t,a) => (t, f a)) (vars sf) |}.
+    forall
+      sf f
+      (FWT:
+        forall vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
+        wt_sact (Sigma := Sigma) R vvs (f a) t
+      )
+      (FVIS: forall s v', var_in_sact (f s) v' -> var_in_sact s v'),
+      wf_sf sf
+      -> wf_sf
+        {| final_values := final_values sf;
+           read1_values := read1_values sf;
+           vars := PTree.map (fun _ '(t,a) => (t, f a)) (vars sf)
+         |}.
   Proof.
     destruct 3; constructor.
     - eapply f_wtvvs_ok'; eauto.
@@ -2162,14 +2173,13 @@ Section Operations.
       intros. eapply f_wt_sact_ok'. eauto.
   Qed.
 
-
   Lemma wf_fi:
     forall sf f
            (FWT: forall k vvs a t (WTS: wt_sact (Sigma := Sigma) R vvs a t),
                wt_sact (Sigma := Sigma) R vvs (f k a) t)
            (FVIS: forall k s v', var_in_sact (f k s) v' -> var_in_sact s v'),
       wf_sf sf ->
-      wf_sf {| final_values := final_values sf; vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf) |}.
+      wf_sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf) |}.
   Proof.
     destruct 3; constructor.
     - eapply f_wtvvs_ok'i; eauto.
@@ -2434,7 +2444,7 @@ Section Operations.
            (VIS: forall (s : SimpleForm.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
-      sf_eq sf {| final_values := final_values sf; vars := PTree.map (fun (_ : positive) '(t, a) => (t, f a)) (vars sf) |}.
+      sf_eq sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun (_ : positive) '(t, a) => (t, f a)) (vars sf) |}.
   Proof.
     intros.
     constructor. simpl. auto.
@@ -2484,7 +2494,7 @@ Section Operations.
            (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
-      sf_eq sf {| final_values := final_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
+      sf_eq sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
   Proof.
     intros.
     constructor. simpl. auto.
@@ -2531,7 +2541,7 @@ Section Operations.
            (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
-      sf_eq sf {| final_values := final_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
+      sf_eq sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
   Proof.
     intros.
     constructor. simpl. auto.
@@ -3049,8 +3059,9 @@ Section Operations.
     wf_sf sf
     -> wf_sf {|
          final_values := final_values sf;
+         read1_values := read1_values sf;
          vars := PTree.map (fun _ '(t,a) => (t, f a)) (vars sf)
-    |}.
+       |}.
   Proof.
     destruct 3; constructor.
     - eapply f_wtvvs_ok''; eauto.
@@ -3068,6 +3079,7 @@ Section Operations.
     wf_sf sf
     -> wf_sf {|
          final_values := final_values sf;
+         read1_values := read1_values sf;
          vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf)
     |}.
   Proof.

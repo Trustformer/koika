@@ -7,6 +7,8 @@ Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section Prune.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -29,10 +31,11 @@ Section Prune.
     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
   }.
 
-  Definition prune_irrelevant_aux (sf: @simple_form reg_t ext_fn_t) reg v := {|
-final_values := [(reg, v)];
-    vars := filter_ptree (vars sf) (PTree.empty _) (useful_vars_for_var sf v)
-  |}.
+  Definition prune_irrelevant_aux (sf: @simple_form reg_t ext_fn_t) reg v :=
+    sf
+      <| final_values := [(reg, v)] |>
+      <| vars :=
+           filter_ptree (vars sf) (PTree.empty _) (useful_vars_for_var sf v) |>.
 
   Definition prune_irrelevant (sf: simple_form) reg :=
     match list_assoc (final_values sf) reg with
@@ -129,7 +132,8 @@ final_values := [(reg, v)];
         List.filter
           (fun x => if in_dec eq_dec (fst x) regs then true else false)
           (final_values sf);
-      vars := filter_ptree (vars sf) (PTree.empty _) reachable_vars
+      vars := filter_ptree (vars sf) (PTree.empty _) reachable_vars;
+      read1_values := read1_values sf;
     |}.
 
   Lemma Forall_map_2:

@@ -8,6 +8,8 @@ Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section Simplify.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -94,10 +96,8 @@ Section Simplify.
   Definition simplify_vars (v: var_value_map) :=
     Maps.PTree.map (fun _ '(t, a) => (t, simplify_sact a)) v.
 
-  Definition simplify_sf (sf: simple_form) := {|
-    final_values := final_values sf;
-    vars := simplify_vars (vars sf)
-  |}.
+  Definition simplify_sf (sf: simple_form) :=
+    sf <| vars := simplify_vars (vars sf) |>.
 
   Lemma simplify_unop_cases:
     forall ufn a a',

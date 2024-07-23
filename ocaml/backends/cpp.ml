@@ -396,6 +396,12 @@ let compile (type pos_t var_t fn_name_t rule_name_t reg_t ext_fn_t)
     p "}%s" terminator;
     r in
 
+  let p_def_scoped header ?(terminator="") pbody =
+    p "%s" header;
+    let r = pbody () in
+    p "}%s" terminator;
+    r in
+
   let p_fn ~typ ~name ?(args="") ?(annot="") pbody =
     p_scoped (sprintf "%s %s(%s)%s" typ name args annot) pbody in
 
@@ -1284,7 +1290,7 @@ them before writing to the registers.\n"
 
       let p_special_fn kind ?(args=rule_name_unprefixed) p_body =
         let virtual_flag = if rule.rl_external then "virtual " else "" in
-        p_scoped (sprintf "%sDEF_%s(%s)" virtual_flag kind args) p_body in
+        p_def_scoped (sprintf "%sDEF_%s(%s)" virtual_flag kind args) p_body in
 
       let p_reset_commit () =
         if not use_dynamic_log then
@@ -1415,13 +1421,17 @@ them before writing to the registers.\n"
          p_scheduler (hpp.cpp_pos_of_pos pos) s in
 
     let p_strobe () =
-      p "_virtual void strobe() const {}" in
+      p "virtual void cycle_begin_strobe() const {};";
+      p "virtual void cycle_end_strobe() const {};";
+      p "virtual void first_strobe() {};" ;
+      p "virtual void final_strobe() {};" in
 
     let p_cycle_function pscheduler =
       p "meta.cycle_id++;";
       p "log.rwset = Log.rwset = rwset_t{};";
+      p "cycle_begin_strobe();";
       pscheduler ();
-      p "strobe();" in
+      p "cycle_end_strobe();" in
 
     let p_cycle () =
       p_fn ~typ:"void" ~name:"cycle" (fun () ->
@@ -1453,7 +1463,9 @@ them before writing to the registers.\n"
 
     let p_run name cycle =
       p_fn ~typ:run_typ ~name ~args:"std::uint_fast64_t ncycles" (fun () ->
+          p "first_strobe();";
           p_cycle_loop (fun () -> p "%s();" cycle);
+          p "final_strobe();";
           p "return *this;") in
 
     let p_trace name cycle =
@@ -1463,11 +1475,13 @@ them before writing to the registers.\n"
           p "state_t::vcd_header(vcd);";
           p "state_t latest = Log.snapshot();";
           p "latest.vcd_dumpvars(meta.cycle_id, vcd, latest, true);";
+          p "first_strobe();";
           p_cycle_loop (fun () ->
               p "%s();" cycle;
               p "state_t current = Log.snapshot();";
               p "current.vcd_dumpvars(meta.cycle_id, vcd, latest, false);";
               p "latest = current;");
+          p "final_strobe();";
           p "return *this;") in
 
     p_sim_class (fun () ->

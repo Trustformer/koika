@@ -9,6 +9,8 @@ Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
 Require Import Koika.SimpleForm.Simplifications.Prune.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section Collapse.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -54,13 +56,12 @@ Section Collapse.
     end.
 
   (* Note that *)
-  Definition collapse_sf (sf: simple_form) := {|
-    final_values := final_values sf;
-    vars :=
+  Definition collapse_sf (sf: simple_form) :=
+    sf <| vars :=
       (* TODO Alternatively, fold and handle elements in order. That would
          remove the need for successive calls to collapse. *)
       Maps.PTree.map
-        (fun _ '(t, a) => (t, collapse_sact (vars sf) a)) (vars sf) |}.
+        (fun _ '(t, a) => (t, collapse_sact (vars sf) a)) (vars sf) |>.
 
   Lemma collapse_wt:
     forall

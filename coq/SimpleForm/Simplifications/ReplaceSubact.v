@@ -8,6 +8,8 @@ Require Import Koika.SimpleForm.SimpleForm.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 Section ReplaceSubact.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -102,10 +104,8 @@ Section ReplaceSubact.
 
   Definition replace_subact
     (sf: simple_form) (positions: PTree.t (list position)) (v: sact)
-  : simple_form := {|
-    final_values := final_values sf;
-    vars := replace_subact_in_vars (vars sf) positions v
-  |}.
+  : simple_form :=
+    sf <| vars := replace_subact_in_vars (vars sf) positions v |>.
 
   Lemma wt_unop_determ:
     forall u t t1, wt_unop u t t1
