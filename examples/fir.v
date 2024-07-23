@@ -165,4 +165,5 @@ Definition package :=
 End Fir.
 
 Definition prog := Interop.Backends.register package.
+Set Extraction Output Directory "examples_extr".
 Extraction "fir.ml" prog.

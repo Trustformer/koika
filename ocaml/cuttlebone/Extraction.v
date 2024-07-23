@@ -9,7 +9,7 @@ Require Koika.CircuitForm.Generation.
 Require Koika.Compiler.
 Require Koika.Extraction.Interop.
 
-(* Unset Extraction SafeImplicits. *)
+Set Extraction Output Directory ".".
 Extraction "extr.ml"
            EqDec.EqDec
            FiniteType.FiniteType Member.mem Member.mmap

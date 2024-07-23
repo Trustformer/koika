@@ -173,8 +173,12 @@ Fixpoint vect_app {T} {sz1 sz2} (v1: vect T sz1) (v2: vect T sz2) {struct sz1}
   | S sz1 => fun v1 => vect_cons (vect_hd v1) (vect_app (vect_tl v1) v2)
   end v1.
 
-Fixpoint vect_app_nil_cast n: n = n + 0.
-Proof. destruct n; cbn; auto. Defined.
+Fixpoint vect_app_nil_cast n: n = n + 0 :=
+  match n as n0 return (n0 = n0 + 0) with
+  | 0 => eq_refl
+  | S n0 =>
+    (fun n1 : nat => f_equal_nat nat S n1 (n1 + 0) (vect_app_nil_cast n1)) n0
+  end.
 
 Lemma vect_app_nil :
   forall {T sz} (v: vect T sz) (v0: vect T 0),
@@ -184,6 +188,7 @@ Proof.
   induction sz; destruct v; cbn.
   - reflexivity.
   - rewrite IHsz.
+    unfold vect_cons.
     unfold f_equal_nat, f_equal.
     rewrite <- vect_app_nil_cast; reflexivity.
 Defined.
@@ -385,7 +390,7 @@ Definition vect_cycle_l {T sz} n (v: vect T sz) :=
 Definition vect_cycle_r {T sz} n (v: vect T sz) :=
   vect_dotimes vect_cycle_r1 n v.
 
-Fixpoint vect_skipn_cast n:
+Definition vect_skipn_cast n:
   n = n - 0.
 Proof. destruct n; cbn; auto. Defined.
 

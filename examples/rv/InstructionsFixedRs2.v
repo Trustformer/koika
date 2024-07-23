@@ -188,7 +188,7 @@ Definition has_fixed_rs2 (i : instruction) : bool :=
   | FCVT_RNE_Q_LU_64Q => true | FCVT_RTZ_Q_LU_64Q => true
   | FCVT_RDN_Q_LU_64Q => true | FCVT_RUP_Q_LU_64Q => true
   | FCVT_RMM_Q_LU_64Q => true | FCVT_DYN_Q_LU_64Q => true
-  | _ => false
+  | _ => false
 end.
 
 Definition instruction_fixed_rs2 :
@@ -544,6 +544,6 @@ Proof.
     | FCVT_RUP_Q_LU_64Q => fun _ => rs2_11
     | FCVT_RMM_Q_LU_64Q => fun _ => rs2_11
     | FCVT_DYN_Q_LU_64Q => fun _ => rs2_11
-    | _                 => fun _ => False_rec _ _
+    | _                 => fun _ => False_rec _ _
   end); try reflexivity; simpl in e; inversion e.
 Defined.

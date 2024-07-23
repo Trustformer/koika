@@ -138,13 +138,6 @@ module RelPath = struct
 
   open Core
 
-  let split_common_prefix l1 l2 =
-    let rec loop acc l1 l2 =
-      match l1, l2 with
-      | h1 :: t1, h2 :: t2 when h1 = h2 -> loop (h1 :: acc) t1 t2
-      | _ -> List.rev acc, l1, l2 in
-    loop [] l1 l2
-
   let abspath (path: string) =
     if Filename.is_relative path then
       Filename.concat (Core_unix.getcwd ()) path

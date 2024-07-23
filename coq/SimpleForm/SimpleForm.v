@@ -981,7 +981,7 @@ Section SimpleForm.
       as (RNG2 & NDr2 & INCL & GROWS & LE & WTv2 & VSV2 & R2V & EVAL).
     12: eauto. all: eauto.
     constructor. simpl; easy. repeat refine (conj _ _); eauto.
-    intros k IN. apply INCL in IN. simpl in IN. intuition.
+    intros k IN. apply INCL in IN. simpl in IN. intuition auto with *.
     intros.
     edestruct EVAL; eauto. inv H1.
   Qed.
@@ -1339,17 +1339,17 @@ Section SimpleForm.
     repeat destr_in H. destruct H as (EQ & ss & GET). subst.
     destr_in H1; inv H1.
     + constructor. split; auto. rewrite PTree.gss; eauto.
-      eapply Forall2_impl. eauto.
+      eapply Forall2_impl. 2: eauto.
       simpl; intros; eauto.
-      repeat destr_in H3. destruct H3 as (? & ? & GET2). subst. split; eauto.
+      repeat destr_in H. destruct H as (? & ? & GET2). subst. split; eauto.
       rewrite PTree.gso; eauto.
       intro; subst.
       eapply H2 in GET2. red in GET2. lia.
     + constructor. split; auto. rewrite PTree.gso. eauto.
       eapply H2 in GET. red in GET. lia.
-      eapply Forall2_impl.
-      eapply IHForall2. eauto. auto.
-      simpl; intros. repeat destr_in H4. destruct H4 as (? & ? & GET2). eauto.
+      eapply Forall2_impl. intros; auto.
+      2: eapply IHForall2. 2-3: eauto.
+      simpl; intros. destr. eauto.
   Qed.
 
   Lemma env_vvs_change_vvs:
@@ -1374,8 +1374,8 @@ Section SimpleForm.
     induction 1; simpl; intros; eauto. constructor.
     repeat destr_in H. destruct H as (? & ? & ?). subst.
     constructor; eauto.
-    eapply Forall2_impl; eauto. simpl. intros (?&?) (?&?) IN1 IN2 (? & ? & ?).
-    subst. eauto.
+    eapply Forall2_impl; eauto. simpl. intros. destr. destruct b. destruct H.
+    subst. split. auto. destruct H3. exists x. auto.
   Qed.
 
   Lemma vvs_smaller_variables_set:
@@ -1547,7 +1547,7 @@ Section SimpleForm.
              <-> interp_sact vvs' (SVar (snd x)) v))
          (combine vm_tb vm_fb) vm'.
   Proof.
-    induction vm_tb; simpl; intros; eauto.
+   induction vm_tb; simpl; intros; eauto.
     - inv MB. repeat split; eauto using vvs_grows_refl. lia.
     - repeat destr_in MB; inv MB. now auto.
        + inv ENVVVS1. inv ENVVVS2. destruct y.
@@ -1596,7 +1596,7 @@ Section SimpleForm.
                 inv H2.
                 exploit interp_sact_determ. apply H. apply H7. intro A; inv A.
                 destruct b0; eauto.
-          -- eapply Forall2_impl. eauto. simpl; intros.
+          -- eapply Wt.Forall2_impl. eapply EVAL3. simpl; intros.
              repeat destr_in H1.
              intros.
              rewrite interp_sact_list_assoc_set' in H2; eauto.
@@ -1605,7 +1605,7 @@ Section SimpleForm.
              inversion 1; subst.
              exploit @Forall2_Forall. apply ENVVVS3.
              rewrite Forall_forall; intro F.
-             destruct (F _ H0) as ( yy & IN & EQ).
+             destruct (F _ H0) as (yy & IN & EQ).
              repeat destr_in EQ. subst. destruct EQ as (? & ? & GET). subst.
              eapply VVSRANGE3 in GET. red in GET; simpl; lia.
              inversion 1; subst.
@@ -2399,7 +2399,7 @@ Section SimpleForm.
     destruct H.
     constructor; eauto. split; eauto using vvs_grows_interp_sact.
     eapply Forall2_impl; eauto. simpl; intros; eauto.
-    destruct H5; split; eauto using vvs_grows_interp_sact.
+    destruct H3; split; eauto using vvs_grows_interp_sact.
   Qed.
 
   Lemma match_logs_r2v_vvs_grows:
@@ -2660,8 +2660,9 @@ Section SimpleForm.
       + subst. constructor; simpl; eauto. split; auto.
         econstructor. rewrite PTree.gss. eauto.
         eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto. lia.
-        eapply Forall2_impl. eapply H0. simpl; intros. destruct H4; split; auto.
-        inv H7.
+        eapply Forall2_impl.
+        2: eapply H0. simpl; intros. destruct H; split; auto.
+        inv H3.
         eapply vvs_grows_interp_sact; eauto. eapply vvs_grows_set; eauto. lia.
         econstructor; eauto.
       + constructor; simpl; eauto.
@@ -3624,7 +3625,7 @@ Section SimpleForm.
           constructor. econstructor. rewrite PTree.gss. eauto.
           eapply vvs_grows_interp_sact; eauto using vvs_grows_set.
           eapply vvs_grows_set. apply I12. lia.
-          eapply Forall2_impl. eauto. simpl; intros.
+          eapply Forall2_impl. 2: eauto. simpl; intros.
           destr. eapply vvs_grows_interp_sact. 2: eauto.
           eapply vvs_grows_trans. 2: eapply vvs_grows_set.
           eapply rir_vvs_grows. eauto. apply I12. lia.
@@ -3677,8 +3678,8 @@ Section SimpleForm.
         eapply vvs_grows_set. eauto using rir_vvs_grows. lia.
       + simpl. constructor; eauto. split; auto.
         rewrite PTree.gss; eauto.
-        eapply Forall2_impl. apply NAMES. simpl.
-        intros (n0 & ?) t1 IN1 IN2 (EQ & s0 & GET). subst. split; auto.
+        eapply Forall2_impl. 2: apply NAMES. simpl.
+        intros (n0 & ?) t1 (EQ & s0 & GET). subst. split; auto.
         rewrite PTree.gso; eauto.
         eapply rir_vvs_grows in GET. 2: eauto. eauto.
         eapply wfs_vvs_range in GET. 2: eauto. red in GET. lia.
@@ -3750,8 +3751,9 @@ Section SimpleForm.
     split; auto.
     red; intros. rewrite SAME in H. eapply wt_sact_same_vvs.
     2: eapply wfs_wt_vvs0; eauto. auto.
-    red; intros. eapply Forall2_impl. apply wfs_env_vvs0. simpl; intros.
-    destruct x. destruct y. destruct H1 as (? & ? & GET).
+    red; intros. eapply Forall2_impl. 2: apply wfs_env_vvs0. simpl; intros.
+    repeat destr_in H.
+    destruct H as (? & ? & GET).
     rewrite <- SAME in GET; eauto.
     red; intros. setoid_rewrite SAME. eauto.
     red; intros. rewrite SAME in H; eauto.
@@ -3860,7 +3862,7 @@ Section SimpleForm.
             -> False.
         Proof.
           induction 1. easy. simpl. repeat destr.
-          subst. intros A; inv A. intuition. eauto.
+          subst. intros A; inv A. intuition auto with *. eauto.
         Qed.
         edestruct mge_some_none; eauto.
     - exfalso; eapply env_vvs_some_none; eauto.
@@ -4315,7 +4317,6 @@ Section SimpleForm.
         eapply merge_reg2vars_same_structure; eauto.
         eapply same_regenv_trans; eauto.
         eapply same_regenv_sym; eauto.
-
       + eapply wf_rir_grows. 2: apply H5. eauto. all: apply WFS.
       + simpl. econstructor.
         * eapply wt_sact_vvs_grows. 2: eauto. eauto using rir_vvs_grows.
@@ -4892,7 +4893,7 @@ Section SimpleForm.
             revert Heqb.
             rewrite mlv_read5, mlv_write4, mlv_write5. intros.
             destruct x, x0, x1, x2, x3, x4; simpl; auto.
-            intuition.
+            intuition auto with *.
           }
           exploit wt_sact_interp_bool. 4: apply WTfail. 1-3: apply WFS1.
           intros (?&?).
@@ -4983,7 +4984,7 @@ Section SimpleForm.
             move H0 at bottom.
             move H1 at bottom.
             destruct x, x0; simpl; auto.
-            intuition.
+            intuition auto with *.
           }
           exploit wt_sact_interp_bool.
           4: apply WTfail. 1-3: apply WFS1. intros (?&?).
@@ -5694,7 +5695,8 @@ Section SimpleForm.
     exploit IHc2. eauto. intros (A & B).
     clear H IHc2.
     unfold list_assoc_modify in A. rewrite list_assoc_spec in A.
-    destr_in A; inv A. destr; subst. congruence. intuition. congruence.
+    destr_in A; inv A. destr; subst. congruence. intuition auto with *.
+    congruence.
   Qed.
 
   Lemma log_existsb_if:
@@ -5717,7 +5719,7 @@ Section SimpleForm.
   Lemma if_prop:
     forall (b: bool) (P1 P2: Prop),
     (if b then P1 else P2) <-> ((b = true -> P1) /\ (b = false -> P2)).
-  Proof. intros. destruct b; split; intuition. Qed.
+  Proof. intros. destruct b; split; intuition auto with *. Qed.
 
   Lemma wf_init_rir vvs: wf_rir init_rir vvs.
   Proof.
@@ -5793,7 +5795,7 @@ Section SimpleForm.
         auto. inv H10. simpl in H11. inv H11. rewrite andb_false_r.
         constructor.
     - exploit merge_cond_logs_interp_none. eauto. intros (A & B). rewrite A, B.
-      intuition.
+      intuition auto with *.
       inv H2. repeat (econstructor; eauto). simpl. rewrite andb_false_r; auto.
       inv H2. inv H6. inv H8. inv H7. inv H5.
       exploit interp_sact_determ. apply H4. apply H. intros ->.
@@ -6267,13 +6269,13 @@ Section SimpleForm.
   Proof.
     unfold init_regs.
     induction l; simpl; intros; eauto.
-    - inv H. repeat refine (conj _ _); eauto. lia. intuition.
+    - inv H. repeat refine (conj _ _); eauto. lia. intuition auto with *.
     - destruct (init_reg r2v vvs nid a) eqn:?.
       destruct p.
       edestruct init_reg_wt_vvs as (WTvvs' & R2V' & VR' & VSV' & LE & INCL);
         eauto.
       eapply IHl in H; eauto.
-      intuition.
+      intuition auto with *.
       lia.
       unfold init_reg in Heqp. inv Heqp.
       repeat apply nodup_list_assoc_set. auto.

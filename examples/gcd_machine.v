@@ -101,4 +101,5 @@ Module GCDMachine.
 End GCDMachine.
 
 Definition prog := Interop.Backends.register GCDMachine.package.
+Set Extraction Output Directory "examples_extr".
 Extraction "gcd_machine.ml" prog.

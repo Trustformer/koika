@@ -1,5 +1,2 @@
 (dirs :standard _objects)
-
-(env
- (dev
-  (flags (:standard -warn-error -A \ -short-paths))))
+(env (dev (flags (:standard -warn-error -A \ -short-paths))))

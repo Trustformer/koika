@@ -1027,8 +1027,7 @@ Section WT.
     remember (size_daction ua).
     revert ua Heqn.
     pattern n.
-    eapply Nat.strong_right_induction with (z:=0).
-    { red. red. intros. subst. tauto. } 2: lia.
+    eapply Nat.strong_right_induction with (z:=0). 2: lia.
     intros n0 _ Plt ua Heqn. subst.
     assert (Plt':
              forall

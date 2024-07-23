@@ -1248,7 +1248,6 @@ Section Interp.
     revert t Heqn.
     pattern n.
     eapply Nat.strong_right_induction with (z:=0).
-    { red. red. intros. subst. tauto. }
     2: lia.
     intros n0 _ Plt t Heqn.
     assert (Plt': forall t, size_type t < n0 -> PP t).
@@ -1962,8 +1961,7 @@ Section Desugar.
     remember (size_uaction ua).
     revert reg_t' ext_fn_t' ua Heqn.
     pattern n.
-    eapply Nat.strong_right_induction with (z:=0).
-    { red. red. intros. subst. tauto. } 2: lia.
+    eapply Nat.strong_right_induction with (z:=0). 2: lia.
     intros n0 _ Plt reg_t' ext_fn_t' ua Heqn. subst.
     assert (Plt':
       forall
@@ -2725,8 +2723,8 @@ Section Desugar.
         replace (
           fLog
             (fun r0 : module_reg_t => fR (fR0 r0)) REnv ContextEnv
-            (fLog' fR REnv REnv' l0 _)
-        ) with (fLog fR0 REnv' ContextEnv l0).
+            (fLog' fR REnv REnv' _u _)
+        ) with (fLog fR0 REnv' ContextEnv _u).
         2:{
           rewrite <- (@fLog_fLog) with (REnv':=REnv').
           rewrite fLog_fLog'; auto.
@@ -3212,8 +3210,7 @@ Section Eq.
     remember (size_uaction ua).
     revert ua Heqn.
     pattern n.
-    eapply Nat.strong_right_induction with (z:=0).
-    { red. red. intros. subst. tauto. } 2: lia.
+    eapply Nat.strong_right_induction with (z:=0). 2: lia.
     intros n0 _ Plt ua Heqn. subst.
     assert (Plt': forall a, size_uaction a < size_uaction ua -> PP a).
     { intros. eapply Plt. 3: reflexivity. lia. auto. } clear Plt.
@@ -3674,8 +3671,7 @@ Section Eq.
     remember (size_uaction ua).
     revert ua Heqn.
     pattern n.
-    eapply Nat.strong_right_induction with (z:=0).
-    { red. red. intros. subst. tauto. } 2: lia.
+    eapply Nat.strong_right_induction with (z:=0). 2: lia.
     intros n0 _ Plt ua Heqn. subst.
     assert (Plt': forall a, size_uaction a < size_uaction ua -> PP a).
     { intros. eapply Plt. 3: reflexivity. lia. auto. } clear Plt.

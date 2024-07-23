@@ -128,7 +128,7 @@ Lemma list_assoc_unknown_key:
     ~ In k (map fst l) ->
     list_assoc l k = None.
 Proof.
-  induction l; simpl; intros; eauto. repeat destr; intuition.
+  induction l; simpl; intros; eauto. repeat destr; intuition auto with *.
 Qed.
 
 Lemma list_assoc_none_unknown_key:

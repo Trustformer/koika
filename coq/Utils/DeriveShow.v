@@ -1,7 +1,6 @@
 (*! Utilities | Automatic derivation of Show instances !*)
 Require Import Koika.Utils.Show.
 Require Koika.Utils.IdentParsing.
-Require Import Ltac2.Ltac2.
 
 Import Ltac2.Init.
 Import Ltac2.Notations.
@@ -22,7 +21,8 @@ Module Internals.
       Std.rCofix := true;
       Std.rZeta := true;
       Std.rDelta := true;
-      Std.rConst := []
+      Std.rConst := [];
+      Std.rStrength := Std.Norm;
     } None c.
 
   Ltac2 rec list_map fn l :=

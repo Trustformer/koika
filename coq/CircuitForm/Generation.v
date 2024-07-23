@@ -102,14 +102,14 @@ Section Compilation.
     Lemma mul_1_r : forall n : nat, n * 1 = n.
     Proof. induction n; simpl; congruence. Defined.
 
-    Definition compile_unop (fn: fbits1) (a: circuit (CSigma1 fn).(arg1Sig))
+    Definition compile_unop (fn: fbits1) (a: circuit (arg1Sig (CSigma1 fn)))
     : circuit (CSigma1 fn).(retSig) :=
-      let cArg1 fn := circuit (CSigma1 fn).(arg1Sig) in
+      let cArg1 fn := circuit (arg1Sig (CSigma1 fn)) in
       let cRet fn := circuit (CSigma1 fn).(retSig) in
       let c :=
         match fn
           return
-            circuit (CSigma1 fn).(arg1Sig)
+            circuit (arg1Sig (CSigma1 fn))
             -> circuit (CSigma1 fn).(retSig)
             -> circuit (CSigma1 fn).(retSig)
         with
@@ -138,6 +138,9 @@ Section Compilation.
         a (CUnop fn a) in
       COpt c.
 
+    Definition le_plus_minus_r (n m: nat) (Hle : n <= m) : n + (m - n) = m :=
+      eq_trans (Nat.add_comm n (m - n)) (Nat.sub_add n m Hle).
+
     Lemma lt_plus_minus_r : forall n m : nat, n < m -> n + (m - n) = m.
     Proof. auto using le_plus_minus_r, Nat.lt_le_incl. Defined.
 
@@ -158,16 +161,16 @@ Section Compilation.
       | right _ => c1
       end.
 
-    Definition compile_binop (fn: fbits2)
-               (c1: circuit (CSigma2 fn).(arg1Sig))
-               (c2: circuit (CSigma2 fn).(arg2Sig)):
-      circuit (CSigma2 fn).(retSig) :=
-      let cArg1 fn := circuit (CSigma2 fn).(arg1Sig) in
-      let cArg2 fn := circuit (CSigma2 fn).(arg2Sig) in
+    Definition compile_binop
+      (fn: fbits2) (c1: circuit (arg1Sig (CSigma2 fn)))
+      (c2: circuit (arg2Sig (CSigma2 fn)))
+    : circuit (CSigma2 fn).(retSig) :=
+      let cArg1 fn := circuit (arg1Sig (CSigma2 fn)) in
+      let cArg2 fn := circuit (arg2Sig (CSigma2 fn)) in
       let cRet fn := circuit (CSigma2 fn).(retSig) in
       let c :=
-        match fn return circuit (CSigma2 fn).(arg1Sig) ->
-                        circuit (CSigma2 fn).(arg2Sig) ->
+        match fn return circuit (arg1Sig (CSigma2 fn)) ->
+                        circuit (arg2Sig (CSigma2 fn)) ->
                         circuit (CSigma2 fn).(retSig) ->
                         circuit (CSigma2 fn).(retSig) with
         | SliceSubst sz offset width => fun c1 c2 c =>

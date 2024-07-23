@@ -360,11 +360,7 @@ Section RVHelpers.
     let shamt := b[Ob~0~0~0~0~0 :+ 5] in
       let inst_30 := funct7[|3`d5|] in
       match funct3 with
-      | #funct3_ADD =>
-        if (inst_30 == Ob~1) then
-          a - b
-        else
-          a + b
+      | #funct3_ADD  => if (inst_30 == Ob~1) then a - b else a + b
       | #funct3_SLL  => a << shamt
       | #funct3_SLT  => zeroExtend(a <s b, 32)
       | #funct3_SLTU => zeroExtend(a < b, 32)
@@ -760,6 +756,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   Definition decode
     `{finite_reg: FiniteType reg_t}
     `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
+    `{finite_reg_scoreboard: FiniteType Scoreboard.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read1(halt) == Ob~1) then fail else pass;
     let instr               := fromIMem.(MemResp.deq)() in
@@ -922,6 +919,7 @@ Module RVCore (RVP: RVParams) (ShadowStack: ShadowStackInterface).
   Definition writeback
     `{finite_reg: FiniteType reg_t}
     `{finite_reg_sstack: FiniteType ShadowStack.reg_t}
+    `{finite_reg_sstack: FiniteType Scoreboard.reg_t}
   : uaction reg_t ext_fn_t := {{
     if (read0(halt) == Ob~1) then fail else pass;
     let execute_bookkeeping := e2w.(fromExecute.deq)() in

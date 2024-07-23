@@ -92,4 +92,5 @@ Definition package :=
 
 Unset Extraction Optimize.
 Definition prog := Interop.Backends.register package.
+Set Extraction Output Directory "examples_extr".
 Extraction "function_call.ml" prog.

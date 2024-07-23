@@ -27,12 +27,12 @@ Section Circuit.
   | CMux {sz} (select: circuit 1) (c1 c2: circuit sz): circuit sz
   | CConst {sz} (cst: bits sz): circuit sz
   | CReadRegister (reg: reg_t): circuit (CR reg)
-  | CUnop (fn: fbits1) (a1: circuit (CSigma1 fn).(arg1Sig)):
+  | CUnop (fn: fbits1) (a1: circuit (arg1Sig (CSigma1 fn))):
     circuit (CSigma1 fn).(retSig)
-  | CBinop (fn: fbits2) (a1: circuit (CSigma2 fn).(arg1Sig))
-    (a2: circuit (CSigma2 fn).(arg2Sig)):
+  | CBinop (fn: fbits2) (a1: circuit (arg1Sig (CSigma2 fn)))
+    (a2: circuit (arg2Sig (CSigma2 fn))):
       circuit (CSigma2 fn).(retSig)
-  | CExternal (idx: ext_fn_t) (a: circuit (CSigma idx).(arg1Sig)):
+  | CExternal (idx: ext_fn_t) (a: circuit (arg1Sig (CSigma idx))):
     circuit (CSigma idx).(retSig)
   | CBundleRef {sz} (name: rule_name_t) (regs: list reg_t)
     (bundle: context (fun r => rwdata (CR r)) regs)

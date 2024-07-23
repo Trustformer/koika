@@ -63,13 +63,13 @@ Section SimplifySIfs.
     destruct v; try (inversion H0; fail).
     destruct v; try (inversion H0; fail).
     simpl in H0.
-    destruct b; eapply eval_sact_more_fuel; try eapply le_n_Sn; auto.
+    destruct b; eapply eval_sact_more_fuel; try eapply Nat.le_succ_diag_r; auto.
     (* SIf x T T, SIf x F F *)
     repeat (destruct v; eauto). destruct a3; eauto.
     repeat (destruct v; eauto). destr.
     rewrite Bool.eqb_true_iff in Heqb1. subst.
     destruct n; auto.
-    eapply eval_sact_more_fuel; try eapply le_n_Sn; auto.
+    eapply eval_sact_more_fuel; try eapply Nat.le_succ_diag_r; auto.
     simpl in H0.
     destruct (eval_sact vvs a1 n); try (inversion H0; fail).
     repeat (destruct v; try (inversion H0; fail)).

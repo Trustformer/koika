@@ -118,4 +118,5 @@ Definition package :=
                           efr_internal := true |} |} |}.
 
 Definition prog := Interop.Backends.register package.
+Set Extraction Output Directory "examples_extr".
 Extraction "pipeline.ml" prog.

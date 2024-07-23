@@ -147,4 +147,5 @@ Module ProducerConsumer.
 End ProducerConsumer.
 
 Definition prog := Interop.Backends.register ProducerConsumer.package.
+Set Extraction Output Directory "extr".
 Extraction "producer_consumer.ml" prog.

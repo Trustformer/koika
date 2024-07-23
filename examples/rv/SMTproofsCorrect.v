@@ -47,7 +47,7 @@ Section RVProofs.
     interp_sact (sigma:=ext_sigma) REnv ctx (vars sf) (sact_nomispred) (Bits [true]) ->
     no_mispred ctx.
   Proof.
-    intros. inv H. inv H3. inv H5.  inv H1. 
+    intros. inv H. inv H3. inv H5.  inv H1.
     generalize (WTRENV (RV32I.d2e RV32I.fromDecode.data0)). intro A. inv A.
     inv H1. inv H7. inv H8. inv H9. inv H10. inv H11. inv H12.
     rewrite <- H0 in H4. simpl in H4. inv H4.
@@ -361,7 +361,7 @@ Section RVProofs.
 
     assert(X:interp_sact (sigma:=ext_sigma) REnv ctx (vars sf)
                (SUnop (UStruct1 (UGetField "inst"))
-                  (SUnop (UStruct1 (UGetField "dInst")) (SReg (RV32I.d2e RV32I.fromDecode.data0)))) 
+                  (SUnop (UStruct1 (UGetField "dInst")) (SReg (RV32I.d2e RV32I.fromDecode.data0))))
                (val_of_value (tau:=bits_t (Datatypes.length b)) (vect_of_list b))).
     {
       econstructor. econstructor. econstructor. rewrite REG. simpl. eauto. simpl; eauto.
@@ -457,7 +457,7 @@ Section RVProofs.
       unfold Bits.of_index in Heqb.
       apply (f_equal Bits.to_nat) in Heqb.
       rewrite ! Bits.to_nat_of_nat in Heqb.
-      2-3: eapply lt_le_trans; [apply index_to_nat_bounded | lia].
+      2-3: eapply Nat.lt_le_trans; [apply index_to_nat_bounded | lia].
       apply index_to_nat_injective in Heqb. congruence.
     }
     apply NoDup_remove in H1. destruct H1 as (_ & H1).

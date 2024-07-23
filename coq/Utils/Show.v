@@ -14,7 +14,7 @@ Module Show_nat.
     match n with
     | exist _ 0 _ => "0" | exist _ 1 _ => "1" | exist _ 2 _ => "2" | exist _ 3 _ => "3" | exist _ 4 _ => "4"
     | exist _ 5 _ => "5" | exist _ 6 _ => "6" | exist _ 7 _ => "7" | exist _ 8 _ => "8" | exist _ 9 _ => "9"
-    | exist _ n pr => False_rect _ (digit_lt_base 10 pr)
+    | exist _ _ pr => False_rect _ (digit_lt_base 10 pr)
     end%string.
 
   Fixpoint string_of_nat_rec (fuel: nat) (n: nat) :=

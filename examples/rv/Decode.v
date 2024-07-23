@@ -43,7 +43,7 @@ Definition get_opcode (b : list bool) : option opcode_name :=
   ) candidates in
   match matching with
   | h1::h2::t => None (* Should never happen *)
-  | h::t      => Some h
+  | h::_      => Some h
   | nil       => None
   end.
 
@@ -55,7 +55,7 @@ Definition get_fct2 (b : list bool) : option fct2_type :=
   ) candidates in
   match matching with
   | h1::h2::t => None (* Should never happen *)
-  | h::t      => Some h
+  | h::_      => Some h
   | nil       => None
   end.
 
@@ -70,7 +70,7 @@ Definition get_fct3 (b : list bool) : option fct3_type :=
   ) candidates in
   match matching with
   | h1::h2::t => None (* Should never happen *)
-  | h::t      => Some h
+  | h::_      => Some h
   | nil       => None
   end.
 
@@ -95,7 +95,7 @@ Definition get_fct7 (b : list bool) : option fct7_type :=
   ) candidates in
   match matching with
   | h1::h2::t => None (* Should never happen *)
-  | h::t      => Some h
+  | h::_      => Some h
   | nil       => None
   end.
 

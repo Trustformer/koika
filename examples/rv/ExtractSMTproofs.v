@@ -3,6 +3,8 @@ Require Export Coq.extraction.Extraction.
 From Coq.extraction Require Export
   ExtrOcamlBasic ExtrOcamlString ExtrOcamlNatInt ExtrOcamlZInt.
 
+Set Extraction Output Directory "extr".
+
 Extraction Inline Types.argSigs.
 
 Extract Constant Vect.index => int.
@@ -12,7 +14,6 @@ Extract Constant Vect.index_of_nat => "fun sz x -> if x < sz then Some x else No
 Extract Constant Vect.index_to_nat => "fun _ x -> x".
 Extract Constant Vect.largest_index => "fun x -> x".
 
-Cd "/home/pwilke/Work/CS/Thesards/baty/extract-problems/src".
 Separate Extraction RV32I.Sigma sf Maps.PTree.get Maps.PTree.elements
   sact_sstack_underflow
   sact_sstack_overflow

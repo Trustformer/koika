@@ -1130,11 +1130,11 @@ Lemma forall2_elems'':
       P a ps.
 Proof.
   intros.
-  eapply forall2_elems' with (P0:=fun '(t,a) v => P a v) in H0. eauto.
+  eapply forall2_elems' with (P := fun '(t,a) v => P a v) in H0. eauto.
   2: eauto.
-  eapply Wt.Forall2_impl. eauto. simpl. intros. destruct x. destruct p0,y. destruct H4. subst. split; auto.
+  eapply Wt.Forall2_impl. eauto. simpl. intros. destruct x. destruct p0,y.
+  destruct H4. subst. split; auto.
 Qed.
-
 
 Lemma ptree_of_elements_get:
   forall {A: Type} (l: list (positive * A)) k v,
@@ -1146,7 +1146,6 @@ Proof.
   destruct a.
   rewrite PTree.gsspec in H. destr_in H; auto. inv H. auto.
 Qed.
-
 
 Lemma forall2_in_exr:
   forall {A B: Type} (P: A -> B -> Prop) l1 l2,
@@ -1225,7 +1224,6 @@ Proof.
   - eauto.
 Qed.
 
-
 Lemma subact_ok_ltac_1var:
   forall l1 subact k t a ps,
     l1 ! k = Some (t, a) ->
@@ -1253,6 +1251,4 @@ Proof.
   - eauto.
   - eauto.
 Qed.
-
-
 End ReplaceSubact.

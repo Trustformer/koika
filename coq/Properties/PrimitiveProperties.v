@@ -212,6 +212,9 @@ Proof.
     setoid_rewrite vect_last_nth; reflexivity.
 Qed.
 
+Definition le_plus_minus_r (n m: nat) (Hle : n <= m) : n + (m - n) = m :=
+  eq_trans (Nat.add_comm n (m - n)) (Nat.sub_add n m Hle).
+
 Definition slice_subst_impl {sz} offset {width} (a1: bits sz) (a2: bits width) :=
   match le_gt_dec offset sz with
   | left pr =>
@@ -220,7 +223,7 @@ Definition slice_subst_impl {sz} offset {width} (a1: bits sz) (a2: bits width) :
        (match le_gt_dec width (sz - offset) with
         | left pr =>
           rew le_plus_minus_r width (sz - offset) pr in
-            (a2 ++ Bits.slice (offset + width) (sz - offset - width) a1)
+          (a2 ++ Bits.slice (offset + width) (sz - offset - width) a1)
         | right _ => Bits.slice 0 (sz - offset) a2
         end))%vect
   | right _ => a1
@@ -353,14 +356,14 @@ Section Arithmetic.
       specialize (IHsz vtl).
       destruct (vect_unsnoc vtl) eqn:H_unsnoc_vtl.
       cbn in *. rewrite IHsz.
-      rewrite N.add_mod; [ | destruct sz; discriminate ].
+      rewrite N.Div0.add_mod.
       rewrite (N.mod_small (if vhd then 1 else 0)).
       + rewrite (N.mod_small _ (2 * 2 ^ N.of_nat sz)).
         * f_equal.
-          rewrite N.mul_mod_distr_l by lia;
+          rewrite N.Div0.mul_mod_distr_l by lia;
             reflexivity.
         * destruct vhd.
-          -- rewrite N.mul_mod_distr_l by lia.
+          -- rewrite N.Div0.mul_mod_distr_l by lia.
              eauto using N.mul_2_mono_l, N.mod_lt.
           -- apply N.mod_lt; lia.
       + destruct vhd; lia.
@@ -379,7 +382,7 @@ Section Arithmetic.
       pose proof pow2_nz (N.of_nat sz).
       rewrite Nat2N.inj_succ, N.pow_succ_r'.
       cbn. rewrite (N.mul_comm _ 2).
-      rewrite N.mul_mod_distr_l by lia.
+      rewrite N.Div0.mul_mod_distr_l by lia.
       f_equal.
       apply to_N_vect_unsnoc.
   Qed.
@@ -395,7 +398,7 @@ Section Arithmetic.
     - rewrite Nat2N.inj_succ, N.pow_succ_r'.
       cbn.
       rewrite IHn, to_N_lsl1.
-      rewrite N.mul_mod_idemp_l by (pose proof pow2_nz (N.of_nat sz); lia).
+      rewrite N.Div0.mul_mod_idemp_l by (pose proof pow2_nz (N.of_nat sz); lia).
       f_equal. ring.
   Qed.
 

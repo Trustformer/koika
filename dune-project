@@ -1,8 +1,7 @@
-(lang dune 2.8)
-(using coq 0.3)
+(lang dune 3.14)
+(using coq 0.8)
 
 (generate_opam_files true)
-;;(allow_approximate_merlin)
 
 (name koika)
 (version 0.0.1)
@@ -25,11 +24,10 @@
   ;; (ppx_jane (>= 0.9.0))
   ;; (stdio (>= 0.12.0))
   ;; (zarith (>= 1.9.1))
- (depends)
+ (depends
+   (coq-record-update (>= 0.3.3))
+ )
  (synopsis "A core language for rule-based hardware design 🦑️")
  (description "Kôika is a hardware design language inspired by BlueSpec SystemVerilog. Kôika programs are built from rules, small bits of hardware that operate concurrently to compute state updates but provide the illusion of serializable (atomic) updates. Kôika has simple, precise semantics that give you strong guarantees about the behavior of your designs."))
 
-(package
-  (name rv)
-  (depends)
-)
+(package (name rv) (depends) (allow_empty))

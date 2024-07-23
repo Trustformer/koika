@@ -895,16 +895,16 @@ Module PTree <: TREE.
               match o with None => nil | Some x => (prev j, x) :: nil end ++
               l1);
       exists l2; split.
-      rewrite xelements_node, EQ, ! app_ass. auto.
-      rewrite xelements_node, EQ', ! app_ass. auto.
+      rewrite xelements_node, EQ, ! app_assoc. auto.
+      rewrite xelements_node, EQ', ! app_assoc. auto.
     + destruct (IHm1 i (xO j) H) as (l1 & l2 & EQ & EQ').
       exists l1;
       exists (l2 ++
               match o with None => nil | Some x => (prev j, x) :: nil end ++
               xelements m2 (xI j) nil);
       split.
-      rewrite xelements_node, EQ, ! app_ass. auto.
-      rewrite xelements_node, EQ', ! app_ass. auto.
+      rewrite xelements_node, EQ, <- ! app_assoc. auto.
+      rewrite xelements_node, EQ', ! app_assoc. auto.
     + subst o. exists (xelements m1 (xO j) nil); exists (xelements m2 (xI j) nil); split.
       rewrite xelements_node. rewrite prev_append_prev. auto.
       rewrite xelements_node; auto.

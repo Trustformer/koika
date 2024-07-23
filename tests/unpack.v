@@ -69,4 +69,5 @@ Definition package :=
      ip_verilog := {| vp_ext_fn_specs := empty_ext_fn_props |} |}.
 
 Definition prog := Interop.Backends.register package.
+Set Extraction Output Directory "extr".
 Extraction "unpack.ml" prog.

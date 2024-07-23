@@ -24,12 +24,12 @@ Section Syntax.
   | Read {sig} (port: Port) (idx: reg_t): action sig (R idx)
   | Write {sig} (port: Port) (idx: reg_t)
           (value: action sig (R idx)) : action sig 0
-  | Unop {sig} (fn: fbits1) (arg1: action sig (CSigma1 fn).(arg1Sig))
+  | Unop {sig} (fn: fbits1) (arg1: action sig (arg1Sig (CSigma1 fn)))
     : action sig (CSigma1 fn).(retSig)
-  | Binop {sig} (fn: fbits2) (arg1: action sig (CSigma2 fn).(arg1Sig))
-          (arg2: action sig (CSigma2 fn).(arg2Sig))
+  | Binop {sig} (fn: fbits2) (arg1: action sig (arg1Sig (CSigma2 fn)))
+          (arg2: action sig (arg2Sig (CSigma2 fn)))
     : action sig (CSigma2 fn).(retSig)
-  | ExternalCall {sig} (fn: ext_fn_t) (arg: action sig (Sigma fn).(arg1Sig))
+  | ExternalCall {sig} (fn: ext_fn_t) (arg: action sig (arg1Sig (Sigma fn)))
     : action sig (Sigma fn).(retSig)
   | APos {sig sz} (pos: pos_t) (a: action sig sz) : action sig sz.
 

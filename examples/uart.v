@@ -231,4 +231,5 @@ Module UART.
 End UART.
 
 Definition prog := Interop.Backends.register UART.package.
+Set Extraction Output Directory "examples_extr".
 Extraction "uart.ml" prog.

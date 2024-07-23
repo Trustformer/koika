@@ -78,4 +78,5 @@ public:
      ip_verilog := {| vp_ext_fn_specs := verilog_ext_fn_specs |} |}.
 
 Definition prog := Interop.Backends.register package.
+Set Extraction Output Directory "extr".
 Extraction "extcall.ml" prog.

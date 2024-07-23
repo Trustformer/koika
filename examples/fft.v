@@ -304,4 +304,5 @@ Definition twist (stage:nat) (index:nat) : uaction reg_t ext_fn_t :=
 End FFT.
 
 Definition prog := Interop.Backends.register package.
+Set Extraction Output Directory "examples_extr".
 Extraction "fft.ml" prog.

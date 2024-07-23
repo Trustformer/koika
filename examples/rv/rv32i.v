@@ -63,4 +63,5 @@ End RV32I.
 
 Module RV32IPackage := Package RV32I.
 Definition prog := Interop.Backends.register RV32IPackage.package.
+Set Extraction Output Directory "extr".
 Extraction "rv32i.ml" prog.

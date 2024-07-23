@@ -75,7 +75,7 @@ Section CompilerCorrectness.
         interp_circuit c2 = a2 ->
         interp_circuit (compile_binop lco.(lco_fn) fn c1 c2) = CircuitPrimSpecs.sigma2 fn a1 a2.
     Proof.
-      destruct fn; repeat compile_op_t.
+      destruct fn; repeat (compile_op_t).
     Qed.
   End OpCompile.
 

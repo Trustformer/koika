@@ -200,7 +200,6 @@ Proof.
   revert t v Heqn.
   pattern n.
   eapply Nat.strong_right_induction with (z:=0).
-  { red. red. intros. subst. tauto. }
   2: lia.
   intros n0 _ Plt t t0 a Heqn.
   assert (Plt': forall t v, size_type t < n0 -> wt_val t v -> P t v).
@@ -652,14 +651,14 @@ Proof.
     clear Plt. revert x v H.
     induction v; simpl; intros; eauto. easy.
     destruct H; subst; eauto. lia.
-    eapply lt_le_trans. apply IHv; auto. lia.
+    eapply Nat.lt_le_trans. apply IHv; auto. lia.
   - eapply Harray.
     intros.
     eapply Plt. simpl.
     clear Plt. revert x v H.
     induction v; simpl; intros; eauto. easy.
     destruct H; subst; eauto. lia.
-    eapply lt_le_trans. apply IHv; auto. lia.
+    eapply Nat.lt_le_trans. apply IHv; auto. lia.
 Defined.
 
 Definition list_eq_dec'

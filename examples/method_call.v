@@ -92,4 +92,5 @@ Definition package := {|
 |}.
 
 Definition prog := Interop.Backends.register package.
+Set Extraction Output Directory "examples_extr".
 Extraction "method_call.ml" prog.
