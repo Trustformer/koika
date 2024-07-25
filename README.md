@@ -32,7 +32,7 @@ synthesize it (such as a `Makefile` which is discussed in more details in
 To run C++ simulations, you need ((`g++` or `clang`) and `libboost-dev`).
 
 ## Learning Kôika
-Read [the orignal paper](https://dl.acm.org/doi/pdf/10.1145/3385412.3385965),
+Read [the original paper](https://dl.acm.org/doi/pdf/10.1145/3385412.3385965),
 get your hands dirty in `examples`, have a chat with us.
 
 For proofs using progressive rewriting, read
