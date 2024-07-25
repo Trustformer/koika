@@ -1,9 +1,9 @@
 # Kôika-SUSHI
 This is the fork of Kôika maintained by the
 [SUSHI](https://team.inria.fr/sushi/) team
-([original home](https://github.com/mit-plv/koika)).
-Kôika is a rule-based Hardware Design Language embedded within Coq. We use it to
-develop and verify hardware.
+([original home](https://github.com/mit-plv/koika)). Kôika is a rule-based
+Hardware Design Language embedded within Coq. We use it to develop and verify
+hardware.
 
 ## What's different?
 * Support for more recent Coq versions
@@ -15,19 +15,25 @@ develop and verify hardware.
   [its own repository](https://gitlab.inria.fr/SUSHI-test/herve))
 
 ## Getting started
-Using OCaml 5.1.1 (`opam switch create koika-sushi ocaml-base-compiler.5.1.1`):
+Last tested with with `OCaml 5.1.1` and `Coq 8.19.2`.
+
+Install `opam` and initialize it with `opam init`.
+
+Set-up an opam switch (aka an OCaml environment) with the right dependencies:
 ```bash
+opam switch create koika-sushi ocaml.5.1.1 coq.8.19.2
+eval (opam env --switch=koika-sushi)
 opam repo add coq-released https://coq.inria.fr/opam/released
-opam install coq.8.19.2 coq-record-update dune base core stdio parsexp hashcons zarith core_unix
-dune build
+opam install coq-record-update dune base core stdio parsexp hashcons zarith core_unix
 ```
-To install the resulting library on your system: `dune install`.
 
 Simplest way to compile everything, including examples and tests: `make`
 from the root. This creates an `_objects` folder in e.g. `examples`. This folder
 contains a subfolder per example, which includes everything required to actually
 synthesize it (such as a `Makefile` which is discussed in more details in
 `examples/README.md`).
+
+To install the resulting library on your system: `dune install`.
 
 To run C++ simulations, you need ((`g++` or `clang`) and `libboost-dev`).
 
@@ -37,8 +43,7 @@ get your hands dirty in `examples`, have a chat with us.
 
 For proofs using progressive rewriting, read
 [our paper](https://inria.hal.science/hal-04118645/document). We recommend the
-SMT approach over this, just note that it is currently poorly documented for the
-time being. Head to the repository of
+SMT approach over this. Head to the repository of
 [our processor](https://gitlab.inria.fr/SUSHI-test/herve) to see it in action.
 
 ## Who worked on this in SUSHI?
@@ -52,7 +57,7 @@ Past members:
   privileges
 
 ## Plans
-Currently nothing concrete.
+Nothing concrete for the immediate future.
 
 @mbaty is working on porting
 [FIRRTL](https://github.com/chipsalliance/firrtl-spec) to Coq as
