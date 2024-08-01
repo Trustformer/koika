@@ -8,23 +8,11 @@ from subprocess import check_call
 SCRIPT_DIR = path.dirname(path.realpath(__file__))
 SEPARATOR = "\n;; --- DO NOT EDIT BELOW THIS LINE (use ‘make configure’) ---\n"
 
-# def hardlink(src, dst):
-#     src, dst = path.join(path.normpath(src), "."), path.normpath(dst)
-#     if path.isdir(src):
-#         print("{} → {}".format(src, dst))
-#         check_call(["cp", "--force", "--recursive", src, "-t", dst])
-
-# def prepare_assets(dirpath, fname, objdir):
-#     makedirs(objdir, exist_ok=True)
-#     hardlink(path.join(dirpath, "etc"), objdir)
-#     hardlink(path.join(dirpath, fname + ".etc"), objdir)
-
 def gen_subdirs(dirpath, theory, templates, fnames):
     """Format a single dune ``subdir`` stanza for a given `file`."""
     for fname in fnames:
         objdir = path.join(dirpath, "_objects", fname)
         module_name, fext = path.splitext(fname)
-        # prepare_assets(dirpath, fname, objdir)
         makedirs(objdir, exist_ok=True)
         yield templates[fext].format_map({
             "objdir": objdir,

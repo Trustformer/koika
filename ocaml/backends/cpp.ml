@@ -1663,7 +1663,7 @@ let clang_format fname =
   with CompilationError _ -> ()
 
 let flags_standard =
-  ["--std=c++14"]
+  ["--std=c++23"]
 let flags_opt =
   ["-O3"; "-march=native"; "-U_FORTIFY_SOURCE"; "-D_FORTIFY_SOURCE=0"; "-fno-stack-protector"]
 let flags_warnings =

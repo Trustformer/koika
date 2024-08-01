@@ -18,7 +18,3 @@ public:
 int main(int argc, char** argv) {
   return _main<TB>(argc, argv);
 }
-
-// Local Variables:
-// flycheck-clang-include-path: ("/usr/share/verilator/include" "/usr/share/verilator/include/vltstd/" "Vobj_dir/trace/" "Vmkfft.obj_dir.opt/")
-// End:

@@ -37,7 +37,3 @@ class simulator final : public module_cosimulation<extfuns> {
 };
 
 int main(int argc, char **argv) { return cuttlesim::main<simulator>(argc, argv); }
-
-// Local Variables:
-// flycheck-clang-include-path: ("/usr/share/verilator/include" "/usr/local/share/verilator/include/")
-// End:

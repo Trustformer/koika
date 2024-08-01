@@ -135,7 +135,3 @@ int _main(int argc, char** argv) {
 
   return 0;
 }
-
-// Local Variables:
-// flycheck-clang-include-path: ("/usr/share/verilator/include")
-// End:

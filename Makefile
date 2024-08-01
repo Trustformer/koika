@@ -116,9 +116,6 @@ clean-tests:
 # Whole project #
 #################
 
-package:
-	etc/package.sh
-
 dune-all: coq ocaml
 	@printf "\n== Completing full build ==\n"
 	dune build @all
@@ -129,7 +126,7 @@ clean: clean-tests clean-examples
 	dune clean
 	rm -f koika-*.tar.gz
 
-.PHONY: package dune-all all clean
+.PHONY: dune-all all clean
 
 .SUFFIXES:
 
