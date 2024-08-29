@@ -23,7 +23,7 @@ Section ReplaceVar.
   Context (sigma: ext_funs_defs).
   Local Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Local Definition eval_sact := eval_sact r sigma.
-  Local Definition wf_sf := wf_sf R Sigma.
+  Local Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
     wt_sigma:
@@ -38,7 +38,7 @@ Section ReplaceVar.
       (fun k '(t, ua) => (t, if eq_dec from k then to else ua))
       vars.
 
-  Definition replace_var (sf: simple_form) (from: positive) (to: sact)
+  Definition replace_var (sf: simple_form (rule_name_t := rule_name_t)) (from: positive) (to: sact)
   : simple_form :=
     sf <| vars := replace_var_in_vars (vars sf) from to |>.
 

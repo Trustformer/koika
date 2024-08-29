@@ -16,7 +16,7 @@ From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
 Section SimplifyTargeted.
-  Context {reg_t ext_fn_t: Type}.
+  Context {reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
   Context {REnv: Env reg_t}.
@@ -28,7 +28,7 @@ Section SimplifyTargeted.
   Context (sigma: ext_funs_defs).
   Local Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Local Definition eval_sact := eval_sact r sigma.
-  Local Definition wf_sf := wf_sf R Sigma.
+  Local Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
     wt_sigma:
@@ -806,7 +806,7 @@ Section SimplifyTargeted.
   Qed.
 
   Definition simplify_sf_targeted
-    (sf: simple_form) (exemptions: PTree.t (list position))
+    (sf: simple_form (rule_name_t := rule_name_t)) (exemptions: PTree.t (list position))
   :=
     sf <|
       vars :=

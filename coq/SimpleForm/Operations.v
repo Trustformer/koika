@@ -35,13 +35,13 @@ Section Operations.
   Context (sigma: ext_funs_defs).
 
   Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
-  Definition simple_form := simple_form (ext_fn_t := ext_fn_t) (reg_t := reg_t).
-  Instance etaSimpleForm : Settable _ := @etaSimpleForm reg_t ext_fn_t.
+  Definition simple_form := simple_form (ext_fn_t := ext_fn_t) (reg_t := reg_t) (rule_name_t := rule_name_t).
+  Instance etaSimpleForm : Settable _ := @etaSimpleForm reg_t ext_fn_t rule_name_t.
   Definition var_value_map :=
     var_value_map (ext_fn_t := ext_fn_t) (reg_t := reg_t).
-  Definition useful_vars := useful_vars (ext_fn_t := ext_fn_t) (reg_t := reg_t).
+  Definition useful_vars := useful_vars (ext_fn_t := ext_fn_t) (reg_t := reg_t) (rule_name_t := rule_name_t).
   Definition eval_sact := eval_sact r sigma.
-  Definition wf_sf := wf_sf R Sigma.
+  Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
 
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
 
@@ -2163,6 +2163,7 @@ Section Operations.
       -> wf_sf
         {| final_values := final_values sf;
            read1_values := read1_values sf;
+           debug_log := debug_log sf;
            vars := PTree.map (fun _ '(t,a) => (t, f a)) (vars sf)
          |}.
   Proof.
@@ -2179,7 +2180,10 @@ Section Operations.
                wt_sact (Sigma := Sigma) R vvs (f k a) t)
            (FVIS: forall k s v', var_in_sact (f k s) v' -> var_in_sact s v'),
       wf_sf sf ->
-      wf_sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf) |}.
+      wf_sf {| final_values := final_values sf;
+              read1_values := read1_values sf;
+              debug_log := debug_log sf;
+              vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf) |}.
   Proof.
     destruct 3; constructor.
     - eapply f_wtvvs_ok'i; eauto.
@@ -2444,7 +2448,10 @@ Section Operations.
            (VIS: forall (s : SimpleForm.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
-      sf_eq sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun (_ : positive) '(t, a) => (t, f a)) (vars sf) |}.
+      sf_eq sf {| final_values := final_values sf;
+                 read1_values := read1_values sf;
+                 debug_log := debug_log sf;
+                 vars := PTree.map (fun (_ : positive) '(t, a) => (t, f a)) (vars sf) |}.
   Proof.
     intros.
     constructor. simpl. auto.
@@ -2494,7 +2501,10 @@ Section Operations.
            (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
-      sf_eq sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
+      sf_eq sf {| final_values := final_values sf;
+                 read1_values := read1_values sf;
+                 debug_log := debug_log sf;
+                 vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
   Proof.
     intros.
     constructor. simpl. auto.
@@ -2541,7 +2551,10 @@ Section Operations.
            (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
-      sf_eq sf {| final_values := final_values sf; read1_values := read1_values sf; vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
+      sf_eq sf {| final_values := final_values sf;
+                 read1_values := read1_values sf;
+                 debug_log := debug_log sf;
+                 vars := PTree.map (fun k '(t, a) => (t, f k a)) (vars sf) |}.
   Proof.
     intros.
     constructor. simpl. auto.
@@ -2740,7 +2753,7 @@ Section Operations.
   Qed.
 
   Lemma filter_ptree_correct:
-    forall sf1 sf2 l lr (ND: NoDup l)
+    forall (sf1 sf2: simple_form) l lr (ND: NoDup l)
     (CLOSED:
       forall
         v t s (IN : In v l) (GET : (vars sf1) ! v = Some (t, s)) v0
@@ -2812,7 +2825,7 @@ Section Operations.
 
   Lemma filter_ptree_wt:
     forall
-      sf1 sf2 l lr (ND: NoDup l)
+      (sf1 sf2: simple_form) l lr (ND: NoDup l)
       (CLOSED:
         forall
           v t s (IN : In v l) (GET : (vars sf1) ! v = Some (t, s)) v0
@@ -3060,6 +3073,7 @@ Section Operations.
     -> wf_sf {|
          final_values := final_values sf;
          read1_values := read1_values sf;
+         debug_log := debug_log sf;
          vars := PTree.map (fun _ '(t,a) => (t, f a)) (vars sf)
        |}.
   Proof.
@@ -3080,6 +3094,7 @@ Section Operations.
     -> wf_sf {|
          final_values := final_values sf;
          read1_values := read1_values sf;
+         debug_log := debug_log sf;
          vars := PTree.map (fun k '(t,a) => (t, f k a)) (vars sf)
     |}.
   Proof.

@@ -23,7 +23,7 @@ Section ReplaceField.
   Context (sigma: ext_funs_defs).
   Local Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Local Definition eval_sact := eval_sact r sigma.
-  Local Definition wf_sf := wf_sf R Sigma.
+  Local Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
     wt_sigma:
@@ -63,7 +63,7 @@ Section ReplaceField.
     end.
 
   Definition replace_field
-    (str: reg_t) (sf: simple_form) (field: string) (value: val)
+    (str: reg_t) (sf: simple_form (rule_name_t := rule_name_t)) (field: string) (value: val)
   : simple_form :=
     sf <|
       vars :=

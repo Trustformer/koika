@@ -798,6 +798,13 @@ namespace prims
     return bits<sz>::mk(x.v);
   }
 
+  template <typename T>
+  T id(const T x)
+  {
+    return x;
+  }
+
+
   template <bitwidth sz>
   bits<sz> operator~(const bits<sz> data)
   {

@@ -23,7 +23,7 @@ Section Prune.
   Context (sigma: ext_funs_defs).
   Local Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Local Definition eval_sact := eval_sact r sigma.
-  Local Definition wf_sf := wf_sf R Sigma.
+  Local Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
     wt_sigma:
@@ -31,7 +31,7 @@ Section Prune.
     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
   }.
 
-  Definition prune_irrelevant_aux (sf: @simple_form reg_t ext_fn_t) reg v :=
+  Definition prune_irrelevant_aux (sf: @simple_form reg_t ext_fn_t rule_name_t) reg v :=
     sf
       <| final_values := [(reg, v)] |>
       <| vars :=
@@ -121,7 +121,7 @@ Section Prune.
   Qed.
 
   Definition prune_irrelevant_l
-    (sf: @simple_form reg_t ext_fn_t) (regs: list reg_t)
+    (sf: @simple_form reg_t ext_fn_t rule_name_t) (regs: list reg_t)
   :=
     let reg_vars_list :=
       list_options_to_list (List.map (list_assoc (final_values sf)) regs)
@@ -133,6 +133,7 @@ Section Prune.
           (fun x => if in_dec eq_dec (fst x) regs then true else false)
           (final_values sf);
       vars := filter_ptree (vars sf) (PTree.empty _) reachable_vars;
+      debug_log := debug_log sf;
       read1_values := read1_values sf;
     |}.
 

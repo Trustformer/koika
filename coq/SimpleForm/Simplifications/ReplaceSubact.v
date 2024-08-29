@@ -26,7 +26,7 @@ Section ReplaceSubact.
   Local Definition eval_sact := eval_sact r sigma.
   Local Definition wt_sact := @wt_sact _ _ R Sigma.
   Local Definition interp_sact := @interp_sact _ _ _ r sigma.
-  Local Definition wf_sf := wf_sf R Sigma.
+  Local Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
       wt_sigma:
@@ -103,7 +103,7 @@ Section ReplaceSubact.
       vars.
 
   Definition replace_subact
-    (sf: simple_form) (positions: PTree.t (list position)) (v: sact)
+    (sf: simple_form (rule_name_t := rule_name_t)) (positions: PTree.t (list position)) (v: sact)
   : simple_form :=
     sf <| vars := replace_subact_in_vars (vars sf) positions v |>.
 

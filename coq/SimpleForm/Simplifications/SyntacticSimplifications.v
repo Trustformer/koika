@@ -24,7 +24,7 @@ Section SimplifySIfs.
   Context (sigma: ext_funs_defs).
   Local Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Local Definition eval_sact := eval_sact r sigma.
-  Local Definition wf_sf := wf_sf R Sigma.
+  Local Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
     wt_sigma:
@@ -43,7 +43,7 @@ Section SimplifySIfs.
   Definition simplify_sifs (v: var_value_map) :=
     Maps.PTree.map (fun _ '(t, a) => (t, simplify_sif_sact a)) v.
 
-  Definition simplify_sifs_sf (sf: simple_form) :=
+  Definition simplify_sifs_sf (sf: simple_form (rule_name_t := rule_name_t)) :=
     sf <| vars := simplify_sifs (vars sf) |>.
 
   Lemma simplify_sif_sact_correct:

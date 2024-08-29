@@ -23,7 +23,7 @@ Section ReplaceReg.
   Context (sigma: ext_funs_defs).
   Local Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Local Definition eval_sact := eval_sact r sigma.
-  Local Definition wf_sf := wf_sf R Sigma.
+  Local Definition wf_sf := wf_sf (rule_name_t := rule_name_t) R Sigma.
   Hypothesis WTRENV: Wt.wt_renv R REnv r.
   Context {
     wt_sigma:
@@ -56,7 +56,7 @@ Section ReplaceReg.
       (fun _ '(t, ua) => (t, replace_reg_in_sact ua from to))
       vars.
 
-  Definition replace_reg (sf: simple_form) (from: reg_t) (to: val)
+  Definition replace_reg (sf: simple_form (rule_name_t := rule_name_t)) (from: reg_t) (to: val)
   : simple_form :=
     sf <| vars := replace_reg_in_vars (vars sf) from to |>.
 

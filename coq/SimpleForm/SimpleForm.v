@@ -215,10 +215,11 @@ Section SimpleForm.
   Record simple_form := mkSimpleForm {
     final_values: list (reg_t * positive);
     read1_values: list (reg_t * positive);
+    debug_log: list (rule_name_t * list (reg_t * sact) * list (reg_t * sact) * list (reg_t * sact));
     vars: var_value_map
   }.
   #[export] Instance etaSimpleForm : Settable _ :=
-    settable! mkSimpleForm < final_values; read1_values; vars >.
+    settable! mkSimpleForm < final_values; read1_values; debug_log; vars >.
 
   (* * rule_information extraction *)
   (* ** Addition of a new action into an existing rule_information *)
@@ -5473,12 +5474,18 @@ Section SimpleForm.
       let nid := nid + 1 in
       let '(r2v2, vvs, nid) := merge_reg2vars2 r2v r2v' conflict_name vvs nid in
       let rir2 := merge_rirs sched_rir rir' conflict_name vvs in
-      get_rir_scheduler' rir2 r2v2 rules nid s
+      let lr := (rl,
+                  map (fun '(reg, sa) => (reg, uand sa (unot (SVar conflict_name)))) (rir_read1s rir'),
+                  map (fun '(reg, sa) => (reg, uand sa (unot (SVar conflict_name)))) (rir_write0s rir'),
+                  map (fun '(reg, sa) => (reg, uand sa (unot (SVar conflict_name)))) (rir_write1s rir')
+                ) in
+      let '(rir, r2v, nid, l) := get_rir_scheduler' rir2 r2v2 rules nid s in
+      (rir, r2v, nid, lr :: l)
     in
     match s with
-    | Done => (sched_rir, r2v, nid)
+    | Done => (sched_rir, r2v, nid, [])
     | Cons r s => interp_cons r s
-    | Try r s1 s2 =>   (sched_rir,r2v,nid)       (* Ignored for now *)
+    | Try r s1 s2 =>   (sched_rir,r2v,nid, [])       (* Ignored for now *)
     | SPos _ s => get_rir_scheduler' sched_rir r2v rules nid s
     end.
 
@@ -6148,8 +6155,8 @@ Section SimpleForm.
 
   Lemma get_rir_scheduler_ok:
     forall (rules: rule_name_t -> uact) s (GS: good_scheduler s) (nid: positive)
-      sched_rir r2v rir' r2v' nid'
-      (GRI: get_rir_scheduler' sched_rir r2v rules nid s = (rir', r2v', nid'))
+      sched_rir r2v rir' r2v' nid' l
+      (GRI: get_rir_scheduler' sched_rir r2v rules nid s = (rir', r2v', nid', l))
       (WT:
         forall r, exists tret,
         BitsToLists.wt_daction
@@ -6181,22 +6188,23 @@ Section SimpleForm.
           edestruct INTERPOK as (IF1 & _ & MLR1). eauto.
           clear INTERPOK INTERPKO.
           edestruct IHGS as (WFS2 & NID2 & INTERP2). eauto. eauto.
-          instantiate (1:=log_app l0 sched_log). eapply wt_log_app.
+          instantiate (1:=log_app l2 sched_log). eapply wt_log_app.
           {
             generalize (
-              wt_daction_preserves_wt_env
-                pos_t string string R Sigma REnv r sigma wt_sigma (rules r0) []
-                l1 tret [] sched_log log_empty l0 v
-            ). intro WDPWE.
+                wt_daction_preserves_wt_env
+                  pos_t string string R Sigma REnv r sigma wt_sigma (rules r0) []
+                  l3 tret [] sched_log log_empty l2 v
+              ). intro WDPWE.
             eapply WDPWE; auto. constructor.
             red. intros idx le. unfold log_empty. rewrite getenv_create. easy.
           }
           eauto. eauto. simpl.
           eapply wf_state_merge_rirs.
-          6: eauto. eauto. eauto. eauto. apply RG1. apply WFS1.
+          6: now eauto. now eauto. now eauto. now eauto. now apply RG1. now apply WFS1.
           simpl.
-          eapply match_logs_merge_false; eauto.
-          repeat refine (conj _ _). eauto.
+          now eapply match_logs_merge_false; eauto.
+          inv GRI. repeat refine (conj _ _).
+          eauto.
           eapply merge_reg2var_nid in Heqp0. lia. auto.
           intros. eauto.
         * unfold interp_drule in Heqo. repeat destr_in Heqo; inv Heqo.
@@ -6205,7 +6213,7 @@ Section SimpleForm.
           eapply wf_state_merge_rirs.
           6: eauto. eauto. eauto. eauto. apply RG1. apply WFS1.
           eapply match_logs_merge_true; eauto.
-          repeat refine (conj _ _). eauto.
+          inv GRI. repeat refine (conj _ _). now eauto.
           eapply merge_reg2var_nid in Heqp0. lia.
           auto. intros. eauto.
   Qed.
@@ -6367,8 +6375,8 @@ Section SimpleForm.
   Qed.
 
   Lemma get_rir_scheduler2_ok:
-    forall (rules: rule_name_t -> uact) s (GS: good_scheduler s) rir' r2v' nid'
-      (GRI: get_rir_scheduler rules s = (rir', r2v', nid'))
+    forall (rules: rule_name_t -> uact) s (GS: good_scheduler s) rir' r2v' nid' l
+      (GRI: get_rir_scheduler rules s = (rir', r2v', nid', l))
       (WT:
         forall r, exists tret,
         BitsToLists.wt_daction
@@ -6415,7 +6423,7 @@ Section SimpleForm.
   Qed.
 
   Definition schedule_to_simple_form rules s :=
-    let '(rir, r2v, nid) := get_rir_scheduler rules s in {|
+    let '(rir, r2v, nid, l) := get_rir_scheduler rules s in {|
       final_values :=
         filter_map
           (fun '(r,p,n) =>
@@ -6432,6 +6440,7 @@ Section SimpleForm.
              | _ => None
              end)
           r2v;
+      debug_log := l;
       vars := rir_vars rir;
     |}.
 

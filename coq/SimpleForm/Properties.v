@@ -80,7 +80,7 @@ Section Properties.
     eapply reachable_remove; eauto.
   Qed.
 
-  Record wf_sf (sf: simple_form) := {
+  Record wf_sf (sf: simple_form (rule_name_t := rule_name_t)) := {
     wf_sf_wt: wt_vvs (Sigma:=Sigma) R (vars sf);
     wf_sf_vvs: vvs_smaller_variables (vars sf);
     wf_sf_final: forall reg k,
