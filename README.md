@@ -12,7 +12,7 @@ hardware.
 * Support SMT powered proofs
 * Reorganized codebase
 * Extended RV processor (moved to
-  [its own repository](https://gitlab.inria.fr/SUSHI-test/FMH/herve))
+  [its own repository](https://gitlab.inria.fr/SUSHI-public/FMH/herve))
 
 ## Getting started
 Last tested with with `OCaml 5.1.1` and `Coq 8.19.2`.
@@ -44,7 +44,7 @@ get your hands dirty in `examples`, have a chat with us.
 For proofs using progressive rewriting, read
 [our paper](https://inria.hal.science/hal-04118645/document). We recommend the
 SMT approach over this. Head to the repository of
-[our processor](https://gitlab.inria.fr/SUSHI-test/FMH/herve) to see it in action.
+[our processor](https://gitlab.inria.fr/SUSHI-public/FMH/herve) to see it in action.
 
 ## Who worked on this in SUSHI?
 Current members:
@@ -53,7 +53,7 @@ Current members:
 
 Past members:
 * @gdesfren, intern: reworked most of the
-  [processor example](https://gitlab.inria.fr/SUSHI-test/FMH/herve) to add
+  [processor example](https://gitlab.inria.fr/SUSHI-public/FMH/herve) to add
   privileges
 
 ## Plans
