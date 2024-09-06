@@ -15,13 +15,14 @@ Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
-(* When reasoning about a Koîka schedule, a lot of complex implicit mechanisms
+(* When reasoning about a Kôika schedule, a lot of complex implicit mechanisms
    have to be considered explicitly (rules merging, cancellation, ...).
    Furthermore, performance issues related to abstract interpretation make
    reasoning about the behavior of some even moderately complex models (e.g.,
    the RISC-V processor example) impossible.
 
-   This is what this simpler form aims to fix. For instance, it makes finding
+   This is what this simpler form, which we call an IRR (Intermediate
+   Representation for Reasoning) aims to fix. For instance, it makes finding
    under which conditions the value of a register is updated or proving that the
    value of register x never reaches 5 much easier.
 
