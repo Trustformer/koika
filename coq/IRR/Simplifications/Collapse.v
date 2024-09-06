@@ -1,14 +1,14 @@
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
-Require Import Koika.SimpleForm.Properties.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
+Require Import Koika.IRR.Properties.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
-Require Import Koika.SimpleForm.Simplifications.Prune.
+Require Import Koika.IRR.Simplifications.Prune.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
@@ -36,7 +36,7 @@ Section Collapse.
   (* TODO Also inline elements referenced only once? *)
 
   Fixpoint collapse_sact
-    (vvs : PTree.t (type * SimpleForm.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t)))
+    (vvs : PTree.t (type * IRR.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t)))
     (a : sact)
   :=
     match a with
@@ -56,7 +56,7 @@ Section Collapse.
     end.
 
   (* Note that *)
-  Definition collapse_sf (sf: simple_form (rule_name_t := rule_name_t)) :=
+  Definition collapse_sf (sf: IRR (rule_name_t := rule_name_t)) :=
     sf <| vars :=
       (* TODO Alternatively, fold and handle elements in order. That would
          remove the need for successive calls to collapse. *)

@@ -1,4 +1,4 @@
-Require Import Koika.SimpleForm.Interpretation.
+Require Import Koika.IRR.Interpretation.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.KoikaForm.Syntax.
 Require Import Koika.KoikaForm.Types.
@@ -7,7 +7,7 @@ Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Environments.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Tactics.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 
 Section Properties.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
@@ -80,7 +80,7 @@ Section Properties.
     eapply reachable_remove; eauto.
   Qed.
 
-  Record wf_sf (sf: simple_form (rule_name_t := rule_name_t)) := {
+  Record wf_sf (sf: IRR (rule_name_t := rule_name_t)) := {
     wf_sf_wt: wt_vvs (Sigma:=Sigma) R (vars sf);
     wf_sf_vvs: vvs_smaller_variables (vars sf);
     wf_sf_final: forall reg k,

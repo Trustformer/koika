@@ -7,9 +7,9 @@ Require Import Koika.BitsToLists.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Primitives.
 Require Import Koika.KoikaForm.Syntax.
-Require Import Koika.SimpleForm.Wt.
+Require Import Koika.IRR.Wt.
 Require Import Koika.KoikaForm.Untyped.UntypedSemantics.
-Require Import Koika.SimpleForm.Sact.
+Require Import Koika.IRR.Sact.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 From RecordUpdate Require Import RecordSet.
@@ -30,7 +30,7 @@ Import RecordSetNotations.
    cycle on the final state of the registers and of the emitted extcalls,
    although the latter are not really considered in Kôika's pure semantics). *)
 Open Scope positive.
-Section SimpleForm.
+Section IRR.
   Context {pos_t reg_t ext_fn_t rule_name_t: Type}.
   Context {reg_t_eq_dec: EqDec reg_t}.
   Context {ext_fn_t_eq_dec: EqDec ext_fn_t}.
@@ -212,14 +212,14 @@ Section SimpleForm.
     settable! mkRuleInformationRaw
       < rir_read0s; rir_read1s; rir_write0s; rir_write1s; rir_vars;
         rir_failure_cond >.
-  Record simple_form := mkSimpleForm {
+  Record IRR := mkIRR {
     final_values: list (reg_t * positive);
     read1_values: list (reg_t * positive);
     debug_log: list (rule_name_t * list (reg_t * sact) * list (reg_t * sact) * list (reg_t * sact));
     vars: var_value_map
   }.
-  #[export] Instance etaSimpleForm : Settable _ :=
-    settable! mkSimpleForm < final_values; read1_values; debug_log; vars >.
+  #[export] Instance etaIRR : Settable _ :=
+    settable! mkIRR < final_values; read1_values; debug_log; vars >.
 
   (* * rule_information extraction *)
   (* ** Addition of a new action into an existing rule_information *)
@@ -6422,7 +6422,7 @@ Section SimpleForm.
     exploit mlr_read0. eauto. unfold v. rewrite log_app_empty. tauto.
   Qed.
 
-  Definition schedule_to_simple_form rules s :=
+  Definition schedule_to_IRR rules s :=
     let '(rir, r2v, nid, l) := get_rir_scheduler rules s in {|
       final_values :=
         filter_map
@@ -6465,9 +6465,9 @@ Section SimpleForm.
       + eauto.
   Qed.
 
-  Lemma schedule_to_simple_form_ok:
+  Lemma schedule_to_IRR_ok:
     forall (rules: rule_name_t -> uact) s (GS: good_scheduler s) sf
-      (GRI: schedule_to_simple_form rules s = sf)
+      (GRI: schedule_to_IRR rules s = sf)
       (WT:
         forall r, exists tret,
         BitsToLists.wt_daction
@@ -6490,7 +6490,7 @@ Section SimpleForm.
     /\ interp_sact (vars sf) (SVar n) v.
   Proof.
     intros.
-    unfold schedule_to_simple_form in GRI. repeat destr_in GRI. subst. simpl.
+    unfold schedule_to_IRR in GRI. repeat destr_in GRI. subst. simpl.
     edestruct get_rir_scheduler2_ok as (WFS & MLR); eauto.
     repeat refine (conj _ _).
     - apply WFS.
@@ -6516,5 +6516,5 @@ Section SimpleForm.
       intros. repeat destr_in H; inv H. auto.
       intros. repeat destr_in H; inv H. repeat destr_in H0; inv H0. auto.
   Qed.
-End SimpleForm.
+End IRR.
 Close Scope positive.

@@ -10,11 +10,11 @@
    contains Ltac definitions.  In particular, probe_simplifications does not
    modify the proof context. *)
 Require Import Koika.BitsToLists.
-Require Import Koika.SimpleForm.SimpleForm.
-Require Import Koika.SimpleForm.Direction.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.IRR.
+Require Import Koika.IRR.Direction.
+Require Import Koika.IRR.Operations.
 Require Import Koika.KoikaForm.SimpleVal.
-Require Import Koika.SimpleForm.Simplifications.SimplifyTargeted.
+Require Import Koika.IRR.Simplifications.SimplifyTargeted.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 

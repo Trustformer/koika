@@ -1,10 +1,10 @@
 Require Import Koika.KoikaForm.Untyped.UntypedSemantics.
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
@@ -96,7 +96,7 @@ Section Simplify.
   Definition simplify_vars (v: var_value_map) :=
     Maps.PTree.map (fun _ '(t, a) => (t, simplify_sact a)) v.
 
-  Definition simplify_sf (sf: simple_form (rule_name_t := rule_name_t)) :=
+  Definition simplify_sf (sf: IRR (rule_name_t := rule_name_t)) :=
     sf <| vars := simplify_vars (vars sf) |>.
 
   Lemma simplify_unop_cases:

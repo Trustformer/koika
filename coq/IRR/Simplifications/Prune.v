@@ -1,9 +1,9 @@
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
@@ -31,13 +31,13 @@ Section Prune.
     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
   }.
 
-  Definition prune_irrelevant_aux (sf: @simple_form reg_t ext_fn_t rule_name_t) reg v :=
+  Definition prune_irrelevant_aux (sf: @IRR reg_t ext_fn_t rule_name_t) reg v :=
     sf
       <| final_values := [(reg, v)] |>
       <| vars :=
            filter_ptree (vars sf) (PTree.empty _) (useful_vars_for_var sf v) |>.
 
-  Definition prune_irrelevant (sf: simple_form) reg :=
+  Definition prune_irrelevant (sf: IRR) reg :=
     match list_assoc (final_values sf) reg with
     | Some v => Some (prune_irrelevant_aux sf reg v)
     | None => None
@@ -121,7 +121,7 @@ Section Prune.
   Qed.
 
   Definition prune_irrelevant_l
-    (sf: @simple_form reg_t ext_fn_t rule_name_t) (regs: list reg_t)
+    (sf: @IRR reg_t ext_fn_t rule_name_t) (regs: list reg_t)
   :=
     let reg_vars_list :=
       list_options_to_list (List.map (list_assoc (final_values sf)) regs)

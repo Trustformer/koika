@@ -1,5 +1,5 @@
 (*! Utilities | Refer to positions in a Sact !*)
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Coq.Lists.List.
 
 Inductive direction := branch1 | branch2 | branch3.

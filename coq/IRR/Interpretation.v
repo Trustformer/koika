@@ -1,5 +1,5 @@
 Require Import Koika.Utils.Environments.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Koika.KoikaForm.TypeInference.
 Require Import Koika.KoikaForm.Untyped.UntypedSemantics.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
@@ -445,7 +445,7 @@ Section Interpretation.
           exists vv, In vv (vars_in_sact a)
           /\ forall vis,
              (forall n : positive, In n vis
-              -> forall (v0 : positive) (t0 : type) (a0 : SimpleForm.sact),
+              -> forall (v0 : positive) (t0 : type) (a0 : IRR.sact),
               vvs ! n = Some (t0, a0)
               -> reachable_var vvs a0 v0
               -> In v0 vis)
@@ -454,7 +454,7 @@ Section Interpretation.
         eapply fold_left_ev with (
           I := fun vis =>
             forall n : positive, In n vis
-            -> forall (v0 : positive) (t0 : type) (a0 : SimpleForm.sact),
+            -> forall (v0 : positive) (t0 : type) (a0 : IRR.sact),
             vvs ! n = Some (t0, a0)
             -> reachable_var vvs a0 v0
             -> In v0 vis).
@@ -495,7 +495,7 @@ Section Interpretation.
         apply var_in_sact_ok_inv. apply H. unfold var_lt. lia.
   Qed.
 
-  Definition useful_vars (sf: simple_form (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (rule_name_t := rule_name_t))
+  Definition useful_vars (sf: IRR (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (rule_name_t := rule_name_t))
   : list positive :=
     let todo := map snd (final_values sf) in
     fold_left
@@ -555,7 +555,7 @@ Section Interpretation.
     eapply useful_vars_incl; eauto.
   Qed.
 
-  Definition simple_form := simple_form (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (rule_name_t := rule_name_t).
+  Definition IRR := IRR (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) (rule_name_t := rule_name_t).
 
   Fixpoint eval_sact (vars: var_value_map) (a: sact) (fuel: nat) : option val :=
     match fuel with

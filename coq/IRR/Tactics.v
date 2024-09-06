@@ -1,13 +1,13 @@
 Require Import Koika.BitsToLists.
 Require Import Koika.Utils.Environments.
-Require Import Koika.SimpleForm.Direction.
-Require Import Koika.SimpleForm.SimpleForm.
-Require Import Koika.SimpleForm.Operations.
-Require Import Koika.SimpleForm.Simplifications.Simplifications.
+Require Import Koika.IRR.Direction.
+Require Import Koika.IRR.IRR.
+Require Import Koika.IRR.Operations.
+Require Import Koika.IRR.Simplifications.Simplifications.
 Require Import Koika.KoikaForm.SimpleVal.
-Require Import Koika.SimpleForm.Wt.
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Wt.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 
 Ltac update_wfsf :=
   let wfsf_tmp := fresh "wfsf" in
@@ -256,7 +256,7 @@ Ltac finish :=
 Ltac isolate_sf :=
   let name := fresh "sf" in
   lazymatch goal with
-  | old_sf: SimpleForm.simple_form, wfsf: wf_sf _ _ _
+  | old_sf: IRR.IRR, wfsf: wf_sf _ _ _
     |- getenv _ (interp_cycle _ _ ?x) _ = _ =>
     set (name := x); fold name in wfsf; subst old_sf;
     vm_compute in name; rename name into old_sf

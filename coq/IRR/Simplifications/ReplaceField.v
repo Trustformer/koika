@@ -1,9 +1,9 @@
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
@@ -63,8 +63,8 @@ Section ReplaceField.
     end.
 
   Definition replace_field
-    (str: reg_t) (sf: simple_form (rule_name_t := rule_name_t)) (field: string) (value: val)
-  : simple_form :=
+    (str: reg_t) (sf: IRR (rule_name_t := rule_name_t)) (field: string) (value: val)
+  : IRR :=
     sf <|
       vars :=
         PTree.map
@@ -74,7 +74,7 @@ Section ReplaceField.
     |>.
 
   Lemma replace_field_interp_inv:
-    forall str field (vvs : PTree.t (type * SimpleForm.sact)) field_v,
+    forall str field (vvs : PTree.t (type * IRR.sact)) field_v,
     get_field (getenv REnv r str) field = Some field_v
     -> forall (a : sact) reg,
       interp_sact
@@ -103,7 +103,7 @@ Section ReplaceField.
   Qed.
 
   Lemma replace_field_interp:
-    forall (vvs : PTree.t (type * SimpleForm.sact)) str field field_v,
+    forall (vvs : PTree.t (type * IRR.sact)) str field field_v,
     wt_vvs (Sigma:=Sigma) R vvs
     -> vvs_smaller_variables vvs
     -> get_field (getenv REnv r str) field = Some field_v

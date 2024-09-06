@@ -1,10 +1,10 @@
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
-Require Import Koika.SimpleForm.Direction.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.Direction.
+Require Import Koika.IRR.IRR.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
@@ -103,8 +103,8 @@ Section ReplaceSubact.
       vars.
 
   Definition replace_subact
-    (sf: simple_form (rule_name_t := rule_name_t)) (positions: PTree.t (list position)) (v: sact)
-  : simple_form :=
+    (sf: IRR (rule_name_t := rule_name_t)) (positions: PTree.t (list position)) (v: sact)
+  : IRR :=
     sf <| vars := replace_subact_in_vars (vars sf) positions v |>.
 
   Lemma wt_unop_determ:

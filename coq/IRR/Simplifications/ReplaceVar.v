@@ -1,9 +1,9 @@
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
@@ -38,8 +38,8 @@ Section ReplaceVar.
       (fun k '(t, ua) => (t, if eq_dec from k then to else ua))
       vars.
 
-  Definition replace_var (sf: simple_form (rule_name_t := rule_name_t)) (from: positive) (to: sact)
-  : simple_form :=
+  Definition replace_var (sf: IRR (rule_name_t := rule_name_t)) (from: positive) (to: sact)
+  : IRR :=
     sf <| vars := replace_var_in_vars (vars sf) from to |>.
 
   Lemma wt_sact_replace_var_in_vars:

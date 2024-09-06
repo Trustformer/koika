@@ -1,8 +1,8 @@
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Properties.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Properties.
 Require Import Koika.KoikaForm.Untyped.UntypedSemantics.
 Require Import Koika.BitsToLists.
-Require Import Koika.SimpleForm.Sact.
+Require Import Koika.IRR.Sact.
 Require Import Koika.KoikaForm.Desugaring.DesugaredSyntax.
 Require Import Koika.KoikaForm.Syntax.
 Require Import Koika.KoikaForm.Types.
@@ -11,7 +11,7 @@ Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Environments.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Tactics.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Coq.Lists.List.
 Scheme Equality for list.
 Require Import Coq.Sorting.Sorted.
@@ -35,8 +35,8 @@ Section Operations.
   Context (sigma: ext_funs_defs).
 
   Definition sact := sact (ext_fn_t := ext_fn_t) (reg_t := reg_t).
-  Definition simple_form := simple_form (ext_fn_t := ext_fn_t) (reg_t := reg_t) (rule_name_t := rule_name_t).
-  Instance etaSimpleForm : Settable _ := @etaSimpleForm reg_t ext_fn_t rule_name_t.
+  Definition IRR := IRR (ext_fn_t := ext_fn_t) (reg_t := reg_t) (rule_name_t := rule_name_t).
+  Instance etaIRR : Settable _ := @etaIRR reg_t ext_fn_t rule_name_t.
   Definition var_value_map :=
     var_value_map (ext_fn_t := ext_fn_t) (reg_t := reg_t).
   Definition useful_vars := useful_vars (ext_fn_t := ext_fn_t) (reg_t := reg_t) (rule_name_t := rule_name_t).
@@ -51,7 +51,7 @@ Section Operations.
     -> wt_val (retSig (Sigma ufn)) (sigma ufn vc)
   }.
 
-  Definition remove_vars (sf: simple_form) : simple_form :=
+  Definition remove_vars (sf: IRR) : IRR :=
     sf <|
       vars :=
         fold_left
@@ -225,8 +225,8 @@ Section Operations.
       vars.
 
   Definition replace_all_occurrences
-    (sf: simple_form) (from: positive) (to: val)
-  : simple_form :=
+    (sf: IRR) (from: positive) (to: val)
+  : IRR :=
     sf <| vars := replace_all_occurrences_in_vars (vars sf) from to |>.
 
   Definition max_var (vars: var_value_map) :=
@@ -285,12 +285,12 @@ Section Operations.
     forall (l : list (positive * (type * sact))) (n0 n1 : nat),
     n1 <= n0
     -> fold_left
-         (fun (a : nat) (p : positive * (type * SimpleForm.sact)) =>
+         (fun (a : nat) (p : positive * (type * IRR.sact)) =>
            let '(_, a0) := snd p in
            if (fst p <? var)%positive then size_sact a0 + a else a)
          l n1
     <= fold_left
-         (fun (a : nat) (p : positive * (type * SimpleForm.sact)) =>
+         (fun (a : nat) (p : positive * (type * IRR.sact)) =>
             let '(_, a0) := snd p in
             if (fst p <? n)%positive
             then size_sact (reg_t:=reg_t) (ext_fn_t:=ext_fn_t) a0 + a
@@ -321,7 +321,7 @@ Section Operations.
   Lemma vvs_size_rew:
     forall l m n,
     fold_left
-      (fun (a0 : nat) (p : positive * (type * SimpleForm.sact)) =>
+      (fun (a0 : nat) (p : positive * (type * IRR.sact)) =>
          let '(_, a1) := snd p in
          if (fst p <? n)%positive then size_sact a1 + a0 else a0)
       l m
@@ -330,7 +330,7 @@ Section Operations.
           (a0 : nat)
           (p :
             positive
-            * (type * SimpleForm.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t)))
+            * (type * IRR.sact (ext_fn_t:=ext_fn_t)(reg_t:=reg_t)))
           =>
             let '(_, a1) := snd p in
             if (fst p <? n)%positive then size_sact a1 + a0 else a0)
@@ -1000,7 +1000,7 @@ Section Operations.
     | SVar _ | SReg _ | SConst _ => ua
     end.
 
-  Definition simplify_var (sf: simple_form) var :=
+  Definition simplify_var (sf: IRR) var :=
     match (vars sf) ! var with
     | Some (t, a) =>
       match eval_sact_no_vars a with
@@ -1332,7 +1332,7 @@ Section Operations.
     - constructor.
   Qed.
 
-  Definition inlining_pass (sf: simple_form) : list (positive * val) :=
+  Definition inlining_pass (sf: IRR) : list (positive * val) :=
     (* Try to determine the value of variables *)
     let ks := PosSort.sort (map fst (PTree.elements (vars sf))) in
     let '(sf,l) :=
@@ -1489,7 +1489,7 @@ Section Operations.
       regs_in_sact_aux a0 (regs_in_sact_aux a1 (regs_in_sact_aux a2 regs))
     end.
 
-  Definition useful_vars_for_var (sf: simple_form) (v: positive)
+  Definition useful_vars_for_var (sf: IRR) (v: positive)
   : list positive :=
     reachable_vars_aux (vars sf) v [] (S (Pos.to_nat v)).
 
@@ -1503,7 +1503,7 @@ Section Operations.
       )
       (useful_vars_for_var sf v) [].
 
-  Definition interp_cycle (sf: simple_form) : UREnv :=
+  Definition interp_cycle (sf: IRR) : UREnv :=
     let sf := remove_vars sf in
     let fenv := inlining_pass sf in
     create
@@ -1518,7 +1518,7 @@ Section Operations.
         | None => getenv REnv r k
         end).
 
-  Definition get_val (sf: simple_form) reg : option val :=
+  Definition get_val (sf: IRR) reg : option val :=
     let sf := remove_vars sf in
     let fenv := inlining_pass sf in
     match list_assoc (final_values sf) reg with
@@ -1647,7 +1647,7 @@ Section Operations.
     intros; apply PTree.gempty.
   Qed.
 
-  Lemma simple_form_ok:
+  Lemma IRR_ok:
     forall
       {Show_rule: Show rule_name_t} {finreg: FiniteType reg_t}
       (rules: rule_name_t -> daction) (s: schedule) (GS: good_scheduler s)
@@ -1657,12 +1657,12 @@ Section Operations.
         wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules rule) t),
     UntypedSemantics.interp_dcycle rules r sigma s
     = interp_cycle
-      (SimpleForm.schedule_to_simple_form (Sigma:=Sigma) R rules s).
+      (IRR.schedule_to_IRR (Sigma:=Sigma) R rules s).
   Proof.
     intros.
     unfold interp_dcycle.
     generalize (
-      schedule_to_simple_form_ok
+      schedule_to_IRR_ok
         (wt_sigma:=wt_sigma) REnv r R WTRENV rules _ GS _ eq_refl TA WTr).
     simpl. intros (WTV & VSV & INFINAL & WTFinal & SPECFINAL).
     unfold interp_cycle. unfold commit_update.
@@ -1681,9 +1681,9 @@ Section Operations.
     econstructor. simpl.
     fold (
       filter_ptree
-        (vars (schedule_to_simple_form (Sigma:=Sigma) R rules s))
+        (vars (schedule_to_IRR (Sigma:=Sigma) R rules s))
         (PTree.empty _)
-        (useful_vars (schedule_to_simple_form (Sigma:=Sigma) R rules s))).
+        (useful_vars (schedule_to_IRR (Sigma:=Sigma) R rules s))).
     rewrite <- filter_ptree_eq. eauto.
     eapply useful_vars_incl. 2: unfold useful_vars; eauto. eauto.
     eapply list_assoc_in in GET. apply (in_map snd) in GET; eauto.
@@ -1704,7 +1704,7 @@ Section Operations.
         forall rule, exists t,
         wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules rule) t)
       k,
-    let sf := (SimpleForm.schedule_to_simple_form (Sigma:=Sigma) R rules s) in
+    let sf := (IRR.schedule_to_IRR (Sigma:=Sigma) R rules s) in
     exists n s t,
     list_assoc (final_values sf) k = Some n
     /\ (vars sf) ! n = Some (t, s)
@@ -1713,7 +1713,7 @@ Section Operations.
     intros.
     unfold interp_cycle. rewrite getenv_create.
     Opaque vvs_size. Opaque max_var. Opaque size_sact. Opaque eval_sact.
-    generalize (schedule_to_simple_form_ok
+    generalize (schedule_to_IRR_ok
                   (wt_sigma:=wt_sigma)
                   REnv r R WTRENV rules _ GS _ eq_refl TA WTr). simpl.
     intros (WTV & VSV  & INFINAL & WTFinal & SPECFINAL).
@@ -1730,9 +1730,9 @@ Section Operations.
     econstructor. simpl.
     fold (
       filter_ptree
-        (vars (schedule_to_simple_form (Sigma:=Sigma) R rules s))
+        (vars (schedule_to_IRR (Sigma:=Sigma) R rules s))
         (PTree.empty _)
-        (useful_vars (schedule_to_simple_form (Sigma:=Sigma) R rules s))).
+        (useful_vars (schedule_to_IRR (Sigma:=Sigma) R rules s))).
     rewrite <- filter_ptree_eq. eauto.
     eapply useful_vars_incl. 2: unfold useful_vars; eauto. eauto.
     eapply list_assoc_in in GET. apply (in_map snd) in GET; eauto.
@@ -1778,17 +1778,17 @@ Section Operations.
     - destruct H. eapply eval_sact_interp_sact; eauto.
   Qed.
 
-  Lemma schedule_to_simple_form_wf:
+  Lemma schedule_to_IRR_wf:
     forall
       {Show_rule: Show rule_name_t} `{finite: FiniteType reg_t}
-      (rules: rule_name_t -> SimpleForm.uact)
+      (rules: rule_name_t -> IRR.uact)
       sched (GS: good_scheduler sched)
       (WTrules: forall r0 : rule_name_t, exists tret : type, wt_daction (R:=R) (Sigma:=Sigma) pos_t string string [] (rules r0) tret)
     ,
-      wf_sf (schedule_to_simple_form (pos_t := pos_t) R (Sigma:=Sigma) rules sched).
+      wf_sf (schedule_to_IRR (pos_t := pos_t) R (Sigma:=Sigma) rules sched).
   Proof.
     intros.
-    edestruct (@schedule_to_simple_form_ok) as (WT & VSV & FINAL & FINALWt & FINAL2).
+    edestruct (@schedule_to_IRR_ok) as (WT & VSV & FINAL & FINALWt & FINAL2).
     apply wt_sigma. apply WTRENV. apply GS. reflexivity. apply WTrules.
     apply WTRENV.
     constructor; auto.
@@ -1798,7 +1798,7 @@ Section Operations.
       rewrite GET in H; inv H. eauto.
   Qed.
 
-  Record sf_eq (sf1 sf2: simple_form) := {
+  Record sf_eq (sf1 sf2: IRR) := {
     sf_eq_final: final_values sf1 = final_values sf2;
     sf_eq_vars: forall reg v t,
       In (reg,v) (final_values sf1) ->
@@ -1896,7 +1896,7 @@ Section Operations.
     wf_sf sf1 -> wf_sf sf2 -> sf_eq sf1 sf2 -> sf_eq (F1 sf1) (F1 sf2).
   Proof. intros. rewrite <- ! F1OK; auto. Qed.
 
-  Record sf_eq_restricted l (sf1 sf2: simple_form) := {
+  Record sf_eq_restricted l (sf1 sf2: IRR) := {
     sf_eqr_final:
     forall reg,
       In reg l ->
@@ -2204,7 +2204,7 @@ Section Operations.
 
   Lemma f_interp_sact_ok':
     forall f
-           (SPEC: forall (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+           (SPEC: forall (a : IRR.sact) (v : val) (vvs : PTree.t (type * IRR.sact)),
                wt_vvs (Sigma:=Sigma) R vvs ->
                forall t : type,
                  wt_sact (Sigma:=Sigma) R vvs a t ->
@@ -2212,10 +2212,10 @@ Section Operations.
                  interp_sact (sigma:=sigma) REnv r vvs a v ->
                  interp_sact (sigma:=sigma) REnv r vvs (f a) v
            )
-           (FWT: forall vvs (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall vvs (a0 : IRR.sact) (t0 : type),
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f a0) t0)
-           (VIS: forall (s : SimpleForm.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
+           (VIS: forall (s : IRR.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
            vvs
            (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
            (VVSSV: vvs_smaller_variables vvs)
@@ -2242,7 +2242,7 @@ Section Operations.
 
   Lemma f_interp_sact_ok'i:
     forall f
-           (SPEC: forall k (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+           (SPEC: forall k (a : IRR.sact) (v : val) (vvs : PTree.t (type * IRR.sact)),
                wt_vvs (Sigma:=Sigma) R vvs ->
                forall t : type,
                  wt_sact (Sigma:=Sigma) R vvs a t ->
@@ -2250,10 +2250,10 @@ Section Operations.
                  interp_sact (sigma:=sigma) REnv r vvs a v ->
                  interp_sact (sigma:=sigma) REnv r vvs (f k a) v
            )
-           (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall k vvs (a0 : IRR.sact) (t0 : type),
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
-           (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
+           (VIS: forall k (s : IRR.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
            vvs
            (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
            (VVSSV: vvs_smaller_variables vvs)
@@ -2280,7 +2280,7 @@ Section Operations.
 
   Lemma f_interp_sact_ok'iP:
     forall P {MD: Type} Pk (metadata: positive -> MD) (f: MD -> sact -> sact)
-           (SPEC: forall k (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+           (SPEC: forall k (a : IRR.sact) (v : val) (vvs : PTree.t (type * IRR.sact)),
                wt_vvs (Sigma:=Sigma) R vvs ->
                vvs_smaller_variables vvs ->
                P vvs ->
@@ -2290,14 +2290,14 @@ Section Operations.
                  interp_sact (sigma:=sigma) REnv r vvs a v ->
                  interp_sact (sigma:=sigma) REnv r vvs (f k a) v
            )
-           (FWT: forall k vvs (PV: P vvs) (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall k vvs (PV: P vvs) (a0 : IRR.sact) (t0 : type),
                Pk k a0 ->
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
            (Ppres: forall vvs, P vvs ->
                                P (PTree.map (fun (k : positive) '(t1, a0) => (t1, f (metadata k) a0)) vvs)
            )
-           (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
+           (VIS: forall k (s : IRR.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
            vvs
            (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
            (VVSSV: vvs_smaller_variables vvs)
@@ -2328,14 +2328,14 @@ Section Operations.
 
   Lemma f_interp_sact_ok:
     forall vvs f
-           (FSPEC: forall vvs : PTree.t (type * SimpleForm.sact),
+           (FSPEC: forall vvs : PTree.t (type * IRR.sact),
                wt_vvs (Sigma:=Sigma) R vvs ->
                vvs_smaller_variables vvs ->
                forall (a : sact) (v : val),
                  interp_sact (sigma:=sigma) REnv r vvs (f a) v ->
                  forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
            )
-           (FWT: forall vvs (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall vvs (a0 : IRR.sact) (t0 : type),
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f a0) t0)
            (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
@@ -2361,14 +2361,14 @@ Section Operations.
 
   Lemma f_interp_sact_oki:
     forall vvs f
-           (FSPEC: forall k (vvs : PTree.t (type * SimpleForm.sact)),
+           (FSPEC: forall k (vvs : PTree.t (type * IRR.sact)),
                wt_vvs (Sigma:=Sigma) R vvs ->
                vvs_smaller_variables vvs ->
                forall (a : sact) (v : val),
                  interp_sact (sigma:=sigma) REnv r vvs (f k a) v ->
                  forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
            )
-           (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall k vvs (a0 : IRR.sact) (t0 : type),
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
            (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
@@ -2394,14 +2394,14 @@ Section Operations.
 
   Lemma f_interp_sact_okiP:
     forall vvs f P
-           (FSPEC: forall k (vvs : PTree.t (type * SimpleForm.sact)) (PV: P vvs),
+           (FSPEC: forall k (vvs : PTree.t (type * IRR.sact)) (PV: P vvs),
                wt_vvs (Sigma:=Sigma) R vvs ->
                vvs_smaller_variables vvs ->
                forall (a : sact) (v : val),
                  interp_sact (sigma:=sigma) REnv r vvs (f k a) v ->
                  forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
            )
-           (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type) (PV: P vvs),
+           (FWT: forall k vvs (a0 : IRR.sact) (t0 : type) (PV: P vvs),
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
            (WTVVS: wt_vvs (Sigma := Sigma) R vvs)
@@ -2427,14 +2427,14 @@ Section Operations.
 
   Lemma sf_eq_f:
     forall sf f
-           (FSPEC: forall vvs : PTree.t (type * SimpleForm.sact),
+           (FSPEC: forall vvs : PTree.t (type * IRR.sact),
                wt_vvs (Sigma:=Sigma) R vvs ->
                vvs_smaller_variables vvs ->
                forall (a : sact) (v : val),
                  interp_sact (sigma:=sigma) REnv r vvs (f a) v ->
                  forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
            )
-           (SPEC: forall (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+           (SPEC: forall (a : IRR.sact) (v : val) (vvs : PTree.t (type * IRR.sact)),
                wt_vvs (Sigma:=Sigma) R vvs ->
                forall t : type,
                  wt_sact (Sigma:=Sigma) R vvs a t ->
@@ -2442,10 +2442,10 @@ Section Operations.
                  interp_sact (sigma:=sigma) REnv r vvs a v ->
                  interp_sact (sigma:=sigma) REnv r vvs (f a) v
            )
-           (FWT: forall vvs (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall vvs (a0 : IRR.sact) (t0 : type),
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f a0) t0)
-           (VIS: forall (s : SimpleForm.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
+           (VIS: forall (s : IRR.sact) (v' : positive), var_in_sact (f s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
       sf_eq sf {| final_values := final_values sf;
@@ -2480,14 +2480,14 @@ Section Operations.
 
   Lemma sf_eq_mapi:
     forall sf f
-           (FSPEC: forall (vvs : PTree.t (type * SimpleForm.sact)) k,
+           (FSPEC: forall (vvs : PTree.t (type * IRR.sact)) k,
                wt_vvs (Sigma:=Sigma) R vvs ->
                vvs_smaller_variables vvs ->
                forall (a : sact) (v : val),
                  interp_sact (sigma:=sigma) REnv r vvs (f k a) v ->
                  forall t : type, wt_sact (Sigma:=Sigma) R vvs a t -> interp_sact (sigma:=sigma) REnv r vvs a v
            )
-           (SPEC: forall k (a : SimpleForm.sact) (v : val) (vvs : PTree.t (type * SimpleForm.sact)),
+           (SPEC: forall k (a : IRR.sact) (v : val) (vvs : PTree.t (type * IRR.sact)),
                wt_vvs (Sigma:=Sigma) R vvs ->
                forall t : type,
                  wt_sact (Sigma:=Sigma) R vvs a t ->
@@ -2495,10 +2495,10 @@ Section Operations.
                  interp_sact (sigma:=sigma) REnv r vvs a v ->
                  interp_sact (sigma:=sigma) REnv r vvs (f k a) v
            )
-           (FWT: forall k vvs (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall k vvs (a0 : IRR.sact) (t0 : type),
                wt_sact (Sigma:=Sigma) R vvs a0 t0 ->
                wt_sact (Sigma:=Sigma) R vvs (f k a0) t0)
-           (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
+           (VIS: forall k (s : IRR.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
       sf_eq sf {| final_values := final_values sf;
@@ -2533,7 +2533,7 @@ Section Operations.
 
   Lemma sf_eq_mapi':
     forall sf f
-           (SPEC: forall (a : SimpleForm.sact) (v : val),
+           (SPEC: forall (a : IRR.sact) (v : val),
                forall t : type,
                  wt_sact (Sigma:=Sigma) R (vars sf) a t ->
                  interp_sact (sigma:=sigma) REnv r (vars sf) a v <->
@@ -2545,10 +2545,10 @@ Section Operations.
                interp_sact (sigma:=sigma) REnv r (vars sf) s x <->
                interp_sact (sigma:=sigma) REnv r (vars sf) (f v s) x
            )
-           (FWT: forall k (a0 : SimpleForm.sact) (t0 : type),
+           (FWT: forall k (a0 : IRR.sact) (t0 : type),
                wt_sact (Sigma:=Sigma) R (vars sf) a0 t0 ->
                wt_sact (Sigma:=Sigma) R (vars sf) (f k a0) t0)
-           (VIS: forall k (s : SimpleForm.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
+           (VIS: forall k (s : IRR.sact) (v' : positive), var_in_sact (f k s) v' -> var_in_sact s v')
     ,
       wf_sf sf ->
       sf_eq sf {| final_values := final_values sf;
@@ -2578,7 +2578,7 @@ Section Operations.
   Qed.
 
   Lemma simplify_sif_interp_inv:
-    forall vvs : PTree.t (type * SimpleForm.sact),
+    forall vvs : PTree.t (type * IRR.sact),
       wt_vvs (Sigma:=Sigma) R vvs ->
       vvs_smaller_variables vvs ->
       forall (a : sact) (v : val),
@@ -2598,7 +2598,7 @@ Section Operations.
   Qed.
 
   Lemma simplify_sif_interp:
-    forall vvs : PTree.t (type * SimpleForm.sact),
+    forall vvs : PTree.t (type * IRR.sact),
     wt_vvs (Sigma:=Sigma) R vvs
     -> vvs_smaller_variables vvs
     -> forall (a : sact) (v : val), interp_sact (sigma:=sigma) REnv r vvs a v
@@ -2753,7 +2753,7 @@ Section Operations.
   Qed.
 
   Lemma filter_ptree_correct:
-    forall (sf1 sf2: simple_form) l lr (ND: NoDup l)
+    forall (sf1 sf2: IRR) l lr (ND: NoDup l)
     (CLOSED:
       forall
         v t s (IN : In v l) (GET : (vars sf1) ! v = Some (t, s)) v0
@@ -2806,7 +2806,7 @@ Section Operations.
   Lemma reachable_filter_inv:
     forall vvs l (ND: NoDup l) v a,
     reachable_var
-      (filter_ptree vvs (PTree.empty (type * SimpleForm.sact)) l) a v
+      (filter_ptree vvs (PTree.empty (type * IRR.sact)) l) a v
     -> reachable_var vvs a v.
   Proof.
     induction 2; simpl; intros; eauto.
@@ -2825,7 +2825,7 @@ Section Operations.
 
   Lemma filter_ptree_wt:
     forall
-      (sf1 sf2: simple_form) l lr (ND: NoDup l)
+      (sf1 sf2: IRR) l lr (ND: NoDup l)
       (CLOSED:
         forall
           v t s (IN : In v l) (GET : (vars sf1) ! v = Some (t, s)) v0

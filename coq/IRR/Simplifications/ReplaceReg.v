@@ -1,9 +1,9 @@
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 Require Import Koika.BitsToLists.
 Require Import Koika.KoikaForm.SimpleVal.
 Require Import Koika.KoikaForm.Types.
-Require Import Koika.SimpleForm.SimpleForm.
+Require Import Koika.IRR.IRR.
 Require Import Koika.Utils.EqDec.
 Require Import Koika.Utils.Maps.
 Require Import Koika.Utils.Environments.
@@ -56,8 +56,8 @@ Section ReplaceReg.
       (fun _ '(t, ua) => (t, replace_reg_in_sact ua from to))
       vars.
 
-  Definition replace_reg (sf: simple_form (rule_name_t := rule_name_t)) (from: reg_t) (to: val)
-  : simple_form :=
+  Definition replace_reg (sf: IRR (rule_name_t := rule_name_t)) (from: reg_t) (to: val)
+  : IRR :=
     sf <| vars := replace_reg_in_vars (vars sf) from to |>.
 
   Lemma eval_sact_replace_reg:
@@ -218,7 +218,7 @@ Section ReplaceReg.
   Qed.
 
   Lemma replace_reg_interp_inv:
-    forall reg (vvs : PTree.t (type * SimpleForm.sact)),
+    forall reg (vvs : PTree.t (type * IRR.sact)),
     wt_vvs (Sigma:=Sigma) R vvs
     -> vvs_smaller_variables vvs
     -> forall (a : sact) (v : val),
@@ -239,7 +239,7 @@ Section ReplaceReg.
   Qed.
 
   Lemma replace_reg_interp:
-    forall reg (vvs : PTree.t (type * SimpleForm.sact)),
+    forall reg (vvs : PTree.t (type * IRR.sact)),
     wt_vvs (Sigma:=Sigma) R vvs
     -> vvs_smaller_variables vvs
     -> forall (a : sact) (v : val),

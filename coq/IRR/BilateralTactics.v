@@ -1,14 +1,14 @@
 Require Import Koika.BitsToLists.
 Require Import Koika.Utils.Environments.
-Require Import Koika.SimpleForm.Direction.
-Require Import Koika.SimpleForm.SimpleForm.
-Require Import Koika.SimpleForm.Operations.
-Require Import Koika.SimpleForm.Simplifications.Simplifications.
+Require Import Koika.IRR.Direction.
+Require Import Koika.IRR.IRR.
+Require Import Koika.IRR.Operations.
+Require Import Koika.IRR.Simplifications.Simplifications.
 Require Import Koika.KoikaForm.SimpleVal.
-Require Import Koika.SimpleForm.Tactics.
-Require Import Koika.SimpleForm.Wt.
-Require Import Koika.SimpleForm.Interpretation.
-Require Import Koika.SimpleForm.Operations.
+Require Import Koika.IRR.Tactics.
+Require Import Koika.IRR.Wt.
+Require Import Koika.IRR.Interpretation.
+Require Import Koika.IRR.Operations.
 
 Ltac update_wfsf_bl :=
   let wfsfa_tmp := fresh "wfsfa" in
