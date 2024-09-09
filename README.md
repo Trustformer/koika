@@ -43,8 +43,9 @@ get your hands dirty in `examples`, have a chat with us.
 
 For proofs using progressive rewriting, read
 [our paper](https://inria.hal.science/hal-04118645/document). We recommend the
-SMT approach over this. Head to the repository of
-[our processor](https://gitlab.inria.fr/SUSHI-public/FMH/herve) to see it in action.
+SMT approach over this. Head over to the repository of
+[our processor](https://gitlab.inria.fr/SUSHI-public/FMH/herve) to see this
+latter approach in action.
 
 ## Who worked on this in SUSHI?
 Current members:
