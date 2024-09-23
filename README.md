@@ -9,7 +9,7 @@ hardware.
 * Support for more recent Coq versions
 * Support for proofs using the progressive rewriting approach described in
   [our paper](https://inria.hal.science/hal-04118645/document)
-* Support SMT powered proofs
+* Support for SMT powered proofs
 * Reorganized codebase
 * Extended RV processor (moved to
   [its own repository](https://gitlab.inria.fr/SUSHI-public/FMH/herve))
