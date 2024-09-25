@@ -47,7 +47,7 @@ SMT approach over this. Head over to the repository of
 [our processor](https://gitlab.inria.fr/SUSHI-public/FMH/herve) to see this
 latter approach in action.
 
-## Who worked on this in SUSHI?
+## Who works on this in SUSHI?
 Current members:
 * @pwilke, professor
 * @mbaty, PhD student
@@ -55,7 +55,7 @@ Current members:
 Past members:
 * @gdesfren, intern: reworked most of the
   [processor example](https://gitlab.inria.fr/SUSHI-public/FMH/herve) to add
-  privileges
+  support for interrupts and exceptions
 
 ## Plans
 Nothing concrete for the immediate future.
