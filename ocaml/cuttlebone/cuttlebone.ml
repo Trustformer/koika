@@ -662,7 +662,7 @@ module Graphs = struct
     let di_regs =
       kp.koika_reg_finite.finite_elements in
     let di_circuits =
-      let cp = Perf.with_timer "graph:compile_koika_package" (fun () ->
+      let cp = Perf.with_verbose_timer "graph:compile_koika_package" (fun () ->
                    Extr.compile_koika_package kp
                      (Compilation.opt kp.koika_reg_types kp.koika_ext_fn_types)) in
       fun r -> Extr.getenv cp.cp_reg_Env cp.cp_circuits r in

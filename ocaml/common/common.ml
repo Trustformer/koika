@@ -26,6 +26,9 @@ module Perf = struct
     if verbose && elapsed then Printf.eprintf "<< [%s] %.3fs\n%!"
                                 label (Unix.gettimeofday () -. time);
     result
+
+  let with_verbose_timer label f =
+    with_timer ?verbose:(Some true) ?elapsed:(Some true) label f
 end
 
 module Pos = struct

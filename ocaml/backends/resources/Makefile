@@ -44,6 +44,9 @@ $(cuttlesim_driver).opt: $(cuttlesim_helper) $(mod).hpp $(CUTTLESIM_DRIVER)
 $(cuttlesim_driver).trace.opt: $(cuttlesim_helper) $(mod).hpp $(CUTTLESIM_DRIVER)
 	$(CXX) $(cxx_flags) $(CUTTLESIM_TRACE_FLAGS) $(CUTTLESIM_DRIVER) -o "$@"
 
+$(cuttlesim_driver).tracejson.opt: $(cuttlesim_helper) $(mod).hpp $(CUTTLESIM_DRIVER)
+	$(CXX) $(cxx_flags) -DSIM_JSON $(CUTTLESIM_DRIVER) -o "$@"
+
 $(cuttlesim_driver).debug: $(cuttlesim_helper) $(mod).hpp $(CUTTLESIM_DRIVER)
 	$(CXX) $(cxx_flags) $(CUTTLESIM_DEBUG_FLAGS) $(CUTTLESIM_DRIVER) -o "$@"
 

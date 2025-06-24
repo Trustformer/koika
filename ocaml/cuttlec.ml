@@ -19,6 +19,7 @@ let backends : (backend * (string * string)) list =
   [(`Dot, ("dot", ".dot"));
    (`Hpp, ("hpp", ".hpp"));
    (`Cpp, ("cpp", ".cpp"));
+   (`Makefile, ("makefile", "Makefile"));
    (`Opt, ("opt", ".opt"));
    (`Coq, ("coq", "_coq.v"));
    (`Verilog, ("verilog", "_verilog.v"));
@@ -91,10 +92,10 @@ let run_backend' (backend: backend) cnf pkg =
      with_output_to_file (output_fname backend cnf pkg)
        Backends.Makefile.main pkg.pkg_modname
   | (`Hpp | `Cpp | `Opt) as kd ->
-     let cpp = Lazy.force pkg.pkg_cpp in
+     let cpp = Perf.with_verbose_timer "pkg_cpp" (fun () -> Lazy.force pkg.pkg_cpp) in
      Backends.Cpp.write_output cnf.cnf_dst_dpath kd cpp
   | (`Verilog | `Dot) as backend ->
-     let graph = Lazy.force pkg.pkg_graph in
+     let graph = Perf.with_verbose_timer "graph" (fun () -> Lazy.force pkg.pkg_graph) in
      match backend with
      | `Dot -> Backends.Rtl.Dot.main cnf.cnf_dst_dpath pkg.pkg_modname graph
      | `Verilog -> Backends.Rtl.main cnf.cnf_dst_dpath pkg.pkg_modname graph
@@ -110,7 +111,7 @@ let abort fmt =
   Printf.kfprintf (fun out -> fprintf out "\n"; exit false) Out_channel.stderr fmt
 
 let run_backend backend cnf pkg =
-  try Perf.with_timer (sprintf "backend:%s" (name_of_backend backend)) (fun () ->
+  try Perf.with_verbose_timer (sprintf "backend:%s" (name_of_backend backend)) (fun () ->
           run_backend' backend cnf pkg)
   with UnsupportedOutput msg -> abort "%s" msg
      | Common.CompilationError cmd -> abort "Compilation failed: %s" cmd
