@@ -17,14 +17,22 @@ end
 module Perf = struct
   let debug_perf = false
 
+  let indent = ref 0
+
+  let indent_space () = String.make !indent ' '
+
   let with_timer ?(verbose=false) ?(elapsed=false) label f =
     let time = Unix.gettimeofday () in
     let elapsed = elapsed || debug_perf in
     let verbose = verbose || debug_perf in
-    if verbose then Printf.eprintf ">> [%s]\n%!" label;
+    if verbose then Printf.eprintf "%s>> [%s]\n%!" (indent_space ()) label;
+    flush stderr;
+    incr indent;
     let result = Sys.opaque_identity (f ()) in
-    if verbose && elapsed then Printf.eprintf "<< [%s] %.3fs\n%!"
+    decr indent;
+    if verbose && elapsed then Printf.eprintf "%s<< [%s] %.3fs\n%!" (indent_space ())
                                 label (Unix.gettimeofday () -. time);
+    flush stderr;
     result
 
   let with_verbose_timer label f =

@@ -187,15 +187,16 @@ let run_ip (backends: backend list) cnf (ip: Cuttlebone.Extr.interop_package_t) 
   run_backends backends cnf
     { pkg_modname = Cuttlebone.Util.string_of_coq_string ip.ip_koika.koika_module_name;
       pkg_lv = lazy (raise (UnsupportedOutput "Coq output is only supported from LV input"));
-      pkg_cpp = lazy Backends.Cpp.(compile (input_of_sim_package ip.ip_koika ip.ip_sim));
+      pkg_cpp = lazy (let i = Perf.with_verbose_timer "iosp" (fun () -> Backends.Cpp.input_of_sim_package ip.ip_koika ip.ip_sim) in
+                      Perf.with_verbose_timer "compile" (fun () -> Backends.Cpp.compile i));
       pkg_graph = lazy (Cuttlebone.Graphs.graph_of_verilog_package ip.ip_koika ip.ip_verilog) }
 
 let run_dynlink (backends: backend list) (cnf: config) =
   List.iter (run_ip backends cnf) (dynlink_interop_packages cnf.cnf_src_fpath)
 
 let run_ocaml (backends: backend list) (cnf: config) =
-  let pkg = Frontends.Coq.compile_ml cnf.cnf_src_fpath cnf.cnf_dst_dpath in
-  List.iter (run_ip backends cnf) (dynlink_interop_packages pkg)
+  let pkg = Perf.with_verbose_timer "compile_ml" (fun () -> Frontends.Coq.compile_ml cnf.cnf_src_fpath cnf.cnf_dst_dpath) in
+  List.iter (run_ip backends cnf) (Perf.with_verbose_timer "dip" (fun () ->dynlink_interop_packages pkg))
 
 let run (frontend: frontend) (backends: backend list) (cnf: config) =
   match frontend with

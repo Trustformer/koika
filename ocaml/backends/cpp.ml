@@ -870,6 +870,8 @@ let compile (type pos_t var_t fn_name_t rule_name_t reg_t ext_fn_t)
     let internal_fnames = Hashtbl.create 20 in
 
     let p_rule (rule: (pos_t, var_t, fn_name_t, rule_name_t, reg_t, ext_fn_t) cpp_rule_t) =
+      let rule_name_unprefixed =
+        hpp.cpp_rule_names ~prefix:"" rule.rl_name in
       gensym_reset ();
 
       let filter_registers_by_history cond =
@@ -879,7 +881,10 @@ let compile (type pos_t var_t fn_name_t rule_name_t reg_t ext_fn_t)
 
       (* Check for registers that would require keeping track of data0 and data1
          separately, and issue a warning if there are any. *)
+      let should_warn_about_read1_after_write1 = false in
       let _ =
+        if should_warn_about_read1_after_write1 then (
+        Perf.with_verbose_timer (sprintf "needs_data_%s" rule_name_unprefixed) (fun () ->
         match needs_data0_and_data1  rule.rl_body with
         | [] -> ()
         | conflicts ->
@@ -891,7 +896,7 @@ implementing this in simulation causes unnecessary performance issues.
 If you actually want to observe the old values, use let bindings to save \
 them before writing to the registers.\n"
              (hpp.cpp_rule_names rule.rl_name)
-             names in
+             names)) in
 
       let rwset_footprint =
         (* No need to save or reset a register's read-write set if it's only
@@ -1107,8 +1112,6 @@ them before writing to the registers.\n"
           StringSet.empty elements
         |> ignore in
 
-      let rule_name_unprefixed =
-        hpp.cpp_rule_names ~prefix:"" rule.rl_name in
 
       let collect_bindings pos action =
         let rec loop pos bindings = function
@@ -1542,7 +1545,7 @@ them before writing to the registers.\n"
     set_buffer buf in
 
   let p_hpp () =
-    let impl = with_output_to_buffer p_impl in
+    let impl = Perf.with_verbose_timer "hpp_impl" (fun () -> with_output_to_buffer p_impl) in
     let typedefs = with_output_to_buffer p_type_declarations in
     p_includeguard (fun () ->
         p_preamble ();
@@ -1581,8 +1584,8 @@ them before writing to the registers.\n"
       Common.replace_strings Resources.cuttlesim_cpp markers in
     Buffer.add_string !buffer contents in
 
-  let buf_cpp = with_output_to_buffer p_cpp in
-  let buf_hpp = with_output_to_buffer p_hpp in
+  let buf_cpp = Perf.with_verbose_timer "buf_cpp" (fun () -> with_output_to_buffer p_cpp) in
+  let buf_hpp = Perf.with_verbose_timer "buf_hpp" (fun () -> with_output_to_buffer p_hpp) in
   { co_modname = hpp.cpp_module_name;
     co_hpp = buf_hpp;
     co_cpp = buf_cpp }
@@ -1627,11 +1630,14 @@ let input_of_sim_package
     : ('pos_t, 'var_t, 'fn_name_t, 'rule_name_t, 'reg_t, 'ext_fn_t) cpp_input_t =
   let open Cuttlebone in
   let rule_names =
-    Extr.scheduler_rules kp.koika_scheduler |> Util.dedup in
+    Perf.with_verbose_timer "rule names"
+      (fun () -> Extr.scheduler_rules kp.koika_scheduler |> Util.dedup) in
   let reg_histories, annotated_rules, register_kinds =
-    Util.compute_register_histories
-      kp.koika_reg_types kp.koika_reg_finite.finite_elements
-      rule_names kp.koika_rules kp.koika_scheduler in
+    Perf.with_verbose_timer "crh"
+      (fun () ->
+        Util.compute_register_histories
+          kp.koika_reg_types kp.koika_reg_finite.finite_elements
+          rule_names kp.koika_rules kp.koika_scheduler) in
   let classname = Util.string_of_coq_string kp.koika_module_name in
   let ext_fn_sigs f =
     let spec = sp.sp_ext_fn_specs f in
