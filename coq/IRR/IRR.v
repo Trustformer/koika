@@ -216,7 +216,7 @@ Section IRR.
   Record IRR := mkIRR {
     final_values: list (reg_t * positive);
     read1_values: list (reg_t * positive);
-    debug_log: list (rule_name_t * list (reg_t * sact) * list (reg_t * sact) * list (reg_t * sact));
+    debug_log: list (rule_name_t * list (reg_t * sact) * list (reg_t * sact) * list (reg_t * sact) * list (reg_t * sact));
     vars: var_value_map
   }.
   #[export] Instance etaIRR : Settable _ :=
@@ -5475,10 +5475,13 @@ Section IRR.
       let nid := nid + 1 in
       let '(r2v2, vvs, nid) := merge_reg2vars2 r2v r2v' conflict_name vvs nid in
       let rir2 := merge_rirs sched_rir rir' conflict_name vvs in
+      let conf := (SConst (Bits [true])) in
+      (* let conf := (unot (SVar conflict_name)) in *)
       let lr := (rl,
-                  map (fun '(reg, sa) => (reg, uand sa (unot (SVar conflict_name)))) (rir_read1s rir'),
-                  map (fun '(reg, sa) => (reg, uand sa (unot (SVar conflict_name)))) (rir_write0s rir'),
-                  map (fun '(reg, sa) => (reg, uand sa (unot (SVar conflict_name)))) (rir_write1s rir')
+                  map (fun '(reg, sa) => (reg, uand sa conf)) (rir_read0s rir'),
+                  map (fun '(reg, sa) => (reg, uand sa conf)) (rir_read1s rir'),
+                  map (fun '(reg, sa) => (reg, uand sa conf)) (rir_write0s rir'),
+                  map (fun '(reg, sa) => (reg, uand sa conf)) (rir_write1s rir')
                 ) in
       let '(rir, r2v, nid, l) := get_rir_scheduler' rir2 r2v2 rules nid s in
       (rir, r2v, nid, lr :: l)
