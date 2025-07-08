@@ -15,10 +15,12 @@ default: all
 coq:
 	@printf "\n== Building Coq library ==\n"
 	dune build @@coq/all
+	dune install
 
 coq-all:
 	@printf "\n== Building Coq library and proofs ==\n"
 	dune build @coq/all
+	dune install
 
 CHECKED_MODULES ?= OneRuleAtATime CompilerCorrectness/Correctness
 checked_paths := $(patsubst %,$(COQ_BUILD_DIR)/%.vo,$(CHECKED_MODULES))
@@ -119,6 +121,7 @@ clean-tests:
 dune-all: coq ocaml
 	@printf "\n== Completing full build ==\n"
 	dune build @all
+	dune install
 
 all: coq ocaml examples tests;
 
