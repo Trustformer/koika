@@ -5,6 +5,7 @@ Kôika is a rule-based Hardware Design Language embedded within Coq.
 
 ## What's different from [Kôika-SUSHI](https://gitlab.inria.fr/SUSHI-public/FMH/koika/)?
 * Packaged using [nix](https://nixos.org/)
+* Typechecking changes required by Trustformer
 
 ## Installation
 
